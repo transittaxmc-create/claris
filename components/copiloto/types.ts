@@ -1,6 +1,10 @@
+import type { LocationPoint } from "./geo"
+
 export type Platform = "Uber" | "Lyft" | "Aventus Ride" | "Cash" | "Other"
 
 export type TripStatus = "pending" | "matched"
+
+export type { LocationPoint }
 
 export type Trip = {
   id: string
@@ -13,6 +17,9 @@ export type Trip = {
   platformFee: number
   pickup: string
   dropoff: string
+  // Structured GPS location captured with PICKUP NOW / DROPOFF NOW
+  pickupLoc?: LocationPoint
+  dropoffLoc?: LocationPoint
   time: string // "14:46"
   ref: string
   status: TripStatus

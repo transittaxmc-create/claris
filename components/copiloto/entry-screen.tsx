@@ -1,9 +1,10 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { ChevronDown, MapPin, Pencil, Coffee } from "lucide-react"
+import { ChevronDown, MapPin, Coffee, Loader2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { PLATFORMS, type Platform, type Trip, newTrip, money } from "./types"
+import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip, money } from "./types"
+import { captureLocation } from "./geo"
 
 function MoneyField({
   label,
@@ -41,9 +42,36 @@ export function EntryScreen({
   const [draft, setDraft] = useState<Trip>(() => newTrip())
   const [platformOpen, setPlatformOpen] = useState(false)
   const [onBreak, setOnBreak] = useState(false)
+  const [capturing, setCapturing] = useState<null | "pickup" | "dropoff">(null)
+  const [geoError, setGeoError] = useState<string | null>(null)
 
   const set = <K extends keyof Trip>(key: K, val: Trip[K]) =>
     setDraft((d) => ({ ...d, [key]: val }))
+
+  async function capture(which: "pickup" | "dropoff") {
+    setGeoError(null)
+    setCapturing(which)
+    try {
+      const loc = await captureLocation()
+      setDraft((d) => ({
+        ...d,
+        [which]: loc.address,
+        [which === "pickup" ? "pickupLoc" : "dropoffLoc"]: loc,
+      }))
+    } catch (e) {
+      setGeoError(e instanceof Error ? e.message : "No se pudo obtener el GPS")
+    } finally {
+      setCapturing(null)
+    }
+  }
+
+  function clearLoc(which: "pickup" | "dropoff") {
+    setDraft((d) => ({
+      ...d,
+      [which]: "",
+      [which === "pickup" ? "pickupLoc" : "dropoffLoc"]: undefined,
+    }))
+  }
 
   const gross = useMemo(
     () => draft.earnings + draft.extraCash + draft.tips + draft.toll,
@@ -152,47 +180,32 @@ export function EntryScreen({
         {/* Pickup / Dropoff */}
         <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
           <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold tracking-wide text-neutral-400">PICKUP</span>
-                <span className="rounded-full bg-green-500/15 px-1.5 py-0.5 text-[9px] font-bold text-green-400">
-                  GPS
-                </span>
-              </div>
-              <input
-                value={draft.pickup}
-                onChange={(e) => set("pickup", e.target.value)}
-                placeholder="Toca pickup"
-                className="rounded-lg border border-green-900/40 bg-green-950/30 px-2.5 py-2 text-sm text-white outline-none placeholder:text-neutral-500 focus:border-green-700"
-              />
-              <button
-                type="button"
-                className="flex items-center justify-center gap-1.5 rounded-lg bg-green-500 py-2 text-sm font-bold text-black active:scale-[0.98]"
-              >
-                <MapPin className="size-4" /> PICKUP NOW
-              </button>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold tracking-wide text-neutral-400">DROPOFF</span>
-                <span className="rounded-full bg-green-500/15 px-1.5 py-0.5 text-[9px] font-bold text-green-400">
-                  GPS
-                </span>
-              </div>
-              <input
-                value={draft.dropoff}
-                onChange={(e) => set("dropoff", e.target.value)}
-                placeholder="Toca dropoff"
-                className="rounded-lg border border-blue-900/40 bg-blue-950/30 px-2.5 py-2 text-sm text-white outline-none placeholder:text-neutral-500 focus:border-blue-700"
-              />
-              <button
-                type="button"
-                className="flex items-center justify-center gap-1.5 rounded-lg bg-sky-400 py-2 text-sm font-bold text-black active:scale-[0.98]"
-              >
-                <MapPin className="size-4" /> DROPOFF NOW
-              </button>
-            </div>
+            <LocationColumn
+              label="PICKUP"
+              accent="green"
+              loc={draft.pickupLoc}
+              value={draft.pickup}
+              busy={capturing === "pickup"}
+              disabled={capturing !== null}
+              onCapture={() => capture("pickup")}
+              onManual={(v) => set("pickup", v)}
+              onClear={() => clearLoc("pickup")}
+            />
+            <LocationColumn
+              label="DROPOFF"
+              accent="sky"
+              loc={draft.dropoffLoc}
+              value={draft.dropoff}
+              busy={capturing === "dropoff"}
+              disabled={capturing !== null}
+              onCapture={() => capture("dropoff")}
+              onManual={(v) => set("dropoff", v)}
+              onClear={() => clearLoc("dropoff")}
+            />
           </div>
+          {geoError && (
+            <p className="mt-2 text-center text-[11px] font-semibold text-rose-400">{geoError}</p>
+          )}
         </section>
 
         {/* Tips / Toll / Platform fee */}
