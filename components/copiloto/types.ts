@@ -16,6 +16,8 @@ export type Trip = {
   time: string // "14:46"
   ref: string
   status: TripStatus
+  // Original entry object from ic_tip_tracker, preserved so GPS/coords survive a round-trip
+  raw?: Record<string, unknown>
 }
 
 export const PLATFORMS: Platform[] = ["Uber", "Lyft", "Aventus Ride", "Cash", "Other"]

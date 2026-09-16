@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { BottomNav, type Tab } from "./bottom-nav"
 import { EntryScreen } from "./entry-screen"
 import { RegisterScreen } from "./register-screen"
 import { TripEditSheet } from "./trip-edit-sheet"
 import { SEED_TRIPS, newTrip, type Trip } from "./types"
+import { loadTrips, saveTrips } from "./storage"
 
 function Placeholder({ label }: { label: string }) {
   return (
@@ -21,6 +22,19 @@ export function CopilotoApp() {
   const [trips, setTrips] = useState<Trip[]>(SEED_TRIPS)
   const [editing, setEditing] = useState<Trip | null>(null)
   const [dayClosed, setDayClosed] = useState(false)
+  const [hydrated, setHydrated] = useState(false)
+
+  // Load real data from the existing ic_tip_tracker localStorage key on mount.
+  useEffect(() => {
+    const loaded = loadTrips()
+    if (loaded && loaded.length) setTrips(loaded)
+    setHydrated(true)
+  }, [])
+
+  // Persist back to ic_tip_tracker in the exact export format after any change.
+  useEffect(() => {
+    if (hydrated) saveTrips(trips)
+  }, [trips, hydrated])
 
   function saveNewFromEntry(t: Trip) {
     setTrips((prev) => [t, ...prev])
