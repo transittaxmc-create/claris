@@ -91,3 +91,64 @@ export function saveTrips(trips: Trip[]): void {
     // ignore write errors (e.g. storage disabled)
   }
 }
+
+// All localStorage keys used by the original IslandCity Tip Tracker, so an
+// export from this redesign is a drop-in replacement for the original app.
+const ALL_KEYS = [
+  "ic_tip_tracker",
+  "ic_shift",
+  "ic-bank-adj-history",
+  "ic-day-targets",
+  "ic-work-days",
+  "ic-recurring-plan",
+  "ic-bank-balance",
+  "ic-week-overrides",
+]
+
+// Build the full export document (version 2) in the exact shape the original
+// app produces, merging the current trips into ic_tip_tracker.
+export function buildExport(trips: Trip[]): string {
+  const data: Record<string, string> = {}
+  for (const key of ALL_KEYS) {
+    const val = localStorage.getItem(key)
+    if (val != null) data[key] = val
+  }
+
+  // Ensure ic_tip_tracker reflects the current in-memory trips.
+  let tracker: RawEntry = {}
+  try {
+    tracker = data["ic_tip_tracker"] ? JSON.parse(data["ic_tip_tracker"]) : {}
+  } catch {
+    tracker = {}
+  }
+  tracker.entries = trips.map(tripToEntry)
+  data["ic_tip_tracker"] = JSON.stringify(tracker)
+
+  const doc = {
+    app: "IslandCity Tip Tracker",
+    version: 2,
+    exportDate: new Date().toISOString(),
+    data,
+  }
+  return JSON.stringify(doc, null, 2)
+}
+
+// Import a full export document: writes every key back to localStorage and
+// returns the parsed trips so the UI can refresh immediately.
+export function importExport(json: string): Trip[] | null {
+  try {
+    const doc = JSON.parse(json)
+    const data = doc?.data
+    if (!data || typeof data !== "object") return null
+
+    for (const key of ALL_KEYS) {
+      if (typeof data[key] === "string") localStorage.setItem(key, data[key])
+    }
+
+    const tracker = data["ic_tip_tracker"] ? JSON.parse(data["ic_tip_tracker"]) : null
+    const entries = Array.isArray(tracker?.entries) ? tracker.entries : []
+    return entries.map(entryToTrip)
+  } catch {
+    return null
+  }
+}

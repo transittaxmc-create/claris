@@ -1,7 +1,7 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { Lock, Plus, ArrowRight } from "lucide-react"
+import { useMemo, useRef, useState } from "react"
+import { Lock, Plus, ArrowRight, Download, Upload } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { type Trip, grossOf, netOf, money } from "./types"
 
@@ -83,14 +83,19 @@ export function RegisterScreen({
   onAdd,
   onCloseDay,
   dayClosed,
+  onExport,
+  onImport,
 }: {
   trips: Trip[]
   onEdit: (t: Trip) => void
   onAdd: () => void
   onCloseDay: () => void
   dayClosed: boolean
+  onExport: () => void
+  onImport: (file: File) => void
 }) {
   const [filter, setFilter] = useState<Filter>("ALL")
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const totals = useMemo(() => {
     const gross = trips.reduce((s, t) => s + grossOf(t), 0)
@@ -158,6 +163,35 @@ export function RegisterScreen({
           <Lock className="size-4" />
           {dayClosed ? "DÍA CERRADO" : "CERRAR DÍA (bloquea el registro de hoy)"}
         </button>
+
+        {/* Import / Export */}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900/50 py-3 text-xs font-bold text-neutral-300 transition-colors hover:border-neutral-600"
+          >
+            <Upload className="size-4" /> IMPORTAR JSON
+          </button>
+          <button
+            type="button"
+            onClick={onExport}
+            className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900/50 py-3 text-xs font-bold text-neutral-300 transition-colors hover:border-neutral-600"
+          >
+            <Download className="size-4" /> EXPORTAR JSON
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) onImport(file)
+              e.target.value = ""
+            }}
+          />
+        </div>
 
         {/* Trip list */}
         <div className="space-y-3 pt-1">

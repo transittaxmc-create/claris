@@ -6,7 +6,7 @@ import { EntryScreen } from "./entry-screen"
 import { RegisterScreen } from "./register-screen"
 import { TripEditSheet } from "./trip-edit-sheet"
 import { SEED_TRIPS, newTrip, type Trip } from "./types"
-import { loadTrips, saveTrips } from "./storage"
+import { loadTrips, saveTrips, buildExport, importExport } from "./storage"
 
 function Placeholder({ label }: { label: string }) {
   return (
@@ -54,6 +54,32 @@ export function CopilotoApp() {
     setEditing(null)
   }
 
+  function exportJson() {
+    const json = buildExport(trips)
+    const blob = new Blob([json], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    const stamp = new Date().toISOString().slice(0, 10)
+    a.href = url
+    a.download = `islandcity-tip-tracker-${stamp}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function importJson(file: File) {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = importExport(String(reader.result))
+      if (result) {
+        setTrips(result)
+        setTab("REGISTER")
+      } else {
+        alert("No se pudo leer el archivo. Verifica que sea un export válido de IslandCity Tip Tracker.")
+      }
+    }
+    reader.readAsText(file)
+  }
+
   return (
     <div className="flex min-h-screen justify-center bg-neutral-950">
       <div className="flex h-[100dvh] w-full max-w-[440px] flex-col overflow-hidden bg-black text-white">
@@ -66,6 +92,8 @@ export function CopilotoApp() {
               onAdd={() => setEditing(newTrip())}
               onCloseDay={() => setDayClosed(true)}
               dayClosed={dayClosed}
+              onExport={exportJson}
+              onImport={importJson}
             />
           )}
           {tab !== "ENTRY" && tab !== "REGISTER" && <Placeholder label={tab} />}
