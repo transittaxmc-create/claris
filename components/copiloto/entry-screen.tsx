@@ -20,14 +20,14 @@ function MoneyField({
   return (
     <label className="flex min-w-0 flex-1 flex-col gap-1.5">
       <span className={cn("text-[11px] font-bold tracking-wide", color)}>{label}</span>
-      <div className="flex items-center rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 focus-within:border-neutral-600">
+      <div className="flex items-center rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 focus-within:border-neutral-600">
         <span className="mr-1 text-sm text-neutral-500">$</span>
         <input
           inputMode="decimal"
           value={value === 0 ? "" : String(value)}
           onChange={(e) => onChange(Number.parseFloat(e.target.value) || 0)}
           placeholder="0.00"
-          className="w-full bg-transparent text-base font-semibold text-white outline-none placeholder:text-neutral-600"
+          className="w-full bg-transparent text-lg font-semibold text-white outline-none placeholder:text-neutral-600"
         />
       </div>
     </label>
@@ -166,7 +166,7 @@ export function EntryScreen({
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-start justify-between gap-2 px-4 pt-3">
+      <div className="flex items-start justify-between gap-4 px-5 pt-4 sm:px-8 sm:pt-5">
         <div className="min-w-0">
           <h1 className="truncate text-xl font-bold text-white">{greeting}</h1>
           <p className="text-xs text-neutral-500" suppressHydrationWarning>
@@ -182,9 +182,9 @@ export function EntryScreen({
       </div>
 
       {/* Scrollable body */}
-      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:content-start sm:gap-4 sm:px-8 sm:py-5">
         {/* Platform + break */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 sm:col-span-2">
           <div className="relative flex-1">
             <button
               type="button"
@@ -254,7 +254,7 @@ export function EntryScreen({
         </section>
 
         {/* Pickup / Dropoff */}
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
+        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3 sm:col-span-2">
           <div className="grid grid-cols-2 gap-3">
             <LocationColumn
               label="PICKUP"
@@ -285,7 +285,7 @@ export function EntryScreen({
         </section>
 
         {/* Tips / Toll / Platform fee */}
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
+        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3 sm:col-span-1 sm:col-start-2 sm:row-start-2">
           <div className="flex gap-2">
             <MoneyField
               label="TIPS"
@@ -312,7 +312,7 @@ export function EntryScreen({
               value={draft.ref}
               onChange={(e) => set("ref", e.target.value)}
               placeholder="Reference"
-              className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm text-white outline-none placeholder:text-neutral-600 focus:border-neutral-600"
+              className="rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-base text-white outline-none placeholder:text-neutral-600 focus:border-neutral-600"
             />
           </label>
         </section>
@@ -320,11 +320,11 @@ export function EntryScreen({
       </div>
 
       {/* Sticky record button */}
-      <div className="border-t border-neutral-800 bg-black px-4 py-3">
+      <div className="border-t border-neutral-800 bg-black px-5 py-4 sm:px-8 sm:py-5">
         <button
           type="button"
           onClick={handleSave}
-          className="w-full rounded-2xl bg-gradient-to-r from-yellow-500 to-amber-500 py-3.5 text-base font-extrabold tracking-wide text-black active:scale-[0.99]"
+          className="w-full rounded-2xl bg-gradient-to-r from-yellow-500 to-amber-500 py-4 text-lg font-extrabold tracking-wide text-black active:scale-[0.99]"
         >
           + GRABAR EN DISCO
         </button>

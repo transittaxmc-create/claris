@@ -82,7 +82,7 @@ export function CopilotoApp() {
 
   return (
     <div className="flex min-h-screen justify-center bg-neutral-950">
-      <div className="flex h-[100dvh] w-full max-w-[440px] flex-col overflow-hidden bg-black text-white">
+      <div className="flex h-[100dvh] w-full max-w-[920px] flex-col overflow-hidden bg-black text-white">
         <main className="min-h-0 flex-1">
           {tab === "ENTRY" && <EntryScreen onSave={saveNewFromEntry} />}
           {tab === "REGISTER" && (
