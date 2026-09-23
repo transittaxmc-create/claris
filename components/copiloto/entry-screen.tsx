@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { ChevronDown, MapPin, Coffee, Loader2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip, money } from "./types"
@@ -147,9 +147,22 @@ export function EntryScreen({
   )
   const net = useMemo(() => gross - draft.platformFee, [gross, draft.platformFee])
 
-  const now = new Date()
-  const greeting =
-    now.getHours() < 12 ? "Good morning" : now.getHours() < 18 ? "Good afternoon" : "Good evening"
+  const [now, setNow] = useState<Date | null>(null)
+
+  useEffect(() => {
+    const updateNow = () => setNow(new Date())
+    updateNow()
+    const timer = window.setInterval(updateNow, 60_000)
+    return () => window.clearInterval(timer)
+  }, [])
+
+  const greeting = now
+    ? now.getHours() < 12
+      ? "Good morning"
+      : now.getHours() < 18
+        ? "Good afternoon"
+        : "Good evening"
+    : "Good morning"
 
   function handleSave() {
     onSave({ ...draft })
@@ -162,9 +175,10 @@ export function EntryScreen({
       <div className="flex items-start justify-between gap-2 px-4 pt-3">
         <div className="min-w-0">
           <h1 className="truncate text-xl font-bold text-white">{greeting}</h1>
-          <p className="text-xs text-neutral-500">
-            {now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}{" "}
-            {now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
+          <p className="text-xs text-neutral-500" suppressHydrationWarning>
+            {now
+              ? `${now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} ${now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`
+              : "—"}
           </p>
         </div>
         <span className="flex shrink-0 items-center gap-1.5 rounded-full border border-green-500/40 bg-green-500/10 px-2.5 py-1 text-[10px] font-bold text-green-400">
