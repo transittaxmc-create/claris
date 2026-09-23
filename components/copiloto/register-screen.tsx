@@ -99,9 +99,10 @@ export function RegisterScreen({
 
   const totals = useMemo(() => {
     const gross = trips.reduce((s, t) => s + grossOf(t), 0)
-    const net = trips.reduce((s, t) => s + netOf(t), 0)
+    const fee = trips.reduce((s, t) => s + t.platformFee, 0)
+    const net = gross - fee
     const pending = trips.filter((t) => t.status === "pending").length
-    return { gross, net, pending }
+    return { gross, fee, net, pending }
   }, [trips])
 
   const visible = useMemo(() => {
