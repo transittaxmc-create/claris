@@ -30,6 +30,8 @@ export type Trip = {
 export const PLATFORMS: Platform[] = ["Uber", "Lyft", "Aventus Ride", "Cash", "Other"]
 
 export function grossOf(t: Trip): number {
+  // Gross income is calculated before platform fees:
+  // EARNINGS + EXTRA CASH + TIPS + TOLLS.
   return t.earnings + t.extraCash + t.tips + t.toll
 }
 

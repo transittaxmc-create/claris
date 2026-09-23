@@ -300,7 +300,7 @@ export function EntryScreen({
               onChange={(n) => set("tips", n)}
             />
             <MoneyField
-              label="TOLL"
+              label="TOLLS"
               color="text-amber-400"
               value={draft.toll}
               onChange={(n) => set("toll", n)}
