@@ -34,6 +34,74 @@ function MoneyField({
   )
 }
 
+function LocationColumn({
+  label,
+  accent,
+  loc,
+  value,
+  busy,
+  disabled,
+  onCapture,
+  onManual,
+  onClear,
+}: {
+  label: string
+  accent: "green" | "sky"
+  loc?: LocationPoint
+  value: string
+  busy: boolean
+  disabled: boolean
+  onCapture: () => void
+  onManual: (value: string) => void
+  onClear: () => void
+}) {
+  const border = accent === "green" ? "border-green-900/50" : "border-sky-900/50"
+  const button = accent === "green" ? "bg-green-500" : "bg-sky-400"
+
+  return (
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-bold tracking-wide text-neutral-400">{label}</span>
+        <span className="rounded-full bg-green-500/15 px-1.5 py-0.5 text-[9px] font-bold text-green-400">GPS</span>
+      </div>
+      {loc ? (
+        <div className={cn("relative min-h-[104px] rounded-lg border bg-green-950/30 p-2", border)}>
+          <button
+            type="button"
+            aria-label={`Borrar ${label.toLowerCase()}`}
+            onClick={onClear}
+            className="absolute right-1 top-1 rounded p-1 text-neutral-500 hover:text-white"
+          >
+            <X className="size-3" />
+          </button>
+          <div className="pr-4 text-[11px] leading-4 text-neutral-300">
+            <div className="font-bold text-white">{loc.icon} {loc.categoryLabel}</div>
+            {loc.businessName && <div className="truncate text-green-300">{loc.businessName}</div>}
+            <div className="mt-0.5 line-clamp-2 text-neutral-400">{loc.address || value}</div>
+            <div className="mt-1 text-[10px] text-neutral-500">{loc.time} · {loc.day}</div>
+          </div>
+        </div>
+      ) : (
+        <input
+          value={value}
+          onChange={(e) => onManual(e.target.value)}
+          placeholder={`Toca ${label.toLowerCase()}`}
+          className={cn("rounded-lg border bg-neutral-950/60 px-2.5 py-2 text-sm text-white outline-none placeholder:text-neutral-500", border)}
+        />
+      )}
+      <button
+        type="button"
+        onClick={onCapture}
+        disabled={disabled}
+        className={cn("flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-bold text-black active:scale-[0.98] disabled:cursor-wait disabled:opacity-60", button)}
+      >
+        {busy ? <Loader2 className="size-4 animate-spin" /> : <MapPin className="size-4" />}
+        {busy ? "BUSCANDO..." : `${label} NOW`}
+      </button>
+    </div>
+  )
+}
+
 export function EntryScreen({
   onSave,
 }: {
