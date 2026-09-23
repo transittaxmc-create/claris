@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useState } from "react"
 import { ChevronDown, MapPin, Coffee, Loader2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip, money } from "./types"
+import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip } from "./types"
 import { captureLocation } from "./geo"
 
 function MoneyField({
@@ -140,12 +140,6 @@ export function EntryScreen({
       [which === "pickup" ? "pickupLoc" : "dropoffLoc"]: undefined,
     }))
   }
-
-  const gross = useMemo(
-    () => draft.earnings + draft.extraCash + draft.tips + draft.toll,
-    [draft],
-  )
-  const net = useMemo(() => gross - draft.platformFee, [gross, draft.platformFee])
 
   const [now, setNow] = useState<Date | null>(null)
 
@@ -323,17 +317,6 @@ export function EntryScreen({
           </label>
         </section>
 
-        {/* Totals */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border-2 border-yellow-500/60 bg-yellow-500/5 p-3">
-            <p className="text-[11px] font-bold tracking-wide text-yellow-400">NET PAYOUT</p>
-            <p className="text-2xl font-extrabold text-green-400">{money(net)}</p>
-          </div>
-          <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
-            <p className="text-[11px] font-bold tracking-wide text-neutral-400">GROSS INCOME</p>
-            <p className="text-2xl font-extrabold text-white">{money(gross)}</p>
-          </div>
-        </div>
       </div>
 
       {/* Sticky record button */}
