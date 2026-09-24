@@ -41,7 +41,7 @@ export function BottomNav({
   onChange: (t: Tab) => void
 }) {
   return (
-    <nav className="shrink-0 flex items-stretch gap-0 border-t border-neutral-800 bg-black px-0.5 pb-[env(safe-area-inset-bottom)] pt-1">
+    <nav className="shrink-0 flex min-h-[3.5rem] items-stretch gap-0 border-t border-neutral-800 bg-black px-0.5 pb-[env(safe-area-inset-bottom)] pt-1">
       {ITEMS.map(({ key, label, icon: Icon }) => {
         const isActive = active === key
         return (

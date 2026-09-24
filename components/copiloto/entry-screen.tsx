@@ -296,7 +296,7 @@ export function EntryScreen({
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 px-5 pt-4 sm:px-8 sm:pt-5">
         <div className="min-w-0">
@@ -314,14 +314,14 @@ export function EntryScreen({
       </div>
 
       {/* Scrollable body */}
-      <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:content-start sm:gap-4 sm:px-8 sm:py-5">
+      <div className="flex-1 space-y-2 overflow-y-auto px-4 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:content-start sm:gap-4 sm:px-8 sm:py-5">
         {/* Platform + break */}
         <div className="flex items-center gap-2 sm:col-span-2">
           <div className="relative flex-1">
             <button
               type="button"
               onClick={() => setPlatformOpen((o) => !o)}
-              className="flex w-full items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5"
+              className="flex w-full items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2"
             >
               <span className="flex items-center gap-2">
                 <span className="flex size-6 items-center justify-center rounded-full bg-white text-[9px] font-bold text-black">
@@ -457,7 +457,7 @@ export function EntryScreen({
       </div>
 
       {/* Sticky record button con calidad y feedback */}
-      <div className="border-t border-neutral-800 bg-black px-5 py-4 sm:px-8 sm:py-5">
+      <div className="shrink-0 border-t border-neutral-800 bg-black px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 sm:px-8 sm:py-5">
         <button
           type="button"
           onClick={handleSave}
