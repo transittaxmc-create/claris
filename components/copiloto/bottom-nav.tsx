@@ -3,7 +3,6 @@
 import {
   Home,
   ClipboardList,
-  FileText,
   Receipt,
   Gauge,
   Wallet,
@@ -16,7 +15,6 @@ import { cn } from "@/lib/utils"
 export type Tab =
   | "ENTRY"
   | "REGISTER"
-  | "LEDGER"
   | "EXPENSES"
   | "DASH"
   | "FINANCE"
@@ -27,7 +25,6 @@ export type Tab =
 const ITEMS: { key: Tab; label: string; icon: typeof Home }[] = [
   { key: "ENTRY", label: "ENTRY", icon: Home },
   { key: "REGISTER", label: "REGISTER", icon: ClipboardList },
-  { key: "LEDGER", label: "LEDGER", icon: FileText },
   { key: "EXPENSES", label: "EXPENSES", icon: Receipt },
   { key: "DASH", label: "DASH", icon: Gauge },
   { key: "FINANCE", label: "FINANCE", icon: Wallet },
@@ -44,7 +41,7 @@ export function BottomNav({
   onChange: (t: Tab) => void
 }) {
   return (
-    <nav className="flex items-stretch gap-0 overflow-x-auto border-t border-neutral-800 bg-black px-0.5 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <nav className="shrink-0 flex items-stretch gap-0 border-t border-neutral-800 bg-black px-0.5 pb-[env(safe-area-inset-bottom)] pt-1">
       {ITEMS.map(({ key, label, icon: Icon }) => {
         const isActive = active === key
         return (
