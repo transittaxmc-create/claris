@@ -20,7 +20,7 @@ function MoneyField({
   return (
     <label className="flex min-w-0 flex-1 flex-col gap-1.5">
       <span className={cn("text-[11px] font-bold tracking-wide", color)}>{label}</span>
-      <div className="flex items-center rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 focus-within:border-neutral-600">
+      <div className="flex items-center rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 focus-within:border-neutral-600">
         <span className="mr-1 text-sm text-neutral-500">$</span>
         <input
           inputMode="decimal"
@@ -65,7 +65,7 @@ function LocationColumn({
         <span className="rounded-full bg-green-500/15 px-1.5 py-0.5 text-[9px] font-bold text-green-400">GPS</span>
       </div>
       {loc ? (
-        <div className={cn("relative min-h-[104px] rounded-lg border bg-green-950/30 p-2", border)}>
+        <div className={cn("relative min-h-[82px] rounded-lg border bg-green-950/30 p-1.5", border)}>
           <button
             type="button"
             aria-label={`Borrar ${label.toLowerCase()}`}
@@ -93,7 +93,7 @@ function LocationColumn({
         type="button"
         onClick={onCapture}
         disabled={disabled}
-        className={cn("flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-bold text-black active:scale-[0.98] disabled:cursor-wait disabled:opacity-60", button)}
+        className={cn("flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-sm font-bold text-black active:scale-[0.98] disabled:cursor-wait disabled:opacity-60", button)}
       >
         {busy ? <Loader2 className="size-4 animate-spin" /> : <MapPin className="size-4" />}
         {busy ? "BUSCANDO..." : `${label} NOW`}
@@ -166,7 +166,7 @@ export function EntryScreen({
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 px-5 pt-4 sm:px-8 sm:pt-5">
+      <div className="flex items-start justify-between gap-3 px-4 pt-2.5 sm:px-6 sm:pt-3">
         <div className="min-w-0">
           <h1 className="truncate text-xl font-bold text-white">{greeting}</h1>
           <p className="text-xs text-neutral-500" suppressHydrationWarning>
@@ -182,7 +182,7 @@ export function EntryScreen({
       </div>
 
       {/* Scrollable body */}
-      <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:content-start sm:gap-4 sm:px-8 sm:py-5">
+      <div className="flex-1 space-y-2.5 overflow-y-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:content-start sm:gap-4 sm:px-8 sm:py-5">
         {/* Platform + break */}
         <div className="flex items-center gap-2 sm:col-span-2">
           <div className="relative flex-1">
@@ -236,7 +236,7 @@ export function EntryScreen({
         </div>
 
         {/* Earnings / Extra cash */}
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
+        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-2.5 self-start">
           <div className="flex gap-3">
             <MoneyField
               label="EARNINGS"
@@ -254,7 +254,7 @@ export function EntryScreen({
         </section>
 
         {/* Pickup / Dropoff */}
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3 sm:col-span-2">
+        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-2.5 sm:col-span-2">
           <div className="grid grid-cols-2 gap-3">
             <LocationColumn
               label="PICKUP"
@@ -285,7 +285,7 @@ export function EntryScreen({
         </section>
 
         {/* Tips / Toll / Platform fee */}
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3 sm:col-span-1 sm:col-start-2 sm:row-start-2">
+        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-2.5 self-start sm:col-span-1 sm:col-start-2 sm:row-start-2">
           <div className="flex gap-2">
             <MoneyField
               label="TIPS"
