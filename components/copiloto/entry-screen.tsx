@@ -21,14 +21,14 @@ function MoneyField({
   return (
     <label className="flex min-w-0 flex-1 flex-col gap-1.5">
       <span className={cn("text-[11px] font-bold tracking-wide", color)}>{label}</span>
-      <div className="flex items-center rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 focus-within:border-neutral-600">
+      <div className="flex min-h-[4.5rem] items-center rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3.5 focus-within:border-neutral-600">
         <span className="mr-1 text-sm text-neutral-500">$</span>
         <input
           inputMode="decimal"
           value={value === 0 ? "" : String(value)}
           onChange={(e) => onChange(Number.parseFloat(e.target.value) || 0)}
           placeholder="0.00"
-          className="w-full bg-transparent text-lg font-semibold text-white outline-none placeholder:text-neutral-600"
+          className="w-full bg-transparent text-xl font-semibold text-white outline-none placeholder:text-neutral-600"
         />
       </div>
     </label>
@@ -90,7 +90,7 @@ function LocationColumn({
       {loc ? (
         <div
           className={cn(
-            "relative min-h-[104px] rounded-xl border p-2.5 transition-all",
+            "relative min-h-[118px] rounded-xl border p-3 transition-all",
             loc.banner === "blue"
               ? "border-sky-700/60 bg-sky-950/30 text-sky-100"
               : "border-emerald-700/60 bg-emerald-950/30 text-emerald-100"
@@ -321,7 +321,7 @@ export function EntryScreen({
             <button
               type="button"
               onClick={() => setPlatformOpen((o) => !o)}
-              className="flex w-full items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2"
+              className="flex w-full items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-3"
             >
               <span className="flex items-center gap-2">
                 <span className="flex size-6 items-center justify-center rounded-full bg-white text-[9px] font-bold text-black">
@@ -450,14 +450,14 @@ export function EntryScreen({
               value={draft.ref}
               onChange={(e) => set("ref", e.target.value)}
               placeholder="Reference"
-              className="rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-base text-white outline-none placeholder:text-neutral-600 focus:border-neutral-600"
+              className="min-h-[4.5rem] rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-lg text-white outline-none placeholder:text-neutral-600 focus:border-neutral-600"
             />
           </label>
         </section>
       </div>
 
       {/* Sticky record button con calidad y feedback */}
-      <div className="shrink-0 border-t border-neutral-800 bg-black px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-2 sm:px-8 sm:py-5">
+      <div className="shrink-0 border-t border-neutral-800 bg-black px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 sm:px-8 sm:py-5">
         <button
           type="button"
           onClick={handleSave}

@@ -41,7 +41,7 @@ export function BottomNav({
   onChange: (t: Tab) => void
 }) {
   return (
-    <nav className="shrink-0 flex min-h-[3.5rem] items-stretch gap-0 border-t border-neutral-800 bg-black px-0.5 pb-[env(safe-area-inset-bottom)] pt-1">
+    <nav className="shrink-0 flex min-h-[4.25rem] items-stretch gap-0 border-t border-neutral-800 bg-black px-0.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
       {ITEMS.map(({ key, label, icon: Icon }) => {
         const isActive = active === key
         return (
@@ -50,13 +50,13 @@ export function BottomNav({
             type="button"
             onClick={() => onChange(key)}
             className={cn(
-              "flex min-w-[48px] flex-1 flex-col items-center gap-0.5 rounded-lg py-0.5 transition-colors",
+              "flex min-w-[48px] flex-1 flex-col items-center gap-1 rounded-lg py-1 transition-colors",
               isActive ? "text-yellow-400" : "text-neutral-500 hover:text-neutral-300",
             )}
             aria-current={isActive ? "page" : undefined}
           >
-            <Icon className="size-5" strokeWidth={isActive ? 2.5 : 2} />
-            <span className="text-[8px] font-semibold tracking-tight">{label}</span>
+            <Icon className="size-6" strokeWidth={isActive ? 2.5 : 2} />
+            <span className="text-[9px] font-semibold tracking-tight">{label}</span>
           </button>
         )
       })}
