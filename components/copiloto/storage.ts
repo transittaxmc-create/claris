@@ -152,3 +152,50 @@ export function importExport(json: string): Trip[] | null {
     return null
   }
 }
+
+// =====================================================================
+// Almacenamiento Permanente en IndexedDB (CopilotoV1DB)
+// =====================================================================
+const IDB_NAME = "CopilotoV1DB"
+const IDB_VERSION = 1
+const IDB_STORE = "transactions"
+
+function getIndexedDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    if (typeof indexedDB === "undefined") {
+      reject(new Error("IndexedDB no disponible"))
+      return
+    }
+    const req = indexedDB.open(IDB_NAME, IDB_VERSION)
+    req.onupgradeneeded = (e: any) => {
+      const db = e.target.result
+      if (!db.objectStoreNames.contains(IDB_STORE)) {
+        const store = db.createObjectStore(IDB_STORE, { keyPath: "id" })
+        store.createIndex("datetime", "datetime", { unique: false })
+        store.createIndex("platform", "platform", { unique: false })
+      }
+    }
+    req.onsuccess = (e: any) => resolve(e.target.result)
+    req.onerror = (e: any) => reject(e.target.error)
+  })
+}
+
+export async function saveToIndexedDB(trip: Trip): Promise<void> {
+  try {
+    const db = await getIndexedDB()
+    const entry = tripToEntry(trip)
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction([IDB_STORE], "readwrite")
+      const store = tx.objectStore(IDB_STORE)
+      const req = store.put({
+        ...entry,
+        savedAt: new Date().toISOString(),
+      })
+      req.onsuccess = () => resolve()
+      req.onerror = () => reject(req.error)
+    })
+  } catch (err) {
+    console.warn("IndexedDB save error:", err)
+  }
+}
+

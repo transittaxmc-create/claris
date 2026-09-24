@@ -1,10 +1,11 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ChevronDown, MapPin, Coffee, Loader2, X } from "lucide-react"
+import { ChevronDown, MapPin, Coffee, Loader2, X, AlertTriangle, RotateCw, Edit2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip } from "./types"
-import { captureLocation } from "./geo"
+import { captureLocation, GpsAccuracyError, saveTempLocation, loadTempLocation, clearTempLocations } from "./geo"
+import { saveToIndexedDB } from "./storage"
 
 function MoneyField({
   label,
@@ -20,7 +21,7 @@ function MoneyField({
   return (
     <label className="flex min-w-0 flex-1 flex-col gap-1.5">
       <span className={cn("text-[11px] font-bold tracking-wide", color)}>{label}</span>
-      <div className="flex items-center rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 focus-within:border-neutral-600">
+      <div className="flex items-center rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 focus-within:border-neutral-600">
         <span className="mr-1 text-sm text-neutral-500">$</span>
         <input
           inputMode="decimal"
@@ -41,9 +42,11 @@ function LocationColumn({
   value,
   busy,
   disabled,
+  lowAccuracy,
   onCapture,
   onManual,
   onClear,
+  onConfirmManual,
 }: {
   label: string
   accent: "green" | "sky"
@@ -51,53 +54,123 @@ function LocationColumn({
   value: string
   busy: boolean
   disabled: boolean
+  lowAccuracy?: { accuracy: number; errorMsg: string } | null
   onCapture: () => void
   onManual: (value: string) => void
   onClear: () => void
+  onConfirmManual: () => void
 }) {
   const border = accent === "green" ? "border-green-900/50" : "border-sky-900/50"
-  const button = accent === "green" ? "bg-green-500" : "bg-sky-400"
+  const button = accent === "green" ? "bg-green-500 hover:bg-green-400" : "bg-sky-400 hover:bg-sky-300"
 
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
+      {/* Header con GPS badge */}
       <div className="flex items-center justify-between">
         <span className="text-[11px] font-bold tracking-wide text-neutral-400">{label}</span>
-        <span className="rounded-full bg-green-500/15 px-1.5 py-0.5 text-[9px] font-bold text-green-400">GPS</span>
+        <span
+          className={cn(
+            "rounded-full px-1.5 py-0.5 text-[9px] font-bold",
+            loc
+              ? "bg-green-500/15 text-green-400 border border-green-500/30"
+              : lowAccuracy
+              ? "bg-amber-500/15 text-amber-400 border border-amber-500/30"
+              : "bg-neutral-800 text-neutral-400"
+          )}
+        >
+          {busy
+            ? "BUSCANDO..."
+            : loc?.accuracy
+            ? `GPS · ±${loc.accuracy}m`
+            : "GPS"}
+        </span>
       </div>
+
+      {/* ESTADO 1: Confirmado (<= 50m) -> Banner Verde (Residencia) / Azul (Negocio) */}
       {loc ? (
-        <div className={cn("relative min-h-[82px] rounded-lg border bg-green-950/30 p-1.5", border)}>
+        <div
+          className={cn(
+            "relative min-h-[104px] rounded-xl border p-2.5 transition-all",
+            loc.banner === "blue"
+              ? "border-sky-700/60 bg-sky-950/30 text-sky-100"
+              : "border-emerald-700/60 bg-emerald-950/30 text-emerald-100"
+          )}
+        >
           <button
             type="button"
             aria-label={`Borrar ${label.toLowerCase()}`}
             onClick={onClear}
-            className="absolute right-1 top-1 rounded p-1 text-neutral-500 hover:text-white"
+            className="absolute right-1.5 top-1.5 rounded-lg bg-black/40 p-1 text-neutral-400 hover:text-white"
           >
-            <X className="size-3" />
+            <X className="size-3.5" />
           </button>
-          <div className="pr-4 text-[11px] leading-4 text-neutral-300">
-            <div className="font-bold text-white">{loc.icon} {loc.categoryLabel}</div>
-            {loc.businessName && <div className="truncate text-green-300">{loc.businessName}</div>}
-            <div className="mt-0.5 line-clamp-2 text-neutral-400">{loc.address || value}</div>
-            <div className="mt-1 text-[10px] text-neutral-500">{loc.time} · {loc.day}</div>
+          <div className="pr-5 text-[11px] leading-4">
+            <div className="flex items-center gap-1.5 font-bold">
+              <span>{loc.icon}</span>
+              <span className={loc.banner === "blue" ? "text-sky-300" : "text-emerald-300"}>
+                {loc.categoryLabel}
+              </span>
+              <span className="ml-auto rounded bg-black/40 px-1.5 py-0.5 text-[9px] font-mono text-neutral-300">
+                ±{loc.accuracy}m
+              </span>
+            </div>
+            {loc.businessName && (
+              <div className="mt-0.5 truncate font-semibold text-white">{loc.businessName}</div>
+            )}
+            <div className="mt-0.5 line-clamp-2 text-neutral-300">{loc.address || value}</div>
+            <div className="mt-1 text-[10px] font-mono text-neutral-400">{loc.time} · {loc.day}</div>
+          </div>
+        </div>
+      ) : lowAccuracy ? (
+        /* ESTADO 2: Tarjeta Amarilla (Baja precisión > 50m o Error de sensor) */
+        <div className="rounded-xl border border-amber-500/60 bg-amber-950/30 p-2.5 text-amber-200">
+          <div className="flex items-start gap-1.5">
+            <AlertTriangle className="size-4 shrink-0 text-amber-400 mt-0.5" />
+            <div className="flex-1 text-[11px] leading-tight">
+              <div className="font-bold text-amber-300">Ubicación no confirmada</div>
+              <div className="mt-0.5 text-[10px] text-neutral-300">{lowAccuracy.errorMsg}</div>
+            </div>
+          </div>
+          <div className="mt-2.5 flex gap-1.5">
+            <button
+              type="button"
+              onClick={onCapture}
+              disabled={busy}
+              className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-amber-500 py-1.5 text-xs font-bold text-black hover:bg-amber-400 active:scale-[0.98] disabled:opacity-50"
+            >
+              <RotateCw className={cn("size-3", busy && "animate-spin")} />
+              Reintentar GPS
+            </button>
+            <button
+              type="button"
+              onClick={onConfirmManual}
+              className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-amber-500/50 bg-black/40 py-1.5 text-xs font-bold text-amber-300 hover:bg-amber-950/60 active:scale-[0.98]"
+            >
+              <Edit2 className="size-3" />
+              Usar Manual
+            </button>
           </div>
         </div>
       ) : (
-        <input
-          value={value}
-          onChange={(e) => onManual(e.target.value)}
-          placeholder={`Toca ${label.toLowerCase()}`}
-          className={cn("rounded-lg border bg-neutral-950/60 px-2.5 py-2 text-sm text-white outline-none placeholder:text-neutral-500", border)}
-        />
+        /* ESTADO 3: Entrada Manual Inicial */
+        <>
+          <input
+            value={value}
+            onChange={(e) => onManual(e.target.value)}
+            placeholder={`Toca ${label.toLowerCase()}`}
+            className={cn("rounded-lg border bg-neutral-950/60 px-2.5 py-2 text-sm text-white outline-none placeholder:text-neutral-500", border)}
+          />
+          <button
+            type="button"
+            onClick={onCapture}
+            disabled={disabled}
+            className={cn("flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-bold text-black active:scale-[0.98] disabled:cursor-wait disabled:opacity-60 transition", button)}
+          >
+            {busy ? <Loader2 className="size-4 animate-spin" /> : <MapPin className="size-4" />}
+            {busy ? "BUSCANDO..." : `${label} NOW`}
+          </button>
+        </>
       )}
-      <button
-        type="button"
-        onClick={onCapture}
-        disabled={disabled}
-        className={cn("flex items-center justify-center gap-1.5 rounded-lg py-1.5 text-sm font-bold text-black active:scale-[0.98] disabled:cursor-wait disabled:opacity-60", button)}
-      >
-        {busy ? <Loader2 className="size-4 animate-spin" /> : <MapPin className="size-4" />}
-        {busy ? "BUSCANDO..." : `${label} NOW`}
-      </button>
     </div>
   )
 }
@@ -107,11 +180,28 @@ export function EntryScreen({
 }: {
   onSave: (t: Trip) => void
 }) {
-  const [draft, setDraft] = useState<Trip>(() => newTrip())
+  const [draft, setDraft] = useState<Trip>(() => {
+    const initial = newTrip()
+    // Cargar puntos GPS guardados temporalmente si existen
+    const p = loadTempLocation("pickup")
+    const d = loadTempLocation("dropoff")
+    if (p) {
+      initial.pickup = p.address
+      initial.pickupLoc = p
+    }
+    if (d) {
+      initial.dropoff = d.address
+      initial.dropoffLoc = d
+    }
+    return initial
+  })
+
   const [platformOpen, setPlatformOpen] = useState(false)
   const [onBreak, setOnBreak] = useState(false)
   const [capturing, setCapturing] = useState<null | "pickup" | "dropoff">(null)
   const [geoError, setGeoError] = useState<string | null>(null)
+  const [lowAccuracy, setLowAccuracy] = useState<{ which: "pickup" | "dropoff"; accuracy: number; errorMsg: string } | null>(null)
+  const [storageSaved, setStorageSaved] = useState(false)
 
   const set = <K extends keyof Trip>(key: K, val: Trip[K]) =>
     setDraft((d) => ({ ...d, [key]: val }))
@@ -126,8 +216,20 @@ export function EntryScreen({
         [which]: loc.address,
         [which === "pickup" ? "pickupLoc" : "dropoffLoc"]: loc,
       }))
-    } catch (e) {
-      setGeoError(e instanceof Error ? e.message : "No se pudo obtener el GPS")
+      saveTempLocation(which, loc)
+      if (lowAccuracy?.which === which) {
+        setLowAccuracy(null)
+      }
+    } catch (e: any) {
+      if (e instanceof GpsAccuracyError) {
+        setLowAccuracy({ which, accuracy: e.accuracy, errorMsg: e.message })
+      } else {
+        setLowAccuracy({
+          which,
+          accuracy: 0,
+          errorMsg: e instanceof Error ? e.message : "Error al obtener GPS",
+        })
+      }
     } finally {
       setCapturing(null)
     }
@@ -139,6 +241,18 @@ export function EntryScreen({
       [which]: "",
       [which === "pickup" ? "pickupLoc" : "dropoffLoc"]: undefined,
     }))
+    if (lowAccuracy?.which === which) {
+      setLowAccuracy(null)
+    }
+    try {
+      localStorage.removeItem(which === "pickup" ? "CURRENT_PICKUP" : "CURRENT_DROP_OFF")
+    } catch {}
+  }
+
+  function confirmManual(which: "pickup" | "dropoff") {
+    if (lowAccuracy?.which === which) {
+      setLowAccuracy(null)
+    }
   }
 
   const [now, setNow] = useState<Date | null>(null)
@@ -158,15 +272,33 @@ export function EntryScreen({
         : "Good evening"
     : "Good morning"
 
-  function handleSave() {
+  async function handleSave() {
+    if (lowAccuracy) return
+
+    // 1. Guardar permanente en IndexedDB
+    try {
+      await saveToIndexedDB(draft)
+    } catch (err) {
+      console.warn("IndexedDB error:", err)
+    }
+
+    // 2. Limpiar almacenamiento temporal de GPS
+    clearTempLocations()
+
+    // 3. Callback a la app principal
     onSave({ ...draft })
+
+    // 4. Feedback STORAGE OK
+    setStorageSaved(true)
+    setTimeout(() => setStorageSaved(false), 2000)
+
     setDraft(newTrip())
   }
 
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-start justify-between gap-3 px-4 pt-2.5 sm:px-6 sm:pt-3">
+      <div className="flex items-start justify-between gap-4 px-5 pt-4 sm:px-8 sm:pt-5">
         <div className="min-w-0">
           <h1 className="truncate text-xl font-bold text-white">{greeting}</h1>
           <p className="text-xs text-neutral-500" suppressHydrationWarning>
@@ -177,12 +309,12 @@ export function EntryScreen({
         </div>
         <span className="flex shrink-0 items-center gap-1.5 rounded-full border border-green-500/40 bg-green-500/10 px-2.5 py-1 text-[10px] font-bold text-green-400">
           <span className="size-1.5 rounded-full bg-green-400" />
-          GPS · 3rd Ave · ±14m
+          GPS · Alta Precisión
         </span>
       </div>
 
       {/* Scrollable body */}
-      <div className="flex-1 space-y-2.5 overflow-y-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:content-start sm:gap-4 sm:px-8 sm:py-5">
+      <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:content-start sm:gap-4 sm:px-8 sm:py-5">
         {/* Platform + break */}
         <div className="flex items-center gap-2 sm:col-span-2">
           <div className="relative flex-1">
@@ -199,6 +331,7 @@ export function EntryScreen({
               </span>
               <ChevronDown className="size-4 text-neutral-500" />
             </button>
+
             {platformOpen && (
               <div className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-xl border border-neutral-800 bg-neutral-900 shadow-xl">
                 {PLATFORMS.map((p) => (
@@ -206,12 +339,12 @@ export function EntryScreen({
                     key={p}
                     type="button"
                     onClick={() => {
-                      set("platform", p as Platform)
+                      set("platform", p)
                       setPlatformOpen(false)
                     }}
                     className={cn(
                       "flex w-full items-center px-3 py-2.5 text-left text-sm hover:bg-neutral-800",
-                      p === draft.platform ? "text-yellow-400" : "text-neutral-200",
+                      p === draft.platform ? "text-yellow-400" : "text-neutral-200"
                     )}
                   >
                     {p}
@@ -220,6 +353,7 @@ export function EntryScreen({
               </div>
             )}
           </div>
+
           <button
             type="button"
             onClick={() => setOnBreak((b) => !b)}
@@ -227,7 +361,7 @@ export function EntryScreen({
               "flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-bold transition-colors",
               onBreak
                 ? "border-orange-400 bg-orange-400/15 text-orange-400"
-                : "border-neutral-700 bg-neutral-900 text-neutral-300",
+                : "border-neutral-700 bg-neutral-900 text-neutral-300"
             )}
           >
             <Coffee className="size-4" />
@@ -235,8 +369,8 @@ export function EntryScreen({
           </button>
         </div>
 
-        {/* Earnings / Extra cash */}
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-2.5 self-start">
+        {/* Earnings + Extra Cash */}
+        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
           <div className="flex gap-3">
             <MoneyField
               label="EARNINGS"
@@ -253,8 +387,8 @@ export function EntryScreen({
           </div>
         </section>
 
-        {/* Pickup / Dropoff */}
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-2.5 sm:col-span-2">
+        {/* GPS Pickup + Dropoff */}
+        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3 sm:col-span-2">
           <div className="grid grid-cols-2 gap-3">
             <LocationColumn
               label="PICKUP"
@@ -263,9 +397,11 @@ export function EntryScreen({
               value={draft.pickup}
               busy={capturing === "pickup"}
               disabled={capturing !== null}
+              lowAccuracy={lowAccuracy?.which === "pickup" ? lowAccuracy : null}
               onCapture={() => capture("pickup")}
-              onManual={(v) => set("pickup", v)}
+              onManual={(val) => set("pickup", val)}
               onClear={() => clearLoc("pickup")}
+              onConfirmManual={() => confirmManual("pickup")}
             />
             <LocationColumn
               label="DROPOFF"
@@ -274,9 +410,11 @@ export function EntryScreen({
               value={draft.dropoff}
               busy={capturing === "dropoff"}
               disabled={capturing !== null}
+              lowAccuracy={lowAccuracy?.which === "dropoff" ? lowAccuracy : null}
               onCapture={() => capture("dropoff")}
-              onManual={(v) => set("dropoff", v)}
+              onManual={(val) => set("dropoff", val)}
               onClear={() => clearLoc("dropoff")}
+              onConfirmManual={() => confirmManual("dropoff")}
             />
           </div>
           {geoError && (
@@ -284,8 +422,8 @@ export function EntryScreen({
           )}
         </section>
 
-        {/* Tips / Toll / Platform fee */}
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-2.5 self-start sm:col-span-1 sm:col-start-2 sm:row-start-2">
+        {/* Tips + Tolls + Fee + Ref */}
+        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3 sm:col-span-1 sm:col-start-2 sm:row-start-2">
           <div className="flex gap-2">
             <MoneyField
               label="TIPS"
@@ -316,17 +454,24 @@ export function EntryScreen({
             />
           </label>
         </section>
-
       </div>
 
-      {/* Sticky record button */}
+      {/* Sticky record button con calidad y feedback */}
       <div className="border-t border-neutral-800 bg-black px-5 py-4 sm:px-8 sm:py-5">
         <button
           type="button"
           onClick={handleSave}
-          className="w-full rounded-2xl bg-gradient-to-r from-yellow-500 to-amber-500 py-4 text-lg font-extrabold tracking-wide text-black active:scale-[0.99]"
+          disabled={!!lowAccuracy}
+          className={cn(
+            "w-full rounded-2xl py-4 text-lg font-extrabold tracking-wide transition-all",
+            storageSaved
+              ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20"
+              : lowAccuracy
+              ? "cursor-not-allowed bg-neutral-800 text-neutral-500 border border-neutral-700"
+              : "bg-gradient-to-r from-yellow-500 to-amber-500 text-black active:scale-[0.99]"
+          )}
         >
-          + GRABAR EN DISCO
+          {storageSaved ? "STORAGE OK ✓" : lowAccuracy ? "⚠️ RESUELVA GPS PRIMERO" : "+ GRABAR EN DISCO"}
         </button>
       </div>
     </div>
