@@ -85,6 +85,7 @@ export function RegisterScreen({
   dayClosed,
   onExport,
   onImport,
+  onResetStorage,
 }: {
   trips: Trip[]
   onEdit: (t: Trip) => void
@@ -93,6 +94,7 @@ export function RegisterScreen({
   dayClosed: boolean
   onExport: () => void
   onImport: (file: File) => void
+  onResetStorage: () => void
 }) {
   const [filter, setFilter] = useState<Filter>("ALL")
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -173,6 +175,13 @@ export function RegisterScreen({
             className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900/50 py-3 text-xs font-bold text-neutral-300 transition-colors hover:border-neutral-600"
           >
             <Upload className="size-4" /> IMPORTAR JSON
+          </button>
+          <button
+            type="button"
+            onClick={onResetStorage}
+            className="flex items-center justify-center gap-2 rounded-2xl border border-rose-900/60 bg-rose-950/20 px-3 py-3 text-xs font-bold text-rose-300 transition-colors hover:border-rose-700"
+          >
+            RESET
           </button>
           <button
             type="button"
