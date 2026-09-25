@@ -5,40 +5,7 @@ import { ChevronDown, MapPin, Coffee, Loader2, X, AlertTriangle, RotateCw, Edit2
 import { cn } from "@/lib/utils"
 import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip } from "./types"
 import { captureLocation, GpsAccuracyError, saveTempLocation, loadTempLocation, clearTempLocations } from "./geo"
-import { saveToIndexedDB } from "./storage"
-
-function MoneyField({
-  label,
-  color,
-  value,
-  onChange,
-}: {
-  label: string
-  color: string
-  value: number
-  onChange: (n: number) => void
-}) {
-  return (
-    <label className="flex min-w-0 flex-1 flex-col gap-1.5">
-      <span className={cn("text-[11px] font-bold tracking-wide", color)}>{label}</span>
-      <div className="flex min-h-[4.5rem] items-center rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3.5 focus-within:border-neutral-600">
-        <span className="mr-1 text-sm text-neutral-500">$</span>
-        <input
-          type="text"
-          inputMode="decimal"
-          pattern="[-0-9.]*"
-          value={value === 0 ? "" : String(value)}
-          onChange={(e) => {
-            const next = e.target.value.replace(/(?!^)-|[^0-9.-]/g, "")
-            onChange(Number.parseFloat(next) || 0)
-          }}
-          placeholder="0.00"
-          className="w-full bg-transparent text-xl font-semibold text-white outline-none placeholder:text-neutral-600"
-        />
-      </div>
-    </label>
-  )
-}
+import { MoneyInput } from "./money-input"
 
 function LocationColumn({
   label,
@@ -277,23 +244,16 @@ export function EntryScreen({
         : "Good evening"
     : "Good morning"
 
-  async function handleSave() {
+  function handleSave() {
     if (lowAccuracy) return
 
-    // 1. Guardar permanente en IndexedDB
-    try {
-      await saveToIndexedDB(draft)
-    } catch (err) {
-      console.warn("IndexedDB error:", err)
-    }
-
-    // 2. Limpiar almacenamiento temporal de GPS
+    // 1. Limpiar almacenamiento temporal de GPS (el viaje ya lo lleva dentro)
     clearTempLocations()
 
-    // 3. Callback a la app principal
+    // 2. Callback a la app principal: ella lo guarda en localStorage + IndexedDB
     onSave({ ...draft })
 
-    // 4. Feedback STORAGE OK
+    // 3. Feedback STORAGE OK
     setStorageSaved(true)
     setTimeout(() => setStorageSaved(false), 2000)
 
@@ -377,13 +337,13 @@ export function EntryScreen({
         {/* Earnings + Extra Cash */}
         <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
           <div className="flex gap-3">
-            <MoneyField
+            <MoneyInput
               label="EARNINGS"
               color="text-blue-400"
               value={draft.earnings}
               onChange={(n) => set("earnings", n)}
             />
-            <MoneyField
+            <MoneyInput
               label="EXTRA CASH"
               color="text-green-400"
               value={draft.extraCash}
@@ -430,19 +390,19 @@ export function EntryScreen({
         {/* Tips + Tolls + Fee + Ref */}
         <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3 sm:col-span-1 sm:col-start-2 sm:row-start-2">
           <div className="flex gap-2">
-            <MoneyField
+            <MoneyInput
               label="TIPS"
               color="text-yellow-400"
               value={draft.tips}
               onChange={(n) => set("tips", n)}
             />
-            <MoneyField
+            <MoneyInput
               label="TOLLS"
               color="text-amber-400"
               value={draft.toll}
               onChange={(n) => set("toll", n)}
             />
-            <MoneyField
+            <MoneyInput
               label="FEE"
               color="text-rose-400"
               value={draft.platformFee}

@@ -1,20 +1,37 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { AlertTriangle, Check } from "lucide-react"
 import { BottomNav, type Tab } from "./bottom-nav"
+import { DataScreen } from "./data-screen"
 import { EntryScreen } from "./entry-screen"
 import { RegisterScreen } from "./register-screen"
 import { TripEditSheet } from "./trip-edit-sheet"
 import { SEED_TRIPS, newTrip, type Trip } from "./types"
 import {
-  loadTrips,
-  saveTrips,
+  addTombstone,
   buildExport,
+  clearAllData,
   importExport,
+  loadSyncCode,
+  loadTombstones,
+  loadTrips,
   loadTripsFromIndexedDB,
+  saveSyncCode,
+  saveTombstones,
+  saveTrips,
   saveTripsToIndexedDB,
-  clearAllStorage,
+  stampTrip,
+  storageInfo,
+  type StorageInfo,
 } from "./storage"
+import {
+  isValidSyncCode,
+  mergeTrips,
+  MIN_SYNC_CODE_LENGTH,
+  syncWithCloud,
+  type Tombstones,
+} from "@/lib/sync"
 
 function Placeholder({ label }: { label: string }) {
   return (
@@ -27,50 +44,172 @@ function Placeholder({ label }: { label: string }) {
 
 export function CopilotoApp() {
   const [tab, setTab] = useState<Tab>("ENTRY")
-  const [trips, setTrips] = useState<Trip[]>(SEED_TRIPS)
+  // Se empieza vacío y se carga lo guardado: antes se arrancaba con viajes de
+  // ejemplo en memoria, y eso es lo que hacía que al cerrar "volvieran los
+  // viajes viejos" y se perdieran los nuevos.
+  const [trips, setTrips] = useState<Trip[]>([])
   const [editing, setEditing] = useState<Trip | null>(null)
   const [dayClosed, setDayClosed] = useState(false)
   const [hydrated, setHydrated] = useState(false)
+  const [saveState, setSaveState] = useState<"idle" | "saved" | "error">("idle")
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [info, setInfo] = useState<StorageInfo | null>(null)
+  const [syncCode, setSyncCode] = useState<string | null>(null)
+  const [syncMessage, setSyncMessage] = useState<string | null>(null)
+  const [syncTone, setSyncTone] = useState<"ok" | "error" | "info">("info")
+  const [syncing, setSyncing] = useState(false)
 
-  // Load real data from the existing ic_tip_tracker localStorage key on mount.
+  const tripsRef = useRef<Trip[]>([])
+  const tombstonesRef = useRef<Tombstones>({})
+  const savedTimer = useRef<number | null>(null)
+  const autoSynced = useRef(false)
+
   useEffect(() => {
-    let active = true
-    async function hydrate() {
-      const indexed = await loadTripsFromIndexedDB()
-      const loaded = indexed ?? loadTrips()
-      if (active && loaded) setTrips(loaded)
-      if (active) setHydrated(true)
+    tripsRef.current = trips
+  }, [trips])
+
+  // Guardado: escribe siempre en las DOS copias (localStorage + IndexedDB) y
+  // avisa si alguna falla, en vez de perder datos en silencio.
+  const persist = useCallback((list: Trip[]) => {
+    const res = saveTrips(list)
+    if (!res.ok) {
+      setSaveState("error")
+      setSaveError(res.error ?? "No se pudo guardar")
+      return
     }
+    setSaveState("saved")
+    setSaveError(null)
+    if (savedTimer.current) window.clearTimeout(savedTimer.current)
+    savedTimer.current = window.setTimeout(() => setSaveState("idle"), 2000)
+    saveTripsToIndexedDB(list).catch(() => {})
+  }, [])
+
+  // Al abrir: localStorage + IndexedDB + borrados pendientes, combinados.
+  // IndexedDB se usaba antes sólo para escribir y nunca se leía: de ahí que los
+  // viajes nuevos no volvieran a aparecer al reabrir la app.
+  useEffect(() => {
+    let cancelled = false
+
+    async function hydrate() {
+      const local = loadTrips() ?? []
+      // Migración: los viajes guardados por la versión anterior no tienen hora
+      // de modificación. Se sellan ahora para que no los pise una copia más
+      // vieja que quedó en IndexedDB (y para poder combinarlos entre teléfonos).
+      const at = new Date().toISOString()
+      const withStamps = local.some((t) => !t.raw?.savedAt)
+        ? local.map((t) => (t.raw?.savedAt ? t : stampTrip(t, at)))
+        : local
+
+      let permanent: Trip[] = []
+      try {
+        permanent = await loadTripsFromIndexedDB()
+      } catch {}
+      const merged = mergeTrips(withStamps, permanent, loadTombstones())
+      if (cancelled) return
+      tombstonesRef.current = merged.deleted
+      saveTombstones(merged.deleted)
+      setTrips(merged.trips)
+      tripsRef.current = merged.trips
+      setSyncCode(loadSyncCode())
+      setHydrated(true)
+    }
+
     hydrate()
     return () => {
-      active = false
+      cancelled = true
     }
   }, [])
 
-  // Keep both stores aligned so closing/reopening cannot resurrect stale trips.
+  // Guardado con un retardo muy corto en cada cambio.
   useEffect(() => {
     if (!hydrated) return
-    saveTrips(trips)
-    saveTripsToIndexedDB(trips)
-  }, [trips, hydrated])
+    const timer = window.setTimeout(() => persist(trips), 250)
+    return () => window.clearTimeout(timer)
+  }, [trips, hydrated, persist])
 
+  // Volcado inmediato al cerrar o esconder la app: garantiza que lo último
+  // registrado quede en disco antes de que el teléfono mate la pestaña.
+  useEffect(() => {
+    if (!hydrated) return
+    const flush = () => persist(tripsRef.current)
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") flush()
+    }
+    window.addEventListener("pagehide", flush)
+    window.addEventListener("beforeunload", flush)
+    document.addEventListener("visibilitychange", onVisibility)
+    return () => {
+      window.removeEventListener("pagehide", flush)
+      window.removeEventListener("beforeunload", flush)
+      document.removeEventListener("visibilitychange", onVisibility)
+    }
+  }, [hydrated, persist])
+
+  // Cada cambio se sella con su hora para poder combinarlo entre teléfonos.
   function saveNewFromEntry(t: Trip) {
-    setTrips((prev) => [t, ...prev])
+    const stamped = stampTrip(t)
+    setTrips((prev) => [stamped, ...prev])
     setTab("REGISTER")
   }
 
   function saveEdit(t: Trip) {
+    const stamped = stampTrip(t)
     setTrips((prev) => {
-      const exists = prev.some((p) => p.id === t.id)
-      return exists ? prev.map((p) => (p.id === t.id ? t : p)) : [t, ...prev]
+      const exists = prev.some((p) => p.id === stamped.id)
+      return exists ? prev.map((p) => (p.id === stamped.id ? stamped : p)) : [stamped, ...prev]
     })
     setEditing(null)
   }
 
   function deleteTrip(id: string) {
+    // El borrado queda anotado para que no "reviva" al sincronizar.
+    tombstonesRef.current = addTombstone(id)
     setTrips((prev) => prev.filter((p) => p.id !== id))
     setEditing(null)
   }
+
+  const refreshInfo = useCallback(() => {
+    storageInfo(tripsRef.current.length)
+      .then(setInfo)
+      .catch(() => {})
+  }, [])
+
+  // Sincronización: baja, combina con lo local y sube el resultado.
+  const runSync = useCallback(
+    async (code: string, silent = false) => {
+      setSyncing(true)
+      if (!silent) setSyncMessage(null)
+      const result = await syncWithCloud<Trip>(code, tripsRef.current, tombstonesRef.current)
+      if (result.ok && Array.isArray(result.trips)) {
+        const next = result.trips as Trip[]
+        tombstonesRef.current = (result.deleted as Tombstones) ?? {}
+        saveTombstones(tombstonesRef.current)
+        tripsRef.current = next
+        setTrips(next)
+        persist(next)
+        setSyncTone("ok")
+        setSyncMessage(`Sincronizado · ${next.length} viajes en este teléfono`)
+      } else if (result.reason === "not_configured") {
+        setSyncTone("info")
+        setSyncMessage(
+          "Falta activar la base de datos de sync en Vercel (Storage → KV). Mientras tanto puedes usar EXPORTAR/IMPORTAR JSON.",
+        )
+      } else {
+        setSyncTone("error")
+        setSyncMessage(`No se pudo sincronizar: ${result.message}`)
+      }
+      setSyncing(false)
+      refreshInfo()
+    },
+    [persist, refreshInfo],
+  )
+
+  // Al abrir, si ya hay un código guardado, se sincroniza sola.
+  useEffect(() => {
+    if (!hydrated || !syncCode || autoSynced.current) return
+    autoSynced.current = true
+    runSync(syncCode, true)
+  }, [hydrated, syncCode, runSync])
 
   function exportJson() {
     const json = buildExport(trips)
@@ -84,20 +223,16 @@ export function CopilotoApp() {
     URL.revokeObjectURL(url)
   }
 
-  function resetStorage() {
-    if (!window.confirm("¿Borrar todas las transacciones y el almacenamiento local? Esta acción no se puede deshacer.")) return
-    void clearAllStorage()
-    setTrips([])
-    setEditing(null)
-    setDayClosed(false)
-  }
-
   function importJson(file: File) {
     const reader = new FileReader()
     reader.onload = () => {
       const result = importExport(String(reader.result))
       if (result) {
-        setTrips(result)
+        // Se conserva la hora original de cada viaje para no pisar cambios
+        // más nuevos que vengan de otro teléfono.
+        const next = result.map((t) => (t.raw?.savedAt ? t : stampTrip(t)))
+        tripsRef.current = next
+        setTrips(next)
         setTab("REGISTER")
       } else {
         alert("No se pudo leer el archivo. Verifica que sea un export válido de IslandCity Tip Tracker.")
@@ -106,25 +241,127 @@ export function CopilotoApp() {
     reader.readAsText(file)
   }
 
+  // Los viajes de ejemplo ya no se cargan solos al abrir (era la causa de que
+  // aparecieran "transacciones viejas"); se cargan sólo si los pides aquí.
+  function loadDemo() {
+    const at = new Date().toISOString()
+    const demo = SEED_TRIPS.map((t) => stampTrip(t, at))
+    tripsRef.current = demo
+    setTrips(demo)
+    setTab("REGISTER")
+  }
+
+  // RESET TOTAL: borra todo de este teléfono y, si hay sync, también en el
+  // servidor, dejando los borrados anotados para que no revivan en el otro.
+  async function resetAll() {
+    const at = new Date().toISOString()
+    const tombstones = { ...tombstonesRef.current }
+    for (const t of tripsRef.current) tombstones[t.id] = at
+    tombstonesRef.current = tombstones
+    saveTombstones(tombstones)
+
+    tripsRef.current = []
+    setTrips([])
+    setEditing(null)
+    setSyncMessage(null)
+
+    const res = await clearAllData()
+    if (!res.ok) {
+      setSaveError(res.error ?? "No se pudo borrar todo el almacenamiento")
+      setSaveState("error")
+    }
+    persist([])
+    refreshInfo()
+    if (syncCode) await runSync(syncCode, true)
+  }
+
+  // Botón RESET de la pantalla REGISTER: usa el mismo reset completo que DATA
+  // (borra también IndexedDB y anota los borrados para que no revivan).
+  function resetStorage() {
+    const ok = window.confirm(
+      "¿Borrar todas las transacciones y el almacenamiento local? Esta acción no se puede deshacer.",
+    )
+    if (ok) void resetAll()
+  }
+
+  function connectSync(code: string) {
+    const clean = code.trim().toLowerCase()
+    if (!isValidSyncCode(clean)) {
+      setSyncTone("error")
+      setSyncMessage(`El código necesita al menos ${MIN_SYNC_CODE_LENGTH} caracteres`)
+      return
+    }
+    setSyncCode(clean)
+    saveSyncCode(clean)
+    runSync(clean)
+  }
+
+  function disconnectSync() {
+    setSyncCode(null)
+    saveSyncCode(null)
+    setSyncTone("info")
+    setSyncMessage("Sync desconectado en este teléfono. Tus viajes siguen guardados aquí.")
+  }
+
   return (
-    <div className="fixed inset-0 flex h-[100dvh] min-h-0 w-full justify-center overflow-hidden bg-neutral-950">
-      <div className="flex h-full min-h-0 w-full max-w-[920px] flex-col overflow-hidden bg-black text-white">
+    <div className="fixed inset-0 flex h-[100dvh] min-h-0 w-full justify-center overflow-hidden bg-neutral-950 pt-[env(safe-area-inset-top)]">
+      <div className="relative flex h-full min-h-0 w-full max-w-[920px] flex-col overflow-hidden bg-black text-white">
         <main className="min-h-0 min-w-0 flex-1 overflow-hidden">
-          {tab === "ENTRY" && <EntryScreen onSave={saveNewFromEntry} />}
-          {tab === "REGISTER" && (
-            <RegisterScreen
-              trips={trips}
-              onEdit={(t) => setEditing(t)}
-              onAdd={() => setEditing(newTrip())}
-              onCloseDay={() => setDayClosed(true)}
-              dayClosed={dayClosed}
-              onExport={exportJson}
-              onImport={importJson}
-              onResetStorage={resetStorage}
-            />
+          {!hydrated ? (
+            <div className="flex h-full items-center justify-center text-sm text-neutral-500">Cargando tus viajes…</div>
+          ) : (
+            <>
+              {tab === "ENTRY" && <EntryScreen onSave={saveNewFromEntry} />}
+              {tab === "REGISTER" && (
+                <RegisterScreen
+                  trips={trips}
+                  onEdit={(t) => setEditing(t)}
+                  onAdd={() => setEditing(newTrip())}
+                  onCloseDay={() => setDayClosed(true)}
+                  dayClosed={dayClosed}
+                  onExport={exportJson}
+                  onImport={importJson}
+                  onResetStorage={resetStorage}
+                />
+              )}
+              {tab === "DATA" && (
+                <DataScreen
+                  trips={trips}
+                  info={info}
+                  saveError={saveError}
+                  syncCode={syncCode}
+                  syncMessage={syncMessage}
+                  syncTone={syncTone}
+                  syncing={syncing}
+                  onRefreshInfo={refreshInfo}
+                  onExport={exportJson}
+                  onImport={importJson}
+                  onLoadDemo={loadDemo}
+                  onResetAll={resetAll}
+                  onConnectSync={connectSync}
+                  onSyncNow={() => syncCode && runSync(syncCode)}
+                  onDisconnectSync={disconnectSync}
+                />
+              )}
+              {tab !== "ENTRY" && tab !== "REGISTER" && tab !== "DATA" && <Placeholder label={tab} />}
+            </>
           )}
-          {tab !== "ENTRY" && tab !== "REGISTER" && <Placeholder label={tab} />}
         </main>
+
+        {/* Aviso de guardado: si el teléfono no deja guardar, se ve en pantalla */}
+        {saveError ? (
+          <div className="pointer-events-none absolute bottom-[calc(4.75rem+env(safe-area-inset-bottom))] left-1/2 z-40 max-w-[92%] -translate-x-1/2 rounded-xl border border-rose-500/50 bg-rose-950/90 px-3 py-2 text-center text-[11px] font-bold text-rose-200 shadow-lg">
+            <span className="flex items-center justify-center gap-1.5">
+              <AlertTriangle className="size-3.5" /> NO SE PUDO GUARDAR · {saveError}
+            </span>
+          </div>
+        ) : saveState === "saved" ? (
+          <div className="pointer-events-none absolute bottom-[calc(4.75rem+env(safe-area-inset-bottom))] left-1/2 z-40 -translate-x-1/2 rounded-full border border-green-500/40 bg-black/90 px-3 py-1.5 text-[10px] font-bold text-green-400 shadow-lg">
+            <span className="flex items-center gap-1.5">
+              <Check className="size-3" /> GUARDADO EN EL TELÉFONO
+            </span>
+          </div>
+        ) : null}
 
         <BottomNav active={tab} onChange={setTab} />
       </div>

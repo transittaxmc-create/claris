@@ -13,3 +13,7 @@ __v0_jsx-dev-runtime.ts
 node_modules
 .next/
 .DS_Store
+
+# Generados por Next.js / TypeScript (no se editan a mano)
+next-env.d.ts
+*.tsbuildinfo

@@ -4,8 +4,17 @@ import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Copiloto v.1',
+  applicationName: 'Copiloto',
   description: 'Registro de viajes y ganancias',
   generator: 'v0.app',
+  // Permite añadir la app a la pantalla de inicio y abrirla a pantalla completa
+  // (sin la barra del navegador): así se ve igual que desde el preview.
+  appleWebApp: {
+    capable: true,
+    title: 'Copiloto',
+    statusBarStyle: 'black-translucent',
+  },
+  formatDetection: { telephone: false, date: false, email: false, address: false },
   icons: {
     icon: [
       {
@@ -26,9 +35,13 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  colorScheme: 'light dark',
+  width: 'device-width',
+  initialScale: 1,
+  // Necesario para usar env(safe-area-inset-*) en pantallas con notch.
+  viewportFit: 'cover',
+  colorScheme: 'dark',
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: 'white' },
+    { media: '(prefers-color-scheme: light)', color: 'black' },
     { media: '(prefers-color-scheme: dark)', color: 'black' },
   ],
 }

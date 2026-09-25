@@ -169,3 +169,14 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Sin rebote al desplazar, sin resaltado azul al tocar y sin reajuste de texto
+   automático. Las safe areas del teléfono se aplican en el contenedor de la app
+   (ver copiloto-app.tsx) para que se vea igual abierta como link que instalada. */
+@layer base {
+  body {
+    overscroll-behavior-y: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
+}
