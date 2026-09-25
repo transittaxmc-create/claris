@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { EXPENSE_CATEGORIES } from "@/components/copiloto/types"
 
 export const runtime = "nodejs"
 export const maxDuration = 30
@@ -11,17 +12,6 @@ interface AnalysisResult {
   notes?: string
   confidence?: number
 }
-
-const CATEGORIES = [
-  "Gasolina / Combustible",
-  "Comida / Dieta",
-  "Peaje",
-  "Parking",
-  "Mantenimiento / Taller",
-  "Seguro / Impuestos",
-  "Telefonía",
-  "Otros",
-]
 
 export async function POST(req: Request) {
   const start = Date.now()
@@ -45,13 +35,24 @@ export async function POST(req: Request) {
 
     console.log(`[scan-receipt] Recibida imagen: ${resolvedMime}, base64 len: ${cleanBase64.length}`)
 
-    const prompt = `Analiza esta imagen de un recibo, factura o ticket de gasto. Extrae los siguientes campos en formato JSON estricto:
-- vendor: nombre del comercio, gasolinera, restaurante o proveedor (texto corto).
-- date: fecha del recibo en formato YYYY-MM-DD. Si no tiene año usa el año actual (2026).
-- amount: total a pagar como número flotante (ej: 45.50). Si no está claro, 0.
-- category: una de las siguientes opciones exactas: ${CATEGORIES.map((c) => `"${c}"`).join(", ")}.
-- notes: breve descripción opcional de los ítems principales (ej: "Gasolina 95 - 32L").
-- confidence: número entre 0 y 1 indicando qué tan legible es el recibo.
+    const prompt = `Eres un experto contable que analiza tickets, recibos y facturas para conductores y repartidores de Uber, Lyft y transporte.
+Analiza detenidamente la imagen del recibo adjunto y extrae con máxima precisión los siguientes campos en formato JSON estricto:
+
+1. vendor: Nombre comercial claro del vendedor, establecimiento o empresa (ej: "Shell", "Chevron", "McDonald's", "AutoZone", "E-ZPass", "Car Wash Express"). Evita razones sociales crípticas si el nombre de marca comercial está visible.
+2. date: Fecha del ticket en formato exactamente YYYY-MM-DD. Si solo ves día y mes, asume el año 2026.
+3. amount: Total pagado final (gran total después de impuestos y propinas si aplica) como número flotante (ej: 42.75). No incluyas símbolos de moneda ni comas.
+4. category: Clasifica OBLIGATORIAMENTE en UNA de estas categorías exactas del sistema:
+${EXPENSE_CATEGORIES.map((c) => `   - "${c}"`).join("\n")}
+   Reglas de categorización:
+   * Gasolineras, estaciones de servicio, diesel, combustible -> "Gasolina / Combustible"
+   * Talleres, cambio de aceite, llantas, refacciones, repuestos -> "Mantenimiento / Vehículo"
+   * Peajes, autopistas, tags de peaje (E-ZPass, SunPass, etc.) -> "Peajes"
+   * Restaurantes, cafeterías, comida rápida, supermercados, snacks -> "Alimentación / Comida"
+   * Lavaderos de auto, car wash, aspirado, detallado -> "Lavado de Auto"
+   * Seguros, pólizas, ITV, registro vehicular, licencias -> "Seguros / Permisos"
+   * Si no encaja en ninguna anterior -> "Varios"
+5. notes: Resumen conciso de los ítems o detalles principales (ej: "Gasolina Regular 12.4 gal @ $3.29", "Hamburguesa y café", "Cambio de aceite sintético").
+6. confidence: Número decimal de 0.0 a 1.0 indicando tu grado de certeza y nitidez de la lectura.
 
 Responde ÚNICAMENTE un objeto JSON válido con esas claves exactas.`
 
@@ -109,13 +110,27 @@ Responde ÚNICAMENTE un objeto JSON válido con esas claves exactas.`
     const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}"
     const parsed: AnalysisResult = JSON.parse(rawText)
 
-    const matchedCat = CATEGORIES.find(
-      (c) => c.toLowerCase() === (parsed.category || "").toLowerCase(),
-    )
-    if (matchedCat) parsed.category = matchedCat
-    else parsed.category = "Otros"
+    // Validar y asegurar coincidencia exacta de categoría
+    const rawCat = (parsed.category || "").toLowerCase()
+    const matchedCat = EXPENSE_CATEGORIES.find((c) => {
+      const low = c.toLowerCase()
+      return (
+        low === rawCat ||
+        low.includes(rawCat) ||
+        rawCat.includes(low) ||
+        (rawCat.includes("gas") && low.includes("gasolina")) ||
+        (rawCat.includes("combustible") && low.includes("gasolina")) ||
+        (rawCat.includes("comida") && low.includes("alimentación")) ||
+        (rawCat.includes("restaurante") && low.includes("alimentación")) ||
+        (rawCat.includes("peaje") && low.includes("peajes")) ||
+        (rawCat.includes("taller") && low.includes("mantenimiento")) ||
+        (rawCat.includes("lavado") && low.includes("lavado"))
+      )
+    })
 
-    console.log(`[scan-receipt] Éxito en ${Date.now() - start}ms:`, parsed.vendor, parsed.amount)
+    parsed.category = matchedCat || "Varios"
+
+    console.log(`[scan-receipt] Éxito en ${Date.now() - start}ms:`, parsed.vendor, parsed.category, parsed.amount)
 
     return NextResponse.json({
       success: true,
@@ -127,4 +142,5 @@ Responde ÚNICAMENTE un objeto JSON válido con esas claves exactas.`
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
+
 
