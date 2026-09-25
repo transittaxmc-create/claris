@@ -4,34 +4,7 @@ import { useEffect, useState } from "react"
 import { X, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PLATFORMS, type Platform, type Trip, type TripStatus } from "./types"
-
-function Num({
-  label,
-  value,
-  onChange,
-}: {
-  label: string
-  value: number
-  onChange: (n: number) => void
-}) {
-  return (
-    <label className="flex flex-col gap-1">
-      <span className="text-[10px] font-bold tracking-wide text-neutral-400">{label}</span>
-      <div className="flex items-center rounded-lg border border-neutral-700 bg-neutral-950 px-2.5 py-2">
-        <span className="mr-1 text-xs text-neutral-500">$</span>
-        <input
-  type="number"
-  inputMode="decimal"
-  step="0.01"
-  value={value === 0 ? "" : String(value)}
-          onChange={(e) => onChange(Number.parseFloat(e.target.value) || 0)}
-          placeholder="0.00"
-          className="w-full bg-transparent text-sm font-semibold text-white outline-none placeholder:text-neutral-600"
-        />
-      </div>
-    </label>
-  )
-}
+import { MoneyInput } from "./money-input"
 
 export function TripEditSheet({
   trip,
@@ -128,11 +101,16 @@ export function TripEditSheet({
 
           {/* Amounts */}
           <div className="grid grid-cols-2 gap-3">
-            <Num label="EARNINGS" value={draft.earnings} onChange={(n) => set("earnings", n)} />
-            <Num label="EXTRA CASH" value={draft.extraCash} onChange={(n) => set("extraCash", n)} />
-            <Num label="TIPS" value={draft.tips} onChange={(n) => set("tips", n)} />
-            <Num label="TOLL" value={draft.toll} onChange={(n) => set("toll", n)} />
-            <Num label="PLATFORM FEE" value={draft.platformFee} onChange={(n) => set("platformFee", n)} />
+            <MoneyInput size="sm" label="EARNINGS" value={draft.earnings} onChange={(n) => set("earnings", n)} />
+            <MoneyInput size="sm" label="EXTRA CASH" value={draft.extraCash} onChange={(n) => set("extraCash", n)} />
+            <MoneyInput size="sm" label="TIPS" value={draft.tips} onChange={(n) => set("tips", n)} />
+            <MoneyInput size="sm" label="TOLL" value={draft.toll} onChange={(n) => set("toll", n)} />
+            <MoneyInput
+              size="sm"
+              label="PLATFORM FEE"
+              value={draft.platformFee}
+              onChange={(n) => set("platformFee", n)}
+            />
             <label className="flex flex-col gap-1">
               <span className="text-[10px] font-bold tracking-wide text-neutral-400">HORA</span>
               <input

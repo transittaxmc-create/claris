@@ -1,11 +1,34 @@
 import { type Trip, type Platform, PLATFORMS } from "./types"
+import { parseTombstones, pruneTombstones, type Tombstones } from "@/lib/sync"
 
 // Reads and writes the exact same localStorage key/format used by the
 // original IslandCity Tip Tracker export, so this redesign stays compatible
 // with your real data (including GPS/coords, which are preserved untouched).
 const KEY = "ic_tip_tracker"
+// Copia de seguridad: si el guardado principal se corrompe o queda a medias,
+// se puede recuperar desde aquí.
+const BACKUP_KEY = "ic_tip_tracker_backup"
+export const SYNC_CODE_KEY = "claris_sync_code"
+export const DELETED_KEY = "claris_deleted_ids"
+
+// Claves temporales de GPS (ver components/copiloto/geo.ts).
+const TEMP_KEYS = ["CURRENT_PICKUP", "CURRENT_DROP_OFF"]
 
 type RawEntry = Record<string, any>
+
+// localStorage puede estar bloqueado (modo privado, WebView, permisos).
+// Se comprueba con una prueba real de escritura para no fallar en silencio.
+export function safeLocal(): Storage | null {
+  try {
+    if (typeof localStorage === "undefined") return null
+    const probe = "__claris_probe__"
+    localStorage.setItem(probe, "1")
+    localStorage.removeItem(probe)
+    return localStorage
+  } catch {
+    return null
+  }
+}
 
 function toTime(datetime: string): string {
   const d = new Date(datetime)
@@ -62,34 +85,118 @@ export function tripToEntry(t: Trip): RawEntry {
   }
 }
 
-export function loadTrips(): Trip[] | null {
+// Sella el viaje con la hora de modificación: es lo que permite combinar dos
+// teléfonos sin perder cambios (gana el más reciente de cada id).
+export function stampTrip(t: Trip, at: string = new Date().toISOString()): Trip {
+  return { ...t, raw: { ...(t.raw ?? {}), savedAt: at } }
+}
+
+export type SaveResult = { ok: boolean; error?: string }
+
+function parseDoc(raw: string | null): Trip[] | null {
+  if (!raw) return null
   try {
-    const raw = localStorage.getItem(KEY)
-    if (!raw) return null
     const parsed = JSON.parse(raw)
-    const entries = Array.isArray(parsed?.entries) ? parsed.entries : []
+    const entries = Array.isArray(parsed?.entries) ? parsed.entries : null
+    if (!entries) return null
     return entries.map(entryToTrip)
   } catch {
     return null
   }
 }
 
-export function saveTrips(trips: Trip[]): void {
+export function loadTrips(): Trip[] | null {
+  const ls = safeLocal()
+  if (!ls) return null
+  return parseDoc(ls.getItem(KEY)) ?? parseDoc(ls.getItem(BACKUP_KEY))
+}
+
+export function lastSavedAt(): string | null {
+  const ls = safeLocal()
+  if (!ls) return null
   try {
-    let doc: RawEntry = {}
-    const existing = localStorage.getItem(KEY)
-    if (existing) {
-      try {
-        doc = JSON.parse(existing)
-      } catch {
-        doc = {}
-      }
-    }
-    doc.entries = trips.map(tripToEntry)
-    localStorage.setItem(KEY, JSON.stringify(doc))
+    const doc = JSON.parse(ls.getItem(KEY) ?? "null")
+    return typeof doc?.savedAt === "string" ? doc.savedAt : null
   } catch {
-    // ignore write errors (e.g. storage disabled)
+    return null
   }
+}
+
+// Guarda los viajes. Devuelve el resultado en vez de ignorar los errores:
+// si el teléfono no deja guardar (storage lleno/bloqueado) la app lo avisa
+// en pantalla, que es lo que antes hacía que los viajes "desaparecieran".
+export function saveTrips(trips: Trip[]): SaveResult {
+  const ls = safeLocal()
+  if (!ls) return { ok: false, error: "El almacenamiento del navegador está bloqueado" }
+
+  const now = new Date().toISOString()
+  let doc: RawEntry = {}
+  const existing = ls.getItem(KEY)
+  if (existing) {
+    try {
+      doc = JSON.parse(existing)
+    } catch {
+      doc = {}
+    }
+  }
+
+  doc.entries = trips.map(tripToEntry)
+  doc.savedAt = now
+  doc.version = typeof doc.version === "number" ? doc.version : 1
+
+  const serialized = JSON.stringify(doc)
+  try {
+    ls.setItem(KEY, serialized)
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "No se pudo guardar" }
+  }
+
+  // La copia de seguridad es un extra: si falla, el guardado principal ya está bien.
+  try {
+    ls.setItem(BACKUP_KEY, serialized)
+  } catch {}
+
+  return { ok: true }
+}
+
+// ---------------------------------------------------------------------
+// Borrados (tombstones): hacen que un borrado también se propague al otro
+// teléfono en vez de que el viaje "reviva" al sincronizar.
+// ---------------------------------------------------------------------
+export function loadTombstones(): Tombstones {
+  const ls = safeLocal()
+  if (!ls) return {}
+  return pruneTombstones(parseTombstones(ls.getItem(DELETED_KEY)))
+}
+
+export function saveTombstones(deleted: Tombstones): void {
+  const ls = safeLocal()
+  if (!ls) return
+  try {
+    ls.setItem(DELETED_KEY, JSON.stringify(pruneTombstones(deleted)))
+  } catch {}
+}
+
+export function addTombstone(id: string, at: string = new Date().toISOString()): Tombstones {
+  const next = { ...loadTombstones(), [id]: at }
+  saveTombstones(next)
+  return next
+}
+
+export function loadSyncCode(): string | null {
+  const ls = safeLocal()
+  if (!ls) return null
+  const value = ls.getItem(SYNC_CODE_KEY)
+  return value && value.trim() ? value : null
+}
+
+export function saveSyncCode(code: string | null): void {
+  const ls = safeLocal()
+  if (!ls) return
+  try {
+    if (code) ls.setItem(SYNC_CODE_KEY, code)
+    else ls.removeItem(SYNC_CODE_KEY)
+  } catch {}
 }
 
 // All localStorage keys used by the original IslandCity Tip Tracker, so an
@@ -180,22 +287,125 @@ function getIndexedDB(): Promise<IDBDatabase> {
   })
 }
 
-export async function saveToIndexedDB(trip: Trip): Promise<void> {
+// Guarda toda la lista (no sólo el último viaje) para que IndexedDB sea una
+// segunda copia completa: si el teléfono borra localStorage, aquí queda todo.
+export async function saveTripsToIndexedDB(trips: Trip[]): Promise<void> {
+  const db = await getIndexedDB()
+  const now = new Date().toISOString()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([IDB_STORE], "readwrite")
+    const store = tx.objectStore(IDB_STORE)
+    for (const trip of trips) {
+      store.put({ ...tripToEntry(stampTrip(trip)), savedAt: trip.raw?.savedAt ?? now })
+    }
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+    tx.onabort = () => reject(tx.error)
+  })
+}
+
+// Lee la copia permanente de IndexedDB. Antes nunca se leía: era el motivo por
+// el que al cerrar la app volvían las transacciones viejas y desaparecían las
+// nuevas.
+export async function loadTripsFromIndexedDB(): Promise<Trip[]> {
+  const db = await getIndexedDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([IDB_STORE], "readonly")
+    const store = tx.objectStore(IDB_STORE)
+    const req = store.getAll()
+    req.onsuccess = () => {
+      const rows = Array.isArray(req.result) ? req.result : []
+      resolve(rows.map((row: RawEntry) => entryToTrip(row)))
+    }
+    req.onerror = () => reject(req.error)
+  })
+}
+
+export async function countIndexedDB(): Promise<number> {
+  const db = await getIndexedDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([IDB_STORE], "readonly")
+    const req = tx.objectStore(IDB_STORE).count()
+    req.onsuccess = () => resolve(Number(req.result) || 0)
+    req.onerror = () => reject(req.error)
+  })
+}
+
+export async function clearIndexedDB(): Promise<void> {
+  const db = await getIndexedDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([IDB_STORE], "readwrite")
+    tx.objectStore(IDB_STORE).clear()
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+    tx.onabort = () => reject(tx.error)
+  })
+}
+
+// RESET TOTAL: borra viajes, copia de seguridad, GPS temporal e IndexedDB.
+// Los tombstones se guardan aparte (no se borran aquí) para que el borrado
+// también llegue al otro teléfono y no "revivan" los viajes.
+export async function clearAllData(): Promise<{ ok: boolean; error?: string }> {
+  const ls = safeLocal()
+  if (ls) {
+    for (const key of [...ALL_KEYS, ...TEMP_KEYS, BACKUP_KEY]) {
+      try {
+        ls.removeItem(key)
+      } catch {}
+    }
+  }
   try {
-    const db = await getIndexedDB()
-    const entry = tripToEntry(trip)
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction([IDB_STORE], "readwrite")
-      const store = tx.objectStore(IDB_STORE)
-      const req = store.put({
-        ...entry,
-        savedAt: new Date().toISOString(),
-      })
-      req.onsuccess = () => resolve()
-      req.onerror = () => reject(req.error)
-    })
+    await clearIndexedDB()
   } catch (err) {
-    console.warn("IndexedDB save error:", err)
+    return { ok: false, error: err instanceof Error ? err.message : "No se pudo borrar IndexedDB" }
+  }
+  return { ok: true }
+}
+
+export type StorageInfo = {
+  trips: number
+  bytes: number
+  keys: number
+  lastSavedAt: string | null
+  localStorageOk: boolean
+  indexedDbOk: boolean
+  indexedDbCount: number
+  tombstones: number
+  syncCodeSet: boolean
+}
+
+// Datos que se muestran en la pestaña DATA para que se vea de un vistazo si el
+// teléfono está guardando de verdad.
+export async function storageInfo(tripCount: number): Promise<StorageInfo> {
+  const ls = safeLocal()
+  let bytes = 0
+  let keys = 0
+  if (ls) {
+    for (let i = 0; i < ls.length; i += 1) {
+      const key = ls.key(i)
+      if (!key) continue
+      keys += 1
+      bytes += key.length + (ls.getItem(key) ?? "").length
+    }
+  }
+
+  let indexedDbOk = false
+  let indexedDbCount = 0
+  try {
+    indexedDbCount = await countIndexedDB()
+    indexedDbOk = true
+  } catch {}
+
+  return {
+    trips: tripCount,
+    bytes,
+    keys,
+    lastSavedAt: lastSavedAt(),
+    localStorageOk: !!ls,
+    indexedDbOk,
+    indexedDbCount,
+    tombstones: Object.keys(loadTombstones()).length,
+    syncCodeSet: !!loadSyncCode(),
   }
 }
 
