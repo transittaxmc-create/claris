@@ -6,7 +6,15 @@ import { EntryScreen } from "./entry-screen"
 import { RegisterScreen } from "./register-screen"
 import { TripEditSheet } from "./trip-edit-sheet"
 import { SEED_TRIPS, newTrip, type Trip } from "./types"
-import { loadTrips, saveTrips, buildExport, importExport } from "./storage"
+import {
+  loadTrips,
+  saveTrips,
+  buildExport,
+  importExport,
+  loadTripsFromIndexedDB,
+  saveTripsToIndexedDB,
+  clearAllStorage,
+} from "./storage"
 
 function Placeholder({ label }: { label: string }) {
   return (
@@ -26,14 +34,24 @@ export function CopilotoApp() {
 
   // Load real data from the existing ic_tip_tracker localStorage key on mount.
   useEffect(() => {
-    const loaded = loadTrips()
-    if (loaded && loaded.length) setTrips(loaded)
-    setHydrated(true)
+    let active = true
+    async function hydrate() {
+      const indexed = await loadTripsFromIndexedDB()
+      const loaded = indexed ?? loadTrips()
+      if (active && loaded) setTrips(loaded)
+      if (active) setHydrated(true)
+    }
+    hydrate()
+    return () => {
+      active = false
+    }
   }, [])
 
-  // Persist back to ic_tip_tracker in the exact export format after any change.
+  // Keep both stores aligned so closing/reopening cannot resurrect stale trips.
   useEffect(() => {
-    if (hydrated) saveTrips(trips)
+    if (!hydrated) return
+    saveTrips(trips)
+    saveTripsToIndexedDB(trips)
   }, [trips, hydrated])
 
   function saveNewFromEntry(t: Trip) {
@@ -68,7 +86,7 @@ export function CopilotoApp() {
 
   function resetStorage() {
     if (!window.confirm("¿Borrar todas las transacciones y el almacenamiento local? Esta acción no se puede deshacer.")) return
-    localStorage.clear()
+    void clearAllStorage()
     setTrips([])
     setEditing(null)
     setDayClosed(false)

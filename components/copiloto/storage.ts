@@ -187,15 +187,61 @@ export async function saveToIndexedDB(trip: Trip): Promise<void> {
     return new Promise((resolve, reject) => {
       const tx = db.transaction([IDB_STORE], "readwrite")
       const store = tx.objectStore(IDB_STORE)
-      const req = store.put({
-        ...entry,
-        savedAt: new Date().toISOString(),
-      })
+      const req = store.put({ ...entry, savedAt: new Date().toISOString() })
       req.onsuccess = () => resolve()
       req.onerror = () => reject(req.error)
     })
   } catch (err) {
     console.warn("IndexedDB save error:", err)
+  }
+}
+
+export async function loadTripsFromIndexedDB(): Promise<Trip[] | null> {
+  try {
+    const db = await getIndexedDB()
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction([IDB_STORE], "readonly")
+      const req = tx.objectStore(IDB_STORE).getAll()
+      req.onsuccess = () => {
+        const entries = Array.isArray(req.result) ? req.result : []
+        resolve(entries.length ? entries.map(entryToTrip) : null)
+      }
+      req.onerror = () => reject(req.error)
+    })
+  } catch (err) {
+    console.warn("IndexedDB load error:", err)
+    return null
+  }
+}
+
+export async function saveTripsToIndexedDB(trips: Trip[]): Promise<void> {
+  try {
+    const db = await getIndexedDB()
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction([IDB_STORE], "readwrite")
+      const store = tx.objectStore(IDB_STORE)
+      store.clear()
+      for (const trip of trips) store.put({ ...tripToEntry(trip), savedAt: new Date().toISOString() })
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+  } catch (err) {
+    console.warn("IndexedDB bulk save error:", err)
+  }
+} 
+
+export async function clearAllStorage(): Promise<void> {
+  localStorage.clear()
+  try {
+    const db = await getIndexedDB()
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction([IDB_STORE], "readwrite")
+      tx.objectStore(IDB_STORE).clear()
+      tx.oncomplete = () => resolve()
+      tx.onerror = () => reject(tx.error)
+    })
+  } catch (err) {
+    console.warn("IndexedDB clear error:", err)
   }
 }
 
