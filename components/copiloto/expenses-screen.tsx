@@ -1,7 +1,7 @@
 "use client"
 
-import { useMemo, useState } from "react"
-import { Pencil, Plus, Search, Trash2 } from "lucide-react"
+import { useMemo, useRef, useState } from "react"
+import { Camera, Loader2, Pencil, Plus, Search, Sparkles, Trash2, Upload } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { EXPENSE_CATEGORIES, type Expense, expenseTotal, money } from "./types"
 import { MoneyInput } from "./money-input"
@@ -17,6 +17,7 @@ type Draft = {
   category: string
   amount: number
   notes: string
+  isAiGenerated?: boolean
 }
 
 function emptyDraft(): Draft {
@@ -27,6 +28,7 @@ function emptyDraft(): Draft {
     category: EXPENSE_CATEGORIES[0],
     amount: 0,
     notes: "",
+    isAiGenerated: false,
   }
 }
 
@@ -63,8 +65,8 @@ function ExpenseRow({
           {expense.category}
         </span>
         {expense.isAiGenerated && (
-          <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 text-[9px] font-bold text-sky-400">
-            IA
+          <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 text-[9px] font-bold text-sky-400">
+            <Sparkles className="size-2.5" /> IA
           </span>
         )}
         {expense.isEditedByUser && (
@@ -107,6 +109,11 @@ export function ExpensesScreen({
   const [draft, setDraft] = useState<Draft | null>(null)
   const [search, setSearch] = useState("")
   const [category, setCategory] = useState("Todas")
+  const [isScanning, setIsScanning] = useState(false)
+  const [scanStatus, setScanStatus] = useState<string | null>(null)
+
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -119,6 +126,87 @@ export function ExpensesScreen({
 
   const total = useMemo(() => expenseTotal(expenses), [expenses])
   const filteredTotal = useMemo(() => expenseTotal(filtered), [filtered])
+
+  // Redimensionar imagen para reducir payload y acelerar el OCR de Gemini
+  async function resizeImage(file: File, maxDim = 1200): Promise<{ base64: string; mimeType: string }> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const img = new Image()
+        img.onload = () => {
+          let { width, height } = img
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width)
+              width = maxDim
+            } else {
+              width = Math.round((width * maxDim) / height)
+              height = maxDim
+            }
+          }
+          const canvas = document.createElement("canvas")
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext("2d")
+          if (!ctx) {
+            reject(new Error("No se pudo inicializar canvas"))
+            return
+          }
+          ctx.drawImage(img, 0, 0, width, height)
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.82)
+          resolve({ base64: dataUrl, mimeType: "image/jpeg" })
+        }
+        img.onerror = reject
+        img.src = e.target?.result as string
+      }
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+  }
+
+  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    try {
+      setIsScanning(true)
+      setScanStatus("Procesando imagen...")
+
+      const { base64, mimeType } = await resizeImage(file)
+      setScanStatus("Analizando con IA...")
+
+      const res = await fetch("/api/scan-receipt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: base64, mimeType }),
+      })
+
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || "No se pudo analizar el recibo")
+      }
+
+      const { result } = json
+      setDraft({
+        id: null,
+        date: result.date || new Date().toISOString().slice(0, 10),
+        vendor: result.vendor || "",
+        category: result.category || EXPENSE_CATEGORIES[0],
+        amount: Number(result.amount) || 0,
+        notes: result.notes || "",
+        isAiGenerated: true,
+      })
+      setScanStatus("¡Recibo detectado! Revisa y guarda.")
+      setTimeout(() => setScanStatus(null), 3500)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Error al procesar"
+      alert(`Error al escanear recibo: ${msg}`)
+      setScanStatus(null)
+    } finally {
+      setIsScanning(false)
+      e.target.value = ""
+    }
+  }
 
   function saveDraft() {
     if (!draft) return
@@ -133,7 +221,7 @@ export function ExpensesScreen({
       category: draft.category,
       amount: Number(draft.amount) || 0,
       notes: draft.notes.trim() || undefined,
-      isAiGenerated: false,
+      isAiGenerated: Boolean(draft.isAiGenerated),
       isEditedByUser: draft.id !== null,
       savedAt: new Date().toISOString(),
     }
@@ -153,25 +241,77 @@ export function ExpensesScreen({
       category: ex.category,
       amount: ex.amount,
       notes: ex.notes ?? "",
+      isAiGenerated: ex.isAiGenerated,
     })
   }
 
   return (
     <div className="flex h-full flex-col">
+      {/* Inputs ocultos para captura directa de cámara o subida de archivo */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleFileSelected}
+        className="hidden"
+      />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleFileSelected}
+        className="hidden"
+      />
+
       {/* Header + totales + formulario + filtros */}
       <div className="px-4 pt-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <h1 className="text-sm font-bold tracking-widest text-neutral-400">EXPENSES</h1>
           {!draft && (
-            <button
-              type="button"
-              onClick={() => setDraft(emptyDraft())}
-              className="flex items-center gap-1.5 rounded-full bg-gradient-to-r from-yellow-500 to-amber-500 px-3 py-1.5 text-[11px] font-extrabold text-black active:scale-95"
-            >
-              <Plus className="size-3.5" /> NUEVO GASTO
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => cameraInputRef.current?.click()}
+                disabled={isScanning}
+                aria-label="Escanear recibo con cámara"
+                className="flex items-center gap-1 rounded-full border border-sky-500/50 bg-sky-950/40 px-2.5 py-1.5 text-[11px] font-bold text-sky-300 hover:bg-sky-900/50 active:scale-95 disabled:opacity-50"
+              >
+                {isScanning ? (
+                  <Loader2 className="size-3.5 animate-spin text-sky-400" />
+                ) : (
+                  <Camera className="size-3.5 text-sky-400" />
+                )}
+                <span>ESCANEAR</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isScanning}
+                aria-label="Subir foto de recibo"
+                className="flex items-center rounded-full border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-neutral-300 hover:bg-neutral-800 active:scale-95 disabled:opacity-50"
+                title="Subir archivo"
+              >
+                <Upload className="size-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setDraft(emptyDraft())}
+                className="flex items-center gap-1 rounded-full bg-gradient-to-r from-yellow-500 to-amber-500 px-3 py-1.5 text-[11px] font-extrabold text-black active:scale-95"
+              >
+                <Plus className="size-3.5" /> MANUAL
+              </button>
+            </div>
           )}
         </div>
+
+        {/* Banner de estado de escaneo */}
+        {scanStatus && (
+          <div className="mt-2 flex items-center gap-2 rounded-xl border border-sky-500/40 bg-sky-950/50 px-3 py-2 text-xs font-semibold text-sky-300">
+            {isScanning ? <Loader2 className="size-3.5 animate-spin shrink-0" /> : <Sparkles className="size-3.5 shrink-0 text-yellow-400" />}
+            <span>{scanStatus}</span>
+          </div>
+        )}
 
         <div className="mt-3 flex gap-2">
           <StatCard label="TOTAL GASTOS" value={money(total)} valueClass="text-rose-400" />
@@ -183,9 +323,16 @@ export function ExpensesScreen({
         {draft && (
           <section className="mt-3 rounded-2xl border border-neutral-700 bg-neutral-900/70 p-3">
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-xs font-bold text-neutral-300">
-                {draft.id ? "EDITAR GASTO" : "NUEVO GASTO"}
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold text-neutral-300">
+                  {draft.id ? "EDITAR GASTO" : "NUEVO GASTO"}
+                </span>
+                {draft.isAiGenerated && (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/50 bg-sky-500/20 px-2 py-0.5 text-[10px] font-bold text-sky-300">
+                    <Sparkles className="size-2.5" /> DETECTADO POR IA
+                  </span>
+                )}
+              </div>
               <button type="button" onClick={() => setDraft(null)} className="text-[11px] font-bold text-rose-400">
                 CANCELAR
               </button>

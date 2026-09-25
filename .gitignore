@@ -17,3 +17,5 @@ node_modules
 # Generados por Next.js / TypeScript (no se editan a mano)
 next-env.d.ts
 *.tsbuildinfo
+.vercel
+.env*
