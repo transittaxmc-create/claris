@@ -24,11 +24,14 @@ function MoneyField({
       <div className="flex min-h-[4.5rem] items-center rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3.5 focus-within:border-neutral-600">
         <span className="mr-1 text-sm text-neutral-500">$</span>
         <input
-  type="number"
-  inputMode="decimal"
-  step="0.01"
-  value={value === 0 ? "" : String(value)}
-          onChange={(e) => onChange(Number.parseFloat(e.target.value) || 0)}
+          type="text"
+          inputMode="decimal"
+          pattern="[-0-9.]*"
+          value={value === 0 ? "" : String(value)}
+          onChange={(e) => {
+            const next = e.target.value.replace(/(?!^)-|[^0-9.-]/g, "")
+            onChange(Number.parseFloat(next) || 0)
+          }}
           placeholder="0.00"
           className="w-full bg-transparent text-xl font-semibold text-white outline-none placeholder:text-neutral-600"
         />
