@@ -5,18 +5,26 @@ import { AlertTriangle, Check } from "lucide-react"
 import { BottomNav, type Tab } from "./bottom-nav"
 import { DataScreen } from "./data-screen"
 import { EntryScreen } from "./entry-screen"
+import { ExpensesScreen } from "./expenses-screen"
 import { RegisterScreen } from "./register-screen"
 import { TripEditSheet } from "./trip-edit-sheet"
-import { SEED_TRIPS, newTrip, type Trip } from "./types"
+import { SEED_TRIPS, newTrip, stampExpense, type Expense, type Trip } from "./types"
 import {
+  addExpenseTombstone,
   addTombstone,
   buildExport,
   clearAllData,
   importExport,
+  loadExpenseTombstones,
+  loadExpenses,
+  loadExpensesFromIndexedDB,
   loadSyncCode,
   loadTombstones,
   loadTrips,
   loadTripsFromIndexedDB,
+  saveExpenseTombstones,
+  saveExpenses,
+  saveExpensesToIndexedDB,
   saveSyncCode,
   saveTombstones,
   saveTrips,
@@ -48,6 +56,7 @@ export function CopilotoApp() {
   // ejemplo en memoria, y eso es lo que hacía que al cerrar "volvieran los
   // viajes viejos" y se perdieran los nuevos.
   const [trips, setTrips] = useState<Trip[]>([])
+  const [expenses, setExpenses] = useState<Expense[]>([])
   const [editing, setEditing] = useState<Trip | null>(null)
   const [dayClosed, setDayClosed] = useState(false)
   const [hydrated, setHydrated] = useState(false)
@@ -60,7 +69,9 @@ export function CopilotoApp() {
   const [syncing, setSyncing] = useState(false)
 
   const tripsRef = useRef<Trip[]>([])
+  const expensesRef = useRef<Expense[]>([])
   const tombstonesRef = useRef<Tombstones>({})
+  const expenseTombstonesRef = useRef<Tombstones>({})
   const savedTimer = useRef<number | null>(null)
   const autoSynced = useRef(false)
 
@@ -68,13 +79,19 @@ export function CopilotoApp() {
     tripsRef.current = trips
   }, [trips])
 
+  useEffect(() => {
+    expensesRef.current = expenses
+  }, [expenses])
+
   // Guardado: escribe siempre en las DOS copias (localStorage + IndexedDB) y
   // avisa si alguna falla, en vez de perder datos en silencio.
-  const persist = useCallback((list: Trip[]) => {
+  const persist = useCallback((list: Trip[], expenseList: Expense[] = expensesRef.current) => {
     const res = saveTrips(list)
-    if (!res.ok) {
+    const resExp = saveExpenses(expenseList)
+    const error = !res.ok ? res.error : !resExp.ok ? resExp.error : undefined
+    if (error) {
       setSaveState("error")
-      setSaveError(res.error ?? "No se pudo guardar")
+      setSaveError(error ?? "No se pudo guardar")
       return
     }
     setSaveState("saved")
@@ -82,6 +99,7 @@ export function CopilotoApp() {
     if (savedTimer.current) window.clearTimeout(savedTimer.current)
     savedTimer.current = window.setTimeout(() => setSaveState("idle"), 2000)
     saveTripsToIndexedDB(list).catch(() => {})
+    saveExpensesToIndexedDB(expenseList).catch(() => {})
   }, [])
 
   // Al abrir: localStorage + IndexedDB + borrados pendientes, combinados.
@@ -105,11 +123,24 @@ export function CopilotoApp() {
         permanent = await loadTripsFromIndexedDB()
       } catch {}
       const merged = mergeTrips(withStamps, permanent, loadTombstones())
+
+      // Gastos: mismo procedimiento (localStorage + IndexedDB + borrados).
+      const localExp = loadExpenses() ?? []
+      let permanentExp: Expense[] = []
+      try {
+        permanentExp = await loadExpensesFromIndexedDB()
+      } catch {}
+      const mergedExp = mergeTrips(localExp, permanentExp, loadExpenseTombstones())
+
       if (cancelled) return
       tombstonesRef.current = merged.deleted
       saveTombstones(merged.deleted)
+      expenseTombstonesRef.current = mergedExp.deleted
+      saveExpenseTombstones(mergedExp.deleted)
       setTrips(merged.trips)
       tripsRef.current = merged.trips
+      setExpenses(mergedExp.trips as Expense[])
+      expensesRef.current = mergedExp.trips as Expense[]
       setSyncCode(loadSyncCode())
       setHydrated(true)
     }
@@ -120,18 +151,18 @@ export function CopilotoApp() {
     }
   }, [])
 
-  // Guardado con un retardo muy corto en cada cambio.
+  // Guardado con un retardo muy corto en cada cambio (viajes o gastos).
   useEffect(() => {
     if (!hydrated) return
-    const timer = window.setTimeout(() => persist(trips), 250)
+    const timer = window.setTimeout(() => persist(trips, expenses), 250)
     return () => window.clearTimeout(timer)
-  }, [trips, hydrated, persist])
+  }, [trips, expenses, hydrated, persist])
 
   // Volcado inmediato al cerrar o esconder la app: garantiza que lo último
   // registrado quede en disco antes de que el teléfono mate la pestaña.
   useEffect(() => {
     if (!hydrated) return
-    const flush = () => persist(tripsRef.current)
+    const flush = () => persist(tripsRef.current, expensesRef.current)
     const onVisibility = () => {
       if (document.visibilityState === "hidden") flush()
     }
@@ -168,8 +199,22 @@ export function CopilotoApp() {
     setEditing(null)
   }
 
+  // Gastos: alta / edición (siempre con hora de modificación para el sync).
+  function saveExpense(e: Expense) {
+    const stamped = stampExpense(e)
+    setExpenses((prev) => {
+      const exists = prev.some((p) => p.id === stamped.id)
+      return exists ? prev.map((p) => (p.id === stamped.id ? stamped : p)) : [stamped, ...prev]
+    })
+  }
+
+  function deleteExpense(id: string) {
+    expenseTombstonesRef.current = addExpenseTombstone(id)
+    setExpenses((prev) => prev.filter((p) => p.id !== id))
+  }
+
   const refreshInfo = useCallback(() => {
-    storageInfo(tripsRef.current.length)
+    storageInfo(tripsRef.current.length, expensesRef.current.length)
       .then(setInfo)
       .catch(() => {})
   }, [])
@@ -179,16 +224,27 @@ export function CopilotoApp() {
     async (code: string, silent = false) => {
       setSyncing(true)
       if (!silent) setSyncMessage(null)
-      const result = await syncWithCloud<Trip>(code, tripsRef.current, tombstonesRef.current)
+      const result = await syncWithCloud<Trip>(
+        code,
+        tripsRef.current,
+        tombstonesRef.current,
+        expensesRef.current,
+        expenseTombstonesRef.current,
+      )
       if (result.ok && Array.isArray(result.trips)) {
         const next = result.trips as Trip[]
+        const nextExp = (result.expenses ?? []) as Expense[]
         tombstonesRef.current = (result.deleted as Tombstones) ?? {}
         saveTombstones(tombstonesRef.current)
+        expenseTombstonesRef.current = (result.deletedExpenses as Tombstones) ?? {}
+        saveExpenseTombstones(expenseTombstonesRef.current)
         tripsRef.current = next
         setTrips(next)
-        persist(next)
+        expensesRef.current = nextExp
+        setExpenses(nextExp)
+        persist(next, nextExp)
         setSyncTone("ok")
-        setSyncMessage(`Sincronizado · ${next.length} viajes en este teléfono`)
+        setSyncMessage(`Sincronizado · ${next.length} viajes y ${nextExp.length} gastos`)
       } else if (result.reason === "not_configured") {
         setSyncTone("info")
         setSyncMessage(
@@ -212,6 +268,9 @@ export function CopilotoApp() {
   }, [hydrated, syncCode, runSync])
 
   function exportJson() {
+    // Asegura que el JSON refleje lo que hay en memoria (el guardado es
+    // asíncrono con retardo y el export es síncrono).
+    persist(tripsRef.current, expensesRef.current)
     const json = buildExport(trips)
     const blob = new Blob([json], { type: "application/json" })
     const url = URL.createObjectURL(blob)
@@ -233,6 +292,10 @@ export function CopilotoApp() {
         const next = result.map((t) => (t.raw?.savedAt ? t : stampTrip(t)))
         tripsRef.current = next
         setTrips(next)
+        // Los gastos viajan en la misma clave del export: se releen desde disco.
+        const exp = loadExpenses() ?? []
+        expensesRef.current = exp
+        setExpenses(exp)
         setTab("REGISTER")
       } else {
         alert("No se pudo leer el archivo. Verifica que sea un export válido de IslandCity Tip Tracker.")
@@ -260,8 +323,15 @@ export function CopilotoApp() {
     tombstonesRef.current = tombstones
     saveTombstones(tombstones)
 
+    const expenseTombstones = { ...expenseTombstonesRef.current }
+    for (const e of expensesRef.current) expenseTombstones[e.id] = at
+    expenseTombstonesRef.current = expenseTombstones
+    saveExpenseTombstones(expenseTombstones)
+
     tripsRef.current = []
     setTrips([])
+    expensesRef.current = []
+    setExpenses([])
     setEditing(null)
     setSyncMessage(null)
 
@@ -270,7 +340,7 @@ export function CopilotoApp() {
       setSaveError(res.error ?? "No se pudo borrar todo el almacenamiento")
       setSaveState("error")
     }
-    persist([])
+    persist([], [])
     refreshInfo()
     if (syncCode) await runSync(syncCode, true)
   }
@@ -324,6 +394,9 @@ export function CopilotoApp() {
                   onResetStorage={resetStorage}
                 />
               )}
+              {tab === "EXPENSES" && (
+                <ExpensesScreen expenses={expenses} onSave={saveExpense} onDelete={deleteExpense} />
+              )}
               {tab === "DATA" && (
                 <DataScreen
                   trips={trips}
@@ -343,7 +416,10 @@ export function CopilotoApp() {
                   onDisconnectSync={disconnectSync}
                 />
               )}
-              {tab !== "ENTRY" && tab !== "REGISTER" && tab !== "DATA" && <Placeholder label={tab} />}
+              {tab !== "ENTRY" &&
+                tab !== "REGISTER" &&
+                tab !== "EXPENSES" &&
+                tab !== "DATA" && <Placeholder label={tab} />}
             </>
           )}
         </main>

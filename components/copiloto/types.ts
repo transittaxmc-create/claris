@@ -6,6 +6,58 @@ export type TripStatus = "pending" | "matched"
 
 export type { LocationPoint }
 
+// ---------------------------------------------------------------------
+// Gastos (pestaña EXPENSES)
+// ---------------------------------------------------------------------
+export const EXPENSE_CATEGORIES = [
+  "Gasolina / Combustible",
+  "Mantenimiento / Vehículo",
+  "Peajes",
+  "Alimentación / Comida",
+  "Lavado de Auto",
+  "Seguros / Permisos",
+  "Varios",
+] as const
+
+export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
+
+export type Expense = {
+  id: string
+  date: string // "YYYY-MM-DD"
+  vendor: string
+  category: string
+  amount: number
+  notes?: string
+  confidence?: number // 0..1 (lectura por IA, si se usa)
+  isAiGenerated: boolean
+  isEditedByUser: boolean
+  // Hora de modificación: es lo que permite combinar gastos entre dos
+  // teléfonos sin perder cambios (mismo criterio que los viajes).
+  savedAt?: string
+}
+
+export function newExpense(): Expense {
+  return {
+    id: crypto.randomUUID(),
+    date: new Date().toISOString().slice(0, 10),
+    vendor: "",
+    category: "Varios",
+    amount: 0,
+    notes: "",
+    isAiGenerated: false,
+    isEditedByUser: false,
+    savedAt: new Date().toISOString(),
+  }
+}
+
+export function stampExpense(e: Expense, at: string = new Date().toISOString()): Expense {
+  return { ...e, savedAt: at }
+}
+
+export function expenseTotal(list: Expense[]): number {
+  return list.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
+}
+
 export type Trip = {
   id: string
   platform: Platform

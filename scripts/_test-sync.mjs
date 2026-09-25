@@ -79,6 +79,33 @@ const t = (id, savedAt, earnings = 0) => ({ id, earnings, raw: savedAt ? { saved
   assert.equal(trips[0].earnings, 11, "sin hora, gana localStorage")
 }
 
+// 7. GASTOS: guardan la hora en el propio objeto (savedAt), no en raw.
+//    Deben mezclarse igual que los viajes.
+const gasto = (id, savedAt, amount) => ({ id, savedAt, amount, vendor: "BP" })
+{
+  const local = [gasto("g1", iso(-300), 10)]
+  const remote = [gasto("g1", iso(-30), 99)]
+  const { trips } = mergeTrips(local, remote)
+  assert.equal(trips.length, 1)
+  assert.equal(trips[0].amount, 99, "gasto remoto más nuevo gana")
+}
+{
+  // Borrado de un gasto propaga desde el otro teléfono. El tombstone se
+  // CONSERVA (para seguir propagándose) y sólo caduca a los 30 días.
+  const { trips, deleted } = mergeTrips([], [gasto("g2", iso(-120))], { g2: iso(-60) })
+  assert.equal(trips.length, 0, "tombstone de gasto lo elimina")
+  assert.ok(deleted.g2, "el tombstone se conserva para propagarse")
+}
+{
+  // Mezcla de colecciones distintas: viajes y gastos NO se mezclan entre sí.
+  const trips = mergeTrips([t("viaje-1", iso(-10))], [])
+  const exps = mergeTrips([gasto("gasto-1", iso(-10))], [])
+  assert.equal(trips.trips.length, 1)
+  assert.equal(trips.trips[0].id, "viaje-1")
+  assert.equal(exps.trips.length, 1)
+  assert.equal(exps.trips[0].id, "gasto-1")
+}
+
 
 // 6. Prune de tombstones viejos (> 30 días) y parseo defensivo.
 {

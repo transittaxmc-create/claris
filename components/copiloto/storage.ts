@@ -1,4 +1,4 @@
-import { type Trip, type Platform, PLATFORMS } from "./types"
+import { type Trip, type Platform, PLATFORMS, type Expense, stampExpense } from "./types"
 import { parseTombstones, pruneTombstones, type Tombstones } from "@/lib/sync"
 
 // Reads and writes the exact same localStorage key/format used by the
@@ -10,6 +10,11 @@ const KEY = "ic_tip_tracker"
 const BACKUP_KEY = "ic_tip_tracker_backup"
 export const SYNC_CODE_KEY = "claris_sync_code"
 export const DELETED_KEY = "claris_deleted_ids"
+
+// Gastos: mismo esquema que los viajes (clave propia + copia de seguridad).
+const EXPENSES_KEY = "ic_expenses"
+const EXPENSES_BACKUP_KEY = "ic_expenses_backup"
+export const DELETED_EXPENSES_KEY = "claris_deleted_expense_ids"
 
 // Claves temporales de GPS (ver components/copiloto/geo.ts).
 const TEMP_KEYS = ["CURRENT_PICKUP", "CURRENT_DROP_OFF"]
@@ -199,10 +204,72 @@ export function saveSyncCode(code: string | null): void {
   } catch {}
 }
 
+// ---------------------------------------------------------------------
+// GASTOS: persistencia idéntica a la de los viajes
+// (localStorage principal + copia de seguridad + IndexedDB como copia viva).
+// ---------------------------------------------------------------------
+type RawExpenseDoc = { version?: number; savedAt?: string; entries?: Expense[] }
+
+function parseExpenseDoc(raw: string | null): Expense[] | null {
+  if (!raw) return null
+  try {
+    const parsed = JSON.parse(raw) as RawExpenseDoc
+    if (!Array.isArray(parsed?.entries)) return null
+    return parsed.entries.filter((e) => e && typeof e.id === "string")
+  } catch {
+    return null
+  }
+}
+
+export function loadExpenses(): Expense[] | null {
+  const ls = safeLocal()
+  if (!ls) return null
+  return parseExpenseDoc(ls.getItem(EXPENSES_KEY)) ?? parseExpenseDoc(ls.getItem(EXPENSES_BACKUP_KEY))
+}
+
+export function saveExpenses(expenses: Expense[]): SaveResult {
+  const ls = safeLocal()
+  if (!ls) return { ok: false, error: "El almacenamiento del navegador está bloqueado" }
+
+  const doc = { version: 1, savedAt: new Date().toISOString(), entries: expenses }
+  const serialized = JSON.stringify(doc)
+  try {
+    ls.setItem(EXPENSES_KEY, serialized)
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "No se pudieron guardar los gastos" }
+  }
+  try {
+    ls.setItem(EXPENSES_BACKUP_KEY, serialized)
+  } catch {}
+  return { ok: true }
+}
+
+// Los borrados de gastos también viajan en el sync para no revivir en el otro.
+export function loadExpenseTombstones(): Tombstones {
+  const ls = safeLocal()
+  if (!ls) return {}
+  return pruneTombstones(parseTombstones(ls.getItem(DELETED_EXPENSES_KEY)))
+}
+
+export function saveExpenseTombstones(deleted: Tombstones): void {
+  const ls = safeLocal()
+  if (!ls) return
+  try {
+    ls.setItem(DELETED_EXPENSES_KEY, JSON.stringify(pruneTombstones(deleted)))
+  } catch {}
+}
+
+export function addExpenseTombstone(id: string, at: string = new Date().toISOString()): Tombstones {
+  const next = { ...loadExpenseTombstones(), [id]: at }
+  saveExpenseTombstones(next)
+  return next
+}
+
 // All localStorage keys used by the original IslandCity Tip Tracker, so an
 // export from this redesign is a drop-in replacement for the original app.
 const ALL_KEYS = [
   "ic_tip_tracker",
+  "ic_expenses",
   "ic_shift",
   "ic-bank-adj-history",
   "ic-day-targets",
@@ -264,8 +331,9 @@ export function importExport(json: string): Trip[] | null {
 // Almacenamiento Permanente en IndexedDB (CopilotoV1DB)
 // =====================================================================
 const IDB_NAME = "CopilotoV1DB"
-const IDB_VERSION = 1
+const IDB_VERSION = 2
 const IDB_STORE = "transactions"
+const IDB_EXPENSES_STORE = "expenses"
 
 function getIndexedDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -280,6 +348,11 @@ function getIndexedDB(): Promise<IDBDatabase> {
         const store = db.createObjectStore(IDB_STORE, { keyPath: "id" })
         store.createIndex("datetime", "datetime", { unique: false })
         store.createIndex("platform", "platform", { unique: false })
+      }
+      // v2: store de gastos (la app anterior sólo guardaba viajes).
+      if (!db.objectStoreNames.contains(IDB_EXPENSES_STORE)) {
+        const store = db.createObjectStore(IDB_EXPENSES_STORE, { keyPath: "id" })
+        store.createIndex("date", "date", { unique: false })
       }
     }
     req.onsuccess = (e: any) => resolve(e.target.result)
@@ -324,21 +397,65 @@ export async function loadTripsFromIndexedDB(): Promise<Trip[]> {
 export async function countIndexedDB(): Promise<number> {
   const db = await getIndexedDB()
   return new Promise((resolve, reject) => {
-    const tx = db.transaction([IDB_STORE], "readonly")
-    const req = tx.objectStore(IDB_STORE).count()
-    req.onsuccess = () => resolve(Number(req.result) || 0)
-    req.onerror = () => reject(req.error)
+    const tx = db.transaction([IDB_STORE, IDB_EXPENSES_STORE], "readonly")
+    let total = 0
+    const a = tx.objectStore(IDB_STORE).count()
+    const b = tx.objectStore(IDB_EXPENSES_STORE).count()
+    let pending = 2
+    const done = () => {
+      pending -= 1
+      if (pending === 0) resolve(total)
+    }
+    a.onsuccess = () => {
+      total += Number(a.result) || 0
+      done()
+    }
+    b.onsuccess = () => {
+      total += Number(b.result) || 0
+      done()
+    }
+    a.onerror = () => reject(a.error)
+    b.onerror = () => reject(b.error)
   })
 }
 
 export async function clearIndexedDB(): Promise<void> {
   const db = await getIndexedDB()
   return new Promise((resolve, reject) => {
-    const tx = db.transaction([IDB_STORE], "readwrite")
+    const tx = db.transaction([IDB_STORE, IDB_EXPENSES_STORE], "readwrite")
     tx.objectStore(IDB_STORE).clear()
+    tx.objectStore(IDB_EXPENSES_STORE).clear()
     tx.oncomplete = () => resolve()
     tx.onerror = () => reject(tx.error)
     tx.onabort = () => reject(tx.error)
+  })
+}
+
+// Gastos: segunda copia completa en IndexedDB (misma idea que los viajes).
+export async function saveExpensesToIndexedDB(expenses: Expense[]): Promise<void> {
+  const db = await getIndexedDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([IDB_EXPENSES_STORE], "readwrite")
+    const store = tx.objectStore(IDB_EXPENSES_STORE)
+    for (const expense of expenses) {
+      store.put(stampExpense(expense, expense.savedAt ?? new Date().toISOString()))
+    }
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+    tx.onabort = () => reject(tx.error)
+  })
+}
+
+export async function loadExpensesFromIndexedDB(): Promise<Expense[]> {
+  const db = await getIndexedDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([IDB_EXPENSES_STORE], "readonly")
+    const req = tx.objectStore(IDB_EXPENSES_STORE).getAll()
+    req.onsuccess = () => {
+      const rows = Array.isArray(req.result) ? (req.result as Expense[]) : []
+      resolve(rows.filter((e) => e && typeof e.id === "string"))
+    }
+    req.onerror = () => reject(req.error)
   })
 }
 
@@ -364,6 +481,7 @@ export async function clearAllData(): Promise<{ ok: boolean; error?: string }> {
 
 export type StorageInfo = {
   trips: number
+  expenses: number
   bytes: number
   keys: number
   lastSavedAt: string | null
@@ -376,7 +494,7 @@ export type StorageInfo = {
 
 // Datos que se muestran en la pestaña DATA para que se vea de un vistazo si el
 // teléfono está guardando de verdad.
-export async function storageInfo(tripCount: number): Promise<StorageInfo> {
+export async function storageInfo(tripCount: number, expenseCount: number = 0): Promise<StorageInfo> {
   const ls = safeLocal()
   let bytes = 0
   let keys = 0
@@ -398,13 +516,14 @@ export async function storageInfo(tripCount: number): Promise<StorageInfo> {
 
   return {
     trips: tripCount,
+    expenses: expenseCount,
     bytes,
     keys,
     lastSavedAt: lastSavedAt(),
     localStorageOk: !!ls,
     indexedDbOk,
     indexedDbCount,
-    tombstones: Object.keys(loadTombstones()).length,
+    tombstones: Object.keys(loadTombstones()).length + Object.keys(loadExpenseTombstones()).length,
     syncCodeSet: !!loadSyncCode(),
   }
 }

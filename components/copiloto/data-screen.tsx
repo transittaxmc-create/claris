@@ -102,6 +102,7 @@ export function DataScreen({
             <h2 className="text-xs font-bold tracking-wide text-neutral-200">GUARDADO EN ESTE TELÉFONO</h2>
           </div>
           <Row label="VIAJES EN MEMORIA" value={String(trips.length)} />
+          <Row label="GASTOS EN MEMORIA" value={String(info?.expenses ?? 0)} tone="text-rose-300" />
           <Row label="ÚLTIMA GRABACIÓN" value={fmtTime(info?.lastSavedAt ?? null)} />
           <Row
             label="LOCALSTORAGE"

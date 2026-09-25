@@ -32,16 +32,19 @@ if (process.env.CHECK_UNCONFIGURED === "1") {
   console.log("· aviso 'sin configurar' omitido (usa CHECK_UNCONFIGURED=1 con un servidor en :3000)")
 }
 
-// 1. Teléfono A sube su viaje.
+// 1. Teléfono A sube su viaje Y un gasto.
 const a1 = trip("a1", iso(-30), 20)
+const gastoA = { id: "ga1", savedAt: iso(-28), amount: 45.5, vendor: "BP Gas Station", category: "Gasolina / Combustible", date: "2026-03-24", isAiGenerated: false, isEditedByUser: false }
 {
-  const r = await syncWithCloud(CODE, [a1], {})
+  const r = await syncWithCloud(CODE, [a1], {}, [gastoA])
   assert.ok(r.ok, `A debía sincronizar: ${r.message}`)
   assert.equal(r.pushed, 1)
+  assert.equal(r.expenses?.length, 1, "A subió su gasto")
 }
 
 // 2. Teléfono B (que no tiene nada) recibe el viaje de A y aporta el suyo:
-//    aquí es donde antes se perdía la información.
+//    aquí es donde antes se perdía la información. También debe recibir el
+//    gasto de A.
 const b1 = trip("b1", iso(-20), 35)
 {
   const r = await syncWithCloud(CODE, [b1], {})
@@ -49,6 +52,9 @@ const b1 = trip("b1", iso(-20), 35)
   const ids = r.trips.map((t) => t.id).sort()
   assert.deepEqual(ids, ["a1", "b1"], "B debe tener los viajes de los dos")
   assert.equal(r.trips[0].id, "b1", "ordenados por más reciente")
+  assert.equal(r.expenses?.length, 1, "B debe recibir el gasto de A")
+  assert.equal(r.expenses?.[0]?.vendor, "BP Gas Station")
+  assert.equal(r.expenses?.[0]?.amount, 45.5)
 }
 
 // 3. A vuelve a abrir la app: ahora también ve el viaje de B.

@@ -11,9 +11,17 @@
 //
 // Este archivo es puro (sin imports del proyecto) para poder probarlo en Node.
 
-export type SyncTrip = { id: string; raw?: Record<string, any> }
+export type SyncTrip = { id: string; savedAt?: string; raw?: Record<string, any> }
 export type Tombstones = Record<string, string>
-export type SyncDoc<T> = { version: number; updatedAt: string; entries: T[]; deleted: Tombstones }
+export type SyncDoc<T> = {
+  version: number
+  updatedAt: string
+  entries: T[]
+  deleted: Tombstones
+  // Gastos: mismo mecanismo que los viajes (mezcla por id + tombstones).
+  expenses?: SyncTrip[]
+  deletedExpenses?: Tombstones
+}
 
 const PBKDF2_ITERATIONS = 150_000
 const SALT_BYTES = 16
@@ -21,6 +29,8 @@ const IV_BYTES = 12
 const TOMBSTONE_TTL_DAYS = 30
 
 export function savedAtOf(t: SyncTrip | null | undefined): string {
+  // Los gastos guardan la hora en el propio objeto; los viajes en raw.savedAt.
+  if (typeof t?.savedAt === "string" && t.savedAt) return t.savedAt
   const v = t?.raw?.savedAt
   return typeof v === "string" ? v : ""
 }
@@ -102,8 +112,20 @@ export function mergeTrips<T extends SyncTrip>(
   return { trips, deleted }
 }
 
-export function buildDoc<T extends SyncTrip>(trips: T[], deleted: Tombstones): SyncDoc<T> {
-  return { version: 1, updatedAt: nowIso(), entries: trips, deleted: pruneTombstones(deleted) }
+export function buildDoc<T extends SyncTrip>(
+  trips: T[],
+  deleted: Tombstones,
+  expenses: SyncTrip[] = [],
+  deletedExpenses: Tombstones = {},
+): SyncDoc<T> {
+  return {
+    version: 1,
+    updatedAt: nowIso(),
+    entries: trips,
+    deleted: pruneTombstones(deleted),
+    expenses,
+    deletedExpenses: pruneTombstones(deletedExpenses),
+  }
 }
 
 // ---------------------------------------------------------------------
@@ -206,6 +228,8 @@ export type SyncStatus = {
   pushed?: number
   trips?: SyncTrip[]
   deleted?: Tombstones
+  expenses?: SyncTrip[]
+  deletedExpenses?: Tombstones
   updatedAt?: string
 }
 
@@ -255,10 +279,14 @@ export async function pushRemote(
 
 // Baja -> combina con lo local -> sube el resultado combinado.
 // Devuelve la lista combinada para que la app la use como estado nuevo.
+// Los gastos viajan en el mismo documento cifrado (parámetros opcionales, así
+// un cliente antiguo sigue funcionando y no se pierden datos).
 export async function syncWithCloud<T extends SyncTrip>(
   code: string,
   localTrips: T[],
   localTombstones: Tombstones,
+  localExpenses: SyncTrip[] = [],
+  localExpenseTombstones: Tombstones = {},
 ): Promise<SyncStatus> {
   if (!isValidSyncCode(code)) {
     return {
@@ -281,6 +309,8 @@ export async function syncWithCloud<T extends SyncTrip>(
 
   let remoteTrips: T[] = []
   let remoteTombstones: Tombstones = {}
+  let remoteExpenses: SyncTrip[] = []
+  let remoteExpenseTombstones: Tombstones = {}
   if (remote.payload) {
     const doc = await decryptJson<SyncDoc<T>>(code, remote.payload)
     if (!doc) {
@@ -293,10 +323,17 @@ export async function syncWithCloud<T extends SyncTrip>(
     }
     remoteTrips = Array.isArray(doc.entries) ? doc.entries : []
     remoteTombstones = doc.deleted && typeof doc.deleted === "object" ? doc.deleted : {}
+    remoteExpenses = Array.isArray(doc.expenses) ? doc.expenses : []
+    remoteExpenseTombstones =
+      doc.deletedExpenses && typeof doc.deletedExpenses === "object" ? doc.deletedExpenses : {}
   }
 
   const merged = mergeTrips(localTrips, remoteTrips, { ...remoteTombstones, ...localTombstones })
-  const doc = buildDoc(merged.trips, merged.deleted)
+  const mergedExpenses = mergeTrips(localExpenses, remoteExpenses, {
+    ...remoteExpenseTombstones,
+    ...localExpenseTombstones,
+  })
+  const doc = buildDoc(merged.trips, merged.deleted, mergedExpenses.trips, mergedExpenses.deleted)
 
   const pushed = await pushRemote(code, await encryptJson(code, doc))
   if (!pushed.ok) {
@@ -317,6 +354,8 @@ export async function syncWithCloud<T extends SyncTrip>(
     pushed: merged.trips.length,
     trips: merged.trips,
     deleted: merged.deleted,
+    expenses: mergedExpenses.trips,
+    deletedExpenses: mergedExpenses.deleted,
     updatedAt: doc.updatedAt,
   }
 }
