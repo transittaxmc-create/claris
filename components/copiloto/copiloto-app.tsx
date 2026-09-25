@@ -66,6 +66,14 @@ export function CopilotoApp() {
     URL.revokeObjectURL(url)
   }
 
+  function resetStorage() {
+    if (!window.confirm("¿Borrar todas las transacciones y el almacenamiento local? Esta acción no se puede deshacer.")) return
+    localStorage.clear()
+    setTrips([])
+    setEditing(null)
+    setDayClosed(false)
+  }
+
   function importJson(file: File) {
     const reader = new FileReader()
     reader.onload = () => {
@@ -94,6 +102,7 @@ export function CopilotoApp() {
               dayClosed={dayClosed}
               onExport={exportJson}
               onImport={importJson}
+              onResetStorage={resetStorage}
             />
           )}
           {tab !== "ENTRY" && tab !== "REGISTER" && <Placeholder label={tab} />}

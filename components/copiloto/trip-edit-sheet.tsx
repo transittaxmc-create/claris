@@ -20,8 +20,10 @@ function Num({
       <div className="flex items-center rounded-lg border border-neutral-700 bg-neutral-950 px-2.5 py-2">
         <span className="mr-1 text-xs text-neutral-500">$</span>
         <input
-          inputMode="decimal"
-          value={value === 0 ? "" : String(value)}
+  type="number"
+  inputMode="decimal"
+  step="0.01"
+  value={value === 0 ? "" : String(value)}
           onChange={(e) => onChange(Number.parseFloat(e.target.value) || 0)}
           placeholder="0.00"
           className="w-full bg-transparent text-sm font-semibold text-white outline-none placeholder:text-neutral-600"
