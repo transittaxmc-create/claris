@@ -15,23 +15,23 @@ interface Message {
 const QUICK_PROMPTS = [
   {
     icon: TrendingUp,
+    label: "¿Cuánto gano por hora?",
+    prompt: "¿Cuánto estoy ganando por hora (gross y neto)? Analiza mis horas trabajadas y rendimiento.",
+  },
+  {
+    icon: Zap,
     label: "Analizar rentabilidad",
-    prompt: "Analiza mi rentabilidad comparando ingresos y gastos.",
+    prompt: "Analiza mi rentabilidad total comparando ingresos brutos, tarifas, comisiones y gastos.",
   },
   {
     icon: Receipt,
     label: "Gastos deducibles",
-    prompt: "¿Qué gastos son deducibles al 100% de impuestos?",
-  },
-  {
-    icon: Zap,
-    label: "Consejos de propinas",
-    prompt: "¿Qué estrategias sirven para aumentar mis propinas?",
+    prompt: "¿Qué gastos son deducibles al 100% de impuestos (gasolina, peajes, seguros)?",
   },
   {
     icon: Car,
     label: "Ahorro de gasolina",
-    prompt: "¿Cómo puedo reducir el consumo de combustible?",
+    prompt: "¿Cómo puedo reducir el consumo de combustible y maximizar mi margen neto?",
   },
 ]
 
@@ -57,13 +57,62 @@ export function AIScreen({
 
   const metrics = useMemo(() => {
     const totalTrips = trips.length
-    const totalIncome = trips.reduce(
-      (acc, t) => acc + (t.earnings || 0) + (t.tips || 0) + (t.extraCash || 0),
-      0,
-    )
+    const totalEarnings = trips.reduce((acc, t) => acc + (t.earnings || 0), 0)
     const totalTips = trips.reduce((acc, t) => acc + (t.tips || 0), 0)
+    const totalExtraCash = trips.reduce((acc, t) => acc + (t.extraCash || 0), 0)
+    const totalTolls = trips.reduce((acc, t) => acc + (t.toll || 0), 0)
+    const totalPlatformFees = trips.reduce((acc, t) => acc + (t.platformFee || 0), 0)
+    const totalGross = totalEarnings + totalTips + totalExtraCash + totalTolls
+    const totalIncome = totalEarnings + totalTips + totalExtraCash
     const totalExpenses = expenses.reduce((acc, e) => acc + (e.amount || 0), 0)
     const netProfit = totalIncome - totalExpenses
+
+    // Agrupación por plataforma
+    const platformBreakdown: Record<string, { count: number; total: number }> = {}
+    for (const t of trips) {
+      const p = t.platform || "Other"
+      const amount = (t.earnings || 0) + (t.tips || 0) + (t.extraCash || 0)
+      if (!platformBreakdown[p]) platformBreakdown[p] = { count: 0, total: 0 }
+      platformBreakdown[p].count += 1
+      platformBreakdown[p].total += amount
+    }
+
+    // Análisis de tiempos y estimación de horas
+    const timesMinutes: number[] = []
+    for (const t of trips) {
+      if (t.time && typeof t.time === "string") {
+        const parts = t.time.split(":")
+        if (parts.length >= 2) {
+          const hh = parseInt(parts[0], 10)
+          const mm = parseInt(parts[1], 10)
+          if (!isNaN(hh) && !isNaN(mm)) {
+            timesMinutes.push(hh * 60 + mm)
+          }
+        }
+      }
+    }
+
+    let estimatedHoursSpan = 0
+    let firstTripTime = ""
+    let lastTripTime = ""
+    if (timesMinutes.length >= 2) {
+      timesMinutes.sort((a, b) => a - b)
+      const minM = timesMinutes[0]
+      const maxM = timesMinutes[timesMinutes.length - 1]
+      const diffMinutes = Math.max(0, maxM - minM)
+      // Agregamos un buffer típico estimado por el último viaje (~25 min)
+      estimatedHoursSpan = Number(((diffMinutes + 25) / 60).toFixed(1))
+      firstTripTime = `${String(Math.floor(minM / 60)).padStart(2, "0")}:${String(minM % 60).padStart(2, "0")}`
+      lastTripTime = `${String(Math.floor(maxM / 60)).padStart(2, "0")}:${String(maxM % 60).padStart(2, "0")}`
+    } else if (timesMinutes.length === 1) {
+      estimatedHoursSpan = 1.0 // 1 hora base para 1 viaje
+      firstTripTime = trips[0].time || ""
+      lastTripTime = trips[0].time || ""
+    }
+
+    // Tasa por hora calculada basada en el lapso de viajes
+    const grossPerHour = estimatedHoursSpan > 0 ? Number((totalGross / estimatedHoursSpan).toFixed(2)) : 0
+    const netPerHour = estimatedHoursSpan > 0 ? Number((netProfit / estimatedHoursSpan).toFixed(2)) : 0
 
     const expByCategory: Record<string, number> = {}
     for (const e of expenses) {
@@ -72,15 +121,48 @@ export function AIScreen({
     const topCategory =
       Object.entries(expByCategory).sort((a, b) => b[1] - a[1])[0]?.[0] || "Ninguna"
 
+    // Mapeo detallado de viajes recientes para que la IA los examine minuciosamente
+    const recentTripsList = trips.slice(-15).map((t) => ({
+      platform: t.platform,
+      earnings: t.earnings,
+      tips: t.tips,
+      extraCash: t.extraCash,
+      fee: t.platformFee,
+      time: t.time,
+      pickup: t.pickup ? t.pickup.slice(0, 35) : "",
+      dropoff: t.dropoff ? t.dropoff.slice(0, 35) : "",
+      status: t.status,
+    }))
+
+    const expensesList = expenses.slice(-10).map((e) => ({
+      vendor: e.vendor,
+      category: e.category,
+      amount: e.amount,
+      date: e.date,
+    }))
+
     return {
       tripsCount: totalTrips,
+      totalGross,
       totalIncome,
+      totalEarnings,
       totalTips,
+      totalExtraCash,
+      totalTolls,
+      totalPlatformFees,
       totalExpenses,
       netProfit,
       topExpenseCategory: topCategory,
-      tripsSummary: `${totalTrips} viajes registrados totalizando $${totalIncome.toFixed(2)}`,
-      expensesSummary: `${expenses.length} gastos registrados totalizando $${totalExpenses.toFixed(2)} (${topCategory}: mayor gasto)`,
+      platformBreakdown,
+      estimatedHoursSpan,
+      firstTripTime,
+      lastTripTime,
+      grossPerHour,
+      netPerHour,
+      recentTripsList,
+      expensesList,
+      tripsSummary: `${totalTrips} viajes registrados totalizando $${totalGross.toFixed(2)} brutos ($${totalIncome.toFixed(2)} sin peajes), ${totalTips > 0 ? `$${totalTips.toFixed(2)} en propinas` : "sin propinas"}. Horas estimadas: ${estimatedHoursSpan}h (desde ${firstTripTime || "N/A"} hasta ${lastTripTime || "N/A"}). Ganancia/h estimada: $${grossPerHour}/h bruto, $${netPerHour}/h neto.`,
+      expensesSummary: `${expenses.length} gastos registrados totalizando $${totalExpenses.toFixed(2)} (${topCategory}: mayor categoría).`,
     }
   }, [trips, expenses])
 
@@ -176,16 +258,27 @@ export function AIScreen({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900/60 px-2.5 py-1 text-right">
-          <div>
-            <div className="text-[9px] font-bold text-neutral-400">NETO ACTUAL</div>
-            <div
-              className={cn(
-                "font-mono text-xs font-bold",
-                metrics.netProfit >= 0 ? "text-emerald-400" : "text-rose-400",
-              )}
-            >
-              ${metrics.netProfit.toFixed(2)}
+        <div className="flex items-center gap-3">
+          {metrics.estimatedHoursSpan > 0 && (
+            <div className="hidden sm:flex flex-col items-end rounded-xl border border-neutral-800 bg-neutral-900/60 px-2.5 py-1 text-right">
+              <div className="text-[9px] font-bold text-neutral-400">GANANCIA / HORA</div>
+              <div className="font-mono text-xs font-bold text-yellow-400">
+                ${metrics.grossPerHour}/h
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900/60 px-2.5 py-1 text-right">
+            <div>
+              <div className="text-[9px] font-bold text-neutral-400">NETO ACTUAL</div>
+              <div
+                className={cn(
+                  "font-mono text-xs font-bold",
+                  metrics.netProfit >= 0 ? "text-emerald-400" : "text-rose-400",
+                )}
+              >
+                ${metrics.netProfit.toFixed(2)}
+              </div>
             </div>
           </div>
         </div>
