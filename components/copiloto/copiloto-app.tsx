@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { AlertTriangle, Check } from "lucide-react"
 import { BottomNav, type Tab } from "./bottom-nav"
+import { AIScreen } from "./ai-screen"
 import { DataScreen } from "./data-screen"
 import { EntryScreen } from "./entry-screen"
 import { ExpensesScreen } from "./expenses-screen"
@@ -397,6 +398,7 @@ export function CopilotoApp() {
               {tab === "EXPENSES" && (
                 <ExpensesScreen expenses={expenses} onSave={saveExpense} onDelete={deleteExpense} />
               )}
+              {tab === "AI" && <AIScreen trips={trips} expenses={expenses} />}
               {tab === "DATA" && (
                 <DataScreen
                   trips={trips}
@@ -419,6 +421,7 @@ export function CopilotoApp() {
               {tab !== "ENTRY" &&
                 tab !== "REGISTER" &&
                 tab !== "EXPENSES" &&
+                tab !== "AI" &&
                 tab !== "DATA" && <Placeholder label={tab} />}
             </>
           )}
