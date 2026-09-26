@@ -5,6 +5,7 @@ import { AlertTriangle, Check } from "lucide-react"
 import { BottomNav, type Tab } from "./bottom-nav"
 import { DataScreen } from "./data-screen"
 import { EntryScreen } from "./entry-screen"
+import { FinanceScreen } from "./finance-screen"
 import { RegisterScreen } from "./register-screen"
 import { TripEditSheet } from "./trip-edit-sheet"
 import { SEED_TRIPS, newTrip, type Trip } from "./types"
@@ -324,6 +325,7 @@ export function CopilotoApp() {
                   onResetStorage={resetStorage}
                 />
               )}
+              {tab === "FINANCE" && <FinanceScreen trips={trips} />}
               {tab === "DATA" && (
                 <DataScreen
                   trips={trips}
@@ -343,7 +345,7 @@ export function CopilotoApp() {
                   onDisconnectSync={disconnectSync}
                 />
               )}
-              {tab !== "ENTRY" && tab !== "REGISTER" && tab !== "DATA" && <Placeholder label={tab} />}
+              {tab !== "ENTRY" && tab !== "REGISTER" && tab !== "FINANCE" && tab !== "DATA" && <Placeholder label={tab} />}
             </>
           )}
         </main>
