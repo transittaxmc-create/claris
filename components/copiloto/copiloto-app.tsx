@@ -7,6 +7,7 @@ import { AIScreen } from "./ai-screen"
 import { DataScreen } from "./data-screen"
 import { EntryScreen } from "./entry-screen"
 import { ExpensesScreen } from "./expenses-screen"
+import { FinanceScreen } from "./finance-screen"
 import { RegisterScreen } from "./register-screen"
 import { TripEditSheet } from "./trip-edit-sheet"
 import { SEED_TRIPS, newTrip, stampExpense, type Expense, type Trip } from "./types"
@@ -398,6 +399,9 @@ export function CopilotoApp() {
               {tab === "EXPENSES" && (
                 <ExpensesScreen expenses={expenses} onSave={saveExpense} onDelete={deleteExpense} />
               )}
+              {tab === "FINANCE" && (
+                <FinanceScreen expenses={expenses} onSave={saveExpense} onDelete={deleteExpense} />
+              )}
               {tab === "AI" && <AIScreen trips={trips} expenses={expenses} />}
               {tab === "DATA" && (
                 <DataScreen
@@ -422,7 +426,8 @@ export function CopilotoApp() {
                 tab !== "REGISTER" &&
                 tab !== "EXPENSES" &&
                 tab !== "AI" &&
-                tab !== "DATA" && <Placeholder label={tab} />}
+                tab !== "DATA" &&
+                tab !== "FINANCE" && <Placeholder label={tab} />}
             </>
           )}
         </main>
