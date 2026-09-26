@@ -1,0 +1,660 @@
+▲ Next.js 16.3.3 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.124:3000
+- Environments: .env.local
+✓ Ready in 639ms
+✓ Running next.config.mjs took 26ms
+
+ GET / 200 in 2.6s (next.js: 2.5s, application-code: 159ms)
+ GET / 200 in 56ms (next.js: 12ms, application-code: 44ms)
+ GET / 200 in 67ms (next.js: 17ms, application-code: 49ms)
+ GET /manifest.webmanifest 200 in 556ms (next.js: 524ms, application-code: 31ms)
+ GET / 200 in 64ms (next.js: 19ms, application-code: 45ms)
+ GET /manifest.webmanifest 200 in 15ms (next.js: 7ms, application-code: 8ms)
+ GET / 200 in 52ms (next.js: 13ms, application-code: 39ms)
+ GET /manifest.webmanifest 200 in 18ms (next.js: 7ms, application-code: 11ms)
+ GET / 200 in 33ms (next.js: 8ms, application-code: 25ms)
+ GET /manifest.webmanifest 200 in 13ms (next.js: 6ms, application-code: 7ms)
+ GET / 200 in 123ms (next.js: 32ms, application-code: 91ms)
+ GET / 200 in 61ms (next.js: 8ms, application-code: 53ms)
+ GET /manifest.webmanifest 200 in 22ms (next.js: 4ms, application-code: 18ms)
+ GET / 200 in 112ms (next.js: 10ms, application-code: 102ms)
+ GET /manifest.webmanifest 200 in 20ms (next.js: 7ms, application-code: 13ms)
+⚠ Blocked cross-origin request to Next.js dev resource /_next/static/chunks/node_modules__pnpm_1ge69br._.js from "192.168.1.124".
+Cross-origin access to Next.js dev resources is blocked by default for safety.
+
+To allow this host in development, add it to "allowedDevOrigins" in next.config.js and restart the dev server:
+
+// next.config.js
+module.exports = {
+  allowedDevOrigins: ['192.168.1.124'],
+}
+
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+⚠ Blocked cross-origin request to Next.js dev resource /_next/static/chunks/_1a2-_fp._.js from "192.168.1.124".
+Cross-origin access to Next.js dev resources is blocked by default for safety.
+
+To allow this host in development, add it to "allowedDevOrigins" in next.config.js and restart the dev server:
+
+// next.config.js
+module.exports = {
+  allowedDevOrigins: ['192.168.1.124'],
+}
+
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+⚠ Blocked cross-origin request to Next.js dev resource /_next/static/chunks/node_modules__pnpm_1mm-a0w._.js from "192.168.1.124".
+Cross-origin access to Next.js dev resources is blocked by default for safety.
+
+To allow this host in development, add it to "allowedDevOrigins" in next.config.js and restart the dev server:
+
+// next.config.js
+module.exports = {
+  allowedDevOrigins: ['192.168.1.124'],
+}
+
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+⚠ Blocked cross-origin request to Next.js dev resource /_next/hmr from "192.168.1.124".
+Cross-origin access to Next.js dev resources is blocked by default for safety.
+
+To allow this host in development, add it to "allowedDevOrigins" in next.config.js and restart the dev server:
+
+// next.config.js
+module.exports = {
+  allowedDevOrigins: ['192.168.1.124'],
+}
+
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+ GET / 200 in 92ms (next.js: 11ms, application-code: 82ms)
+ GET /manifest.webmanifest 200 in 21ms (next.js: 8ms, application-code: 13ms)
+ GET / 200 in 78ms (next.js: 11ms, application-code: 67ms)
+ GET /manifest.webmanifest 200 in 25ms (next.js: 11ms, application-code: 14ms)
+ GET / 200 in 88ms (next.js: 9ms, application-code: 79ms)
+ GET /manifest.webmanifest 200 in 29ms (next.js: 13ms, application-code: 16ms)
+✓ Compiled in 94ms
+✓ Compiled in 89ms
+✓ Compiled in 97ms
+✓ Compiled in 180ms
+ GET / 200 in 118ms (next.js: 56ms, application-code: 62ms)
+ GET / 200 in 21ms (next.js: 5ms, application-code: 16ms)
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+⚠ Fast Refresh had to perform a full reload due to a runtime error.
+✓ Compiled in 90ms
+ GET / 200 in 77ms (next.js: 18ms, application-code: 60ms)
+ GET / 200 in 55ms (next.js: 11ms, application-code: 45ms)
+ GET /manifest.webmanifest 200 in 30ms (next.js: 15ms, application-code: 16ms)
+ GET /manifest.webmanifest 200 in 13ms (next.js: 5ms, application-code: 8ms)
+✓ Compiled in 59ms
+ GET / 200 in 45ms (next.js: 18ms, application-code: 28ms)
+ GET / 200 in 31ms (next.js: 10ms, application-code: 20ms)
+ GET / 200 in 39ms (next.js: 10ms, application-code: 29ms)
+ GET / 200 in 30ms (next.js: 9ms, application-code: 21ms)
+✓ Compiled in 76ms
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+⨯ ./components/copiloto/copiloto-app.tsx:10:1
+Error: Module not found: Can't resolve './finance-screen'
+  [90m 8 |[0m [36mimport[0m { [33mEntryScreen[0m } [36mfrom[0m [32m"./entry-screen"[0m
+  [90m 9 |[0m [36mimport[0m { [33mExpensesScreen[0m } [36mfrom[0m [32m"./expenses-screen"[0m
+[31m[1m>[0m [90m10 |[0m [36mimport[0m { [33mFinanceScreen[0m } [36mfrom[0m [32m"./finance-screen"[0m
+  [90m   |[0m [31m[1m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+  [90m11 |[0m [36mimport[0m { [33mRegisterScreen[0m } [36mfrom[0m [32m"./register-screen"[0m
+  [90m12 |[0m [36mimport[0m { [33mTripEditSheet[0m } [36mfrom[0m [32m"./trip-edit-sheet"[0m
+  [90m13 |[0m [36mimport[0m { [33mSEED_TRIPS[0m, newTrip, stampExpense, [36mtype[0m [33mExpense[0m, [36mtype[0m [33mTrip[0m } [36mfrom[0m [32m"./types"[0m
+
+
+
+Import trace:
+  Server Component:
+    ./components/copiloto/copiloto-app.tsx
+    ./app/page.tsx
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+✓ Compiled in 151ms
+✓ Compiled in 110ms
+✓ Compiled in 66ms
+✓ Compiled in 86ms
+ GET / 200 in 59ms (next.js: 21ms, application-code: 38ms)
+ GET / 200 in 20ms (next.js: 4ms, application-code: 16ms)
+✓ Compiled in 91ms
+ GET / 200 in 45ms (next.js: 20ms, application-code: 25ms)
+ GET / 200 in 35ms (next.js: 8ms, application-code: 27ms)

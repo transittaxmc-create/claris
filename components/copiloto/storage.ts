@@ -277,10 +277,8 @@ const ALL_KEYS = [
   "ic-recurring-plan",
   "ic-bank-balance",
   "ic-week-overrides",
-  // FINANCE (Claris): saldo del banco, plan recurrente y meta del día.
-  "claris_bank_balance",
-  "claris_plan_items",
-  "claris_day_goal",
+  // FINANCE semanal (sin zustand): semana, próximas facturas y reserva.
+  "claris_finance_week_v1",
 ]
 
 // Build the full export document (version 2) in the exact shape the original
