@@ -7,6 +7,7 @@ import { AIScreen } from "./ai-screen"
 import { DataScreen } from "./data-screen"
 import { EntryScreen } from "./entry-screen"
 import { ExpensesScreen } from "./expenses-screen"
+import { FinanceScreen, BANK_KEY, GOAL_KEY, PLAN_KEY } from "./finance-screen"
 import { RegisterScreen } from "./register-screen"
 import { TripEditSheet } from "./trip-edit-sheet"
 import { SEED_TRIPS, newTrip, stampExpense, type Expense, type Trip } from "./types"
@@ -319,6 +320,12 @@ export function CopilotoApp() {
   // servidor, dejando los borrados anotados para que no revivan en el otro.
   async function resetAll() {
     const at = new Date().toISOString()
+    // FINANCE: también se limpian saldo del banco, plan y meta (viajan con el export).
+    try {
+      localStorage.removeItem(BANK_KEY)
+      localStorage.removeItem(PLAN_KEY)
+      localStorage.removeItem(GOAL_KEY)
+    } catch {}
     const tombstones = { ...tombstonesRef.current }
     for (const t of tripsRef.current) tombstones[t.id] = at
     tombstonesRef.current = tombstones
@@ -398,6 +405,7 @@ export function CopilotoApp() {
               {tab === "EXPENSES" && (
                 <ExpensesScreen expenses={expenses} onSave={saveExpense} onDelete={deleteExpense} />
               )}
+              {tab === "FINANCE" && <FinanceScreen trips={trips} expenses={expenses} />}
               {tab === "AI" && <AIScreen trips={trips} expenses={expenses} />}
               {tab === "DATA" && (
                 <DataScreen
@@ -421,6 +429,7 @@ export function CopilotoApp() {
               {tab !== "ENTRY" &&
                 tab !== "REGISTER" &&
                 tab !== "EXPENSES" &&
+                tab !== "FINANCE" &&
                 tab !== "AI" &&
                 tab !== "DATA" && <Placeholder label={tab} />}
             </>
