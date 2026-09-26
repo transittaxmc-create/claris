@@ -1,9 +1,9 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Lock, Plus, ArrowRight, Download, Upload, CalendarClock, Sparkles, Pencil, Trash2 } from "lucide-react"
+import { Lock, Plus, ArrowRight, Download, Upload, CalendarClock, Sparkles, Pencil, Trash2, Receipt, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { type Trip, type ScheduledEntry, type ScheduleFrequency, grossOf, netOf, money } from "./types"
+import { type Trip, type ScheduledEntry, type ScheduleFrequency, type TollBill, grossOf, netOf, money } from "./types"
 
 type Filter = "ALL" | "PENDING" | "MATCHED" | "LEDGER"
 
@@ -120,6 +120,27 @@ function ScheduleLedger({
   </section>
 }
 
+function addDays(date: string, days: number): string {
+  const next = new Date(`${date}T12:00:00`)
+  next.setDate(next.getDate() + days)
+  return next.toISOString().slice(0, 10)
+}
+
+function TollBills({ bills, onTogglePaid }: { bills: TollBill[]; onTogglePaid: (id: string) => void }) {
+  return (
+    <section className="rounded-2xl border border-sky-500/30 bg-sky-950/10 p-3">
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <p className="flex items-center gap-2 text-sm font-extrabold text-white"><Receipt className="size-4 text-sky-400" /> FACTURAS DE PEAJES</p>
+          <p className="text-[11px] text-neutral-500">Al cerrar el día se crea una factura para pagar mañana.</p>
+        </div>
+        <span className="text-[10px] font-bold text-sky-400">{bills.filter((bill) => bill.status === "unpaid").length} pendientes</span>
+      </div>
+      {bills.length === 0 ? <p className="py-2 text-center text-xs text-neutral-600">Todavía no hay facturas diarias.</p> : <div className="flex flex-col gap-2">{bills.map((bill) => <div key={bill.id} className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-black/20 p-2.5"><div className="min-w-0 flex-1"><p className="text-xs font-bold text-white">Peajes del {bill.serviceDate}</p><p className="text-[10px] text-neutral-500">Vence {bill.dueDate} · {bill.status === "paid" ? "Pagada" : "Pendiente"}</p></div><strong className="text-sky-300">{money(bill.amount)}</strong><button type="button" onClick={() => onTogglePaid(bill.id)} aria-label={bill.status === "paid" ? "Marcar factura pendiente" : "Marcar factura pagada"} className={cn("rounded-lg border p-1.5", bill.status === "paid" ? "border-green-500/50 text-green-400" : "border-neutral-700 text-neutral-400")}><Check className="size-3" /></button></div>)}</div>}
+    </section>
+  )
+}
+
 export function RegisterScreen({
   trips,
   onEdit,
@@ -141,12 +162,15 @@ export function RegisterScreen({
 }) {
   const [filter, setFilter] = useState<Filter>("ALL")
   const [schedules, setSchedules] = useState<ScheduledEntry[]>([])
+  const [tollBills, setTollBills] = useState<TollBill[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem("claris_scheduled_entries")
       if (saved) setSchedules(JSON.parse(saved))
+      const savedBills = localStorage.getItem("claris_toll_bills")
+      if (savedBills) setTollBills(JSON.parse(savedBills))
     } catch {}
   }, [])
 
@@ -162,6 +186,26 @@ export function RegisterScreen({
     setSchedules((current) => {
       const next = current.filter((entry) => entry.id !== id)
       localStorage.setItem("claris_scheduled_entries", JSON.stringify(next))
+      return next
+    })
+  }
+
+  function closeDayAndCreateBill() {
+    const serviceDate = new Date().toISOString().slice(0, 10)
+    const amount = trips.reduce((sum, trip) => sum + (Number(trip.toll) || 0), 0)
+    setTollBills((current) => {
+      if (current.some((bill) => bill.serviceDate === serviceDate)) return current
+      const next = [{ id: crypto.randomUUID(), serviceDate, dueDate: addDays(serviceDate, 1), amount, status: "unpaid" as const }, ...current]
+      localStorage.setItem("claris_toll_bills", JSON.stringify(next))
+      return next
+    })
+    onCloseDay()
+  }
+
+  function toggleBill(id: string) {
+    setTollBills((current) => {
+      const next = current.map((bill) => bill.id === id ? { ...bill, status: bill.status === "paid" ? "unpaid" as const : "paid" as const } : bill)
+      localStorage.setItem("claris_toll_bills", JSON.stringify(next))
       return next
     })
   }
@@ -200,6 +244,7 @@ export function RegisterScreen({
         </div>
 
         <ScheduleLedger schedules={schedules} onSave={saveSchedule} onDelete={deleteSchedule} />
+        <TollBills bills={tollBills} onTogglePaid={toggleBill} />
 
         {/* Filters */}
         <div className="flex gap-2">
@@ -223,7 +268,7 @@ export function RegisterScreen({
         {/* Close day */}
         <button
           type="button"
-          onClick={onCloseDay}
+          onClick={closeDayAndCreateBill}
           disabled={dayClosed}
           className={cn(
             "flex w-full items-center justify-center gap-2 rounded-2xl border py-3.5 text-sm font-bold transition-colors",

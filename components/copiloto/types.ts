@@ -37,6 +37,14 @@ export type ScheduledEntry = {
   active: boolean
 }
 
+export type TollBill = {
+  id: string
+  serviceDate: string
+  dueDate: string
+  amount: number
+  status: "unpaid" | "paid"
+}
+
 export type Expense = {
   id: string
   date: string // "YYYY-MM-DD"
