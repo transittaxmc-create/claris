@@ -1,24 +1,345 @@
 // Pantalla FINANCE — Gastos y Finanzas (paquete recibido en Downloads/files,
 // adaptado a Claris: sin zustand, estilo negro/neutral + amarillo).
 //
-// Tres sub-pestañas: CAJA (saldo, facturas 7d, déficit, corrida diaria),
-// PLAN (superávit + plan de pagos) y MIS GASTOS (registro + reserva 10%).
-// Estado en ./finance-store (localStorage claris_finance_week_v1), viaja con
-// el export/import vía storage.ts (ALL_KEYS).
+// Sub-pestañas:
+// - CAJA: saldo disponible, facturas 7 días, alerta de déficit + corrida de
+//   caja diaria (semana Lun→Dom con montos por plataforma editables).
+// - PLAN: superávit invertible + plan de pagos + ledger programado.
+// - PEAJES: facturas de peajes generadas al cerrar el día en REGISTER.
+// - MIS GASTOS: registro rápido de gastos operativos + reserva 10%.
+//
+// Estado semanal en ./finance-store (localStorage claris_finance_week_v1,
+// viaja con el export/import vía storage.ts). Ledger programado y facturas
+// de peajes en claris_scheduled_entries / claris_toll_bills (mismas claves
+// que el flujo v0 de REGISTER, para que ambos lados vean lo mismo).
 
 "use client"
 
-import { useState } from "react"
-import { AlertTriangle, PlusCircle, RotateCcw, ShieldCheck, Wallet } from "lucide-react"
+import { useEffect, useState } from "react"
+import {
+  AlertTriangle,
+  CalendarClock,
+  Check,
+  Pencil,
+  Plus,
+  PlusCircle,
+  Receipt,
+  RotateCcw,
+  ShieldCheck,
+  Sparkles,
+  Trash2,
+  Wallet,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
 import { BankAuditSheet } from "./bank-audit-sheet"
 import { ExpenseRegisterForm } from "./expense-register-form"
 import { FinanceRegisterTable } from "./finance-register-table"
 import { UpcomingBillsForm } from "./upcoming-bills-form"
 import { useFinance } from "./finance-store"
-import type { Expense as CopilotoExpense } from "./types"
+import {
+  money,
+  type Expense as CopilotoExpense,
+  type ScheduleFrequency,
+  type ScheduledEntry,
+  type TollBill,
+} from "./types"
+import { ExpensesScreen } from "./expenses-screen"
 
-type SubTab = "caja" | "plan" | "gastos"
+type SubTab = "caja" | "plan" | "peajes" | "gastos"
+
+function addDays(date: string, days: number) {
+  const next = new Date(`${date}T12:00:00`)
+  next.setDate(next.getDate() + days)
+  return next.toISOString().slice(0, 10)
+}
+const SCHEDULE_FREQUENCIES: { value: ScheduleFrequency; label: string }[] = [
+  { value: "once", label: "Una vez" },
+  { value: "daily", label: "Diario" },
+  { value: "weekly", label: "Semanal" },
+  { value: "monthly", label: "Mensual" },
+  { value: "annual", label: "Anual" },
+]
+
+function suggestScheduleCategory(value: string): string {
+  const text = value.toLowerCase()
+  if (text.includes("gas")) return "Gasolina / Combustible"
+  if (text.includes("seguro")) return "Seguros / Permisos"
+  if (text.includes("renta") || text.includes("alquiler")) return "Vivienda"
+  if (text.includes("comida") || text.includes("restaurante")) return "Alimentación / Comida"
+  return "Varios"
+}
+
+function newScheduleDraft(): ScheduledEntry {
+  const today = new Date().toISOString().slice(0, 10)
+  return {
+    id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `sch-${Date.now()}`,
+    kind: "expense",
+    description: "",
+    category: "Varios",
+    amount: 0,
+    startDate: today,
+    nextDate: today,
+    frequency: "monthly",
+    active: true,
+  }
+}
+
+function ScheduleLedger({
+  schedules,
+  onSave,
+  onDelete,
+}: {
+  schedules: ScheduledEntry[]
+  onSave: (entry: ScheduledEntry) => void
+  onDelete: (id: string) => void
+}) {
+  const [draft, setDraft] = useState<Partial<ScheduledEntry> | null>(null)
+  const [aiNote, setAiNote] = useState("")
+
+  function commit() {
+    if (!draft?.description?.trim() || !(Number(draft.amount) > 0)) return
+    const today = new Date().toISOString().slice(0, 10)
+    onSave({
+      id: typeof draft.id === "string" && draft.id ? draft.id : `sch-${Date.now()}`,
+      kind: draft.kind ?? "expense",
+      description: draft.description.trim(),
+      category: draft.category ?? "Varios",
+      amount: Number(draft.amount) || 0,
+      startDate: draft.startDate ?? today,
+      endDate: draft.endDate || undefined,
+      occurrences: draft.occurrences ? Number(draft.occurrences) : undefined,
+      frequency: draft.frequency ?? "monthly",
+      nextDate: draft.nextDate ?? draft.startDate ?? today,
+      active: draft.active ?? true,
+    })
+    setDraft(null)
+    setAiNote("")
+  }
+
+  return (
+    <section className="rounded-2xl border border-yellow-400/30 bg-neutral-900/60 p-3">
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <p className="flex items-center gap-2 text-sm font-extrabold text-white">
+            <CalendarClock className="size-4 text-yellow-400" /> LEDGER PROGRAMADO
+          </p>
+          <p className="text-[11px] text-neutral-500">
+            Ingresos y gastos editables, con fecha final u ocurrencias.
+          </p>
+        </div>
+        <Sparkles className="size-4 text-yellow-400" />
+      </div>
+      {draft ? (
+        <div className="flex flex-col gap-2 rounded-xl border border-neutral-700 bg-black/30 p-3">
+          <input
+            autoFocus
+            value={draft.description ?? ""}
+            onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+            onBlur={(e) => {
+              const category = suggestScheduleCategory(e.target.value)
+              setDraft((current) => ({ ...current, category }))
+              setAiNote(`IA: categoría sugerida “${category}”.`)
+            }}
+            placeholder="Descripción (ej. gasolina)"
+            className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-white outline-none"
+          />
+          <div className="flex gap-2">
+            <select
+              value={draft.kind ?? "expense"}
+              onChange={(e) => setDraft({ ...draft, kind: e.target.value as "income" | "expense" })}
+              className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-2 text-xs text-white"
+            >
+              <option value="expense">Gasto</option>
+              <option value="income">Ingreso</option>
+            </select>
+            <input
+              type="number"
+              min="0"
+              inputMode="decimal"
+              value={draft.amount ?? 0}
+              onChange={(e) => setDraft({ ...draft, amount: Number(e.target.value) })}
+              className="w-28 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-2 text-sm text-white"
+              placeholder="Monto"
+            />
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="date"
+              value={draft.startDate ?? new Date().toISOString().slice(0, 10)}
+              onChange={(e) => setDraft({ ...draft, startDate: e.target.value, nextDate: e.target.value })}
+              className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-2 text-xs text-white"
+            />
+            <select
+              value={draft.frequency ?? "monthly"}
+              onChange={(e) => setDraft({ ...draft, frequency: e.target.value as ScheduleFrequency })}
+              className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-2 text-xs text-white"
+            >
+              {SCHEDULE_FREQUENCIES.map((f) => (
+                <option key={f.value} value={f.value}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="date"
+              value={draft.endDate ?? ""}
+              onChange={(e) => setDraft({ ...draft, endDate: e.target.value })}
+              aria-label="Fecha final (opcional)"
+              className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-2 text-xs text-white"
+            />
+            <input
+              type="number"
+              min="0"
+              inputMode="numeric"
+              value={draft.occurrences ?? ""}
+              onChange={(e) => setDraft({ ...draft, occurrences: Number(e.target.value) || undefined })}
+              aria-label="Ocurrencias (opcional)"
+              placeholder="Veces"
+              className="w-28 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-2 text-xs text-white"
+            />
+          </div>
+          {aiNote ? <p className="text-[11px] text-yellow-300/80">{aiNote}</p> : null}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setDraft(null)
+                setAiNote("")
+              }}
+              className="flex-1 rounded-xl border border-neutral-700 py-2 text-xs font-bold text-neutral-300"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={commit}
+              className="flex-1 rounded-xl bg-yellow-400 py-2 text-xs font-extrabold text-black"
+            >
+              Guardar
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => {
+            setDraft(newScheduleDraft())
+            setAiNote("")
+          }}
+          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-neutral-700 py-2.5 text-xs font-bold text-neutral-300"
+        >
+          <Plus className="size-3.5" /> Nueva programación
+        </button>
+      )}
+      <div className="mt-2 flex flex-col gap-1.5">
+        {schedules.length === 0 && !draft ? (
+          <p className="py-1 text-center text-[11px] text-neutral-600">Sin programaciones todavía.</p>
+        ) : null}
+        {schedules.map((entry) => (
+          <div
+            key={entry.id}
+            className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-black/20 p-2.5"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-bold text-white">{entry.description}</p>
+              <p className="text-[10px] text-neutral-500">
+                {entry.kind === "income" ? "Ingreso" : "Gasto"} · {entry.frequency} · desde {entry.startDate}
+                {entry.endDate ? ` → ${entry.endDate}` : ""}
+              </p>
+            </div>
+            <strong className={entry.kind === "income" ? "text-green-400" : "text-rose-400"}>
+              {money(entry.amount)}
+            </strong>
+            <button
+              type="button"
+              onClick={() => setDraft({ ...entry })}
+              aria-label="Editar programación"
+              className="rounded-lg border border-neutral-700 p-1.5 text-neutral-400"
+            >
+              <Pencil className="size-3" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onDelete(entry.id)}
+              aria-label="Eliminar programación"
+              className="rounded-lg border border-neutral-700 p-1.5 text-rose-400"
+            >
+              <Trash2 className="size-3" />
+            </button>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function TollBills({ bills, onTogglePaid }: { bills: TollBill[]; onTogglePaid: (id: string) => void }) {
+  const unpaid = bills.filter((b) => b.status === "unpaid").length
+  return (
+    <section className="rounded-2xl border border-sky-500/30 bg-sky-950/10 p-3">
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <p className="flex items-center gap-2 text-sm font-extrabold text-white">
+            <Receipt className="size-4 text-sky-400" /> FACTURAS DE PEAJES
+          </p>
+          <p className="text-[11px] text-neutral-500">
+            Factura diaria generada al cerrar REGISTER; vence al día siguiente.
+          </p>
+        </div>
+        <span className="text-[10px] font-bold text-sky-400">{unpaid} pendientes</span>
+      </div>
+      {bills.length === 0 ? (
+        <p className="py-2 text-center text-xs text-neutral-600">Todavía no hay facturas diarias.</p>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {bills.map((bill) => (
+            <div
+              key={bill.id}
+              className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-black/20 p-2.5"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-bold text-white">Peajes del {bill.serviceDate}</p>
+                <p className="text-[10px] text-neutral-500">
+                  Vence {bill.dueDate} · {bill.status === "paid" ? "Pagada" : "Pendiente"}
+                </p>
+              </div>
+              <strong className="text-sky-300">{money(bill.amount)}</strong>
+              <button
+                type="button"
+                onClick={() => onTogglePaid(bill.id)}
+                aria-label="Cambiar estado de factura"
+                className={cn(
+                  "rounded-lg border p-1.5",
+                  bill.status === "paid"
+                    ? "border-green-500/50 text-green-400"
+                    : "border-neutral-700 text-neutral-400",
+                )}
+              >
+                <Check className="size-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+// Crea la factura de peajes del día (misma API que el paquete remoto v0;
+// REGISTER la genera al cerrar el día).
+export function createTollBill(trips: { toll: number }[], serviceDate: string): TollBill {
+  const amount = trips.reduce((sum, trip) => sum + (Number(trip.toll) || 0), 0)
+  return {
+    id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `bill-${Date.now()}`,
+    serviceDate,
+    dueDate: addDays(serviceDate, 1),
+    amount,
+    status: "unpaid",
+  }
+}
+
+
 export function FinanceScreen({
   expenses,
   onSave,
@@ -28,9 +349,6 @@ export function FinanceScreen({
   onSave: (e: CopilotoExpense) => void
   onDelete: (id: string) => void
 }) {
-  void expenses
-  void onSave
-  void onDelete
   const [activeTab, setActiveTab] = useState<SubTab>("caja")
 
   const { startingBalance, reserveBalance, resetAllData } = useFinance()
@@ -38,6 +356,49 @@ export function FinanceScreen({
   const upcomingBills = getUpcomingExpensesTotal(7)
   const { amount: surplus, isSafe } = getInvestableSurplus()
   const emergencyData = getEmergencyPlan()
+
+  // Ledger programado + facturas de peajes: mismas claves que REGISTER.
+  const [schedules, setSchedules] = useState<ScheduledEntry[]>([])
+  const [bills, setBills] = useState<TollBill[]>([])
+  useEffect(() => {
+    try {
+      const s = localStorage.getItem("claris_scheduled_entries")
+      if (s) setSchedules(JSON.parse(s))
+      const b = localStorage.getItem("claris_toll_bills")
+      if (b) setBills(JSON.parse(b))
+    } catch {}
+  }, [])
+  function saveSchedule(entry: ScheduledEntry) {
+    setSchedules((current) => {
+      const next = current.some((item) => item.id === entry.id)
+        ? current.map((item) => (item.id === entry.id ? entry : item))
+        : [entry, ...current]
+      try {
+        localStorage.setItem("claris_scheduled_entries", JSON.stringify(next))
+      } catch {}
+      return next
+    })
+  }
+  function deleteSchedule(id: string) {
+    setSchedules((current) => {
+      const next = current.filter((e) => e.id !== id)
+      try {
+        localStorage.setItem("claris_scheduled_entries", JSON.stringify(next))
+      } catch {}
+      return next
+    })
+  }
+  function toggleBill(id: string) {
+    setBills((current) => {
+      const next = current.map((b) =>
+        b.id === id ? { ...b, status: b.status === "paid" ? ("unpaid" as const) : ("paid" as const) } : b,
+      )
+      try {
+        localStorage.setItem("claris_toll_bills", JSON.stringify(next))
+      } catch {}
+      return next
+    })
+  }
 
   return (
     <div className="flex h-full flex-col">
@@ -64,37 +425,27 @@ export function FinanceScreen({
       </div>
 
       <div className="flex-1 space-y-5 overflow-y-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <div className="grid grid-cols-3 gap-1 rounded-xl border border-neutral-800 bg-neutral-900 p-1 text-xs font-semibold">
-          <button
-            type="button"
-            onClick={() => setActiveTab("caja")}
-            className={cn(
-              "rounded-lg py-2 transition-all",
-              activeTab === "caja" ? "bg-yellow-400 text-black shadow-md" : "text-neutral-400 hover:text-white",
-            )}
-          >
-            Corrida de Caja
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("plan")}
-            className={cn(
-              "rounded-lg py-2 transition-all",
-              activeTab === "plan" ? "bg-yellow-400 text-black shadow-md" : "text-neutral-400 hover:text-white",
-            )}
-          >
-            Plan de Pagos
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("gastos")}
-            className={cn(
-              "rounded-lg py-2 transition-all",
-              activeTab === "gastos" ? "bg-yellow-400 text-black shadow-md" : "text-neutral-400 hover:text-white",
-            )}
-          >
-            Mis Gastos
-          </button>
+        <div className="grid grid-cols-4 gap-1 rounded-xl border border-neutral-800 bg-neutral-900 p-1 text-[11px] font-semibold">
+          {(
+            [
+              ["caja", "Corrida de Caja"],
+              ["plan", "Plan de Pagos"],
+              ["peajes", "Peajes"],
+              ["gastos", "Mis Gastos"],
+            ] as [SubTab, string][]
+          ).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setActiveTab(key)}
+              className={cn(
+                "rounded-lg py-2 transition-all",
+                activeTab === key ? "bg-yellow-400 text-black shadow-md" : "text-neutral-400 hover:text-white",
+              )}
+            >
+              {label}
+            </button>
+          ))}
         </div>
         {activeTab === "caja" && (
           <div className="space-y-4">
@@ -152,16 +503,27 @@ export function FinanceScreen({
               </p>
             </div>
             <UpcomingBillsForm />
+            <ScheduleLedger schedules={schedules} onSave={saveSchedule} onDelete={deleteSchedule} />
+          </div>
+        )}
+
+        {activeTab === "peajes" && (
+          <div className="space-y-3">
+            <TollBills bills={bills} onTogglePaid={toggleBill} />
           </div>
         )}
 
         {activeTab === "gastos" && (
-          <div className="space-y-4 rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
-            <h3 className="flex items-center gap-2 text-sm font-bold uppercase text-white">
-              <PlusCircle className="size-4 text-yellow-300" />
-              Registrar Nuevo Gasto Operativo
-            </h3>
-            <ExpenseRegisterForm />
+          <div className="space-y-4">
+            <div className="space-y-4 rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
+              <h3 className="flex items-center gap-2 text-sm font-bold uppercase text-white">
+                <PlusCircle className="size-4 text-yellow-300" />
+                Registrar Nuevo Gasto Operativo
+              </h3>
+              <ExpenseRegisterForm />
+            </div>
+            {/* Gastos del copiloto (viajes/sincronizados): misma lista de la pestaña EXPENSES. */}
+            <ExpensesScreen expenses={expenses} onSave={onSave} onDelete={onDelete} />
           </div>
         )}
       </div>

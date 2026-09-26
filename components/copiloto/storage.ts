@@ -279,6 +279,9 @@ const ALL_KEYS = [
   "ic-week-overrides",
   // FINANCE semanal (sin zustand): semana, próximas facturas y reserva.
   "claris_finance_week_v1",
+  // Ledger programado + facturas de peajes (mismas claves que REGISTER).
+  "claris_scheduled_entries",
+  "claris_toll_bills",
 ]
 
 // Build the full export document (version 2) in the exact shape the original
