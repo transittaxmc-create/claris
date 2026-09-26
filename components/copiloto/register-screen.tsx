@@ -243,8 +243,7 @@ export function RegisterScreen({
           <StatCard label="COUNT PENDING" value={String(totals.pending)} valueClass="text-white" />
         </div>
 
-        <ScheduleLedger schedules={schedules} onSave={saveSchedule} onDelete={deleteSchedule} />
-        <TollBills bills={tollBills} onTogglePaid={toggleBill} />
+        {/* REGISTER conserva únicamente los viajes para reconciliarlos con invoices y pagos de plataformas. */}
 
         {/* Filters */}
         <div className="flex gap-2">
