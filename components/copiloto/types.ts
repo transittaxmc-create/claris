@@ -21,6 +21,22 @@ export const EXPENSE_CATEGORIES = [
 
 export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
 
+export type ScheduleFrequency = "once" | "daily" | "weekly" | "monthly" | "annual"
+
+export type ScheduledEntry = {
+  id: string
+  kind: "income" | "expense"
+  description: string
+  category: string
+  amount: number
+  startDate: string
+  endDate?: string
+  occurrences?: number
+  frequency: ScheduleFrequency
+  nextDate: string
+  active: boolean
+}
+
 export type Expense = {
   id: string
   date: string // "YYYY-MM-DD"
