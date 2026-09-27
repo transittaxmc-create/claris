@@ -5,6 +5,7 @@ import { Lock, Plus, ArrowRight, Download, Upload, CalendarClock, Sparkles, Penc
 import { cn } from "@/lib/utils"
 import { type Trip, type ScheduledEntry, type ScheduleFrequency, type TollBill, grossOf, netOf, money } from "./types"
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
+import { isVoucherPlatform } from "./platform-meta"
 import {
   diffOf,
   expectedOf,
@@ -184,7 +185,9 @@ function TripCard({
         <div className="flex min-w-0 items-center gap-2">
           <PlatformAvatar platform={trip.platform} size={24} />
           <span className="truncate font-bold text-white">{trip.platform}</span>
-          {trip.isVoucher && (
+          {/* El vale depende de la plataforma, así que la tarjeta no puede
+              contradecir el distintivo del desplegable. */}
+          {(trip.isVoucher || isVoucherPlatform(trip.platform)) && (
             <span className="shrink-0 rounded-full border border-orange-400/60 px-2 py-0.5 text-[9px] font-bold text-orange-400">
               VOUCHER
             </span>

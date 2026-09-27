@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { PLATFORMS, type Platform, type Reconciliation, type Trip, type TripStatus, money, netOf } from "./types"
 import { MoneyInput } from "./money-input"
 import { PlatformAvatar } from "./platform-avatar"
+import { isVoucherPlatform } from "./platform-meta"
 import { diffOf, expectedOf, receivedOf, reconStateOf, applyDifferenceToTrip, round2, type ReconState } from "./reconciliation"
 
 // Tono por estado, con el mismo criterio que en REGISTER para no confundir.
@@ -82,7 +83,10 @@ export function TripEditSheet({
                 <button
                   key={p}
                   type="button"
-                  onClick={() => set("platform", p as Platform)}
+                  onClick={() =>
+                    // Mantiene isVoucher en sintonía con la plataforma elegida.
+                    setDraft((d) => (d ? { ...d, platform: p as Platform, isVoucher: isVoucherPlatform(p as Platform) } : d))
+                  }
                   className={cn(
                     "flex items-center gap-1.5 rounded-full border py-1.5 pl-1.5 pr-3 text-xs font-semibold transition-colors",
                     p === draft.platform
