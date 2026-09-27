@@ -6,12 +6,18 @@ import { cn } from "@/lib/utils"
 import { netOf, tripDateOf, type Trip } from "./types"
 import { hourWindow, hourlyAdvice, productionThisHour } from "@/lib/production"
 
-// Motivador de producción por hora.
+// Motivador de producción por hora, en formato COMPACTO.
 //
 // - Cronómetro que se reinicia en cada hora en punto (no acumula entre horas).
-// - Caja con lo producido en la hora y el ritmo proyectado ($/h).
+// - Caja con lo producido en la hora y lo que falta para la meta.
 // - Sugerencia realista: si el ritmo necesario para la meta no es alcanzable a
 //   estas alturas, lo dice claramente en vez de pedir algo imposible.
+//
+// IMPORTANTE (posición): este componente devuelve un fragmento con tres piezas
+// y está pensado para vivir DENTRO de una cuadrícula de dos columnas, como hijo
+// directo. La primera pieza (los dos recuadros) ocupa la segunda columna, al
+// lado del box REF / INVOICE; el deslizador de la meta y la sugerencia se
+// extienden a las dos columnas con `col-span-2`.
 
 const GOAL_KEY = "claris_hourly_goal"
 const DEFAULT_GOAL = 55
@@ -64,25 +70,52 @@ export function HourlyProduction({ trips }: { trips: Trip[] }) {
           : "border-rose-500/40 bg-rose-950/20 text-rose-200"
 
   const elapsedPct = Math.min(100, Math.round((win.elapsedMin / 60) * 100))
+  const mm = String(Math.floor(win.elapsedSec / 60)).padStart(2, "0")
+  const ss = String(win.elapsedSec % 60).padStart(2, "0")
 
   return (
-    <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
-      <div className="flex items-center justify-between gap-2">
-        <p className="flex items-center gap-1.5 text-[10px] font-bold tracking-wide text-neutral-400">
-          <Timer className="size-3.5 text-yellow-400" /> PRODUCCIÓN DE ESTA HORA
-        </p>
+    <>
+      {/* Los dos recuadros: cronómetro + producción de la hora. Van al lado del
+          box REF / INVOICE para no llenar la pantalla. */}
+      <div className="flex shrink-0 items-stretch gap-1.5">
+        <div className="w-[70px] rounded-xl border border-neutral-800 bg-black/25 px-2 py-1.5">
+          <div className="flex items-center gap-1 text-[8px] font-bold tracking-wide text-neutral-500">
+            <Timer className="size-2.5 text-yellow-400" /> HORA
+          </div>
+          <div className="font-mono text-base font-black leading-tight text-white">
+            {mm}:{ss}
+          </div>
+          <div className="mt-1 h-0.5 overflow-hidden rounded-full bg-neutral-800">
+            <div className="h-full bg-yellow-400 transition-all" style={{ width: `${elapsedPct}%` }} />
+          </div>
+          <div className="mt-0.5 text-[8px] text-neutral-500">
+            {win.remainingMin > 0 ? `quedan ${win.remainingMin}m` : "cerrada"}
+          </div>
+        </div>
+
         <button
           type="button"
           onClick={() => setEditing((v) => !v)}
-          className="flex items-center gap-1 rounded-full border border-neutral-700 px-2 py-0.5 text-[9px] font-bold text-neutral-400 hover:text-white"
-          title="Ajustar la meta por hora"
+          title="Tocar para ajustar la meta por hora"
+          className="w-[84px] rounded-xl border border-neutral-800 bg-black/25 px-2 py-1.5 text-left transition-colors hover:border-neutral-700"
         >
-          <Target className="size-2.5" /> META ${goal}/h
+          <div className="flex items-center gap-1 text-[8px] font-bold tracking-wide text-neutral-500">
+            <TrendingUp className="size-2.5 text-emerald-400" /> $ / HORA
+          </div>
+          <div className="text-base font-black leading-tight text-emerald-400">${earned.toFixed(2)}</div>
+          <div className="mt-0.5 truncate text-[8px] text-neutral-500">
+            {advice.remainingToGoal > 0 ? `faltan $${advice.remainingToGoal.toFixed(2)}` : "meta cumplida"}
+          </div>
+          <div className="mt-0.5 flex items-center gap-0.5 text-[8px] font-bold text-yellow-400/90">
+            <Target className="size-2.5" /> META ${goal}
+          </div>
         </button>
       </div>
 
+      {/* Ajuste de la meta (se abre al tocar el recuadro de $ / HORA) */}
       {editing && (
-        <div className="mt-2 flex items-center gap-2">
+        <div className="col-span-2 flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900/60 px-2.5 py-1.5">
+          <Target className="size-3 shrink-0 text-yellow-400" />
           <input
             type="range"
             min={20}
@@ -90,60 +123,21 @@ export function HourlyProduction({ trips }: { trips: Trip[] }) {
             step={5}
             value={goal}
             onChange={(e) => setGoal(Number(e.target.value))}
-            className="flex-1 accent-yellow-400"
+            className="min-w-0 flex-1 accent-yellow-400"
           />
-          <span className="w-10 text-right text-[11px] font-bold text-yellow-300">${goal}</span>
+          <span className="w-12 shrink-0 text-right text-[11px] font-bold text-yellow-300">${goal}/h</span>
         </div>
       )}
 
-      <div className="mt-2 grid grid-cols-2 gap-2">
-        {/* Cronómetro de la hora en curso */}
-        <div className="rounded-xl border border-neutral-800 bg-black/25 p-2">
-          <div className="text-[9px] font-bold text-neutral-500">CRONÓMETRO · {win.label}</div>
-          <div className="flex items-baseline gap-1">
-            <span className="font-mono text-xl font-black text-white">
-              {String(Math.floor(win.elapsedSec / 60)).padStart(2, "0")}:
-              {String(win.elapsedSec % 60).padStart(2, "0")}
-            </span>
-            <span className="text-[10px] text-neutral-500">/ 60:00</span>
-          </div>
-          <div className="mt-1 h-1 overflow-hidden rounded-full bg-neutral-800">
-            <div className="h-full bg-yellow-400 transition-all" style={{ width: `${elapsedPct}%` }} />
-          </div>
-          <div className="mt-1 text-[9px] text-neutral-500">
-            {win.remainingMin > 0 ? `quedan ${win.remainingMin} min` : "hora cerrada"}
-          </div>
-        </div>
-
-        {/* Producción de la hora y ritmo */}
-        <div className="rounded-xl border border-neutral-800 bg-black/25 p-2">
-          <div className="text-[9px] font-bold text-neutral-500">PRODUCIENDO / HORA</div>
-          <div className="flex items-baseline gap-1">
-            <span className="text-xl font-black text-emerald-400">${earned.toFixed(2)}</span>
-          </div>
-          <div className="mt-0.5 flex items-center gap-1 text-[10px] text-neutral-400">
-            <TrendingUp className="size-3" />
-            {advice.projectedRate !== null ? (
-              <span>
-                ritmo <strong className="text-neutral-200">${advice.projectedRate.toFixed(0)}/h</strong>
-              </span>
-            ) : (
-              <span>calculando ritmo…</span>
-            )}
-          </div>
-          <div className="mt-1 text-[9px] text-neutral-500">
-            {advice.remainingToGoal > 0 ? `faltan $${advice.remainingToGoal.toFixed(2)}` : "meta cumplida"}
-            {advice.neededRate !== null && advice.remainingToGoal > 0
-              ? ` · necesitarías $${advice.neededRate.toFixed(0)}/h`
-              : ""}
-          </div>
-        </div>
-      </div>
-
-      {/* Sugerencia realista */}
-      <p className={cn("mt-2 rounded-xl border px-2.5 py-2 text-[10px] font-semibold leading-snug", toneClass)}>
+      {/* Sugerencia realista, en una línea y a todo el ancho */}
+      <p
+        className={cn(
+          "col-span-2 rounded-xl border px-2.5 py-1.5 text-[9px] font-semibold leading-snug",
+          toneClass,
+        )}
+      >
         {advice.message}
       </p>
-    </section>
+    </>
   )
 }
