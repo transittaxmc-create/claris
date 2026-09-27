@@ -47,6 +47,12 @@ const QUICK_PROMPTS = [
     prompt:
       "Hazme un resumen de mis gastos deducibles de impuestos de este mes por categoría, con totales y consejos.",
   },
+  {
+    icon: Sparkles,
+    label: "Analizar mis gastos",
+    prompt:
+      "[ANÁLISIS DE GASTOS] Revisa todos mis gastos: verifica que cada uno esté en la categoría correcta y clasifícalos como business (deducible) o personal. Corrige los que estén mal.",
+  },
 ]
 
 // Historial de la conversación con el copiloto: se conserva entre sesiones para
@@ -89,12 +95,16 @@ export function AIScreen({
   trips,
   expenses,
   onApplyBankMatches,
+  onApplyExpenseUpdates,
 }: {
   trips: Trip[]
   expenses: Expense[]
   // La conciliación bancaria devuelve matches {tripId, amount}: el padre los
   // aplica a los viajes (received) y persiste.
   onApplyBankMatches?: (matches: { tripId: string; amount: number }[]) => number
+  // El análisis de gastos devuelve correcciones {expenseId, category?,
+  // classification?}: el padre las aplica a los gastos y persiste.
+  onApplyExpenseUpdates?: (updates: { expenseId: string; category?: string; classification?: "business" | "personal" }[]) => number
 }) {
   const [messages, setMessages] = useState<Message[]>(() => loadHistory() ?? [welcomeMessage()])
   const [input, setInput] = useState("")
@@ -232,11 +242,13 @@ export function AIScreen({
       status: t.status,
     }))
 
-    const expensesList = expenses.slice(-10).map((e) => ({
+    const expensesList = expenses.slice(-50).map((e) => ({
+      id: e.id,
       vendor: e.vendor,
       category: e.category,
       amount: e.amount,
       date: e.date,
+      classification: e.classification ?? null,
     }))
 
     // Reconciliación: esperado/recibido/diferencia. Es lo que le permite a la
@@ -377,14 +389,18 @@ export function AIScreen({
 
       const data = await response.json()
       if (response.ok && data.reply) {
-        // Conciliación bancaria: la IA devolvió matches estructurados. Se
-        // ACTUALIZAN los viajes (received = lo que pagó el banco) y se añade
-        // una nota al chat con cuántos se aplicaron.
+        // Actualizaciones estructuradas de la IA: pagos del banco (viajes) y
+        // correcciones de gastos (categoría + business/personal).
         let appliedNote = ""
         const matches = data.structured?.matches
         if (Array.isArray(matches) && matches.length > 0 && onApplyBankMatches) {
           const applied = onApplyBankMatches(matches)
           appliedNote = `\n\n✅ ACTUALIZADO: ${applied} viaje${applied === 1 ? "" : "s"} marcado${applied === 1 ? "" : "s"} con el pago del banco. Revisa REGISTER para ver el descuadre restante.`
+        }
+        const expenseUpdates = data.structured?.expenseUpdates
+        if (Array.isArray(expenseUpdates) && expenseUpdates.length > 0 && onApplyExpenseUpdates) {
+          const applied = onApplyExpenseUpdates(expenseUpdates)
+          appliedNote += `\n\n🏷️ GASTOS: ${applied} corrección${applied === 1 ? "" : "es"} aplicada${applied === 1 ? "" : "s"} (categoría y clasificación business/personal). Revisa EXPENSES.`
         }
         setMessages((prev) => [
           ...prev,

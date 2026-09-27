@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip } from "./types"
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
 import { isVoucherPlatform } from "./platform-meta"
+import { HourlyProduction } from "./hourly-production"
 import { captureLocation, GpsAccuracyError, saveTempLocation, loadTempLocation, clearTempLocations } from "./geo"
 import { MoneyInput } from "./money-input"
 
@@ -151,8 +152,10 @@ function LocationColumn({
 
 export function EntryScreen({
   onSave,
+  trips = [],
 }: {
   onSave: (t: Trip) => void
+  trips?: Trip[]
 }) {
   const [draft, setDraft] = useState<Trip>(() => {
     const initial = newTrip()
@@ -430,6 +433,11 @@ export function EntryScreen({
               className="min-h-[4.5rem] rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-lg text-white outline-none placeholder:text-neutral-600 focus:border-neutral-600"
             />
           </label>
+
+          {/* Motivador: cronómetro de la hora + producción por hora */}
+          <div className="mt-3">
+            <HourlyProduction trips={trips} />
+          </div>
         </section>
       </div>
 

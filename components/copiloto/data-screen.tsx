@@ -40,9 +40,11 @@ export function DataScreen({
   syncing,
   onRefreshInfo,
   onExport,
+  onExportFull,
   onImport,
   onLoadDemo,
   onResetAll,
+  onResetCache,
   onConnectSync,
   onSyncNow,
   onDisconnectSync,
@@ -56,15 +58,20 @@ export function DataScreen({
   syncing: boolean
   onRefreshInfo: () => void
   onExport: () => void
+  // Descarga TODOS los datos (JSON crudo de cada archivo) + índice HTML legible.
+  onExportFull: () => void
   onImport: (file: File) => void
   onLoadDemo: () => void
   onResetAll: () => void
+  // Limpia solo caché y pantallas, conservando los datos.
+  onResetCache: () => void
   onConnectSync: (code: string) => void
   onSyncNow: () => void
   onDisconnectSync: () => void
 }) {
   const [codeDraft, setCodeDraft] = useState("")
   const [confirmReset, setConfirmReset] = useState(false)
+  const [confirmCache, setConfirmCache] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -155,6 +162,21 @@ export function DataScreen({
               }}
             />
           </div>
+
+          {/* Backup TOTAL: todos los archivos + índice HTML legible */}
+          <button
+            type="button"
+            onClick={onExportFull}
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-sky-500/40 bg-sky-950/30 py-2.5 text-[11px] font-bold text-sky-300 hover:bg-sky-900/40"
+          >
+            <Download className="size-3.5" /> DESCARGAR TODO (BACKUP TOTAL)
+          </button>
+          <p className="mt-1.5 text-[10px] leading-tight text-neutral-500">
+            Descarga <strong className="text-neutral-300">todos los archivos JSON</strong> de la app
+            (viajes, gastos, finanzas, ledger, categorías, ajustes) más un{" "}
+            <strong className="text-neutral-300">índice HTML legible</strong> con totales y tablas. Con
+            eso nunca hay que empezar desde cero.
+          </p>
           {trips.length === 0 && (
             <button
               type="button"
@@ -237,11 +259,50 @@ export function DataScreen({
         <section className="rounded-2xl border border-rose-900/60 bg-rose-950/20 p-3">
           <div className="mb-1 flex items-center gap-2">
             <Eraser className="size-4 text-rose-400" />
-            <h2 className="text-xs font-bold tracking-wide text-rose-300">RESET TOTAL</h2>
+            <h2 className="text-xs font-bold tracking-wide text-rose-300">RESET</h2>
           </div>
+
+          {/* Opción 1: limpiar solo caché y pantallas (conserva los datos) */}
           <p className="mb-2 text-[10px] leading-tight text-neutral-400">
-            Borra todos los viajes de este teléfono: memoria, localStorage, copia de seguridad, GPS temporal e
-            IndexedDB. Se conserva el código de sync para poder volver a bajar tus datos.
+            <strong className="text-neutral-300">Solo caché y pantallas:</strong> borra el historial del
+            chat de IA, las ubicaciones GPS temporales y la semana de finanzas (se recalcula sola).
+            <strong className="text-emerald-300"> Conserva viajes, gastos, ledger y código.</strong>
+          </p>
+          {confirmCache ? (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmCache(false)
+                  onResetCache()
+                }}
+                className="flex-1 rounded-xl bg-amber-500 py-2.5 text-[11px] font-extrabold text-black active:scale-[0.99]"
+              >
+                SÍ, LIMPIAR CACHÉ
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmCache(false)}
+                className="flex-1 rounded-xl border border-neutral-700 py-2.5 text-[11px] font-bold text-neutral-300"
+              >
+                CANCELAR
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setConfirmCache(true)}
+              className="w-full rounded-xl border border-amber-500/50 bg-amber-500/10 py-2.5 text-[11px] font-extrabold text-amber-300 active:scale-[0.99]"
+            >
+              LIMPIAR SOLO CACHÉ Y PANTALLAS
+            </button>
+          )}
+
+          {/* Opción 2: reset desde cero (todo) */}
+          <p className="mb-2 mt-3 border-t border-rose-900/40 pt-2 text-[10px] leading-tight text-neutral-400">
+            <strong className="text-rose-300">Desde cero (ALL):</strong> borra todos los viajes de este
+            teléfono: memoria, localStorage, copia de seguridad, GPS temporal e IndexedDB. Se conserva el
+            código de sync para poder volver a bajar tus datos.
           </p>
           {confirmReset ? (
             <div className="flex gap-2">
@@ -269,7 +330,7 @@ export function DataScreen({
               onClick={() => setConfirmReset(true)}
               className="w-full rounded-xl border border-rose-500/50 bg-rose-500/10 py-2.5 text-[11px] font-extrabold text-rose-300 active:scale-[0.99]"
             >
-              RESETEAR TODO Y EL STORAGE
+              RESETEAR TODO DESDE CERO (ALL)
             </button>
           )}
         </section>

@@ -9,9 +9,11 @@ import { EntryScreen } from "./entry-screen"
 import { ExpensesScreen } from "./expenses-screen"
 import { FinanceScreen } from "./finance-screen"
 import { RegisterScreen } from "./register-screen"
+import { ReportsScreen } from "./reports-screen"
 import { TripEditSheet } from "./trip-edit-sheet"
 import { applyDifferenceToTrip, applyBankMatchesToTrips, normalizeTripStatus } from "./reconciliation"
-import { SEED_TRIPS, newTrip, stampExpense, type Expense, type Trip } from "./types"
+import { SEED_TRIPS, newTrip, stampExpense, applyExpenseUpdatesToExpenses, grossOf, netOf, tripDateOf, type Expense, type Trip } from "./types"
+import { buildBackupBundle, buildBackupHtml, collectAppKeys } from "@/lib/backup"
 import {
   addExpenseTombstone,
   addTombstone,
@@ -217,6 +219,18 @@ export function CopilotoApp() {
     return result.applied
   }
 
+  // Análisis de gastos de la IA: aplica las correcciones de categoría y de
+  // clasificación business/personal. Devuelve cuántos gastos se corrigieron.
+  function applyExpenseUpdates(
+    updates: { expenseId: string; category?: string; classification?: "business" | "personal" }[],
+  ): number {
+    const result = applyExpenseUpdatesToExpenses(expensesRef.current, updates)
+    if (result.applied === 0) return 0
+    expensesRef.current = result.expenses
+    setExpenses(result.expenses.map((e) => stampExpense(e)))
+    return result.applied
+  }
+
   function deleteTrip(id: string) {
     // El borrado queda anotado para que no "reviva" al sincronizar.
     tombstonesRef.current = addTombstone(id)
@@ -379,6 +393,56 @@ export function CopilotoApp() {
     if (ok) void resetAll()
   }
 
+  function downloadFile(filename: string, content: string, type: string) {
+    const blob = new Blob([content], { type })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  // Copia de seguridad TOTAL: todos los datos (JSON crudo de cada clave) más un
+  // índice HTML legible, para no tener que empezar nunca desde cero.
+  function exportFullBackup() {
+    persist(tripsRef.current, expensesRef.current)
+    const stamp = new Date().toISOString().slice(0, 10)
+    const keys = collectAppKeys(localStorage)
+    const input = {
+      date: stamp,
+      trips: tripsRef.current.map((t) => ({
+        date: tripDateOf(t),
+        platform: t.platform,
+        gross: grossOf(t),
+        net: netOf(t),
+      })),
+      expenses: expensesRef.current.map((e) => ({
+        date: e.date,
+        vendor: e.vendor,
+        category: e.category,
+        amount: e.amount,
+        classification: e.classification,
+      })),
+      keys,
+    }
+    downloadFile(`claris-backup-total-${stamp}.json`, buildBackupBundle(input), "application/json")
+    downloadFile(`claris-indice-${stamp}.html`, buildBackupHtml(input), "text/html;charset=utf-8")
+  }
+
+  // Reset SOLO de caché y pantallas: borra el historial del chat, las claves
+  // temporales de GPS y la semana de finanzas (se recalcula sola). CONSERVA
+  // viajes, gastos, ledger programado, categorías y código de sincronización.
+  function resetCacheOnly() {
+    try {
+      localStorage.removeItem("claris_ai_history")
+      localStorage.removeItem("CURRENT_PICKUP")
+      localStorage.removeItem("CURRENT_DROP_OFF")
+      localStorage.removeItem("claris_finance_week_v1")
+    } catch {}
+    window.location.reload()
+  }
+
   function connectSync(code: string) {
     const clean = code.trim().toLowerCase()
     if (!isValidSyncCode(clean)) {
@@ -406,7 +470,7 @@ export function CopilotoApp() {
             <div className="flex h-full items-center justify-center text-sm text-neutral-500">Cargando tus viajes…</div>
           ) : (
             <>
-              {tab === "ENTRY" && <EntryScreen onSave={saveNewFromEntry} />}
+              {tab === "ENTRY" && <EntryScreen onSave={saveNewFromEntry} trips={trips} />}
               {tab === "REGISTER" && (
                 <RegisterScreen
                   trips={trips}
@@ -426,7 +490,14 @@ export function CopilotoApp() {
               {tab === "FINANCE" && (
                 <FinanceScreen trips={trips} expenses={expenses} onSave={saveExpense} onDelete={deleteExpense} />
               )}
-              {tab === "AI" && <AIScreen trips={trips} expenses={expenses} onApplyBankMatches={applyBankMatches} />}
+              {tab === "AI" && (
+                <AIScreen
+                  trips={trips}
+                  expenses={expenses}
+                  onApplyBankMatches={applyBankMatches}
+                  onApplyExpenseUpdates={applyExpenseUpdates}
+                />
+              )}
               {tab === "DATA" && (
                 <DataScreen
                   trips={trips}
@@ -438,18 +509,22 @@ export function CopilotoApp() {
                   syncing={syncing}
                   onRefreshInfo={refreshInfo}
                   onExport={exportJson}
+                  onExportFull={exportFullBackup}
                   onImport={importJson}
                   onLoadDemo={loadDemo}
                   onResetAll={resetAll}
+                  onResetCache={resetCacheOnly}
                   onConnectSync={connectSync}
                   onSyncNow={() => syncCode && runSync(syncCode)}
                   onDisconnectSync={disconnectSync}
                 />
               )}
+              {tab === "REPORTS" && <ReportsScreen trips={trips} expenses={expenses} />}
               {tab !== "ENTRY" &&
                 tab !== "REGISTER" &&
                 tab !== "EXPENSES" &&
                 tab !== "FINANCE" &&
+                tab !== "REPORTS" &&
                 tab !== "AI" &&
                 tab !== "DATA" && <Placeholder label={tab} />}
             </>
