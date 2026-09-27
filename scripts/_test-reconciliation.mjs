@@ -151,11 +151,15 @@ const shuffled = groupByPlatform([
   trip({ id: "c", platform: "Uber", earnings: 5 }),
   trip({ id: "d", platform: "Lyft", earnings: 5 }),
   trip({ id: "e", platform: "Aventus Ride", earnings: 5 }),
+  trip({ id: "f", platform: "Eco Ride", earnings: 5 }),
+  trip({ id: "g", platform: "Throo", earnings: 5 }),
+  trip({ id: "h", platform: "AKI Technology", earnings: 5 }),
+  trip({ id: "i", platform: "Classic Ryde", earnings: 5 }),
 ])
 check(
   "orden canónico de PLATFORMS",
   shuffled.map((g) => g.platform),
-  ["Uber", "Lyft", "Aventus Ride", "Cash", "Other"],
+  ["Uber", "Lyft", "Eco Ride", "Throo", "AKI Technology", "Classic Ryde", "Aventus Ride", "Cash", "Other"],
 )
 
 console.log("\n== orden ==")

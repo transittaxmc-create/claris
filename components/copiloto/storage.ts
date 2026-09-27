@@ -1,4 +1,4 @@
-import { type Trip, type Platform, type Reconciliation, type LocationPoint, PLATFORMS, type Expense, stampExpense } from "./types"
+import { type Trip, type Platform, type Reconciliation, type LocationPoint, normalizePlatformName, type Expense, stampExpense } from "./types"
 import { round2, reconciliationMatches } from "./reconciliation"
 import { parseTombstones, pruneTombstones, type Tombstones } from "@/lib/sync"
 
@@ -43,7 +43,9 @@ function toTime(datetime: string): string {
 }
 
 function normalizePlatform(p: unknown): Platform {
-  return (PLATFORMS as string[]).includes(p as string) ? (p as Platform) : "Other"
+  // Se delega en types.ts para que los nombres antiguos ("EcoRide", "Aventus")
+  // se conserven en vez de caer todos a "Other".
+  return normalizePlatformName(p)
 }
 
 // Lee un número del objeto reconciliation aceptando que venga como string

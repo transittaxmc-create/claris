@@ -5,6 +5,7 @@ import { X, Trash2, Scale, CircleCheck, TrendingDown, TrendingUp, Clock } from "
 import { cn } from "@/lib/utils"
 import { PLATFORMS, type Platform, type Reconciliation, type Trip, type TripStatus, money, netOf } from "./types"
 import { MoneyInput } from "./money-input"
+import { PlatformAvatar } from "./platform-avatar"
 import { diffOf, expectedOf, receivedOf, reconStateOf, applyDifferenceToTrip, round2, type ReconState } from "./reconciliation"
 
 // Tono por estado, con el mismo criterio que en REGISTER para no confundir.
@@ -83,12 +84,13 @@ export function TripEditSheet({
                   type="button"
                   onClick={() => set("platform", p as Platform)}
                   className={cn(
-                    "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
+                    "flex items-center gap-1.5 rounded-full border py-1.5 pl-1.5 pr-3 text-xs font-semibold transition-colors",
                     p === draft.platform
                       ? "border-yellow-400 bg-yellow-400/15 text-yellow-400"
                       : "border-neutral-700 text-neutral-300",
                   )}
                 >
+                  <PlatformAvatar platform={p as Platform} size={18} />
                   {p}
                 </button>
               ))}

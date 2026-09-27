@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { ChevronDown, MapPin, Coffee, Loader2, X, AlertTriangle, RotateCw, Edit2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip } from "./types"
+import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
 import { captureLocation, GpsAccuracyError, saveTempLocation, loadTempLocation, clearTempLocations } from "./geo"
 import { MoneyInput } from "./money-input"
 
@@ -286,33 +287,41 @@ export function EntryScreen({
             <button
               type="button"
               onClick={() => setPlatformOpen((o) => !o)}
+              aria-haspopup="listbox"
+              aria-expanded={platformOpen}
               className="flex w-full items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-3"
             >
-              <span className="flex items-center gap-2">
-                <span className="flex size-6 items-center justify-center rounded-full bg-white text-[9px] font-bold text-black">
-                  {draft.platform.slice(0, 1)}
-                </span>
-                <span className="font-semibold text-white">{draft.platform}</span>
+              <span className="flex min-w-0 items-center gap-2">
+                <PlatformAvatar platform={draft.platform} size={24} />
+                <span className="truncate font-semibold text-white">{draft.platform}</span>
+                <PlatformBadge platform={draft.platform} />
               </span>
-              <ChevronDown className="size-4 text-neutral-500" />
+              <ChevronDown className="size-4 shrink-0 text-neutral-500" />
             </button>
 
             {platformOpen && (
-              <div className="absolute left-0 right-0 top-full z-20 mt-1 overflow-hidden rounded-xl border border-neutral-800 bg-neutral-900 shadow-xl">
+              <div
+                role="listbox"
+                className="absolute left-0 right-0 top-full z-20 mt-1 max-h-72 overflow-y-auto rounded-xl border border-neutral-800 bg-neutral-900 shadow-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
                 {PLATFORMS.map((p) => (
                   <button
                     key={p}
                     type="button"
+                    role="option"
+                    aria-selected={p === draft.platform}
                     onClick={() => {
                       set("platform", p)
                       setPlatformOpen(false)
                     }}
                     className={cn(
-                      "flex w-full items-center px-3 py-2.5 text-left text-sm hover:bg-neutral-800",
+                      "flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-neutral-800",
                       p === draft.platform ? "text-yellow-400" : "text-neutral-200"
                     )}
                   >
-                    {p}
+                    <PlatformAvatar platform={p} size={22} />
+                    <span className="min-w-0 flex-1 truncate">{p}</span>
+                    <PlatformBadge platform={p} />
                   </button>
                 ))}
               </div>
