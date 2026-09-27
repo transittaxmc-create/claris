@@ -5,6 +5,7 @@ import { ChevronDown, MapPin, Coffee, Loader2, X, AlertTriangle, RotateCw, Edit2
 import { cn } from "@/lib/utils"
 import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip } from "./types"
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
+import { isVoucherPlatform } from "./platform-meta"
 import { captureLocation, GpsAccuracyError, saveTempLocation, loadTempLocation, clearTempLocations } from "./geo"
 import { MoneyInput } from "./money-input"
 
@@ -311,7 +312,9 @@ export function EntryScreen({
                     role="option"
                     aria-selected={p === draft.platform}
                     onClick={() => {
-                      set("platform", p)
+                      // Una plataforma de vale marca el viaje como VOUCHER sin
+                      // que el usuario tenga que tocar nada más.
+                      setDraft((d) => ({ ...d, platform: p, isVoucher: isVoucherPlatform(p) }))
                       setPlatformOpen(false)
                     }}
                     className={cn(

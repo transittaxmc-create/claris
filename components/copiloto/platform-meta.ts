@@ -12,6 +12,9 @@ export type PlatformMeta = {
   badge?: string
   // Color del distintivo, para diferenciar de un vistazo.
   badgeClass?: string
+  // Si la plataforma paga con vale, el viaje se marca isVoucher solo. Así el
+  // distintivo de la lista y el VOUCHER de la tarjeta no pueden contradecirse.
+  voucher?: boolean
 }
 
 export const PLATFORM_META: Record<Platform, PlatformMeta> = {
@@ -28,14 +31,29 @@ export const PLATFORM_META: Record<Platform, PlatformMeta> = {
     badge: "ACCESS-A-RIDE",
     badgeClass: "border-sky-400/60 text-sky-400",
   },
-  "Classic Ryde": { logo: "/logos/classic-ryde.jpg" },
+  "Classic Ryde": {
+    logo: "/logos/classic-ryde.jpg",
+    badge: "VOUCHER",
+    badgeClass: "border-orange-400/60 text-orange-400",
+    voucher: true,
+  },
   "Aventus Ride": {
     logo: "/logos/aventus-ride.jpg",
     badge: "VOUCHER",
     badgeClass: "border-orange-400/60 text-orange-400",
+    voucher: true,
   },
   Cash: {},
   Other: {},
+}
+
+// Plataformas que pagan con vale: el viaje se marca isVoucher al elegirlas.
+export const VOUCHER_PLATFORMS: Platform[] = (Object.keys(PLATFORM_META) as Platform[]).filter(
+  (p) => PLATFORM_META[p].voucher === true,
+)
+
+export function isVoucherPlatform(platform: Platform): boolean {
+  return PLATFORM_META[platform]?.voucher === true
 }
 
 export function platformMeta(platform: Platform): PlatformMeta {

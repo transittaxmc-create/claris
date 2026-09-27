@@ -12,14 +12,17 @@ import { pathToFileURL } from "node:url"
 const ROOT = resolve(import.meta.dirname, "..")
 const tmp = mkdtempSync(join(tmpdir(), "platforms-test-"))
 
-for (const f of ["types.ts", "geo.ts"]) {
+for (const f of ["types.ts", "geo.ts", "platform-meta.ts"]) {
   cpSync(join(ROOT, "components", "copiloto", f), join(tmp, f))
 }
 execFileSync(
   process.execPath,
   [
     join(ROOT, "node_modules", "typescript", "bin", "tsc"),
+    // Las dos entradas se listan explícitamente: tsc solo compila lo alcanzable
+    // desde los archivos que se le pasan.
     join(tmp, "types.ts"),
+    join(tmp, "platform-meta.ts"),
     "--outDir", tmp,
     "--module", "esnext",
     "--target", "es2022",
@@ -29,7 +32,7 @@ execFileSync(
   ],
   { stdio: "inherit" },
 )
-for (const name of ["geo", "types"]) {
+for (const name of ["geo", "types", "platform-meta"]) {
   const js = join(tmp, `${name}.js`)
   writeFileSync(js, readFileSync(js, "utf8").replace(/from "\.\/geo"/g, 'from "./geo.mjs"'))
   renameSync(js, join(tmp, `${name}.mjs`))
@@ -37,6 +40,9 @@ for (const name of ["geo", "types"]) {
 
 const { normalizePlatformName, PLATFORMS, LEGACY_PLATFORM_ALIASES } = await import(
   pathToFileURL(join(tmp, "types.mjs")).href
+)
+const { PLATFORM_META, VOUCHER_PLATFORMS, isVoucherPlatform } = await import(
+  pathToFileURL(join(tmp, "platform-meta.mjs")).href
 )
 
 let passed = 0, failed = 0
@@ -79,6 +85,27 @@ check("vacio", normalizePlatformName(""), "Other")
 check("null", normalizePlatformName(null), "Other")
 check("undefined", normalizePlatformName(undefined), "Other")
 check("numero", normalizePlatformName(42), "Other")
+
+console.log("\n== VOUCHER por plataforma ==")
+check("Classic Ryde es voucher", isVoucherPlatform("Classic Ryde"), true)
+check("Aventus Ride es voucher", isVoucherPlatform("Aventus Ride"), true)
+check("Uber NO es voucher", isVoucherPlatform("Uber"), false)
+check("Eco Ride NO es voucher (es access-a-ride)", isVoucherPlatform("Eco Ride"), false)
+check("AKI Technology NO es voucher", isVoucherPlatform("AKI Technology"), false)
+check("Throo NO es voucher", isVoucherPlatform("Throo"), false)
+check("Cash NO es voucher", isVoucherPlatform("Cash"), false)
+check("solo dos plataformas son voucher", VOUCHER_PLATFORMS.slice().sort(), ["Aventus Ride", "Classic Ryde"])
+check("Classic Ryde muestra distintivo VOUCHER", PLATFORM_META["Classic Ryde"].badge, "VOUCHER")
+check("Aventus Ride muestra distintivo VOUCHER", PLATFORM_META["Aventus Ride"].badge, "VOUCHER")
+check("Eco Ride muestra ACCESS-A-RIDE", PLATFORM_META["Eco Ride"].badge, "ACCESS-A-RIDE")
+check("AKI Technology muestra ACCESS-A-RIDE", PLATFORM_META["AKI Technology"].badge, "ACCESS-A-RIDE")
+check(
+  "toda plataforma voucher tiene badge VOUCHER",
+  Object.entries(PLATFORM_META)
+    .filter(([, m]) => m.voucher)
+    .every(([, m]) => m.badge === "VOUCHER"),
+  true,
+)
 
 console.log("\n== integridad de las listas ==")
 check("PLATFORMS tiene 9", PLATFORMS.length, 9)
