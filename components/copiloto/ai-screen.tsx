@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react"
 import { Sparkles, Send, Loader2, Bot, User, TrendingUp, Receipt, Car, Zap } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { Trip, Expense } from "./types"
+import { grossOf, type Trip, type Expense } from "./types"
 
 interface Message {
   id: string
@@ -57,24 +57,32 @@ export function AIScreen({
 
   const metrics = useMemo(() => {
     const totalTrips = trips.length
+
+    // Se usan grossOf/netOf de types.ts en vez de repetir la aritmética aquí.
+    // Antes este bloque calculaba su propio "bruto" y su propio "neto", y no
+    // coincidían con REGISTER: el neto se comía los peajes y no restaba el
+    // platformFee, así que la IA reportaba un número distinto al de la pantalla
+    // de registro para los mismos viajes.
     const totalEarnings = trips.reduce((acc, t) => acc + (t.earnings || 0), 0)
     const totalTips = trips.reduce((acc, t) => acc + (t.tips || 0), 0)
     const totalExtraCash = trips.reduce((acc, t) => acc + (t.extraCash || 0), 0)
     const totalTolls = trips.reduce((acc, t) => acc + (t.toll || 0), 0)
     const totalPlatformFees = trips.reduce((acc, t) => acc + (t.platformFee || 0), 0)
-    const totalGross = totalEarnings + totalTips + totalExtraCash + totalTolls
-    const totalIncome = totalEarnings + totalTips + totalExtraCash
+    const totalGross = trips.reduce((acc, t) => acc + grossOf(t), 0)
+    // Lo que realmente te pagan: bruto menos comisiones. Es el TOTAL NET de REGISTER.
+    const netPayout = totalGross - totalPlatformFees
     const totalExpenses = expenses.reduce((acc, e) => acc + (e.amount || 0), 0)
-    const netProfit = totalIncome - totalExpenses
+    // Lo que te queda de verdad después de gastos. Ojo: no es el "neto" de
+    // REGISTER, que solo descuenta comisiones de plataforma.
+    const netProfit = netPayout - totalExpenses
 
-    // Agrupación por plataforma
+    // Agrupación por plataforma, con el mismo bruto canónico que REGISTER
     const platformBreakdown: Record<string, { count: number; total: number }> = {}
     for (const t of trips) {
       const p = t.platform || "Other"
-      const amount = (t.earnings || 0) + (t.tips || 0) + (t.extraCash || 0)
       if (!platformBreakdown[p]) platformBreakdown[p] = { count: 0, total: 0 }
       platformBreakdown[p].count += 1
-      platformBreakdown[p].total += amount
+      platformBreakdown[p].total += grossOf(t)
     }
 
     // Análisis de tiempos y estimación de horas
@@ -110,9 +118,11 @@ export function AIScreen({
       lastTripTime = trips[0].time || ""
     }
 
-    // Tasa por hora calculada basada en el lapso de viajes
+    // Tasa por hora calculada basada en el lapso de viajes.
+    // netPerHour usa el pago neto (bruto − comisiones), no el beneficio tras
+    // gastos: es la magnitud comparable con grossPerHour.
     const grossPerHour = estimatedHoursSpan > 0 ? Number((totalGross / estimatedHoursSpan).toFixed(2)) : 0
-    const netPerHour = estimatedHoursSpan > 0 ? Number((netProfit / estimatedHoursSpan).toFixed(2)) : 0
+    const netPerHour = estimatedHoursSpan > 0 ? Number((netPayout / estimatedHoursSpan).toFixed(2)) : 0
 
     const expByCategory: Record<string, number> = {}
     for (const e of expenses) {
@@ -144,14 +154,14 @@ export function AIScreen({
     return {
       tripsCount: totalTrips,
       totalGross,
-      totalIncome,
+      netPayout,
+      netProfit,
       totalEarnings,
       totalTips,
       totalExtraCash,
       totalTolls,
       totalPlatformFees,
       totalExpenses,
-      netProfit,
       topExpenseCategory: topCategory,
       platformBreakdown,
       estimatedHoursSpan,
@@ -161,8 +171,8 @@ export function AIScreen({
       netPerHour,
       recentTripsList,
       expensesList,
-      tripsSummary: `${totalTrips} viajes registrados totalizando $${totalGross.toFixed(2)} brutos ($${totalIncome.toFixed(2)} sin peajes), ${totalTips > 0 ? `$${totalTips.toFixed(2)} en propinas` : "sin propinas"}. Horas estimadas: ${estimatedHoursSpan}h (desde ${firstTripTime || "N/A"} hasta ${lastTripTime || "N/A"}). Ganancia/h estimada: $${grossPerHour}/h bruto, $${netPerHour}/h neto.`,
-      expensesSummary: `${expenses.length} gastos registrados totalizando $${totalExpenses.toFixed(2)} (${topCategory}: mayor categoría).`,
+      tripsSummary: `${totalTrips} viajes registrados: $${totalGross.toFixed(2)} brutos (earnings $${totalEarnings.toFixed(2)} + propinas $${totalTips.toFixed(2)} + extra $${totalExtraCash.toFixed(2)} + peajes $${totalTolls.toFixed(2)}), comisiones de plataforma $${totalPlatformFees.toFixed(2)}, pago neto $${netPayout.toFixed(2)}. ${totalTips > 0 ? `Propinas: $${totalTips.toFixed(2)}.` : "Sin propinas."} Horas estimadas: ${estimatedHoursSpan}h (desde ${firstTripTime || "N/A"} hasta ${lastTripTime || "N/A"}). Ganancia/h estimada: $${grossPerHour}/h bruto, $${netPerHour}/h neto.`,
+      expensesSummary: `${expenses.length} gastos registrados totalizando $${totalExpenses.toFixed(2)} (${topCategory}: mayor categoría). Beneficio tras gastos: $${netProfit.toFixed(2)}.`,
     }
   }, [trips, expenses])
 
@@ -270,14 +280,16 @@ export function AIScreen({
 
           <div className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900/60 px-2.5 py-1 text-right">
             <div>
+              {/* Mismo número que el TOTAL NET de REGISTER: bruto − comisiones.
+                  Los gastos no entran aquí, para que las dos pantallas cuadren. */}
               <div className="text-[9px] font-bold text-neutral-400">NETO ACTUAL</div>
               <div
                 className={cn(
                   "font-mono text-xs font-bold",
-                  metrics.netProfit >= 0 ? "text-emerald-400" : "text-rose-400",
+                  metrics.netPayout >= 0 ? "text-emerald-400" : "text-rose-400",
                 )}
               >
-                ${metrics.netProfit.toFixed(2)}
+                ${metrics.netPayout.toFixed(2)}
               </div>
             </div>
           </div>
