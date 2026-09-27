@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react"
 import { Sparkles, Send, Loader2, Bot, User, TrendingUp, Receipt, Car, Zap, AlertTriangle, Scale } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { grossOf, tripDateOf, daysUntil, netOf, type Trip, type Expense } from "./types"
+import { grossOf, tripDateOf, daysUntil, netOf, type Trip, type Expense, type ScheduledEntry } from "./types"
 import { reconSummary, reconViewOf, expectedOf, receivedOf } from "./reconciliation"
 import { parseBankCsv } from "@/lib/bank-csv"
 
@@ -96,6 +96,7 @@ export function AIScreen({
   expenses,
   onApplyBankMatches,
   onApplyExpenseUpdates,
+  onApplySchedules,
 }: {
   trips: Trip[]
   expenses: Expense[]
@@ -105,6 +106,7 @@ export function AIScreen({
   // El análisis de gastos devuelve correcciones {expenseId, category?,
   // classification?}: el padre las aplica a los gastos y persiste.
   onApplyExpenseUpdates?: (updates: { expenseId: string; category?: string; classification?: "business" | "personal" }[]) => number
+  onApplySchedules?: (schedules: ScheduledEntry[]) => number
 }) {
   const [messages, setMessages] = useState<Message[]>(() => loadHistory() ?? [welcomeMessage()])
   const [input, setInput] = useState("")
@@ -397,6 +399,11 @@ export function AIScreen({
           const applied = onApplyBankMatches(matches)
           appliedNote = `\n\n✅ ACTUALIZADO: ${applied} viaje${applied === 1 ? "" : "s"} marcado${applied === 1 ? "" : "s"} con el pago del banco. Revisa REGISTER para ver el descuadre restante.`
         }
+        const schedules = data.structured?.schedules
+        if (Array.isArray(schedules) && schedules.length > 0 && onApplySchedules) {
+          const applied = onApplySchedules(schedules)
+          appliedNote += `\\n\\n✅ FINANCE: ${applied} programación${applied === 1 ? "" : "es"} creada${applied === 1 ? "" : "s"} en el ledger programado.`
+        }
         const expenseUpdates = data.structured?.expenseUpdates
         if (Array.isArray(expenseUpdates) && expenseUpdates.length > 0 && onApplyExpenseUpdates) {
           const applied = onApplyExpenseUpdates(expenseUpdates)
@@ -618,13 +625,13 @@ export function AIScreen({
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Pregunta a tu copiloto sobre tus finanzas..."
+            placeholder="Escribe o dicta en tu teléfono una instrucción..."
             disabled={loading}
             className="flex-1 rounded-xl border border-neutral-800 bg-neutral-900/80 px-3.5 py-2.5 text-xs text-white placeholder-neutral-500 focus:border-yellow-400 focus:outline-none focus:ring-1 focus:ring-yellow-400 disabled:opacity-50"
           />
-          <button
-            type="submit"
-            disabled={!input.trim() || loading}
+  <button
+  type="submit"
+  disabled={!input.trim() || loading}
             className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-yellow-400 text-black font-bold transition hover:bg-yellow-300 disabled:opacity-40 disabled:hover:bg-yellow-400"
           >
             {loading ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}

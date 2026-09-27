@@ -23,6 +23,7 @@ import {
   Pencil,
   Plus,
   PlusCircle,
+  Printer,
   Receipt,
   RotateCcw,
   ShieldCheck,
@@ -52,6 +53,7 @@ import {
 import { ExpensesScreen } from "./expenses-screen"
 
 type SubTab = "caja" | "plan" | "peajes" | "gastos"
+type RegisterView = "bank" | "projected"
 
 function addDays(date: string, days: number) {
   const next = new Date(`${date}T12:00:00`)
@@ -358,7 +360,8 @@ export function FinanceScreen({
   onDelete: (id: string) => void
 }) {
   const [activeTab, setActiveTab] = useState<SubTab>("caja")
-
+  const [registerView, setRegisterView] = useState<RegisterView>("bank")
+  
   const { startingBalance, reserveBalance, days, resetAllData } = useFinance()
   const { getUpcomingExpensesTotal, getInvestableSurplus, getEmergencyPlan } = useFinance()
   const upcomingBills = getUpcomingExpensesTotal(7)
@@ -671,7 +674,42 @@ export function FinanceScreen({
               </div>
             )}
 
-            <FinanceRegisterTable paymentsByDate={paymentsByDate} belowZeroDates={belowZeroDates} />
+            <div className="mb-2 flex justify-end print:hidden">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="flex items-center gap-1.5 rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-[11px] font-bold text-neutral-200 transition hover:border-yellow-400 hover:text-yellow-300"
+              >
+                <Printer className="size-3.5" /> Imprimir PDF · ambos registros
+              </button>
+            </div>
+            <div className="rounded-2xl border border-neutral-800 bg-neutral-950 p-1 print:hidden">
+              <div className="grid grid-cols-2 gap-1" role="tablist" aria-label="Vistas del register">
+                {([['bank', 'Registro bancario'], ['projected', 'Registro proyectado']] as [RegisterView, string][]).map(([view, label]) => (
+                  <button
+                    key={view}
+                    type="button"
+                    role="tab"
+                    aria-selected={registerView === view}
+                    onClick={() => setRegisterView(view)}
+                    className={cn('rounded-xl px-3 py-2.5 text-left text-[11px] font-extrabold transition', registerView === view ? 'bg-yellow-400 text-black' : 'text-neutral-400 hover:bg-neutral-900 hover:text-white')}
+                  >
+                    {label}
+                    <span className={cn('mt-0.5 block text-[9px] font-medium', registerView === view ? 'text-black/70' : 'text-neutral-600')}>
+                      {view === 'bank' ? 'Editable · conciliación' : 'Banco + ingresos y pagos futuros'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <FinanceRegisterTable mode={registerView} paymentsByDate={registerView === 'projected' ? paymentsByDate : {}} belowZeroDates={registerView === 'projected' ? belowZeroDates : new Set<string>()} />
+            <section className="hidden print:block print:bg-white print:p-4 print:text-black">
+              <h1 className="mb-2 text-xl font-bold">Finance · Registros completos</h1>
+              <h2 className="mb-1 text-base font-bold">Registro bancario · conciliación</h2>
+              <FinanceRegisterTable mode="bank" paymentsByDate={{}} belowZeroDates={new Set<string>()} />
+              <h2 className="mb-1 mt-8 text-base font-bold">Registro proyectado · banco + ingresos y pagos</h2>
+              <FinanceRegisterTable mode="projected" paymentsByDate={paymentsByDate} belowZeroDates={belowZeroDates} />
+            </section>
           </div>
         )}
         {activeTab === "plan" && (

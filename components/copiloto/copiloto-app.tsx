@@ -12,7 +12,7 @@ import { RegisterScreen } from "./register-screen"
 import { ReportsScreen } from "./reports-screen"
 import { TripEditSheet } from "./trip-edit-sheet"
 import { applyDifferenceToTrip, applyBankMatchesToTrips, normalizeTripStatus } from "./reconciliation"
-import { SEED_TRIPS, newTrip, stampExpense, applyExpenseUpdatesToExpenses, grossOf, netOf, tripDateOf, type Expense, type Trip } from "./types"
+import { SEED_TRIPS, newTrip, stampExpense, applyExpenseUpdatesToExpenses, grossOf, netOf, tripDateOf, type Expense, type Trip, type ScheduledEntry } from "./types"
 import { buildBackupBundle, buildBackupHtml, collectAppKeys } from "@/lib/backup"
 import {
   addExpenseTombstone,
@@ -229,6 +229,20 @@ export function CopilotoApp() {
     expensesRef.current = result.expenses
     setExpenses(result.expenses.map((e) => stampExpense(e)))
     return result.applied
+  }
+
+  function applySchedules(entries: ScheduledEntry[]): number {
+    const valid = entries.filter((entry) => entry && entry.description && Number(entry.amount) > 0)
+      .map((entry) => ({ ...entry, id: crypto.randomUUID(), amount: Number(entry.amount), active: true }))
+    if (valid.length === 0) return 0
+    try {
+      const current = JSON.parse(localStorage.getItem("claris_scheduled_entries") || "[]")
+      localStorage.setItem("claris_scheduled_entries", JSON.stringify([...valid, ...(Array.isArray(current) ? current : [])]))
+    } catch {
+      return 0
+    }
+    setTab("FINANCE")
+    return valid.length
   }
 
   function deleteTrip(id: string) {
@@ -495,8 +509,9 @@ export function CopilotoApp() {
                   trips={trips}
                   expenses={expenses}
                   onApplyBankMatches={applyBankMatches}
-                  onApplyExpenseUpdates={applyExpenseUpdates}
-                />
+  onApplyExpenseUpdates={applyExpenseUpdates}
+  onApplySchedules={applySchedules}
+  />
               )}
               {tab === "DATA" && (
                 <DataScreen

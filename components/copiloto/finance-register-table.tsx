@@ -16,19 +16,24 @@ const dayLabel = (iso: string) =>
   })
 
 export function FinanceRegisterTable({
+  mode = "bank",
   paymentsByDate = {},
   belowZeroDates = new Set<string>(),
 }: {
+  mode?: "bank" | "projected"
   // Pagos programados que vencen cada día: se muestran bajo la fila del día.
   paymentsByDate?: Record<string, { description: string; amount: number }[]>
   // Días cuyo balance proyectado cae por debajo de cero (fondo rojo).
   belowZeroDates?: Set<string>
 }) {
-  const { days, toggleWorkingDay, updatePlatformAmount, initializeWeek, getDailyRunningBalances } =
-    useFinance()
-  const rows = getDailyRunningBalances()
+  const { days, startingBalance, toggleWorkingDay, updatePlatformAmount, initializeWeek } = useFinance()
   const [openDayId, setOpenDayId] = useState<string | null>(null)
-
+  const rows = days.map((day) => {
+    const dayTotal = day.platforms.reduce((sum, platform) => sum + (mode === "bank" ? Number(platform.actualAmount) || 0 : Number(platform.projectedAmount) || 0), 0)
+    const previous = days.slice(0, days.indexOf(day)).reduce((sum, prior) => sum + prior.platforms.reduce((inner, platform) => inner + (mode === "bank" ? Number(platform.actualAmount) || 0 : Number(platform.projectedAmount) || 0), 0), 0)
+    const runningBalance = startingBalance + previous + dayTotal
+    return { dayId: day.id, date: day.date, dayTotal, runningBalance, isLow: runningBalance < 0 }
+  })
   useEffect(() => {
     if (days.length === 0) initializeWeek()
   }, [days.length, initializeWeek])
@@ -37,7 +42,7 @@ export function FinanceRegisterTable({
     <div className="overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900/90">
       <div className="border-b border-neutral-800 px-4 py-3">
         <span className="text-xs font-bold uppercase tracking-wider text-neutral-300">
-          Corrida de Caja Diaria
+          {mode === "bank" ? "Registro Bancario · Reconciliación" : "Registro Proyectado · Flujo Futuro"}
         </span>
       </div>
 
@@ -126,13 +131,13 @@ export function FinanceRegisterTable({
                       <input
                         type="number"
                         inputMode="decimal"
-                        value={p.projectedAmount || ""}
-                        placeholder="Proyectado"
+                        value={(mode === "bank" ? p.actualAmount : p.projectedAmount) || ""}
+                        placeholder={mode === "bank" ? "Balance real" : "Proyectado"}
                         onChange={(e) =>
                           updatePlatformAmount(
                             day.id,
                             p.platformName,
-                            "projectedAmount",
+                            mode === "bank" ? "actualAmount" : "projectedAmount",
                             parseFloat(e.target.value) || 0,
                           )
                         }
