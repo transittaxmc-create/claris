@@ -37,6 +37,7 @@ import { FinanceRegisterTable } from "./finance-register-table"
 import { UpcomingBillsForm } from "./upcoming-bills-form"
 import { useFinance, applyRealTrips, computeRealWeekTotals } from "./finance-store"
 import {
+  daysUntil,
   money,
   netOf,
   tripDateOf,
@@ -497,6 +498,55 @@ export function FinanceScreen({
                 (10% de cada gasto registrado)
               </span>
             </div>
+
+            {/* Seguimiento de pagos programados: qué vence en los próximos 7 días */}
+            {(() => {
+              const soon = schedules
+                .filter((s) => s.kind === "expense" && s.active !== false)
+                .map((s) => ({ s, days: daysUntil(s.nextDate) }))
+                .filter(({ days }) => days >= -1 && days <= 7)
+                .sort((a, b) => a.days - b.days)
+              if (soon.length === 0) return null
+              const total = soon.reduce((acc, { s }) => acc + (Number(s.amount) || 0), 0)
+              return (
+                <section className="rounded-2xl border border-yellow-400/25 bg-yellow-400/5 p-3">
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="flex items-center gap-2 text-[11px] font-bold tracking-wide text-yellow-300">
+                      <CalendarClock className="size-3.5" /> PRÓXIMOS PAGOS (7 días)
+                    </p>
+                    <span className="text-[10px] font-bold text-neutral-400">
+                      {soon.length} pago{soon.length === 1 ? "" : "s"} · total{" "}
+                      <strong className="text-white">${total.toFixed(2)}</strong>
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {soon.map(({ s, days }) => (
+                      <div key={s.id} className="flex items-center justify-between gap-2 text-[11px]">
+                        <span className="min-w-0 truncate font-semibold text-neutral-200">
+                          {s.description}
+                          <span className="text-neutral-500"> · {s.category}</span>
+                        </span>
+                        <span className="flex shrink-0 items-center gap-2">
+                          <span className="font-bold tabular-nums text-neutral-300">${Number(s.amount || 0).toFixed(2)}</span>
+                          <span
+                            className={cn(
+                              "rounded-full px-1.5 py-0.5 text-[9px] font-bold",
+                              days < 0
+                                ? "bg-rose-500/15 text-rose-400"
+                                : days === 0
+                                  ? "bg-amber-500/15 text-amber-300"
+                                  : "bg-neutral-800 text-neutral-400",
+                            )}
+                          >
+                            {days < 0 ? "venció ayer" : days === 0 ? "HOY" : `en ${days}d`}
+                          </span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )
+            })()}
 
             {emergencyData.hasDeficit && (
               <div className="space-y-2 rounded-xl border border-red-500/50 bg-red-950/40 p-4 text-xs">

@@ -1,14 +1,28 @@
 "use client"
 
 import { useMemo, useRef, useState } from "react"
-import { Camera, Loader2, Pencil, Plus, Search, Sparkles, Trash2, Upload } from "lucide-react"
+import { CalendarClock, Camera, Loader2, Pencil, Plus, Search, Sparkles, Trash2, Upload } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { EXPENSE_CATEGORIES, findDuplicateExpense, type Expense, expenseTotal, money } from "./types"
+import {
+  EXPENSE_CATEGORIES,
+  findDuplicateExpense,
+  nextOccurrenceDate,
+  scheduledEntryFromExpense,
+  type Expense,
+  type ScheduleFrequency,
+  type ScheduledEntry,
+  expenseTotal,
+  money,
+} from "./types"
 import { MoneyInput } from "./money-input"
 
 // Pantalla de gastos (pestaña EXPENSES). Mismo estilo que REGISTER y el mismo
 // esquema de guardado que los viajes: el padre (copiloto-app) se encarga de
 // persistir en localStorage + IndexedDB y de sincronizar.
+//
+// Además, cada gasto puede programarse con vencimiento y frecuencia: al guardar
+// se crea también una entrada en claris_scheduled_entries (el ledger que ve
+// FINANCE), para dar seguimiento a los pagos que se repiten.
 
 type Draft = {
   id: string | null
@@ -18,17 +32,24 @@ type Draft = {
   amount: number
   notes: string
   isAiGenerated?: boolean
+  // Programación opcional: "once" = gasto único; el resto crea una entrada en
+  // el ledger programado con su próxima fecha.
+  frequency: ScheduleFrequency
+  nextDate: string
 }
 
 function emptyDraft(): Draft {
+  const today = new Date().toISOString().slice(0, 10)
   return {
     id: null,
-    date: new Date().toISOString().slice(0, 10),
+    date: today,
     vendor: "",
     category: EXPENSE_CATEGORIES[0],
     amount: 0,
     notes: "",
     isAiGenerated: false,
+    frequency: "once",
+    nextDate: today,
   }
 }
 
@@ -72,6 +93,11 @@ function ExpenseRow({
         {expense.isEditedByUser && (
           <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold text-amber-400">
             EDITADO
+          </span>
+        )}
+        {expense.scheduled && (
+          <span className="inline-flex items-center gap-1 rounded-full border border-yellow-400/50 bg-yellow-400/10 px-2 py-0.5 text-[9px] font-bold text-yellow-300">
+            <CalendarClock className="size-2.5" /> PROGRAMADO
           </span>
         )}
         <span className="flex-1" />
@@ -187,14 +213,17 @@ export function ExpensesScreen({
       }
 
       const { result } = json
+      const scanDate = result.date || new Date().toISOString().slice(0, 10)
       setDraft({
         id: null,
-        date: result.date || new Date().toISOString().slice(0, 10),
+        date: scanDate,
         vendor: result.vendor || "",
         category: result.category || EXPENSE_CATEGORIES[0],
         amount: Number(result.amount) || 0,
         notes: result.notes || "",
         isAiGenerated: true,
+        frequency: "once",
+        nextDate: scanDate,
       })
       setScanStatus("¡Recibo detectado! Revisa y guarda.")
       setTimeout(() => setScanStatus(null), 3500)
@@ -238,9 +267,29 @@ export function ExpensesScreen({
       notes: draft.notes.trim() || undefined,
       isAiGenerated: Boolean(draft.isAiGenerated),
       isEditedByUser: draft.id !== null,
+      scheduled: ["daily", "weekly", "monthly", "annual"].includes(draft.frequency),
       savedAt: new Date().toISOString(),
     }
     onSave(expense)
+
+    // Programación: si el gasto se repite, queda en el ledger que ve FINANCE
+    // para dar seguimiento a cada pago con su vencimiento y frecuencia.
+    // La guarda de frecuencia protege contra valores inesperados (la UI solo
+    // produce los cinco válidos, pero nunca está de más).
+    const RECURRING: ScheduleFrequency[] = ["daily", "weekly", "monthly", "annual"]
+    if (RECURRING.includes(draft.frequency)) {
+      const entry = scheduledEntryFromExpense(expense, draft.frequency, draft.nextDate || expense.date)
+      try {
+        const existing: ScheduledEntry[] = JSON.parse(localStorage.getItem("claris_scheduled_entries") || "[]")
+        if (!Array.isArray(existing)) throw new Error("bad")
+        const next = [entry, ...existing]
+        localStorage.setItem("claris_scheduled_entries", JSON.stringify(next))
+      } catch {
+        try {
+          localStorage.setItem("claris_scheduled_entries", JSON.stringify([entry]))
+        } catch {}
+      }
+    }
     setDraft(null)
   }
 
@@ -257,6 +306,8 @@ export function ExpensesScreen({
       amount: ex.amount,
       notes: ex.notes ?? "",
       isAiGenerated: ex.isAiGenerated,
+      frequency: "once",
+      nextDate: ex.date,
     })
   }
 
@@ -407,6 +458,54 @@ export function ExpensesScreen({
                 className="rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white outline-none placeholder:text-neutral-600"
               />
             </label>
+
+            {/* Programación del pago: vencimiento y frecuencia */}
+            <div className="mt-2 rounded-xl border border-yellow-400/20 bg-yellow-400/5 p-2.5">
+              <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold tracking-wide text-yellow-300/90">
+                <CalendarClock className="size-3.5" /> ¿SE REPITE ESTE PAGO?
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <select
+                  value={draft.frequency}
+                  onChange={(e) => {
+                    const freq = e.target.value as ScheduleFrequency
+                    setDraft({
+                      ...draft,
+                      frequency: freq,
+                      // Al elegir frecuencia, la próxima fecha se calcula desde hoy
+                      // o desde la fecha del gasto, la posterior.
+                      nextDate: freq === "once" ? draft.date : nextOccurrenceDate(draft.date || draft.nextDate, freq),
+                    })
+                  }}
+                  className="rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white outline-none"
+                >
+                  <option value="once">Una vez</option>
+                  <option value="daily">Diario</option>
+                  <option value="weekly">Semanal</option>
+                  <option value="monthly">Mensual</option>
+                  <option value="annual">Anual</option>
+                </select>
+                {draft.frequency === "once" ? (
+                  <div className="flex items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900/40 text-[11px] text-neutral-500">
+                    Sin vencimiento
+                  </div>
+                ) : (
+                  <input
+                    type="date"
+                    value={draft.nextDate}
+                    onChange={(e) => setDraft({ ...draft, nextDate: e.target.value })}
+                    aria-label="Próximo vencimiento"
+                    className="rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white outline-none [color-scheme:dark]"
+                  />
+                )}
+              </div>
+              {draft.frequency !== "once" && (
+                <p className="mt-1.5 text-[10px] leading-tight text-neutral-500">
+                  Se guardará en el ledger programado de FINANCE y repetirá cada{" "}
+                  {draft.frequency === "daily" ? "día" : draft.frequency === "weekly" ? "semana" : draft.frequency === "monthly" ? "mes" : "año"}.
+                </p>
+              )}
+            </div>
 
             <button
               type="button"

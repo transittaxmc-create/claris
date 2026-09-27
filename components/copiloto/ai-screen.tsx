@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react"
 import { Sparkles, Send, Loader2, Bot, User, TrendingUp, Receipt, Car, Zap, AlertTriangle, Scale, Upload } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { grossOf, tripDateOf, type Trip, type Expense } from "./types"
+import { grossOf, tripDateOf, daysUntil, type Trip, type Expense } from "./types"
 import { reconSummary, reconViewOf, expectedOf, receivedOf } from "./reconciliation"
 import { parseBankCsv } from "@/lib/bank-csv"
 
@@ -49,6 +49,42 @@ const QUICK_PROMPTS = [
   },
 ]
 
+// Historial de la conversación con el copiloto: se conserva entre sesiones para
+// poder dar seguimiento a los análisis y reportes. Se limita a los últimos 60
+// mensajes para no llenar el almacenamiento.
+const AI_HISTORY_KEY = "claris_ai_history"
+const AI_HISTORY_LIMIT = 60
+
+function welcomeMessage(): Message {
+  return {
+    id: "welcome",
+    role: "assistant",
+    content:
+      "👋 ¡Hola! Soy tu Copiloto Financiero con Gemini AI. Tengo acceso en tiempo real a tus viajes y gastos registrados.\n\n¿En qué te puedo ayudar hoy? Puedes preguntarme sobre tus ganancias netas, qué gastos deducir de impuestos o cómo optimizar tu día.",
+    time: new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
+  }
+}
+
+function loadHistory(): Message[] | null {
+  try {
+    const raw = localStorage.getItem(AI_HISTORY_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed) || parsed.length === 0) return null
+    return parsed.filter(
+      (m): m is Message => m && typeof m.id === "string" && (m.role === "user" || m.role === "assistant") && typeof m.content === "string",
+    )
+  } catch {
+    return null
+  }
+}
+
+function saveHistory(messages: Message[]) {
+  try {
+    localStorage.setItem(AI_HISTORY_KEY, JSON.stringify(messages.slice(-AI_HISTORY_LIMIT)))
+  } catch {}
+}
+
 export function AIScreen({
   trips,
   expenses,
@@ -56,15 +92,7 @@ export function AIScreen({
   trips: Trip[]
   expenses: Expense[]
 }) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content:
-        "👋 ¡Hola! Soy tu Copiloto Financiero con Gemini AI. Tengo acceso en tiempo real a tus viajes y gastos registrados.\n\n¿En qué te puedo ayudar hoy? Puedes preguntarme sobre tus ganancias netas, qué gastos deducir de impuestos o cómo optimizar tu día.",
-      time: new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
-    },
-  ])
+  const [messages, setMessages] = useState<Message[]>(() => loadHistory() ?? [welcomeMessage()])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [bankCsvName, setBankCsvName] = useState<string | null>(null)
@@ -236,13 +264,22 @@ export function AIScreen({
     )
     const unpaidTollsTotal = unpaidTollBills.reduce((s: number, b: any) => s + (Number(b.amount) || 0), 0)
 
+    // Pagos programados con vencimiento próximo: la IA puede recordarlos.
+    const scheduledAll = Array.isArray(readJson("claris_scheduled_entries")) ? readJson("claris_scheduled_entries") : []
+    const scheduledDueSoon = scheduledAll
+      .filter((s: any) => s?.kind === "expense" && s?.active !== false && s?.nextDate)
+      .map((s: any) => ({ description: s.description, amount: Number(s.amount) || 0, nextDate: s.nextDate, days: daysUntil(s.nextDate) }))
+      .filter((s: any) => s.days >= -1 && s.days <= 7)
+      .sort((a: any, b: any) => a.days - b.days)
+
     const financeSummary = {
       startingBalance,
       reserveBalance,
       upcomingBillsTotal,
       unpaidTollsTotal,
       unpaidTollBillCount: unpaidTollBills.length,
-      scheduledCount: Array.isArray(readJson("claris_scheduled_entries")) ? readJson("claris_scheduled_entries").length : 0,
+      scheduledCount: scheduledAll.length,
+      scheduledDueSoon,
     }
 
     return {
@@ -281,13 +318,19 @@ export function AIScreen({
       tripsSummary: `${totalTrips} viajes registrados: $${totalGross.toFixed(2)} brutos (earnings $${totalEarnings.toFixed(2)} + propinas $${totalTips.toFixed(2)} + extra $${totalExtraCash.toFixed(2)} + peajes $${totalTolls.toFixed(2)}), comisiones de plataforma $${totalPlatformFees.toFixed(2)}, pago neto $${netPayout.toFixed(2)}. ${totalTips > 0 ? `Propinas: $${totalTips.toFixed(2)}.` : "Sin propinas."} Horas estimadas: ${estimatedHoursSpan}h (desde ${firstTripTime || "N/A"} hasta ${lastTripTime || "N/A"}). Ganancia/h estimada: $${grossPerHour}/h bruto, $${netPerHour}/h neto.`,
       expensesSummary: `${expenses.length} gastos registrados totalizando $${totalExpenses.toFixed(2)} (${topCategory}: mayor categoría). Beneficio tras gastos: $${netProfit.toFixed(2)}.`,
       reconciliationSummary: `Reconciliación de pagos: esperado $${recon.expected.toFixed(2)}, recibido $${recon.received.toFixed(2)}, diferencia $${recon.diff.toFixed(2)}. ${recon.pendingCount} viajes sin pago registrado, ${recon.shortCount} pagaron de menos, ${recon.overCount} pagaron de más, ${recon.okCount} cuadran.`,
-      financeSummaryText: `Finanzas semanales: saldo disponible $${startingBalance.toFixed(2)}, reserva $${reserveBalance.toFixed(2)}, facturas próximas $${upcomingBillsTotal.toFixed(2)}, peajes pendientes $${unpaidTollsTotal.toFixed(2)} (${unpaidTollBills.length} facturas).`,
+      financeSummaryText: `Finanzas semanales: saldo disponible $${startingBalance.toFixed(2)}, reserva $${reserveBalance.toFixed(2)}, facturas próximas $${upcomingBillsTotal.toFixed(2)}, peajes pendientes $${unpaidTollsTotal.toFixed(2)} (${unpaidTollBills.length} facturas). Pagos programados con vencimiento en 7 días: ${scheduledDueSoon.length === 0 ? "ninguno" : scheduledDueSoon.map((s: any) => `${s.description} $${s.amount.toFixed(2)} (${s.days < 0 ? "vencido" : s.days === 0 ? "hoy" : `en ${s.days}d`})`).join(", ")}.`,
     }
   }, [trips, expenses])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages, loading])
+
+  // Seguimiento: cada mensaje (pregunta, respuesta o reporte) se guarda para
+  // que la conversación sobreviva a un recargado o al cierre de la app.
+  useEffect(() => {
+    saveHistory(messages)
+  }, [messages])
   const sendMessage = async (textToSend?: string) => {
     const content = (textToSend || input).trim()
     if (!content || loading) return
@@ -378,6 +421,22 @@ export function AIScreen({
         </div>
 
         <div className="flex items-center gap-3">
+          {/* Limpiar el historial guardado (el seguimiento empieza de nuevo) */}
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm("¿Borrar toda la conversación guardada con el copiloto?")) {
+                try {
+                  localStorage.removeItem(AI_HISTORY_KEY)
+                } catch {}
+                setMessages([welcomeMessage()])
+              }
+            }}
+            className="rounded-xl border border-neutral-700 bg-neutral-900/60 px-2 py-1.5 text-[10px] font-bold text-neutral-400 hover:text-white"
+            title="Borrar historial guardado"
+          >
+            LIMPIAR
+          </button>
           {metrics.estimatedHoursSpan > 0 && (
             <div className="hidden sm:flex flex-col items-end rounded-xl border border-neutral-800 bg-neutral-900/60 px-2.5 py-1 text-right">
               <div className="text-[9px] font-bold text-neutral-400">GANANCIA / HORA</div>
