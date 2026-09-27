@@ -162,6 +162,10 @@ async function reverseGeocode(lat: number, lng: number): Promise<any> {
   return res.json()
 }
 
+// Se exporta con nombre de test para poder cubrir todas sus ramas en
+// scripts/_test-classify.mjs, sin depender de la red ni del navegador.
+export const __testClassify = classify
+
 export async function captureLocation(): Promise<LocationPoint> {
   const pos = await getPosition()
   const { latitude: lat, longitude: lng, accuracy } = pos.coords
