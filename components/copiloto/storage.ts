@@ -1,4 +1,4 @@
-import { type Trip, type Platform, type Reconciliation, PLATFORMS, type Expense, stampExpense } from "./types"
+import { type Trip, type Platform, type Reconciliation, type LocationPoint, PLATFORMS, type Expense, stampExpense } from "./types"
 import { round2, reconciliationMatches } from "./reconciliation"
 import { parseTombstones, pruneTombstones, type Tombstones } from "@/lib/sync"
 
@@ -54,6 +54,48 @@ function reconNumber(value: unknown): number | undefined {
   return Number.isFinite(n) ? n : undefined
 }
 
+// Reconstruye el LocationPoint guardado dentro del viaje.
+//
+// El objeto GPS se guarda expandido dentro de pickup/dropoff, junto a su
+// `address`. Un viaje escrito a mano (o guardado por la versión anterior) solo
+// tiene `address`, así que se exige una coordenada para considerarlo un punto
+// GPS válido en vez de fabricar uno a medias.
+function pointFromEntry(p: RawEntry | undefined): LocationPoint | undefined {
+  if (!p || typeof p !== "object") return undefined
+  if (typeof p.lat !== "number" || typeof p.lng !== "number") return undefined
+  return {
+    kind: p.kind ?? "business",
+    icon: p.icon ?? "📍",
+    categoryLabel: p.categoryLabel ?? "",
+    banner: p.banner ?? "blue",
+    businessName: p.businessName ?? "",
+    address: p.address ?? "",
+    street: p.street ?? "",
+    city: p.city ?? "",
+    county: p.county ?? "",
+    zip: p.zip ?? "",
+    lat: p.lat,
+    lng: p.lng,
+    accuracy: typeof p.accuracy === "number" ? p.accuracy : 0,
+    timestamp: p.timestamp ?? "",
+    day: p.day ?? "",
+    time: p.time ?? "",
+  }
+}
+
+// Expande el punto GPS dentro del objeto de la ubicación, conservando lo que ya
+// hubiera (por ejemplo las coords del export original) y dejando `address` al
+// final para que el texto que se muestra siempre mande. Con pickupLoc
+// undefined, la entrada queda exactamente como estaba: los viajes manuales y
+// los antiguos no cambian.
+function locationEntry(
+  base: RawEntry | undefined,
+  loc: LocationPoint | undefined,
+  address: string,
+): RawEntry {
+  return { ...(base ?? {}), ...(loc ?? {}), address }
+}
+
 export function entryToTrip(e: RawEntry): Trip {
   const rec = e.reconciliation ?? {}
   const expected = reconNumber(rec.expected)
@@ -78,6 +120,10 @@ export function entryToTrip(e: RawEntry): Trip {
     platformFee: Number(e.platformFee) || 0,
     pickup: e.pickup?.address ?? "",
     dropoff: e.dropoff?.address ?? "",
+    // El GPS vuelve desde el mismo objeto donde se guardó, para que editar un
+    // viaje y volver a guardarlo no descarte las coordenadas.
+    pickupLoc: pointFromEntry(e.pickup),
+    dropoffLoc: pointFromEntry(e.dropoff),
     time: e.datetime ? toTime(e.datetime) : "",
     ref: e.notes ?? "",
     status: e.reconciliation?.status === "matched" ? "matched" : "pending",
@@ -120,8 +166,8 @@ export function tripToEntry(t: Trip): RawEntry {
     platformFee: t.platformFee || null,
     grossIncome: gross,
     netPayout: net,
-    pickup: { ...(base.pickup ?? {}), address: t.pickup },
-    dropoff: { ...(base.dropoff ?? {}), address: t.dropoff },
+    pickup: locationEntry(base.pickup, t.pickupLoc, t.pickup),
+    dropoff: locationEntry(base.dropoff, t.dropoffLoc, t.dropoff),
     notes: t.ref,
     status: base.status ?? "open",
     reconciliation,

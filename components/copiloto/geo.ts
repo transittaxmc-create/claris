@@ -14,6 +14,7 @@ export type LocationPoint = {
   address: string // full formatted address
   street: string
   city: string
+  county: string // Condado (Nominatim lo devuelve aparte del display_name)
   zip: string
   lat: number
   lng: number
@@ -185,6 +186,9 @@ export async function captureLocation(): Promise<LocationPoint> {
   const road = a.road ?? a.pedestrian ?? a.footway ?? ""
   const street = [houseNumber, road].filter(Boolean).join(" ")
   const city = a.city ?? a.town ?? a.village ?? a.suburb ?? a.hamlet ?? ""
+  // Nominatim expone el condado en `county`, y en algunos países en
+  // `state_district`; el display_name ya lo incluye pero como texto.
+  const county = a.county ?? a.state_district ?? ""
   const zip = a.postcode ?? ""
   const address =
     data?.display_name ?? [street, city, zip].filter(Boolean).join(", ")
@@ -198,6 +202,7 @@ export async function captureLocation(): Promise<LocationPoint> {
     address,
     street,
     city,
+    county,
     zip,
     lat,
     lng,
