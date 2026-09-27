@@ -413,7 +413,7 @@ export function CopilotoApp() {
                 <ExpensesScreen expenses={expenses} onSave={saveExpense} onDelete={deleteExpense} />
               )}
               {tab === "FINANCE" && (
-                <FinanceScreen expenses={expenses} onSave={saveExpense} onDelete={deleteExpense} />
+                <FinanceScreen trips={trips} expenses={expenses} onSave={saveExpense} onDelete={deleteExpense} />
               )}
               {tab === "AI" && <AIScreen trips={trips} expenses={expenses} />}
               {tab === "DATA" && (

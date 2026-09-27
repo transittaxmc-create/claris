@@ -6,6 +6,7 @@
 // clave claris_finance_week_v1. El hook re-renderiza con useSyncExternalStore.
 
 import { useSyncExternalStore } from "react"
+import { applyTripsToDays, computeRealWeekTotals as computeRealTotals, type RealTripInput } from "./finance-bridge"
 
 export interface IncomePlatform {
   platformName: string
@@ -242,6 +243,31 @@ export function resetAllData() {
     loggedExpenses: [],
   })
 }
+
+// ---------------------------------------------------------------------------
+// Puente con los datos REALES del copiloto
+// ---------------------------------------------------------------------------
+//
+// El store de finanzas nació aislado: sus montos por día solo se escribían a
+// mano en la tabla. Esto los conecta con los viajes que ya están guardados,
+// agrupándolos por día y por plataforma en la columna REAL de la corrida.
+
+export type { RealTripInput }
+
+// Aplica los viajes reales a los días de la semana correspondiente. Delega la
+// transformación en finance-bridge.ts (lógica pura, probada en Node); aquí solo
+// se persiste el resultado en el store.
+export function applyRealTrips(trips: RealTripInput[]) {
+  hydrate()
+  const days = applyTripsToDays(state.days, trips)
+  if (days === state.days) return
+  set({ days })
+}
+
+// Totales REALES de la semana según los viajes (para las tarjetas de resumen).
+export function computeRealWeekTotals(trips: RealTripInput[]) {
+  return computeRealTotals(trips)
+}
 // ---------------------------------------------------------------------------
 // Cálculos (misma semántica que el paquete recibido)
 // ---------------------------------------------------------------------------
@@ -309,6 +335,9 @@ export function getEmergencyPlan(): {
 }
 
 // Corrida de caja acumulada día por día (alimenta la tabla).
+// El dinero real entra CUALQUIER día de la semana (incluido fin de semana):
+// antes solo se sumaban los días laborables, así que los viajes de sábado y
+// domingo se quedaban en $0.00 en la corrida pese a estar en la columna REAL.
 export function getDailyRunningBalances(): {
   dayId: string
   date: string
@@ -319,9 +348,7 @@ export function getDailyRunningBalances(): {
   const s = snapshot()
   let running = s.startingBalance
   return s.days.map((d) => {
-    const dayTotal = d.isWorkingDay
-      ? d.platforms.reduce((acc, p) => acc + (Number(p.actualAmount) || Number(p.projectedAmount) || 0), 0)
-      : 0
+    const dayTotal = d.platforms.reduce((acc, p) => acc + (Number(p.actualAmount) || Number(p.projectedAmount) || 0), 0)
     running += dayTotal
     return {
       dayId: d.id,
