@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useMemo } from "react"
-import { Sparkles, Send, Loader2, Bot, User, TrendingUp, Receipt, Car, Zap, AlertTriangle, Scale, Mic, MicOff } from "lucide-react"
+import { Sparkles, Send, Loader2, Bot, User, TrendingUp, Receipt, Car, Zap, AlertTriangle, Scale } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { grossOf, tripDateOf, daysUntil, netOf, type Trip, type Expense, type ScheduledEntry } from "./types"
 import { reconSummary, reconViewOf, expectedOf, receivedOf } from "./reconciliation"
@@ -112,29 +112,8 @@ export function AIScreen({
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [bankCsvName, setBankCsvName] = useState<string | null>(null)
-  const [listening, setListening] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const bankFileRef = useRef<HTMLInputElement>(null)
-
-  function toggleVoiceInput() {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SpeechRecognition) {
-      window.alert("El dictado por voz no está disponible en este navegador.")
-      return
-    }
-    if (listening) return
-    const recognition = new SpeechRecognition()
-    recognition.lang = "es-ES"
-    recognition.interimResults = false
-    recognition.onstart = () => setListening(true)
-    recognition.onend = () => setListening(false)
-    recognition.onerror = () => setListening(false)
-    recognition.onresult = (event: any) => {
-      const transcript = event.results?.[0]?.[0]?.transcript?.trim()
-      if (transcript) setInput((current) => `${current} ${transcript}`.trim())
-    }
-    recognition.start()
-  }
 
   // Parser tolerante de estados de cuenta: vive en lib/bank-csv.ts (puro y
   // probado en Node), aquí solo se consume.
@@ -646,19 +625,10 @@ export function AIScreen({
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Pregunta a tu copiloto sobre tus finanzas..."
+            placeholder="Escribe o dicta en tu teléfono una instrucción..."
             disabled={loading}
             className="flex-1 rounded-xl border border-neutral-800 bg-neutral-900/80 px-3.5 py-2.5 text-xs text-white placeholder-neutral-500 focus:border-yellow-400 focus:outline-none focus:ring-1 focus:ring-yellow-400 disabled:opacity-50"
           />
-  <button
-  type="button"
-  onClick={toggleVoiceInput}
-  disabled={loading}
-  aria-label={listening ? "Detener dictado" : "Dictar instrucción"}
-  className={cn("flex size-9 shrink-0 items-center justify-center rounded-xl border text-black transition", listening ? "border-red-400 bg-red-400" : "border-neutral-700 bg-neutral-900 text-yellow-400 hover:border-yellow-400")}
-  >
-  {listening ? <MicOff className="size-4" /> : <Mic className="size-4" />}
-  </button>
   <button
   type="submit"
   disabled={!input.trim() || loading}
