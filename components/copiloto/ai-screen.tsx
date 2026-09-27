@@ -1,9 +1,11 @@
 "use client"
 
 import { useState, useRef, useEffect, useMemo } from "react"
-import { Sparkles, Send, Loader2, Bot, User, TrendingUp, Receipt, Car, Zap } from "lucide-react"
+import { Sparkles, Send, Loader2, Bot, User, TrendingUp, Receipt, Car, Zap, AlertTriangle, Scale, Upload } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { grossOf, type Trip, type Expense } from "./types"
+import { grossOf, tripDateOf, type Trip, type Expense } from "./types"
+import { reconSummary, reconViewOf, expectedOf, receivedOf } from "./reconciliation"
+import { parseBankCsv } from "@/lib/bank-csv"
 
 interface Message {
   id: string
@@ -33,6 +35,18 @@ const QUICK_PROMPTS = [
     label: "Ahorro de gasolina",
     prompt: "¿Cómo puedo reducir el consumo de combustible y maximizar mi margen neto?",
   },
+  {
+    icon: AlertTriangle,
+    label: "¿Cuánto me falta por cobrar?",
+    prompt:
+      "Analiza mis viajes y reconciliaciones: ¿cuánto me falta por cobrar, de qué plataformas y cuáles son los viajes concretos con descuadre?",
+  },
+  {
+    icon: Receipt,
+    label: "Deducibles del mes",
+    prompt:
+      "Hazme un resumen de mis gastos deducibles de impuestos de este mes por categoría, con totales y consejos.",
+  },
 ]
 
 export function AIScreen({
@@ -53,7 +67,42 @@ export function AIScreen({
   ])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
+  const [bankCsvName, setBankCsvName] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const bankFileRef = useRef<HTMLInputElement>(null)
+
+  // Parser tolerante de estados de cuenta: vive en lib/bank-csv.ts (puro y
+  // probado en Node), aquí solo se consume.
+
+  async function handleBankFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ""
+    if (!file) return
+    try {
+      const text = await file.text()
+      const rows = parseBankCsv(text)
+      if (!rows || rows.length === 0) {
+        window.alert(
+          "No se pudieron leer transacciones del archivo. Formato esperado (CSV): fecha, descripción, monto.",
+        )
+        return
+      }
+      setBankCsvName(file.name)
+      const movimientos = rows
+        .map((r) => `${r.date} | ${r.description} | ${r.amount >= 0 ? "+" : "-"}$${Math.abs(r.amount).toFixed(2)}`)
+        .join("\n")
+      sendMessage(
+        `[CONCILIACIÓN BANCARIA] Subí ${rows.length} transacciones de mi banco (${file.name}). Compáralas con mis viajes y gastos, y dime:\n` +
+          `1) qué transacciones coinciden con pagos recibidos de viajes (por monto y fecha cercana)\n` +
+          `2) qué transacciones coinciden con mis gastos registrados\n` +
+          `3) diferencias, descuadres y pagos de menos o de más\n` +
+          `4) transacciones sin correspondencia\n\n` +
+          `TRANSACCIONES DEL BANCO:\n${movimientos}`,
+      )
+    } catch {
+      window.alert("No se pudo leer el archivo.")
+    }
+  }
 
   const metrics = useMemo(() => {
     const totalTrips = trips.length
@@ -151,6 +200,51 @@ export function AIScreen({
       date: e.date,
     }))
 
+    // Reconciliación: esperado/recibido/diferencia. Es lo que le permite a la
+    // IA responder "cuánto me falta por cobrar" con números reales.
+    const recon = reconSummary(trips)
+    const reconciliationProblems = trips
+      .map((t) => ({ trip: t, view: reconViewOf(t) }))
+      .filter(({ view }) => view.state === "short" || view.state === "over")
+      .slice(-10)
+      .map(({ trip, view }) => ({
+        platform: trip.platform,
+        route: trip.pickup && trip.dropoff ? `${trip.pickup.slice(0, 25)} → ${trip.dropoff.slice(0, 25)}` : "— → —",
+        date: tripDateOf(trip),
+        expected: view.expected,
+        received: view.received,
+        diff: view.diff,
+        state: view.state,
+      }))
+
+    // Finanzas semanales + facturas: se leen de las mismas claves que usa
+    // FINANCE, para que la IA y la pantalla vean lo mismo.
+    const readJson = (key: string): any => {
+      try {
+        return JSON.parse(localStorage.getItem(key) || "null")
+      } catch {
+        return null
+      }
+    }
+    const financeWeek = readJson("claris_finance_week_v1")
+    const startingBalance = Number(financeWeek?.startingBalance) || 0
+    const reserveBalance = Number(financeWeek?.reserveBalance) || 0
+    const upcomingExpenses = Array.isArray(financeWeek?.upcomingExpenses) ? financeWeek.upcomingExpenses : []
+    const upcomingBillsTotal = upcomingExpenses.reduce((s: number, e: any) => s + (Number(e.amount) || 0), 0)
+    const unpaidTollBills = (Array.isArray(readJson("claris_toll_bills")) ? readJson("claris_toll_bills") : []).filter(
+      (b: any) => b?.status === "unpaid",
+    )
+    const unpaidTollsTotal = unpaidTollBills.reduce((s: number, b: any) => s + (Number(b.amount) || 0), 0)
+
+    const financeSummary = {
+      startingBalance,
+      reserveBalance,
+      upcomingBillsTotal,
+      unpaidTollsTotal,
+      unpaidTollBillCount: unpaidTollBills.length,
+      scheduledCount: Array.isArray(readJson("claris_scheduled_entries")) ? readJson("claris_scheduled_entries").length : 0,
+    }
+
     return {
       tripsCount: totalTrips,
       totalGross,
@@ -171,8 +265,23 @@ export function AIScreen({
       netPerHour,
       recentTripsList,
       expensesList,
+      // Reconciliación y finanzas: lo nuevo para el asistente.
+      reconciliation: {
+        expected: recon.expected,
+        received: recon.received,
+        diff: recon.diff,
+        pendingCount: recon.pendingCount,
+        shortCount: recon.shortCount,
+        overCount: recon.overCount,
+        okCount: recon.okCount,
+        problemCount: recon.problemCount,
+      },
+      reconciliationProblems,
+      finance: financeSummary,
       tripsSummary: `${totalTrips} viajes registrados: $${totalGross.toFixed(2)} brutos (earnings $${totalEarnings.toFixed(2)} + propinas $${totalTips.toFixed(2)} + extra $${totalExtraCash.toFixed(2)} + peajes $${totalTolls.toFixed(2)}), comisiones de plataforma $${totalPlatformFees.toFixed(2)}, pago neto $${netPayout.toFixed(2)}. ${totalTips > 0 ? `Propinas: $${totalTips.toFixed(2)}.` : "Sin propinas."} Horas estimadas: ${estimatedHoursSpan}h (desde ${firstTripTime || "N/A"} hasta ${lastTripTime || "N/A"}). Ganancia/h estimada: $${grossPerHour}/h bruto, $${netPerHour}/h neto.`,
       expensesSummary: `${expenses.length} gastos registrados totalizando $${totalExpenses.toFixed(2)} (${topCategory}: mayor categoría). Beneficio tras gastos: $${netProfit.toFixed(2)}.`,
+      reconciliationSummary: `Reconciliación de pagos: esperado $${recon.expected.toFixed(2)}, recibido $${recon.received.toFixed(2)}, diferencia $${recon.diff.toFixed(2)}. ${recon.pendingCount} viajes sin pago registrado, ${recon.shortCount} pagaron de menos, ${recon.overCount} pagaron de más, ${recon.okCount} cuadran.`,
+      financeSummaryText: `Finanzas semanales: saldo disponible $${startingBalance.toFixed(2)}, reserva $${reserveBalance.toFixed(2)}, facturas próximas $${upcomingBillsTotal.toFixed(2)}, peajes pendientes $${unpaidTollsTotal.toFixed(2)} (${unpaidTollBills.length} facturas).`,
     }
   }, [trips, expenses])
 
@@ -384,6 +493,25 @@ export function AIScreen({
 
       {/* Input bar */}
       <div className="border-t border-neutral-800 bg-neutral-950 p-3">
+        {/* Asistente de conciliación bancaria: CSV del banco -> la IA lo cruza
+            con viajes y gastos usando el mismo contexto enriquecido. */}
+        <input
+          ref={bankFileRef}
+          type="file"
+          accept=".csv,.txt,text/csv,text/plain"
+          onChange={handleBankFile}
+          className="hidden"
+        />
+        <button
+          type="button"
+          onClick={() => bankFileRef.current?.click()}
+          disabled={loading}
+          className="mb-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-sky-500/40 bg-sky-950/40 py-2 text-[11px] font-bold text-sky-300 transition hover:bg-sky-900/40 disabled:opacity-50"
+        >
+          <Scale className="size-3.5" />
+          {bankCsvName ? `Conciliar banco: ${bankCsvName}` : "CONCILIAR CON EL BANCO (subir CSV del estado de cuenta)"}
+        </button>
+
         <form
           onSubmit={(e) => {
             e.preventDefault()

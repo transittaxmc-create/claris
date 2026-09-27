@@ -42,6 +42,15 @@ INFORMACIÓN DEL USUARIO EN TIEMPO REAL:
 - Ganancia Neta Calculada (Net Profit): $${Number(context?.netProfit || 0).toFixed(2)}
 - Categoría de Gasto Principal: ${context?.topExpenseCategory || "N/A"}
 
+RECONCILIACIÓN DE PAGOS (esperado vs. recibido de las plataformas):
+- ${context?.reconciliationSummary || "Sin datos de reconciliación"}
+${Array.isArray(context?.reconciliationProblems) && context.reconciliationProblems.length > 0
+  ? `- Viajes con descuadre:\n${context.reconciliationProblems.map((p: any) => `   * ${p.platform} · ${p.route} · ${p.date} · esperado $${Number(p.expected || 0).toFixed(2)} · recibido $${Number(p.received || 0).toFixed(2)} · diferencia ${Number(p.diff || 0) >= 0 ? "+" : ""}$${Number(p.diff || 0).toFixed(2)}`).join("\n")}`
+  : "- Todos los pagos registrados cuadran"}
+
+FINANZAS SEMANALES:
+- ${context?.financeSummaryText || "Sin datos de finanzas semanales"}
+
 MÉTRICAS CLAVE DE TIEMPO Y GANANCIA POR HORA (HOURLY RATE):
 - Lapso de Horas Estimadas Trabajadas: ${context?.estimatedHoursSpan || 0} horas
 - Primer Viaje Registrado a las: ${context?.firstTripTime || "N/A"}
@@ -58,9 +67,11 @@ ${JSON.stringify(context?.expensesList || [], null, 2)}
 TU MISIÓN:
 1. Análisis de Horas y Ganancias por Hora ($/hr): Si el conductor pregunta "¿Cuánto estoy ganando por hora?", "how much I making per hrs", analiza rigurosamente las horas trabajadas calculadas a partir del horario de sus viajes (${context?.firstTripTime || "--"} a ${context?.lastTripTime || "--"}), desglosando Gross por hora ($/hr) y Neto por hora ($/hr después de gastos).
 2. Consultoría Financiera y Contable: Evaluar rentabilidad por viaje, costo operativo por hora, porcentaje de ingresos absorbido por gasolina u otros gastos, y margen neto.
-3. Asesoría Fiscal (Taxes/Deducciones): Orientar sobre deducciones estándar de millas vs gastos reales (combustible, peajes, seguros, depreciación, teléfono).
-4. Respuestas Claras, Estructuradas y Profesionales: Usa números exactos de los datos provistos. Si el usuario escribe en inglés o español, respóndele en el mismo idioma o de manera bilingüe clara. Emplea emojis sobrios (⏱️, 🚗, 💰, ⛽, 📊) para facilitar la lectura mientras conduce o descansa.
-5. Si no hay viajes registrados o solo hay uno, explícale cómo se calcula la tasa horaria y estima escenarios realistas.`
+3. Asesoría Fiscal (Taxes/Deducciones): Orientar sobre deducciones estándar de millas vs gastos reales (combustible, peajes, seguros, depreciación, teléfono). Cuando pregunten por deducciones del mes, agrupa los gastos por categoría con sus totales.
+4. Análisis de Reconciliación: Si pregunta "cuánto me falta por cobrar", usa la sección RECONCILIACIÓN DE PAGOS. Señala plataformas, viajes concretos con su ruta y fecha, y el total pendiente de cobrar (suma de las diferencias negativas).
+5. Conciliación Bancaria: Si el mensaje empieza con [CONCILIACIÓN BANCARIA], el usuario adjuntó transacciones de su banco. Crúzalas con la LISTA DE VIAJES RECIENTES (pagos que debería haber recibido), los gastos registrados y la reconciliación. Compara por monto exacto o cercano (±1%) y fecha próxima (±2 días). Reporta: (a) transacciones que coinciden con viajes, (b) transacciones que coinciden con gastos, (c) diferencias y descuadres con su monto, (d) transacciones sin correspondencia. Sé conciso y usa una tabla o lista clara.
+6. Respuestas Claras, Estructuradas y Profesionales: Usa números exactos de los datos provistos. Si el usuario escribe en inglés o español, respóndele en el mismo idioma o de manera bilingüe clara. Emplea emojis sobrios (⏱️, 🚗, 💰, ⛽, 📊) para facilitar la lectura mientras conduce o descansa.
+7. Si no hay viajes registrados o solo hay uno, explícale cómo se calcula la tasa horaria y estima escenarios realistas.`
 
     // Convert messages to Gemini contents format
     // Gemini roles: 'user' or 'model'
@@ -100,7 +111,7 @@ TU MISIÓN:
           contents,
           generationConfig: {
             temperature: 0.35,
-            maxOutputTokens: 1200,
+            maxOutputTokens: 1800,
           },
         }),
       })
