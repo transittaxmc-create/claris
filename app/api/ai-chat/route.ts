@@ -98,6 +98,7 @@ TU MISIÓN:
     // (no solo reportar).
     const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? ""
     const bankMode = String(lastUser).trimStart().startsWith("[CONCILIACIÓN BANCARIA]")
+    const expenseMode = String(lastUser).trimStart().startsWith("[ANÁLISIS DE GASTOS]")
 
     let generationConfig: Record<string, unknown> = {
       temperature: 0.35,
@@ -126,6 +127,33 @@ TU MISIÓN:
               `- Si un viaje ya tiene received registrado, NO lo incluyas en matches salvo que el banco muestre otro monto.\n` +
               `- differences: enumera lo que NO cuadra (transacciones sin viaje, viajes sin pago en el extracto, diferencias de monto).\n` +
               `- reply: resume en pocas líneas cuántos pagos se reconocieron, cuánto se actualizará y cuáles son las diferencias más importantes.`,
+          },
+        ],
+      })
+    }
+
+    if (expenseMode) {
+      generationConfig = {
+        temperature: 0.1,
+        maxOutputTokens: 2200,
+        responseMimeType: "application/json",
+      }
+      contents.push({
+        role: "user",
+        parts: [
+          {
+            text:
+              `[FORMATO DE RESPUESTA OBLIGATORIO] Responde ÚNICAMENTE un objeto JSON válido con estas claves exactas:\n` +
+              `{\n` +
+              `  "reply": "texto breve en español con tu análisis",\n` +
+              `  "expenseUpdates": [ { "expenseId": "el id exacto del gasto de la lista", "category": "Gasolina / Combustible", "classification": "business" } ]\n` +
+              `}\n` +
+              `REGLAS:\n` +
+              `- expenseUpdates SOLO para gastos que necesiten corrección: categoría incorrecta o clasificación pendiente/incorrecta. Usa el id exacto de la LISTA DE GASTOS RECIENTES.\n` +
+              `- category: una de las categorías del sistema ("Gasolina / Combustible", "Mantenimiento / Vehículo", "Peajes", "Alimentación / Comida", "Lavado de Auto", "Seguros / Permisos", "Varios"). Solo inclúyela si la actual está mal.\n` +
+              `- classification: "business" si el gasto es del negocio y deducible (gasolina, peajes, mantenimiento, lavado, licencias), o "personal" si es personal (comida familiar, ocio). Inclúyela cuando falte o sea incorrecta.\n` +
+              `- Los gastos que ya están bien categorizados Y clasificados NO van en expenseUpdates.\n` +
+              `- reply: resume cuántos gastos corregiste, cuántos están bien, y el total de gastos business vs personal.`,
           },
         ],
       })
@@ -166,19 +194,39 @@ TU MISIÓN:
     const data = await response.json()
     const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "No se pudo generar respuesta."
 
-    // En modo banco se parsea el JSON estructurado; si el modelo no lo cumple,
-    // se cae al texto plano y no se actualiza nada (más seguro que aplicar mal).
+    // En modo banco / análisis de gastos se parsea el JSON estructurado; si el
+    // modelo no lo cumple, se cae al texto plano y no se actualiza nada (más
+    // seguro que aplicar mal).
     let reply = rawText
-    let structured: { matches: { tripId: string; amount: number }[] } | null = null
-    if (bankMode) {
+    let structured: {
+      matches?: { tripId: string; amount: number }[]
+      expenseUpdates?: { expenseId: string; category?: string; classification?: string }[]
+    } | null = null
+    if (bankMode || expenseMode) {
       try {
         const parsed = JSON.parse(rawText)
         reply = typeof parsed.reply === "string" && parsed.reply ? parsed.reply : rawText
-        const rawMatches = Array.isArray(parsed.matches) ? parsed.matches : []
-        structured = {
-          matches: rawMatches
+        structured = {}
+        if (bankMode) {
+          const rawMatches = Array.isArray(parsed.matches) ? parsed.matches : []
+          structured.matches = rawMatches
             .filter((m: any) => m && typeof m.tripId === "string" && Number.isFinite(Number(m.bankAmount)))
-            .map((m: any) => ({ tripId: m.tripId, amount: Number(m.bankAmount) })),
+            .map((m: any) => ({ tripId: m.tripId, amount: Number(m.bankAmount) }))
+        }
+        if (expenseMode) {
+          const rawUpdates = Array.isArray(parsed.expenseUpdates) ? parsed.expenseUpdates : []
+          structured.expenseUpdates = rawUpdates
+            .filter((u: any) => {
+              if (!u || typeof u.expenseId !== "string" || !u.expenseId) return false
+              const catOk = u.category === undefined || (typeof u.category === "string" && u.category.trim().length > 0)
+              const clsOk = u.classification === undefined || u.classification === "business" || u.classification === "personal"
+              return catOk && clsOk && (u.category !== undefined || u.classification !== undefined)
+            })
+            .map((u: any) => ({
+              expenseId: u.expenseId,
+              ...(u.category !== undefined ? { category: u.category } : {}),
+              ...(u.classification !== undefined ? { classification: u.classification } : {}),
+            }))
         }
       } catch {
         structured = null

@@ -37,6 +37,7 @@ import { FinanceRegisterTable } from "./finance-register-table"
 import { UpcomingBillsForm } from "./upcoming-bills-form"
 import { useFinance, applyRealTrips, computeRealWeekTotals } from "./finance-store"
 import { computePanorama } from "./finance-bridge"
+import { planToCover } from "@/lib/production"
 import {
   daysUntil,
   money,
@@ -415,6 +416,22 @@ export function FinanceScreen({
     }
   }
   const belowZeroDates = new Set(panorama.days.filter((d) => d.belowZero).map((d) => d.date))
+
+  // Plan realista: horas/días de trabajo necesarios para cubrir el faltante a la
+  // meta por hora del usuario, antes del vencimiento más próximo.
+  const coverPlan = useMemo(() => {
+    let goalRate = 55
+    try {
+      const stored = Number(localStorage.getItem("claris_hourly_goal"))
+      if (Number.isFinite(stored) && stored > 0) goalRate = stored
+    } catch {}
+    const dueSoon = schedules
+      .filter((s) => s.kind === "expense" && s.active !== false && s.nextDate)
+      .map((s) => daysUntil(s.nextDate))
+      .filter((d) => d >= 0)
+    const daysUntilDue = dueSoon.length > 0 ? Math.max(1, Math.min(...dueSoon)) : 7
+    return planToCover({ shortfall: panorama.shortfall, goalRate, hoursPerDay: 8, daysUntilDue })
+  }, [panorama.shortfall, schedules])
   function saveSchedule(entry: ScheduledEntry) {
     setSchedules((current) => {
       const next = current.some((item) => item.id === entry.id)
@@ -568,6 +585,14 @@ export function FinanceScreen({
                       </p>
                     ))}
                 </div>
+              )}
+
+              {/* Plan realista: cuántas horas/días de trabajo hacen falta para
+                  cubrir el faltante, a la meta por hora del usuario. */}
+              {!panorama.covered && (
+                <p className="mt-2 rounded-xl border border-amber-500/30 bg-amber-950/20 px-2.5 py-2 text-[10px] font-semibold leading-snug text-amber-200">
+                  🗓️ PLAN REALISTA · {coverPlan.message}
+                </p>
               )}
             </section>
 

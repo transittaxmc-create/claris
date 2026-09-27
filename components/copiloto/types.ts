@@ -69,10 +69,15 @@ export type Expense = {
   isEditedByUser: boolean
   // Se marcó como pago programado con frecuencia (ver scheduledEntryFromExpense).
   scheduled?: boolean
+  // Clasificación fiscal: negocio (deducible) o personal. Sin valor = aún sin
+  // clasificar; la IA propone una y el usuario puede ajustarla.
+  classification?: ExpenseClassification
   // Hora de modificación: es lo que permite combinar gastos entre dos
   // teléfonos sin perder cambios (mismo criterio que los viajes).
   savedAt?: string
 }
+
+export type ExpenseClassification = "business" | "personal"
 
 export function newExpense(): Expense {
   return {
@@ -90,6 +95,60 @@ export function newExpense(): Expense {
 
 export function stampExpense(e: Expense, at: string = new Date().toISOString()): Expense {
   return { ...e, savedAt: at }
+}
+
+// ---------------------------------------------------------------------
+// Actualización de gastos propuesta por la IA (categoría / clasificación)
+// ---------------------------------------------------------------------
+
+export type ExpenseUpdate = {
+  expenseId: string
+  // Categoría corregida por la IA (solo si propone una distinta y válida).
+  category?: string
+  // Clasificación fiscal propuesta.
+  classification?: ExpenseClassification
+}
+
+export type ExpenseUpdateResult = {
+  expenses: Expense[]
+  applied: number
+}
+
+// Aplica las correcciones de la IA a los gastos: cambia la categoría y la
+// clasificación solo en los gastos indicados; los demás quedan intactos. Los
+// valores inválidos (categoría vacía, clasificación rara) se ignoran. Lógica
+// pura, probada en Node.
+export function applyExpenseUpdatesToExpenses(
+  expenses: Expense[],
+  updates: ExpenseUpdate[],
+): ExpenseUpdateResult {
+  const valid = updates.filter((u) => {
+    if (!u || typeof u.expenseId !== "string" || !u.expenseId) return false
+    const categoryOk = u.category === undefined || (typeof u.category === "string" && u.category.trim().length > 0)
+    const classificationOk = u.classification === undefined || u.classification === "business" || u.classification === "personal"
+    return categoryOk && classificationOk && (u.category !== undefined || u.classification !== undefined)
+  })
+
+  let applied = 0
+  const next = expenses.map((e) => {
+    const update = valid.find((u) => u.expenseId === e.id)
+    if (!update) return e
+    let changed = false
+    const patch: Partial<Expense> = {}
+    if (update.category !== undefined && update.category.trim() !== e.category) {
+      patch.category = update.category.trim()
+      changed = true
+    }
+    if (update.classification !== undefined && update.classification !== e.classification) {
+      patch.classification = update.classification
+      changed = true
+    }
+    if (!changed) return e
+    applied += 1
+    return { ...e, ...patch, isEditedByUser: true, savedAt: new Date().toISOString() }
+  })
+
+  return { expenses: next, applied }
 }
 
 // ---------------------------------------------------------------------

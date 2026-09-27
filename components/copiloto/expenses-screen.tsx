@@ -9,6 +9,7 @@ import {
   nextOccurrenceDate,
   scheduledEntryFromExpense,
   type Expense,
+  type ExpenseClassification,
   type ScheduleFrequency,
   type ScheduledEntry,
   expenseTotal,
@@ -22,7 +23,8 @@ import { MoneyInput } from "./money-input"
 //
 // Además, cada gasto puede programarse con vencimiento y frecuencia: al guardar
 // se crea también una entrada en claris_scheduled_entries (el ledger que ve
-// FINANCE), para dar seguimiento a los pagos que se repiten.
+// FINANCE), para dar seguimiento a los pagos que se repiten. Y se clasifica
+// como BUSINESS (deducible) o PERSONAL, manualmente o con la propuesta de la IA.
 
 type Draft = {
   id: string | null
@@ -36,6 +38,8 @@ type Draft = {
   // el ledger programado con su próxima fecha.
   frequency: ScheduleFrequency
   nextDate: string
+  // Clasificación fiscal: business / personal / sin clasificar.
+  classification?: ExpenseClassification
 }
 
 function emptyDraft(): Draft {
@@ -98,6 +102,16 @@ function ExpenseRow({
         {expense.scheduled && (
           <span className="inline-flex items-center gap-1 rounded-full border border-yellow-400/50 bg-yellow-400/10 px-2 py-0.5 text-[9px] font-bold text-yellow-300">
             <CalendarClock className="size-2.5" /> PROGRAMADO
+          </span>
+        )}
+        {expense.classification === "business" && (
+          <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold text-emerald-400">
+            💼 BUSINESS
+          </span>
+        )}
+        {expense.classification === "personal" && (
+          <span className="rounded-full border border-neutral-600 bg-neutral-800 px-2 py-0.5 text-[9px] font-bold text-neutral-400">
+            🏠 PERSONAL
           </span>
         )}
         <span className="flex-1" />
@@ -297,6 +311,7 @@ export function ExpensesScreen({
       isAiGenerated: Boolean(draft.isAiGenerated),
       isEditedByUser: draft.id !== null,
       scheduled: ["daily", "weekly", "monthly", "annual"].includes(draft.frequency),
+      classification: draft.classification,
       savedAt: new Date().toISOString(),
     }
     onSave(expense)
@@ -337,6 +352,7 @@ export function ExpensesScreen({
       isAiGenerated: ex.isAiGenerated,
       frequency: "once",
       nextDate: ex.date,
+      classification: ex.classification,
     })
   }
 
@@ -508,6 +524,38 @@ export function ExpensesScreen({
                 className="rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white outline-none placeholder:text-neutral-600"
               />
             </label>
+
+            {/* Clasificación fiscal: negocio (deducible) o personal */}
+            <div className="mt-2 flex flex-col gap-1.5">
+              <span className="text-[10px] font-bold tracking-wide text-neutral-400">CLASIFICACIÓN</span>
+              <div className="grid grid-cols-3 gap-1.5">
+                {(
+                  [
+                    ["business", "💼 Negocio"],
+                    ["personal", "🏠 Personal"],
+                    ["", "Sin clasificar"],
+                  ] as [ExpenseClassification | "", string][]
+                ).map(([value, label]) => (
+                  <button
+                    key={value || "none"}
+                    type="button"
+                    onClick={() => setDraft({ ...draft, classification: value || undefined })}
+                    className={cn(
+                      "rounded-xl border py-2 text-[10px] font-bold",
+                      (draft.classification ?? "") === value
+                        ? value === "business"
+                          ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-400"
+                          : value === "personal"
+                            ? "border-neutral-500 bg-neutral-700/40 text-neutral-300"
+                            : "border-neutral-500 bg-neutral-700/40 text-neutral-300"
+                        : "border-neutral-800 text-neutral-500",
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
             {/* Programación del pago: vencimiento y frecuencia */}
             <div className="mt-2 rounded-xl border border-yellow-400/20 bg-yellow-400/5 p-2.5">

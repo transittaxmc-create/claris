@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { type Trip, type ScheduledEntry, type ScheduleFrequency, type TollBill, grossOf, netOf, money } from "./types"
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
 import { isVoucherPlatform } from "./platform-meta"
+import { HourlyProduction } from "./hourly-production"
 import {
   diffOf,
   expectedOf,
@@ -491,6 +492,9 @@ export function RegisterScreen({
 
       {/* Scrollable body */}
       <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {/* Motivador de producción de la hora en curso */}
+        <HourlyProduction trips={trips} />
+
         {/* Stats — el TOTAL GROSS lleva dentro su desglose por plataforma */}
         <div className="flex items-stretch gap-2">
           <GrossByPlatformCard total={totals.gross} groups={platformGroups} />
