@@ -67,6 +67,8 @@ export type Expense = {
   confidence?: number // 0..1 (lectura por IA, si se usa)
   isAiGenerated: boolean
   isEditedByUser: boolean
+  // Se marcó como pago programado con frecuencia (ver scheduledEntryFromExpense).
+  scheduled?: boolean
   // Hora de modificación: es lo que permite combinar gastos entre dos
   // teléfonos sin perder cambios (mismo criterio que los viajes).
   savedAt?: string
@@ -88,6 +90,51 @@ export function newExpense(): Expense {
 
 export function stampExpense(e: Expense, at: string = new Date().toISOString()): Expense {
   return { ...e, savedAt: at }
+}
+
+// ---------------------------------------------------------------------
+// Pagos programados (vencimiento + frecuencia) a partir de un gasto
+// ---------------------------------------------------------------------
+
+// Calcula la próxima fecha de ocurrencia a partir de una fecha base.
+export function nextOccurrenceDate(date: string, frequency: ScheduleFrequency): string {
+  const d = new Date(`${date}T12:00:00`)
+  if (Number.isNaN(d.getTime())) return date
+  if (frequency === "daily") d.setDate(d.getDate() + 1)
+  else if (frequency === "weekly") d.setDate(d.getDate() + 7)
+  else if (frequency === "monthly") d.setMonth(d.getMonth() + 1)
+  else if (frequency === "annual") d.setFullYear(d.getFullYear() + 1)
+  return d.toISOString().slice(0, 10)
+}
+
+// Crea la entrada del ledger programado a partir de un gasto. Solo tiene
+// sentido con frecuencia distinta de "once". El id del gasto viaja como
+// `sourceExpenseId` para poder enlazar ambos lados más adelante.
+export function scheduledEntryFromExpense(
+  expense: Expense,
+  frequency: ScheduleFrequency,
+  nextDate: string,
+): ScheduledEntry {
+  return {
+    id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `sch-${Date.now()}`,
+    kind: "expense",
+    description: expense.vendor || "Gasto",
+    category: expense.category,
+    amount: expense.amount,
+    startDate: expense.date,
+    nextDate,
+    frequency,
+    active: true,
+  }
+}
+
+// Días que faltan hasta una fecha (0 = hoy, negativo = vencida).
+export function daysUntil(date: string, from: Date = new Date()): number {
+  const target = new Date(`${date}T12:00:00`)
+  if (Number.isNaN(target.getTime())) return 0
+  const base = new Date(from)
+  base.setHours(12, 0, 0, 0)
+  return Math.round((target.getTime() - base.getTime()) / 86_400_000)
 }
 
 export function expenseTotal(list: Expense[]): number {
