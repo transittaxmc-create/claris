@@ -2,14 +2,14 @@
 
 import { useRef, useState } from "react"
 import { cn } from "@/lib/utils"
-import { moneyTextFromNumber, moneyTextToNumber, normalizeMoneyText, toggleMoneySign } from "@/lib/money"
+import { moneyTextFromNumber, moneyTextToNumber, normalizeMoneyText } from "@/lib/money"
 
 // Campo de dinero reutilizable con soporte de signo negativo (ver lib/money.ts).
 //
-// El teclado decimal del teléfono no tiene tecla "-", así que el signo se cambia
-// con el botón ± del propio campo. Se usa toggleMoneySign en vez de escribir el
-// signo a mano para que el comportamiento (incluido el caso de un campo vacío,
-// que pasa a "-") esté definido y probado en lib/money.ts.
+// No lleva botón de signo en la caja: el "-" se escribe directamente con el
+// teclado. Por eso el input es type="text" (con type="number" el navegador
+// descartaría el "-" y los estados intermedios tipo "12."), mientras que
+// inputMode="decimal" conserva el teclado numérico en el teléfono.
 
 export function MoneyInput({
   label,
@@ -40,16 +40,6 @@ export function MoneyInput({
     onChange(moneyTextToNumber(clean))
   }
 
-  // Cambia el signo de lo que se está viendo y lo deja como texto en edición,
-  // para que el siguiente carácter se escriba a continuación del signo.
-  function flipSign() {
-    const flipped = toggleMoneySign(display)
-    edit(flipped)
-    // En móvil el teclado puede haberse cerrado al pulsar el botón: se devuelve
-    // el foco al input para poder seguir escribiendo sin volver a tocar el campo.
-    inputRef.current?.focus()
-  }
-
   return (
     <label className="flex min-w-0 flex-1 flex-col gap-1.5">
       <span className={cn("font-bold tracking-wide", lg ? "text-[11px]" : "text-[10px]", color ?? "text-neutral-400")}>
@@ -59,34 +49,15 @@ export function MoneyInput({
         className={cn(
           "flex min-h-[4.5rem] items-center gap-1 rounded-xl border bg-neutral-950 focus-within:border-neutral-500",
           negative ? "border-rose-800/70" : "border-neutral-800",
-          lg ? "py-3.5 pl-2 pr-4" : "py-2 pl-1.5 pr-2.5",
+          lg ? "px-4 py-3.5" : "px-2.5 py-2",
         )}
       >
-        <button
-          type="button"
-          // No debe robar el foco al input ni disparar el submit de un formulario.
-          onMouseDown={(e) => e.preventDefault()}
-          onClick={flipSign}
-          aria-label={negative ? `Quitar el signo negativo a ${label}` : `Poner ${label} en negativo`}
-          aria-pressed={negative}
-          title="Cambiar signo (− / +)"
-          className={cn(
-            "flex shrink-0 items-center justify-center rounded-lg border font-bold transition-colors",
-            lg ? "size-9 text-base" : "size-7 text-xs",
-            negative
-              ? "border-rose-700/70 bg-rose-950/40 text-rose-300"
-              : "border-neutral-700 bg-neutral-900 text-neutral-400 hover:text-neutral-200",
-          )}
-        >
-          {negative ? "−" : "±"}
-        </button>
         <span className={cn("shrink-0 text-neutral-500", lg ? "text-sm" : "text-xs")}>$</span>
         <input
           ref={inputRef}
           // type="text" a propósito: con type="number" el navegador descarta los
-          // estados intermedios que el usuario está escribiendo ("-", "12."), así
-          // que el botón ± no podría negar un campo vacío. inputMode="decimal"
-          // mantiene el teclado numérico en el teléfono.
+          // estados intermedios que el usuario está escribiendo ("-", "12.").
+          // inputMode="decimal" mantiene el teclado numérico en el teléfono.
           type="text"
           inputMode="decimal"
           enterKeyHint="done"
