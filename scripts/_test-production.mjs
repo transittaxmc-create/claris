@@ -26,7 +26,7 @@ execFileSync(
 )
 renameSync(join(tmp, "production.js"), join(tmp, "production.mjs"))
 
-const { hourWindow, productionThisHour, hourlyAdvice, planToCover } = await import(
+const { hourWindow, productionThisHour, hourlyAdvice, planToCover, timerReading } = await import(
   pathToFileURL(join(tmp, "production.mjs")).href
 )
 
@@ -127,6 +127,43 @@ check("meta diaria 300", p4.dailyTarget, 300)
 const p5 = planToCover({ shortfall: 200, goalRate: 0, daysUntilDue: 5 })
 check("meta 0 cae a 55/h por defecto", p5.goalRate, 55)
 check("4 horas", p5.hoursNeeded, 4)
+
+console.log("\n== CRONOMETRO: ENCENDIDO Y APAGADO ==")
+// 15:40:30 — encendido, corre con el reloj de la hora.
+const at = (h, m, s = 0, ms = 0) => new Date(2026, 8, 27, h, m, s, ms)
+const encendido = timerReading({ now: at(15, 40, 30), on: true, stoppedAt: null })
+check("encendido cuenta 40:30", encendido.elapsedSec, 40 * 60 + 30)
+check("encendido esta corriendo", encendido.running, true)
+check("encendido quedan 20 min", encendido.remainingMin, 20)
+
+// Apagado a las 15:40:00 y mirado a las 15:52: el reloj NO avanza.
+const apagado = timerReading({ now: at(15, 52), on: false, stoppedAt: at(15, 40).getTime() })
+check("apagado se congela en 40:00", apagado.elapsedSec, 40 * 60)
+check("apagado no corre", apagado.running, false)
+check("apagado conserva lo trabajado", apagado.remainingMin, 20)
+
+// Apagado en una hora anterior: la hora nueva empieza en cero, no arrastra.
+const horaNueva = timerReading({ now: at(16, 5), on: false, stoppedAt: at(15, 40).getTime() })
+check("hora nueva arranca en cero", horaNueva.elapsedSec, 0)
+check("hora nueva no corre", horaNueva.running, false)
+
+// Apagado sin marca de tiempo (por ejemplo tras limpiar la memoria): cero.
+const sinMarca = timerReading({ now: at(15, 52), on: false, stoppedAt: null })
+check("sin marca de tiempo queda en cero", sinMarca.elapsedSec, 0)
+
+// Apagado a mitad de hora: cuenta solo lo trabajado de esa hora.
+const media = timerReading({ now: at(16, 45), on: false, stoppedAt: at(16, 30).getTime() })
+check("apagado a las 16:30 cuenta 30 min", media.elapsedSec, 30 * 60)
+check("y le quedan 30 min de hora", media.remainingMin, 30)
+
+// Marca de tiempo posterior a la hora en curso (reloj movido): se corta en 60:00.
+const tope = timerReading({ now: at(16, 30), on: false, stoppedAt: at(17, 5).getTime() })
+check("nunca pasa de 60 min", tope.elapsedSec, 3600)
+check("tope deja 0 min", tope.remainingMin, 0)
+
+// Volver a encender: sigue contando la hora en curso desde el reloj real.
+const reencendido = timerReading({ now: at(15, 45), on: true, stoppedAt: null })
+check("al reencender sigue el reloj", reencendido.elapsedSec, 45 * 60)
 
 rmSync(tmp, { recursive: true, force: true })
 console.log(`\n${"=".repeat(50)}`)
