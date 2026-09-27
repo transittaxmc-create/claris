@@ -99,6 +99,7 @@ TU MISIÓN:
     const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? ""
     const bankMode = String(lastUser).trimStart().startsWith("[CONCILIACIÓN BANCARIA]")
     const expenseMode = String(lastUser).trimStart().startsWith("[ANÁLISIS DE GASTOS]")
+    const scheduleMode = /\b(program|programa|programar|programe|programado|programada|schedule|scheduled)\b/i.test(String(lastUser))
 
     let generationConfig: Record<string, unknown> = {
       temperature: 0.35,
@@ -129,6 +130,22 @@ TU MISIÓN:
               `- reply: resume en pocas líneas cuántos pagos se reconocieron, cuánto se actualizará y cuáles son las diferencias más importantes.`,
           },
         ],
+      })
+    }
+
+    if (scheduleMode) {
+      generationConfig = {
+        temperature: 0.1,
+        maxOutputTokens: 2400,
+        responseMimeType: "application/json",
+      }
+      contents.push({
+        role: "user",
+        parts: [{ text:
+          `[ACCIÓN FINANCIERA OBLIGATORIA] El usuario quiere crear pagos o ingresos programados. Responde SOLO JSON válido con estas claves exactas:\n` +
+          `{ "reply": "confirmación breve", "schedules": [ { "kind": "expense" o "income", "description": "...", "category": "...", "amount": 0, "startDate": "YYYY-MM-DD", "frequency": "once"|"daily"|"weekly"|"monthly"|"annual", "nextDate": "YYYY-MM-DD", "active": true } ], "needsConfirmation": false }\n` +
+          `REGLAS: interpreta español natural. Usa la fecha actual ${new Date().toISOString().slice(0, 10)}. Para "lunes a sábado" crea seis entradas semanales, una por día, para no programar domingos. Para "cada jueves" crea una entrada semanal comenzando el próximo jueves. Para "día 19 de cada mes" usa frecuencia monthly y una fecha inicial cuyo día sea 19. No inventes montos; convierte $400, 400 dólares y 400 en 400. Si faltan monto, frecuencia o fecha, devuelve schedules vacío y needsConfirmation true explicando qué falta. kind income para proyecciones/ingresos y expense para pagos/facturas. Cada entrada debe tener un id omitido; el cliente lo genera.`
+        }],
       })
     }
 
@@ -201,8 +218,10 @@ TU MISIÓN:
     let structured: {
       matches?: { tripId: string; amount: number }[]
       expenseUpdates?: { expenseId: string; category?: string; classification?: string }[]
+      schedules?: Array<{ kind: "income" | "expense"; description: string; category?: string; amount: number; startDate: string; frequency: string; nextDate: string; active?: boolean }>
+      needsConfirmation?: boolean
     } | null = null
-    if (bankMode || expenseMode) {
+    if (bankMode || expenseMode || scheduleMode) {
       try {
         const parsed = JSON.parse(rawText)
         reply = typeof parsed.reply === "string" && parsed.reply ? parsed.reply : rawText
@@ -212,6 +231,17 @@ TU MISIÓN:
           structured.matches = rawMatches
             .filter((m: any) => m && typeof m.tripId === "string" && Number.isFinite(Number(m.bankAmount)))
             .map((m: any) => ({ tripId: m.tripId, amount: Number(m.bankAmount) }))
+        }
+        if (scheduleMode) {
+          const rawSchedules = Array.isArray(parsed.schedules) ? parsed.schedules : []
+          structured.schedules = rawSchedules.filter((s: any) =>
+            s && (s.kind === "income" || s.kind === "expense") && typeof s.description === "string" && Number.isFinite(Number(s.amount)) && Number(s.amount) > 0 &&
+            ["once", "daily", "weekly", "monthly", "annual"].includes(s.frequency) && /^\\d{4}-\\d{2}-\\d{2}$/.test(s.startDate) && /^\\d{4}-\\d{2}-\\d{2}$/.test(s.nextDate)
+          ).map((s: any) => ({
+            kind: s.kind, description: s.description.trim(), category: typeof s.category === "string" ? s.category : "Varios", amount: Number(s.amount),
+            startDate: s.startDate, frequency: s.frequency, nextDate: s.nextDate, active: s.active !== false,
+          }))
+          structured.needsConfirmation = parsed.needsConfirmation === true
         }
         if (expenseMode) {
           const rawUpdates = Array.isArray(parsed.expenseUpdates) ? parsed.expenseUpdates : []

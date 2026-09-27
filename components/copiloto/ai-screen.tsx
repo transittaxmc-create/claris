@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useRef, useEffect, useMemo } from "react"
-import { Sparkles, Send, Loader2, Bot, User, TrendingUp, Receipt, Car, Zap, AlertTriangle, Scale } from "lucide-react"
+import { Sparkles, Send, Loader2, Bot, User, TrendingUp, Receipt, Car, Zap, AlertTriangle, Scale, Mic, MicOff } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { grossOf, tripDateOf, daysUntil, netOf, type Trip, type Expense } from "./types"
+import { grossOf, tripDateOf, daysUntil, netOf, type Trip, type Expense, type ScheduledEntry } from "./types"
 import { reconSummary, reconViewOf, expectedOf, receivedOf } from "./reconciliation"
 import { parseBankCsv } from "@/lib/bank-csv"
 
@@ -96,6 +96,7 @@ export function AIScreen({
   expenses,
   onApplyBankMatches,
   onApplyExpenseUpdates,
+  onApplySchedules,
 }: {
   trips: Trip[]
   expenses: Expense[]
@@ -105,13 +106,35 @@ export function AIScreen({
   // El análisis de gastos devuelve correcciones {expenseId, category?,
   // classification?}: el padre las aplica a los gastos y persiste.
   onApplyExpenseUpdates?: (updates: { expenseId: string; category?: string; classification?: "business" | "personal" }[]) => number
+  onApplySchedules?: (schedules: ScheduledEntry[]) => number
 }) {
   const [messages, setMessages] = useState<Message[]>(() => loadHistory() ?? [welcomeMessage()])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [bankCsvName, setBankCsvName] = useState<string | null>(null)
+  const [listening, setListening] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const bankFileRef = useRef<HTMLInputElement>(null)
+
+  function toggleVoiceInput() {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      window.alert("El dictado por voz no está disponible en este navegador.")
+      return
+    }
+    if (listening) return
+    const recognition = new SpeechRecognition()
+    recognition.lang = "es-ES"
+    recognition.interimResults = false
+    recognition.onstart = () => setListening(true)
+    recognition.onend = () => setListening(false)
+    recognition.onerror = () => setListening(false)
+    recognition.onresult = (event: any) => {
+      const transcript = event.results?.[0]?.[0]?.transcript?.trim()
+      if (transcript) setInput((current) => `${current} ${transcript}`.trim())
+    }
+    recognition.start()
+  }
 
   // Parser tolerante de estados de cuenta: vive en lib/bank-csv.ts (puro y
   // probado en Node), aquí solo se consume.
@@ -397,6 +420,11 @@ export function AIScreen({
           const applied = onApplyBankMatches(matches)
           appliedNote = `\n\n✅ ACTUALIZADO: ${applied} viaje${applied === 1 ? "" : "s"} marcado${applied === 1 ? "" : "s"} con el pago del banco. Revisa REGISTER para ver el descuadre restante.`
         }
+        const schedules = data.structured?.schedules
+        if (Array.isArray(schedules) && schedules.length > 0 && onApplySchedules) {
+          const applied = onApplySchedules(schedules)
+          appliedNote += `\\n\\n✅ FINANCE: ${applied} programación${applied === 1 ? "" : "es"} creada${applied === 1 ? "" : "s"} en el ledger programado.`
+        }
         const expenseUpdates = data.structured?.expenseUpdates
         if (Array.isArray(expenseUpdates) && expenseUpdates.length > 0 && onApplyExpenseUpdates) {
           const applied = onApplyExpenseUpdates(expenseUpdates)
@@ -622,9 +650,18 @@ export function AIScreen({
             disabled={loading}
             className="flex-1 rounded-xl border border-neutral-800 bg-neutral-900/80 px-3.5 py-2.5 text-xs text-white placeholder-neutral-500 focus:border-yellow-400 focus:outline-none focus:ring-1 focus:ring-yellow-400 disabled:opacity-50"
           />
-          <button
-            type="submit"
-            disabled={!input.trim() || loading}
+  <button
+  type="button"
+  onClick={toggleVoiceInput}
+  disabled={loading}
+  aria-label={listening ? "Detener dictado" : "Dictar instrucción"}
+  className={cn("flex size-9 shrink-0 items-center justify-center rounded-xl border text-black transition", listening ? "border-red-400 bg-red-400" : "border-neutral-700 bg-neutral-900 text-yellow-400 hover:border-yellow-400")}
+  >
+  {listening ? <MicOff className="size-4" /> : <Mic className="size-4" />}
+  </button>
+  <button
+  type="submit"
+  disabled={!input.trim() || loading}
             className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-yellow-400 text-black font-bold transition hover:bg-yellow-300 disabled:opacity-40 disabled:hover:bg-yellow-400"
           >
             {loading ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
