@@ -11,6 +11,12 @@ export type HourlyTrip = {
   net: number // neto del viaje
 }
 
+// Redondeo a centavos, simétrico con los negativos.
+function round2(n: number): number {
+  const abs = Math.round(Math.abs(Number(n) || 0) * 100) / 100
+  return Number(n) < 0 ? -abs : abs
+}
+
 export type HourWindow = {
   hour: number // 0..23 de la hora en curso
   label: string // "15:00 – 16:00"
@@ -37,34 +43,267 @@ export function hourWindow(now: Date): HourWindow {
   }
 }
 
-// Cronómetro con encendido y apagado.
+// Cronómetro por bloques de una hora.
 //
-// Se enciende cuando el conductor empieza a trabajar y se apaga cuando termina.
-// Apagado, el tiempo deja de correr (se queda congelado en el minuto en que se
-// apagó) aunque el reloj de la hora siga avanzando. Al cambiar de hora el conteo
-// se reinicia solo, así que un cronómetro que quedó apagado en una hora anterior
-// vuelve a cero en la hora nueva: no arrastra tiempo de antes.
+// - Se enciende cuando el conductor empieza a trabajar y se apaga cuando termina.
+// - APAGADO, el cronómetro vuelve a cero: se para y se limpia la pantalla.
+// - Cada 60 minutos vuelve a cero solo: al caer la hora en punto arranca un bloque
+//   nuevo, para que el número que se ve sea siempre "cuánto llevo en esta hora de
+//   trabajo". El bloque anterior queda guardado en la estadística por hora.
+// - Si se enciende a mitad de hora, el bloque arranca en ese momento (no se
+//   inventa el tiempo de antes).
 export type TimerReading = {
-  elapsedSec: number // segundos contados en la hora en curso
-  remainingMin: number // minutos que quedan de la hora (el reloj de la hora sigue)
+  elapsedSec: number // segundos del bloque en curso (0 si está apagado)
+  remainingMin: number // minutos que le quedan al bloque de 60 minutos
   running: boolean // true si está contando ahora mismo
 }
 
-export function timerReading(input: { now: Date; on: boolean; stoppedAt: number | null }): TimerReading {
+export function timerReading(input: { now: Date; on: boolean; startedAt?: number | null }): TimerReading {
   const win = hourWindow(input.now)
-  if (input.on) return { elapsedSec: win.elapsedSec, remainingMin: win.remainingMin, running: true }
-  const stoppedAt = input.stoppedAt
-  if (stoppedAt === null || !Number.isFinite(stoppedAt)) {
-    return { elapsedSec: 0, remainingMin: win.remainingMin, running: false }
+  if (!input.on) return { elapsedSec: 0, remainingMin: 60, running: false }
+  const hourStart = startOfHourMs(input.now.getTime())
+  // El bloque cuenta desde que se encendió, salvo que venga de una hora anterior:
+  // en ese caso el bloque nuevo arranca en el minuto 0 de esta hora.
+  const startedAt = Number(input.startedAt)
+  const from = Number.isFinite(startedAt) && startedAt > hourStart ? startedAt : hourStart
+  const nowMs = input.now.getTime()
+  const elapsedSec = Math.max(0, Math.min(3600, Math.floor((nowMs - from) / 1000)))
+  return { elapsedSec, remainingMin: Math.max(0, 60 - Math.floor(elapsedSec / 60)), running: true }
+}
+
+// ---------------------------------------------------------------------------
+// Estadística por hora de trabajo
+// ---------------------------------------------------------------------------
+
+// Milisegundos del minuto 0 de la hora a la que pertenece `ms`.
+export function startOfHourMs(ms: number): number {
+  const d = new Date(ms)
+  d.setMinutes(0, 0, 0)
+  return d.getTime()
+}
+
+// Clave de una hora: "YYYY-MM-DDTHH". Es la unidad de la estadística.
+export function hourKeyOf(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}`
+}
+
+// Clave a partir de la fecha y la hora de un viaje ("2026-09-27" + "08:35").
+export function hourKeyOfTrip(date: string, time: string): string | null {
+  const day = String(date ?? "").slice(0, 10)
+  const hh = parseInt(String(time ?? "").split(":")[0] ?? "", 10)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isFinite(hh) || hh < 0 || hh > 23) return null
+  return `${day}T${String(hh).padStart(2, "0")}`
+}
+
+// Minutos trabajados por hora: { "2026-09-27T08": 2700, ... } en segundos.
+export type WorkedHours = Record<string, number>
+
+// Suma segundos a una hora, sin pasar de 60 minutos ni aceptar valores basura.
+export function addWorkedSeconds(worked: WorkedHours, key: string, seconds: number): WorkedHours {
+  const secs = Math.floor(Number(seconds))
+  if (!key || !Number.isFinite(secs) || secs <= 0) return worked
+  const current = Number(worked[key]) || 0
+  return { ...worked, [key]: Math.min(3600, current + secs) }
+}
+
+// Reparte un tramo trabajado (de `fromMs` a `toMs`) entre las horas que toca y lo
+// suma. Así un bloque que cruza la hora en punto queda bien contado en cada hora.
+export function commitWorkedRange(worked: WorkedHours, fromMs: number, toMs: number): WorkedHours {
+  const from = Number(fromMs)
+  const to = Number(toMs)
+  if (!Number.isFinite(from) || !Number.isFinite(to) || to <= from) return worked
+  let next = worked
+  let cursor = from
+  // Tope de seguridad: nunca más de 48 tramos (dos días) en una sola llamada.
+  for (let i = 0; i < 48 && cursor < to; i++) {
+    const hourStart = startOfHourMs(cursor)
+    const hourEnd = hourStart + 3600_000
+    const sliceEnd = Math.min(to, hourEnd)
+    next = addWorkedSeconds(next, hourKeyOf(new Date(hourStart)), Math.floor((sliceEnd - cursor) / 1000))
+    cursor = sliceEnd
   }
-  // Solo cuenta lo que se trabajó DENTRO de la hora en curso: si se apagó antes
-  // de esta hora, el conteo de esta hora es cero.
-  const hourStart = new Date(input.now)
-  hourStart.setMinutes(0, 0, 0)
-  const deltaSec = Math.floor((stoppedAt - hourStart.getTime()) / 1000)
-  if (deltaSec < 0) return { elapsedSec: 0, remainingMin: win.remainingMin, running: false }
-  const elapsedSec = Math.min(3600, deltaSec)
-  return { elapsedSec, remainingMin: Math.max(0, 60 - Math.floor(elapsedSec / 60)), running: false }
+  return next
+}
+
+// Deja solo las horas de los últimos `keepDays` días (la estadística no crece sin fin).
+export function trimWorked(worked: WorkedHours, now: Date, keepDays = 30): WorkedHours {
+  const limit = new Date(now.getTime() - keepDays * 24 * 3600 * 1000)
+  const limitKey = `${limit.getFullYear()}-${String(limit.getMonth() + 1).padStart(2, "0")}-${String(limit.getDate()).padStart(2, "0")}T00`
+  const out: WorkedHours = {}
+  for (const [key, value] of Object.entries(worked)) {
+    if (key >= limitKey) out[key] = value
+  }
+  return out
+}
+
+export type HourStat = {
+  key: string // "2026-09-27T08"
+  day: string // "2026-09-27"
+  hour: number // 8
+  label: string // "08:00 – 09:00"
+  produced: number // $ netos producidos en esa hora
+  workedMin: number // minutos que el cronómetro contó en esa hora
+  rate: number | null // $/hora real medido; null si no hay minutos medidos
+}
+
+// Estadística por hora: une lo producido (de los viajes) con lo trabajado (del
+// cronómetro). Una hora entra si produjo algo o si se midió tiempo en ella.
+export function hourlyStats(input: { trips: HourlyTrip[]; worked: WorkedHours; day?: string }): HourStat[] {
+  const produced: Record<string, number> = {}
+  for (const trip of input.trips) {
+    const key = hourKeyOfTrip(String(trip.date), String(trip.time))
+    if (!key) continue
+    const net = Number(trip.net)
+    if (!Number.isFinite(net) || net <= 0) continue
+    produced[key] = round2((produced[key] ?? 0) + net)
+  }
+
+  const keys = new Set<string>([...Object.keys(produced), ...Object.keys(input.worked)])
+  const stats: HourStat[] = []
+  for (const key of keys) {
+    if (input.day && !key.startsWith(`${input.day}T`)) continue
+    const hour = parseInt(key.slice(11, 13), 10)
+    if (!Number.isFinite(hour)) continue
+    const workedSec = Math.max(0, Math.min(3600, Math.floor(Number(input.worked[key]) || 0)))
+    const workedMin = Math.round((workedSec / 60) * 10) / 10
+    const amount = round2(produced[key] ?? 0)
+    stats.push({
+      key,
+      day: key.slice(0, 10),
+      hour,
+      label: `${key.slice(11, 13)}:00 – ${String((hour + 1) % 24).padStart(2, "0")}:00`,
+      produced: amount,
+      workedMin,
+      rate: workedMin > 0 ? round2(amount / (workedMin / 60)) : null,
+    })
+  }
+  // Más reciente primero: lo que acaba de pasar es lo que se quiere ver.
+  return stats.sort((a, b) => (a.key < b.key ? 1 : a.key > b.key ? -1 : 0))
+}
+
+export type HourTotals = {
+  produced: number
+  workedMin: number
+  rate: number | null // $/hora real del conjunto
+  hours: number // horas con algo (producción o tiempo)
+  measuredHours: number // horas con tiempo medido
+  goalHours: number // horas medidas que llegaron a la meta
+  best: HourStat | null // mejor hora medida por ritmo
+}
+
+export function hourlyTotals(stats: HourStat[], goalRate: number): HourTotals {
+  let produced = 0
+  let workedSec = 0
+  let measuredHours = 0
+  let goalHours = 0
+  let best: HourStat | null = null
+  for (const stat of stats) {
+    produced += stat.produced
+    workedSec += stat.workedMin * 60
+    if (stat.rate === null) continue
+    measuredHours += 1
+    if (stat.rate >= goalRate) goalHours += 1
+    if (best === null || stat.rate > (best.rate ?? 0)) best = stat
+  }
+  const workedMin = Math.round((workedSec / 60) * 10) / 10
+  return {
+    produced: round2(produced),
+    workedMin,
+    rate: workedMin > 0 ? round2(produced / (workedMin / 60)) : null,
+    hours: stats.length,
+    measuredHours,
+    goalHours,
+    best,
+  }
+}
+
+export type ImproveTip = { title: string; detail: string }
+
+// Cómo mejorar, con los números del propio conductor. Regla de la casa: si el
+// objetivo no es alcanzable con lo que de verdad está produciendo, se dice.
+export function improveAdvice(input: { stats: HourStat[]; goalRate: number }): ImproveTip[] {
+  const goal = Number(input.goalRate) > 0 ? Math.round(Number(input.goalRate)) : 55
+  const totals = hourlyTotals(input.stats, goal)
+  const tips: ImproveTip[] = []
+
+  if (totals.measuredHours < 2) {
+    return [
+      {
+        title: "Todavía no hay base para comparar",
+        detail:
+          "Deja el cronómetro encendido mientras trabajas. Con 2 o 3 horas medidas te digo tu ritmo real y en qué horas rindes más.",
+      },
+    ]
+  }
+
+  const rate = totals.rate ?? 0
+  const best = totals.best
+
+  if (rate >= goal) {
+    tips.push({
+      title: `Vas por encima de tu meta: $${rate.toFixed(0)}/h real`,
+      detail: `Tu meta es $${goal}/h y tu ritmo medido va $${(rate - goal).toFixed(0)}/h arriba. Mantén la rutina: lo que estás haciendo ya funciona.`,
+    })
+  } else {
+    const gap = goal - rate
+    if (best && (best.rate ?? 0) >= goal) {
+      tips.push({
+        title: `Te faltan $${gap.toFixed(0)}/h para la meta`,
+        detail: `Tu ritmo medido es $${rate.toFixed(0)}/h, pero tu mejor hora (${best.label}) llegó a $${(best.rate ?? 0).toFixed(0)}/h. Repite las condiciones de esa hora: es el ritmo que sí alcanza la meta.`,
+      })
+    } else {
+      tips.push({
+        title: `Te faltan $${gap.toFixed(0)}/h y tu mejor hora tampoco llegó`,
+        detail: `Ritmo medido $${rate.toFixed(0)}/h y tu mejor hora $${(best?.rate ?? 0).toFixed(0)}/h. Forzar más velocidad no es realista: la mejora está en trabajar más horas o en apuntar a viajes más largos, no en correr.`,
+      })
+    }
+  }
+
+  // Mejor franja del día, sumando todo el historial guardado.
+  const byHour: Record<number, { produced: number; workedSec: number }> = {}
+  for (const stat of input.stats) {
+    const acc = (byHour[stat.hour] ??= { produced: 0, workedSec: 0 })
+    acc.produced += stat.produced
+    acc.workedSec += stat.workedMin * 60
+  }
+  const ranked = Object.entries(byHour)
+    .map(([hour, acc]) => ({
+      hour: Number(hour),
+      rate: acc.workedSec > 0 ? round2(acc.produced / (acc.workedSec / 3600)) : 0,
+      produced: round2(acc.produced),
+    }))
+    .filter((row) => row.rate > 0)
+    .sort((a, b) => b.rate - a.rate)
+  if (ranked.length >= 2) {
+    const top = ranked[0]
+    tips.push({
+      title: `Tu mejor franja es ${String(top.hour).padStart(2, "0")}:00`,
+      detail: `En esa hora del día promedias $${top.rate.toFixed(0)}/h ($${top.produced.toFixed(2)} acumulados). Si puedes, concentra ahí las horas de trabajo.`,
+    })
+  }
+
+  // Horas con viajes pero sin cronómetro: la estadística sale incompleta.
+  const unmeasured = input.stats.filter((s) => s.rate === null && s.produced > 0).length
+  if (unmeasured > 0) {
+    tips.push({
+      title: `${unmeasured} ${unmeasured === 1 ? "hora" : "horas"} sin tiempo medido`,
+      detail: "Hubo producción pero el cronómetro estaba apagado, así que no se puede calcular el $/hora de esas horas. Enciéndelo al empezar y apágalo al terminar.",
+    })
+  }
+
+  if (totals.measuredHours >= 3) {
+    const pct = Math.round((totals.goalHours / totals.measuredHours) * 100)
+    tips.push({
+      title: `${totals.goalHours} de ${totals.measuredHours} horas llegaron a la meta (${pct} %)`,
+      detail:
+        pct >= 60
+          ? `Llevas $${totals.produced.toFixed(2)} en ${(totals.workedMin / 60).toFixed(1)} h medidas. Con este porcentaje vas bien: cuida no perder las horas buenas.`
+          : `Llevas $${totals.produced.toFixed(2)} en ${(totals.workedMin / 60).toFixed(1)} h medidas. Menos de 6 de cada 10 horas llegan a la meta: revisa las pausas y los huecos entre viajes.`,
+    })
+  }
+
+  return tips.slice(0, 3)
 }
 
 // Suma de lo producido en la hora en curso (los viajes cuya hora coincide).
