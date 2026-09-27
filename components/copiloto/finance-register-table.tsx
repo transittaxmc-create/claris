@@ -51,7 +51,9 @@ export function FinanceRegisterTable() {
                     {dayLabel(day.date)}
                   </span>
                   <span className="text-[11px] text-neutral-400">
-                    {day.isWorkingDay ? `+$${row.dayTotal.toFixed(2)}` : "Día libre — $0.00"}
+                    {day.isWorkingDay || row.dayTotal > 0
+                      ? `+$${row.dayTotal.toFixed(2)}`
+                      : "Día libre — $0.00"}
                   </span>
                 </div>
 

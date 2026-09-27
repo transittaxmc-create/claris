@@ -15,7 +15,7 @@
 
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
   AlertTriangle,
   CalendarClock,
@@ -35,13 +35,16 @@ import { BankAuditSheet } from "./bank-audit-sheet"
 import { ExpenseRegisterForm } from "./expense-register-form"
 import { FinanceRegisterTable } from "./finance-register-table"
 import { UpcomingBillsForm } from "./upcoming-bills-form"
-import { useFinance } from "./finance-store"
+import { useFinance, applyRealTrips, computeRealWeekTotals } from "./finance-store"
 import {
   money,
+  netOf,
+  tripDateOf,
   type Expense as CopilotoExpense,
   type ScheduleFrequency,
   type ScheduledEntry,
   type TollBill,
+  type Trip,
 } from "./types"
 import { ExpensesScreen } from "./expenses-screen"
 
@@ -341,10 +344,12 @@ export function createTollBill(trips: { toll: number }[], serviceDate: string): 
 
 
 export function FinanceScreen({
+  trips,
   expenses,
   onSave,
   onDelete,
 }: {
+  trips: Trip[]
   expenses: CopilotoExpense[]
   onSave: (e: CopilotoExpense) => void
   onDelete: (id: string) => void
@@ -356,6 +361,22 @@ export function FinanceScreen({
   const upcomingBills = getUpcomingExpensesTotal(7)
   const { amount: surplus, isSafe } = getInvestableSurplus()
   const emergencyData = getEmergencyPlan()
+
+  // Datos REALES del copiloto -> corrida de caja. Se aplican cada vez que los
+  // viajes cambian, agrupados por día y plataforma en la columna REAL.
+  const realTrips = useMemo(
+    () =>
+      trips.map((t) => ({
+        date: tripDateOf(t),
+        platform: t.platform,
+        net: netOf(t),
+      })),
+    [trips],
+  )
+  const realTotals = useMemo(() => computeRealWeekTotals(realTrips), [realTrips])
+  useEffect(() => {
+    applyRealTrips(realTrips)
+  }, [realTrips])
 
   // Ledger programado + facturas de peajes: mismas claves que REGISTER.
   const [schedules, setSchedules] = useState<ScheduledEntry[]>([])
@@ -449,6 +470,14 @@ export function FinanceScreen({
         </div>
         {activeTab === "caja" && (
           <div className="space-y-4">
+            {/* Ingresos reales del copiloto (viajes), alimentan la corrida */}
+            <div className="flex items-center justify-between rounded-2xl border border-emerald-500/30 bg-emerald-950/20 px-4 py-2.5">
+              <span className="text-[11px] font-bold text-emerald-300">
+                Ingresos reales de los viajes ({realTotals.realTripCount})
+              </span>
+              <span className="text-lg font-extrabold text-emerald-400">${realTotals.realIncome.toFixed(2)}</span>
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div className="relative overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900/90 p-4">
                 <div className="absolute right-0 top-0 h-full w-1.5 bg-green-400" />

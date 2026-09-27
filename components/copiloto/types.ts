@@ -230,6 +230,19 @@ export function normalizePlatformName(value: unknown): Platform {
   return LEGACY_PLATFORM_ALIASES[key] ?? "Other"
 }
 
+// La fecha de un viaje vive en raw.datetime (formato del objeto original de
+// ic_tip_tracker). Se expone como "YYYY-MM-DD" para poder agrupar por día en
+// FINANCE. Sin dato, se usa la fecha de hoy como respaldo conservador.
+export function tripDateOf(t: Trip): string {
+  const raw = t.raw as { datetime?: unknown } | undefined
+  const value = raw?.datetime
+  if (typeof value === "string" && value.length >= 10) {
+    const parsed = new Date(value)
+    if (!Number.isNaN(parsed.getTime())) return value.slice(0, 10)
+  }
+  return new Date().toISOString().slice(0, 10)
+}
+
 export function grossOf(t: Trip): number {
   // Gross income is calculated before platform fees:
   // EARNINGS + EXTRA CASH + TIPS + TOLLS.
