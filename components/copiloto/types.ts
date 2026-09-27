@@ -94,6 +94,55 @@ export function expenseTotal(list: Expense[]): number {
   return list.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
 }
 
+// ---------------------------------------------------------------------
+// Detección de gastos duplicados (recibos escaneados dos veces)
+// ---------------------------------------------------------------------
+
+// Un gasto es duplicado de otro si coinciden vendedor, fecha y monto. Es la
+// firma estable de un recibo: dos gastos con esos tres datos iguales son el
+// mismo ticket, aunque la IA haya redactado notas distintas o categorizado
+// distinto. El monto se compara en centavos para no fallar por coma flotante,
+// y el vendedor normalizado (minúsculas, sin espacios sobrantes) para no
+// fallar por "shell" vs "SHELL ".
+export type ExpenseDuplicateMatch = {
+  expense: Expense
+  // Cuántos centavos de diferencia hay; 0 es idéntico.
+  centsDiff: number
+}
+
+export function normalizeVendorName(vendor: unknown): string {
+  return String(vendor ?? "").trim().toLowerCase().replace(/\s+/g, " ")
+}
+
+export function expenseCents(amount: unknown): number {
+  const n = Number(amount)
+  if (!Number.isFinite(n)) return 0
+  return Math.round(n * 100)
+}
+
+export function findDuplicateExpense(
+  candidate: { id?: string | null; vendor: unknown; date: unknown; amount: unknown },
+  list: Expense[],
+): ExpenseDuplicateMatch | null {
+  const vendor = normalizeVendorName(candidate.vendor)
+  const cents = expenseCents(candidate.amount)
+  const date = String(candidate.date ?? "").slice(0, 10)
+
+  // Sin vendedor ni monto no hay firma: no se puede declarar duplicado.
+  if (!vendor || cents <= 0 || !date) return null
+
+  for (const e of list) {
+    // Al editar un gasto, nunca debe marcarse a sí mismo como duplicado.
+    if (candidate.id && e.id === candidate.id) continue
+    if (normalizeVendorName(e.vendor) !== vendor) continue
+    if (String(e.date ?? "").slice(0, 10) !== date) continue
+    const diff = Math.abs(expenseCents(e.amount) - cents)
+    // Hasta un centavo de tolerancia por redondeos de OCR.
+    if (diff <= 1) return { expense: e, centsDiff: diff }
+  }
+  return null
+}
+
 // Reconciliación de un viaje contra el pago real de la plataforma.
 // `expected` es el neto que calcula la app; `received` es lo que la
 // plataforma depositó de verdad. La diferencia es lo que hay que arreglar.
