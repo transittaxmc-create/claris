@@ -10,6 +10,7 @@ import { ExpensesScreen } from "./expenses-screen"
 import { FinanceScreen } from "./finance-screen"
 import { RegisterScreen } from "./register-screen"
 import { TripEditSheet } from "./trip-edit-sheet"
+import { applyDifferenceToTrip, normalizeTripStatus } from "./reconciliation"
 import { SEED_TRIPS, newTrip, stampExpense, type Expense, type Trip } from "./types"
 import {
   addExpenseTombstone,
@@ -180,18 +181,29 @@ export function CopilotoApp() {
 
   // Cada cambio se sella con su hora para poder combinarlo entre teléfonos.
   function saveNewFromEntry(t: Trip) {
-    const stamped = stampTrip(t)
+    const stamped = stampTrip(normalizeTripStatus(t))
     setTrips((prev) => [stamped, ...prev])
     setTab("REGISTER")
   }
 
   function saveEdit(t: Trip) {
-    const stamped = stampTrip(t)
+    // normalizeTripStatus deja el status en sintonía con los montos de
+    // reconciliación: sin esto el disco guardaba "matched" pero la memoria
+    // seguía en "pending" y el filtro MATCHED no mostraba nada.
+    const stamped = stampTrip(normalizeTripStatus(t))
     setTrips((prev) => {
       const exists = prev.some((p) => p.id === stamped.id)
       return exists ? prev.map((p) => (p.id === stamped.id ? stamped : p)) : [stamped, ...prev]
     })
     setEditing(null)
+  }
+
+  // Arregla el descuadre de un viaje ajustando sus earnings para que el neto
+  // calculado cuadre con lo que la plataforma pagó de verdad.
+  function applyReconciliation(t: Trip) {
+    const fixed = normalizeTripStatus(applyDifferenceToTrip(t))
+    if (fixed === t) return
+    setTrips((prev) => prev.map((p) => (p.id === fixed.id ? stampTrip(fixed) : p)))
   }
 
   function deleteTrip(id: string) {
@@ -394,6 +406,7 @@ export function CopilotoApp() {
                   onExport={exportJson}
                   onImport={importJson}
                   onResetStorage={resetStorage}
+                  onApplyReconciliation={applyReconciliation}
                 />
               )}
               {tab === "EXPENSES" && (
