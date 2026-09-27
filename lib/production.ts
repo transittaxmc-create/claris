@@ -37,6 +37,36 @@ export function hourWindow(now: Date): HourWindow {
   }
 }
 
+// Cronómetro con encendido y apagado.
+//
+// Se enciende cuando el conductor empieza a trabajar y se apaga cuando termina.
+// Apagado, el tiempo deja de correr (se queda congelado en el minuto en que se
+// apagó) aunque el reloj de la hora siga avanzando. Al cambiar de hora el conteo
+// se reinicia solo, así que un cronómetro que quedó apagado en una hora anterior
+// vuelve a cero en la hora nueva: no arrastra tiempo de antes.
+export type TimerReading = {
+  elapsedSec: number // segundos contados en la hora en curso
+  remainingMin: number // minutos que quedan de la hora (el reloj de la hora sigue)
+  running: boolean // true si está contando ahora mismo
+}
+
+export function timerReading(input: { now: Date; on: boolean; stoppedAt: number | null }): TimerReading {
+  const win = hourWindow(input.now)
+  if (input.on) return { elapsedSec: win.elapsedSec, remainingMin: win.remainingMin, running: true }
+  const stoppedAt = input.stoppedAt
+  if (stoppedAt === null || !Number.isFinite(stoppedAt)) {
+    return { elapsedSec: 0, remainingMin: win.remainingMin, running: false }
+  }
+  // Solo cuenta lo que se trabajó DENTRO de la hora en curso: si se apagó antes
+  // de esta hora, el conteo de esta hora es cero.
+  const hourStart = new Date(input.now)
+  hourStart.setMinutes(0, 0, 0)
+  const deltaSec = Math.floor((stoppedAt - hourStart.getTime()) / 1000)
+  if (deltaSec < 0) return { elapsedSec: 0, remainingMin: win.remainingMin, running: false }
+  const elapsedSec = Math.min(3600, deltaSec)
+  return { elapsedSec, remainingMin: Math.max(0, 60 - Math.floor(elapsedSec / 60)), running: false }
+}
+
 // Suma de lo producido en la hora en curso (los viajes cuya hora coincide).
 export function productionThisHour(trips: HourlyTrip[], now: Date): number {
   const today = now.toISOString().slice(0, 10)

@@ -1,9 +1,21 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Lock, Plus, ArrowRight, Download, Upload, CalendarClock, Sparkles, Pencil, Trash2, Receipt, Check, ArrowUpDown, Scale, AlertTriangle } from "lucide-react"
+import {
+  Lock,
+  Plus,
+  ArrowRight,
+  Download,
+  Upload,
+  ArrowUpDown,
+  Scale,
+  X,
+  ChevronDown,
+  ChevronRight,
+  EllipsisVertical,
+} from "lucide-react"
 import { cn } from "@/lib/utils"
-import { type Trip, type ScheduledEntry, type ScheduleFrequency, type TollBill, grossOf, netOf, money } from "./types"
+import { type Trip, type TollBill, grossOf, netOf, money } from "./types"
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
 import { isVoucherPlatform } from "./platform-meta"
 import {
@@ -20,7 +32,10 @@ import {
   type SortKey,
 } from "./reconciliation"
 
-type Filter = "ALL" | "PENDING" | "MATCHED" | "LEDGER"
+// Filtros de la cola de trabajo. DIFERENCIA es el que de verdad importa en una
+// conciliación: los viajes donde lo recibido no cuadra con lo esperado. (Antes
+// había un filtro LEDGER que caía en el mismo caso que ALL y no filtraba nada.)
+type Filter = "ALL" | "PENDING" | "MATCHED" | "DIFF"
 
 // Colores por estado de reconciliación, en un solo sitio para que la tarjeta
 // del viaje, el subtotal por plataforma y el panel usen exactamente el mismo.
@@ -35,23 +50,6 @@ const RECON_TONE: Record<ReconState, { text: string; border: string; label: stri
 function signed(n: number): string {
   if (Math.abs(n) < 0.005) return money(0)
   return `${n > 0 ? "+" : "−"}${money(Math.abs(n))}`
-}
-
-function StatCard({
-  label,
-  value,
-  valueClass,
-}: {
-  label: string
-  value: string
-  valueClass: string
-}) {
-  return (
-    <div className="flex flex-1 flex-col items-center gap-1 rounded-2xl border border-neutral-800 bg-neutral-900/50 px-2 py-3">
-      <span className="text-[10px] font-bold tracking-wide text-neutral-500">{label}</span>
-      <span className={cn("text-lg font-extrabold", valueClass)}>{value}</span>
-    </div>
-  )
 }
 
 // TOTAL GROSS con el desglose por plataforma dentro de la misma caja, que se
@@ -311,68 +309,10 @@ function PlatformGroupBlock({
   )
 }
 
-function nextOccurrence(date: string, frequency: ScheduleFrequency): string {
-  const d = new Date(`${date}T12:00:00`)
-  if (frequency === "daily") d.setDate(d.getDate() + 1)
-  if (frequency === "weekly") d.setDate(d.getDate() + 7)
-  if (frequency === "monthly") d.setMonth(d.getMonth() + 1)
-  if (frequency === "annual") d.setFullYear(d.getFullYear() + 1)
-  return d.toISOString().slice(0, 10)
-}
-
-function ScheduleLedger({
-  schedules,
-  onSave,
-  onDelete,
-}: {
-  schedules: ScheduledEntry[]
-  onSave: (entry: ScheduledEntry) => void
-  onDelete: (id: string) => void
-}) {
-  const [draft, setDraft] = useState<Partial<ScheduledEntry> | null>(null)
-  const [aiNote, setAiNote] = useState("")
-  const frequencies: { value: ScheduleFrequency; label: string }[] = [
-    { value: "once", label: "Una vez" }, { value: "daily", label: "Diario" },
-    { value: "weekly", label: "Semanal" }, { value: "monthly", label: "Mensual" }, { value: "annual", label: "Anual" },
-  ]
-  function suggestCategory(value: string) {
-    const text = value.toLowerCase()
-    const category = text.includes("gas") ? "Gasolina / Combustible" : text.includes("seguro") ? "Seguros / Permisos" : text.includes("renta") || text.includes("alquiler") ? "Vivienda" : text.includes("comida") || text.includes("restaurante") ? "Alimentación / Comida" : "Varios"
-    setDraft((current) => ({ ...current, category }))
-    setAiNote(`IA: categoría sugerida “${category}”.`)
-  }
-  return <section className="rounded-2xl border border-yellow-500/30 bg-neutral-900/60 p-3">
-    <div className="mb-3 flex items-center justify-between"><div><p className="flex items-center gap-2 text-sm font-extrabold text-white"><CalendarClock className="size-4 text-yellow-400" /> LEDGER PROGRAMADO</p><p className="text-[11px] text-neutral-500">Edita proyecciones y corrige cualquier fecha.</p></div><Sparkles className="size-4 text-yellow-400" /></div>
-    {draft ? <div className="flex flex-col gap-2 rounded-xl border border-neutral-700 bg-black/30 p-3">
-      <input value={draft.description ?? ""} onChange={(e) => setDraft({ ...draft, description: e.target.value })} onBlur={(e) => suggestCategory(e.target.value)} placeholder="Descripción (ej. gasolina)" className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-white outline-none" />
-      <div className="flex gap-2"><select value={draft.kind ?? "expense"} onChange={(e) => setDraft({ ...draft, kind: e.target.value as "income" | "expense" })} className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-2 text-xs text-white"><option value="expense">Gasto</option><option value="income">Ingreso</option></select><input type="number" min="0" value={draft.amount ?? 0} onChange={(e) => setDraft({ ...draft, amount: Number(e.target.value) })} className="w-28 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-2 text-sm text-white" placeholder="Monto" /></div>
-      <div className="flex gap-2"><input type="date" value={draft.startDate ?? new Date().toISOString().slice(0, 10)} onChange={(e) => setDraft({ ...draft, startDate: e.target.value, nextDate: e.target.value })} className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-2 text-xs text-white" /><select value={draft.frequency ?? "monthly"} onChange={(e) => setDraft({ ...draft, frequency: e.target.value as ScheduleFrequency })} className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-2 text-xs text-white">{frequencies.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}</select></div>
-      <div className="flex gap-2"><input type="date" value={draft.endDate ?? ""} onChange={(e) => setDraft({ ...draft, endDate: e.target.value })} className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-2 text-xs text-white" aria-label="Fecha final opcional" /><input type="number" min="1" value={draft.occurrences ?? ""} onChange={(e) => setDraft({ ...draft, occurrences: e.target.value ? Number(e.target.value) : undefined })} className="w-28 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-2 text-xs text-white" placeholder="# veces" /></div>
-      <p className="text-[11px] text-neutral-500">Categoría: <span className="text-yellow-400">{draft.category ?? "Varios"}</span> {aiNote}</p><div className="flex gap-2"><button type="button" onClick={() => setDraft(null)} className="flex-1 rounded-lg border border-neutral-700 py-2 text-xs text-neutral-300">Cancelar</button><button type="button" onClick={() => { if (!draft.description || !draft.startDate) return; onSave({ id: draft.id ?? crypto.randomUUID(), kind: draft.kind ?? "expense", description: draft.description, category: draft.category ?? "Varios", amount: Number(draft.amount) || 0, startDate: draft.startDate, endDate: draft.endDate, occurrences: draft.occurrences, frequency: draft.frequency ?? "monthly", nextDate: draft.nextDate ?? draft.startDate, active: true }); setDraft(null) }} className="flex-1 rounded-lg bg-yellow-400 py-2 text-xs font-bold text-black">Guardar programación</button></div>
-    </div> : <button type="button" onClick={() => setDraft({ kind: "expense", frequency: "monthly", category: "Varios", startDate: new Date().toISOString().slice(0, 10) })} className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-neutral-700 py-3 text-xs font-bold text-neutral-300"><Plus className="size-4" /> PROGRAMAR INGRESO O GASTO</button>}
-    <div className="flex flex-col gap-2">{schedules.length === 0 ? <p className="py-3 text-center text-xs text-neutral-600">No hay movimientos programados.</p> : schedules.map((entry) => <div key={entry.id} className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-black/20 p-2.5"><div className="min-w-0 flex-1"><p className="truncate text-xs font-bold text-white">{entry.description}</p><p className="text-[10px] text-neutral-500">{entry.category} · {entry.frequency} · próximo {entry.nextDate}</p></div><strong className={entry.kind === "income" ? "text-green-400" : "text-rose-400"}>{entry.kind === "income" ? "+" : "−"}{money(entry.amount)}</strong><button type="button" onClick={() => setDraft(entry)} aria-label="Editar programación"><Pencil className="size-3 text-neutral-400" /></button><button type="button" onClick={() => onDelete(entry.id)} aria-label="Eliminar programación"><Trash2 className="size-3 text-neutral-500" /></button></div>)}</div>
-  </section>
-}
-
 function addDays(date: string, days: number): string {
   const next = new Date(`${date}T12:00:00`)
   next.setDate(next.getDate() + days)
   return next.toISOString().slice(0, 10)
-}
-
-function TollBills({ bills, onTogglePaid }: { bills: TollBill[]; onTogglePaid: (id: string) => void }) {
-  return (
-    <section className="rounded-2xl border border-sky-500/30 bg-sky-950/10 p-3">
-      <div className="mb-3 flex items-center justify-between">
-        <div>
-          <p className="flex items-center gap-2 text-sm font-extrabold text-white"><Receipt className="size-4 text-sky-400" /> FACTURAS DE PEAJES</p>
-          <p className="text-[11px] text-neutral-500">Al cerrar el día se crea una factura para pagar mañana.</p>
-        </div>
-        <span className="text-[10px] font-bold text-sky-400">{bills.filter((bill) => bill.status === "unpaid").length} pendientes</span>
-      </div>
-      {bills.length === 0 ? <p className="py-2 text-center text-xs text-neutral-600">Todavía no hay facturas diarias.</p> : <div className="flex flex-col gap-2">{bills.map((bill) => <div key={bill.id} className="flex items-center gap-2 rounded-xl border border-neutral-800 bg-black/20 p-2.5"><div className="min-w-0 flex-1"><p className="text-xs font-bold text-white">Peajes del {bill.serviceDate}</p><p className="text-[10px] text-neutral-500">Vence {bill.dueDate} · {bill.status === "paid" ? "Pagada" : "Pendiente"}</p></div><strong className="text-sky-300">{money(bill.amount)}</strong><button type="button" onClick={() => onTogglePaid(bill.id)} aria-label={bill.status === "paid" ? "Marcar factura pendiente" : "Marcar factura pagada"} className={cn("rounded-lg border p-1.5", bill.status === "paid" ? "border-green-500/50 text-green-400" : "border-neutral-700 text-neutral-400")}><Check className="size-3" /></button></div>)}</div>}
-    </section>
-  )
 }
 
 export function RegisterScreen({
@@ -399,34 +339,19 @@ export function RegisterScreen({
 }) {
   const [filter, setFilter] = useState<Filter>("ALL")
   const [sortKey, setSortKey] = useState<SortKey>("platform")
-  const [schedules, setSchedules] = useState<ScheduledEntry[]>([])
+  const [showDetail, setShowDetail] = useState(false)
+  const [showActions, setShowActions] = useState(false)
+  // Las facturas de peaje se crean al cerrar el día; el seguimiento y el pago
+  // viven en FINANCE, que lee la misma clave. Aquí solo se crean.
   const [tollBills, setTollBills] = useState<TollBill[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("claris_scheduled_entries")
-      if (saved) setSchedules(JSON.parse(saved))
       const savedBills = localStorage.getItem("claris_toll_bills")
       if (savedBills) setTollBills(JSON.parse(savedBills))
     } catch {}
   }, [])
-
-  function saveSchedule(entry: ScheduledEntry) {
-    setSchedules((current) => {
-      const next = current.some((item) => item.id === entry.id) ? current.map((item) => item.id === entry.id ? entry : item) : [entry, ...current]
-      localStorage.setItem("claris_scheduled_entries", JSON.stringify(next))
-      return next
-    })
-  }
-
-  function deleteSchedule(id: string) {
-    setSchedules((current) => {
-      const next = current.filter((entry) => entry.id !== id)
-      localStorage.setItem("claris_scheduled_entries", JSON.stringify(next))
-      return next
-    })
-  }
 
   function closeDayAndCreateBill() {
     const serviceDate = new Date().toISOString().slice(0, 10)
@@ -440,22 +365,33 @@ export function RegisterScreen({
     onCloseDay()
   }
 
-  function toggleBill(id: string) {
-    setTollBills((current) => {
-      const next = current.map((bill) => bill.id === id ? { ...bill, status: bill.status === "paid" ? "unpaid" as const : "paid" as const } : bill)
-      localStorage.setItem("claris_toll_bills", JSON.stringify(next))
-      return next
-    })
-  }
-
   // El filtro es la única fuente de verdad: los totales, el desglose por
   // plataforma y el panel de reconciliación se recalculan todos desde aquí, así
-  // que al filtrar por PENDING todo lo que se ve son los pendientes.
+  // que al filtrar por PENDIENTES todo lo que se ve son los pendientes.
+  // DIFERENCIA es la cola real de la conciliación: lo recibido no cuadra.
   const visible = useMemo(() => {
     if (filter === "PENDING") return trips.filter((t) => t.status === "pending")
     if (filter === "MATCHED") return trips.filter((t) => t.status === "matched")
+    if (filter === "DIFF") {
+      return trips.filter((t) => {
+        const state = reconStateOf(t)
+        return state === "short" || state === "over"
+      })
+    }
     return trips
   }, [trips, filter])
+
+  // Conteo por filtro: los chips del encabezado dicen cuánto hay en cada cola
+  // sin tener que entrar a mirarla.
+  const counts = useMemo(() => {
+    let pending = 0
+    let matched = 0
+    for (const t of trips) {
+      if (t.status === "pending") pending += 1
+      else if (t.status === "matched") matched += 1
+    }
+    return { all: trips.length, pending, matched, diff: reconSummary(trips).problemCount }
+  }, [trips])
 
   const totals = useMemo(() => {
     const gross = visible.reduce((s, t) => s + grossOf(t), 0)
@@ -479,124 +415,127 @@ export function RegisterScreen({
     { key: "time", label: "HORA" },
   ]
 
+  // Un solo botón de orden que rota, en vez de una fila de tres botones.
+  function cycleSort() {
+    const index = sortOptions.findIndex((option) => option.key === sortKey)
+    setSortKey(sortOptions[(index + 1) % sortOptions.length].key)
+  }
+
+  const filterChips: { key: Filter; label: string; count: number }[] = [
+    { key: "ALL", label: "TODOS", count: counts.all },
+    { key: "PENDING", label: "PENDIENTES", count: counts.pending },
+    { key: "MATCHED", label: "MATCHED", count: counts.matched },
+    { key: "DIFF", label: "DIFERENCIA", count: counts.diff },
+  ]
+
   return (
     <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-3">
-        <h1 className="text-sm font-bold tracking-widest text-neutral-400">REGISTER</h1>
-        <span className="rounded-full border border-orange-400/50 px-2.5 py-1 text-[11px] font-bold text-orange-400">
-          {totals.pending} pending
-        </span>
-      </div>
-
-      {/* Scrollable body */}
-      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {/* Stats — el TOTAL GROSS lleva dentro su desglose por plataforma */}
-        <div className="flex items-stretch gap-2">
-          <GrossByPlatformCard total={totals.gross} groups={platformGroups} />
-          <StatCard label="TOTAL NET" value={money(totals.net)} valueClass="text-green-400" />
-          <StatCard label="COUNT PENDING" value={String(totals.pending)} valueClass="text-white" />
-        </div>
-
-        {/* Reconciliación: esperado vs. recibido y el descuadre a arreglar */}
-        <ReconciliationPanel summary={summary} groups={platformGroups} />
-
-        {/* REGISTER conserva únicamente los viajes para reconciliarlos con invoices y pagos de plataformas. */}
-
-        {/* Filters */}
-        <div className="flex gap-2">
-          {(["ALL", "PENDING", "MATCHED", "LEDGER"] as Filter[]).map((f) => (
-            <button
-              key={f}
-              type="button"
-              onClick={() => setFilter(f)}
+      {/* Encabezado fijo: se queda arriba mientras se baja por la lista, así el
+          bruto, el neto y las colas pendientes nunca se pierden de vista. */}
+      <header className="shrink-0 border-b border-neutral-800 bg-black/95 px-4 pb-2.5 pt-3 backdrop-blur">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <h1 className="text-sm font-bold tracking-widest text-neutral-400">REGISTER</h1>
+            <span
               className={cn(
-                "flex-1 rounded-xl py-2.5 text-xs font-bold transition-colors",
-                filter === f
-                  ? "bg-yellow-400 text-black"
-                  : "bg-neutral-900 text-neutral-400 hover:text-neutral-200",
+                "shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold",
+                dayClosed ? "border-neutral-700 text-neutral-500" : "border-orange-400/50 text-orange-400",
               )}
             >
-              {f}
-            </button>
-          ))}
+              {dayClosed ? "DÍA CERRADO" : "DÍA ABIERTO"}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowActions(true)}
+            aria-label="Acciones del registro"
+            className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900/60 text-neutral-300 transition-colors hover:border-neutral-600"
+          >
+            <EllipsisVertical className="size-4" />
+          </button>
         </div>
 
-        {/* Close day */}
-        <button
-          type="button"
-          onClick={closeDayAndCreateBill}
-          disabled={dayClosed}
-          className={cn(
-            "flex w-full items-center justify-center gap-2 rounded-2xl border py-3.5 text-sm font-bold transition-colors",
-            dayClosed
-              ? "border-neutral-700 bg-neutral-900 text-neutral-500"
-              : "border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20",
-          )}
-        >
-          <Lock className="size-4" />
-          {dayClosed ? "DÍA CERRADO" : "CERRAR DÍA (bloquea el registro de hoy)"}
-        </button>
-
-        {/* Import / Export */}
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900/50 py-3 text-xs font-bold text-neutral-300 transition-colors hover:border-neutral-600"
-          >
-            <Upload className="size-4" /> IMPORTAR JSON
-          </button>
-          <button
-            type="button"
-            onClick={onResetStorage}
-            className="flex items-center justify-center gap-2 rounded-2xl border border-rose-900/60 bg-rose-950/20 px-3 py-3 text-xs font-bold text-rose-300 transition-colors hover:border-rose-700"
-          >
-            RESET
-          </button>
-          <button
-            type="button"
-            onClick={onExport}
-            className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900/50 py-3 text-xs font-bold text-neutral-300 transition-colors hover:border-neutral-600"
-          >
-            <Download className="size-4" /> EXPORTAR JSON
-          </button>
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="application/json,.json"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              if (file) onImport(file)
-              e.target.value = ""
-            }}
-          />
-        </div>
-
-        {/* Orden: por plataforma agrupa con subtotal; monto y hora son listas planas */}
-        <div className="flex items-center gap-2">
-          <span className="flex items-center gap-1 text-[10px] font-bold text-neutral-500">
-            <ArrowUpDown className="size-3" /> ORDEN
+        <div className="mt-2 flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <span className="shrink-0 text-[10px] font-bold tracking-wide text-neutral-500">
+            GROSS <strong className="text-sm text-yellow-400">{money(totals.gross)}</strong>
           </span>
-          <div className="flex flex-1 gap-1.5">
-            {sortOptions.map((opt) => (
+          <span className="shrink-0 text-[10px] font-bold tracking-wide text-neutral-500">
+            NET <strong className="text-sm text-green-400">{money(totals.net)}</strong>
+          </span>
+          <button
+            type="button"
+            onClick={() => setFilter("PENDING")}
+            className={cn(
+              "shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold transition-colors",
+              filter === "PENDING" ? "border-yellow-400/60 bg-yellow-400/10 text-yellow-400" : "border-orange-400/50 text-orange-400",
+            )}
+          >
+            {counts.pending} PENDIENTES
+          </button>
+          <button
+            type="button"
+            onClick={() => setFilter("DIFF")}
+            className={cn(
+              "shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold transition-colors",
+              counts.diff === 0
+                ? "border-green-500/40 text-green-400"
+                : filter === "DIFF"
+                  ? "border-yellow-400/60 bg-yellow-400/10 text-yellow-400"
+                  : "border-rose-500/50 text-rose-400",
+            )}
+          >
+            {counts.diff === 0 ? "TODO CUADRA" : `${counts.diff} CON DIFERENCIA`}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowDetail((v) => !v)}
+            aria-label={showDetail ? "Ocultar desglose y reconciliación" : "Ver desglose y reconciliación"}
+            className="ml-auto flex size-7 shrink-0 items-center justify-center rounded-lg border border-neutral-800 text-neutral-400 transition-colors hover:border-neutral-600"
+          >
+            {showDetail ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
+          </button>
+        </div>
+      </header>
+
+      {/* Scrollable body */}
+      <div className="flex-1 space-y-2.5 overflow-y-auto px-4 py-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {/* Filtros con su conteo, en una sola fila, y el orden en un botón que
+            rota: la lista de viajes empieza mucho más arriba. */}
+        <div className="flex items-center gap-1.5">
+          <div className="flex flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {filterChips.map((chip) => (
               <button
-                key={opt.key}
+                key={chip.key}
                 type="button"
-                onClick={() => setSortKey(opt.key)}
+                onClick={() => setFilter(chip.key)}
                 className={cn(
-                  "flex-1 rounded-lg border py-1.5 text-[10px] font-bold transition-colors",
-                  sortKey === opt.key
-                    ? "border-yellow-400/60 bg-yellow-400/10 text-yellow-400"
-                    : "border-neutral-800 text-neutral-400 hover:text-neutral-200",
+                  "shrink-0 rounded-xl px-2.5 py-1.5 text-[10px] font-bold transition-colors",
+                  filter === chip.key ? "bg-yellow-400 text-black" : "bg-neutral-900 text-neutral-400 hover:text-neutral-200",
                 )}
               >
-                {opt.label}
+                {chip.label} {chip.count}
               </button>
             ))}
           </div>
+          <button
+            type="button"
+            onClick={cycleSort}
+            title="Cambiar el orden de la lista"
+            className="flex shrink-0 items-center gap-1 rounded-xl border border-neutral-800 px-2.5 py-1.5 text-[10px] font-bold text-neutral-300 transition-colors hover:border-neutral-600"
+          >
+            <ArrowUpDown className="size-3 text-neutral-500" />
+            {sortOptions.find((o) => o.key === sortKey)?.label}
+          </button>
         </div>
+
+        {/* Detalle plegado: desglose por plataforma y panel de conciliación.
+            Cerrado, la información crítica sigue en los chips del encabezado. */}
+        {showDetail && (
+          <div className="space-y-2.5">
+            <GrossByPlatformCard total={totals.gross} groups={platformGroups} />
+            <ReconciliationPanel summary={summary} groups={platformGroups} />
+          </div>
+        )}
 
         {/* Trip list — agrupada por plataforma con subtotal, o plana */}
         <div className="space-y-3 pt-1">
@@ -618,6 +557,96 @@ export function RegisterScreen({
           )}
         </div>
       </div>
+
+      {/* Hoja de ACCIONES: cerrar día, importar, exportar y reset. Son cosas de
+          una vez al día o de vez en cuando, así que no ocupan la pantalla. */}
+      {showActions && (
+        <div
+          className="fixed inset-0 z-50 flex items-end bg-black/70"
+          onClick={() => setShowActions(false)}
+          role="presentation"
+        >
+          <div
+            className="w-full rounded-t-3xl border-t border-neutral-800 bg-neutral-950 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-xs font-bold tracking-wide text-neutral-300">ACCIONES DEL REGISTRO</p>
+              <button
+                type="button"
+                onClick={() => setShowActions(false)}
+                aria-label="Cerrar acciones"
+                className="flex size-7 items-center justify-center rounded-lg border border-neutral-800 text-neutral-400"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  closeDayAndCreateBill()
+                  setShowActions(false)
+                }}
+                disabled={dayClosed}
+                className={cn(
+                  "flex w-full items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-bold transition-colors",
+                  dayClosed
+                    ? "border-neutral-800 bg-neutral-900 text-neutral-500"
+                    : "border-red-500/40 bg-red-500/10 text-red-400 hover:bg-red-500/20",
+                )}
+              >
+                <Lock className="size-4" />
+                {dayClosed ? "DÍA CERRADO" : "CERRAR DÍA (bloquea el registro de hoy)"}
+              </button>
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900/50 py-3 text-xs font-bold text-neutral-300 transition-colors hover:border-neutral-600"
+                >
+                  <Upload className="size-4" /> IMPORTAR JSON
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onExport()
+                    setShowActions(false)
+                  }}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900/50 py-3 text-xs font-bold text-neutral-300 transition-colors hover:border-neutral-600"
+                >
+                  <Download className="size-4" /> EXPORTAR JSON
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  onResetStorage()
+                  setShowActions(false)
+                }}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-900/60 bg-rose-950/20 py-2.5 text-xs font-bold text-rose-300 transition-colors hover:border-rose-700"
+              >
+                RESET DEL REGISTRO
+              </button>
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) onImport(file)
+                e.target.value = ""
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Add button */}
       <div className="border-t border-neutral-800 bg-black px-4 py-3">
