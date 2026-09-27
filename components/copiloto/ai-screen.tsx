@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useMemo } from "react"
-import { Sparkles, Send, Loader2, Bot, User, TrendingUp, Receipt, Car, Zap, AlertTriangle, Scale, Upload } from "lucide-react"
+import { Sparkles, Send, Loader2, Bot, User, TrendingUp, Receipt, Car, Zap, AlertTriangle, Scale } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { grossOf, tripDateOf, daysUntil, netOf, type Trip, type Expense } from "./types"
 import { reconSummary, reconViewOf, expectedOf, receivedOf } from "./reconciliation"
