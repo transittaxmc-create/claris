@@ -424,18 +424,19 @@ export function EntryScreen({
               onChange={(n) => set("platformFee", n)}
             />
           </div>
-          <label className="mt-3 flex flex-col gap-1.5">
-            <span className="text-[11px] font-bold tracking-wide text-neutral-400">REF / INVOICE</span>
-            <input
-              value={draft.ref}
-              onChange={(e) => set("ref", e.target.value)}
-              placeholder="Reference"
-              className="min-h-[4.5rem] rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-lg text-white outline-none placeholder:text-neutral-600 focus:border-neutral-600"
-            />
-          </label>
-
-          {/* Motivador: cronómetro de la hora + producción por hora */}
-          <div className="mt-3">
+          {/* REF / INVOICE con el motivador de la hora AL LADO (cronómetro y
+              $/hora), para que la pantalla no quede llena: el widget ocupa la
+              segunda columna y la sugerencia va debajo, a todo el ancho. */}
+          <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
+            <label className="flex min-w-0 flex-col gap-1.5">
+              <span className="text-[11px] font-bold tracking-wide text-neutral-400">REF / INVOICE</span>
+              <input
+                value={draft.ref}
+                onChange={(e) => set("ref", e.target.value)}
+                placeholder="Reference"
+                className="min-h-[4.5rem] rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-lg text-white outline-none placeholder:text-neutral-600 focus:border-neutral-600"
+              />
+            </label>
             <HourlyProduction trips={trips} />
           </div>
         </section>
