@@ -15,7 +15,15 @@ const dayLabel = (iso: string) =>
     month: "short",
   })
 
-export function FinanceRegisterTable() {
+export function FinanceRegisterTable({
+  paymentsByDate = {},
+  belowZeroDates = new Set<string>(),
+}: {
+  // Pagos programados que vencen cada día: se muestran bajo la fila del día.
+  paymentsByDate?: Record<string, { description: string; amount: number }[]>
+  // Días cuyo balance proyectado cae por debajo de cero (fondo rojo).
+  belowZeroDates?: Set<string>
+}) {
   const { days, toggleWorkingDay, updatePlatformAmount, initializeWeek, getDailyRunningBalances } =
     useFinance()
   const rows = getDailyRunningBalances()
@@ -38,9 +46,11 @@ export function FinanceRegisterTable() {
           const day = days.find((d) => d.id === row.dayId)
           if (!day) return null
           const isOpen = openDayId === row.dayId
+          const paymentsDue = paymentsByDate[day.date] ?? []
+          const inRed = belowZeroDates.has(day.date)
 
           return (
-            <div key={row.dayId}>
+            <div key={row.dayId} className={cn(inRed && "bg-rose-950/20")}>
               <button
                 type="button"
                 onClick={() => setOpenDayId(isOpen ? null : row.dayId)}
@@ -55,6 +65,12 @@ export function FinanceRegisterTable() {
                       ? `+$${row.dayTotal.toFixed(2)}`
                       : "Día libre — $0.00"}
                   </span>
+                  {/* Pagos que vencen este día */}
+                  {paymentsDue.map((p, i) => (
+                    <span key={i} className="text-[10px] font-semibold text-amber-300">
+                      ⌛ {p.description} −${p.amount.toFixed(2)}
+                    </span>
+                  ))}
                 </div>
 
                 <div className="flex items-center gap-3">
