@@ -82,6 +82,20 @@ export function expenseTotal(list: Expense[]): number {
   return list.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
 }
 
+// Reconciliación de un viaje contra el pago real de la plataforma.
+// `expected` es el neto que calcula la app; `received` es lo que la
+// plataforma depositó de verdad. La diferencia es lo que hay que arreglar.
+export type Reconciliation = {
+  // Neto esperado. Si falta, se usa netOf(trip) como valor por defecto.
+  expected?: number
+  // Monto realmente recibido. undefined = todavía no llegó el pago.
+  received?: number
+  // Nota libre para explicar el descuadre (ej. "ajuste de propinas").
+  note?: string
+  // Última vez que se tocó la reconciliación.
+  reconciledAt?: string
+}
+
 export type Trip = {
   id: string
   platform: Platform
@@ -99,6 +113,8 @@ export type Trip = {
   time: string // "14:46"
   ref: string
   status: TripStatus
+  // Pago esperado vs. recibido (ver components/copiloto/reconciliation.ts).
+  reconciliation?: Reconciliation
   // Original entry object from ic_tip_tracker, preserved so GPS/coords survive a round-trip
   raw?: Record<string, unknown>
 }

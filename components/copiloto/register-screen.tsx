@@ -1,11 +1,39 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Lock, Plus, ArrowRight, Download, Upload, CalendarClock, Sparkles, Pencil, Trash2, Receipt, Check } from "lucide-react"
+import { Lock, Plus, ArrowRight, Download, Upload, CalendarClock, Sparkles, Pencil, Trash2, Receipt, Check, ArrowUpDown, Scale, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { type Trip, type ScheduledEntry, type ScheduleFrequency, type TollBill, grossOf, netOf, money } from "./types"
+import {
+  diffOf,
+  expectedOf,
+  groupByPlatform,
+  reconStateOf,
+  reconSummary,
+  receivedOf,
+  sortTrips,
+  type PlatformGroup,
+  type ReconState,
+  type ReconSummary,
+  type SortKey,
+} from "./reconciliation"
 
 type Filter = "ALL" | "PENDING" | "MATCHED" | "LEDGER"
+
+// Colores por estado de reconciliación, en un solo sitio para que la tarjeta
+// del viaje, el subtotal por plataforma y el panel usen exactamente el mismo.
+const RECON_TONE: Record<ReconState, { text: string; border: string; label: string }> = {
+  pending: { text: "text-neutral-400", border: "border-neutral-700", label: "Sin pago" },
+  ok: { text: "text-green-400", border: "border-green-500/40", label: "Cuadra" },
+  short: { text: "text-rose-400", border: "border-rose-500/40", label: "Pagaron de menos" },
+  over: { text: "text-sky-400", border: "border-sky-500/40", label: "Pagaron de más" },
+}
+
+// Firmado: se usa tanto para el descuadre como para el ajuste.
+function signed(n: number): string {
+  if (Math.abs(n) < 0.005) return money(0)
+  return `${n > 0 ? "+" : "−"}${money(Math.abs(n))}`
+}
 
 function StatCard({
   label,
@@ -24,7 +52,120 @@ function StatCard({
   )
 }
 
-function TripCard({ trip, onClick }: { trip: Trip; onClick: () => void }) {
+// TOTAL GROSS con el desglose por plataforma dentro de la misma caja, que se
+// recalcula con lo que esté filtrado en ese momento.
+function GrossByPlatformCard({ total, groups }: { total: number; groups: PlatformGroup[] }) {
+  return (
+    <div className="flex flex-[1.7] flex-col gap-1.5 rounded-2xl border border-neutral-800 bg-neutral-900/50 px-2.5 py-3">
+      <span className="text-[10px] font-bold tracking-wide text-neutral-500">TOTAL GROSS</span>
+      <span className="text-lg font-extrabold text-yellow-400">{money(total)}</span>
+      {groups.length === 0 ? (
+        <span className="text-[10px] text-neutral-600">Sin viajes</span>
+      ) : (
+        <div className="flex flex-col gap-1">
+          {groups.map((g) => (
+            <div key={g.platform} className="flex items-center justify-between gap-2 text-[10px] leading-tight">
+              <span className="flex min-w-0 items-center gap-1">
+                <span className="flex size-3.5 shrink-0 items-center justify-center rounded-sm bg-white text-[7px] font-bold text-black">
+                  {g.platform.slice(0, 1)}
+                </span>
+                <span className="truncate font-semibold text-neutral-300">{g.platform}</span>
+                <span className="shrink-0 text-neutral-600">×{g.count}</span>
+              </span>
+              <span className="shrink-0 font-bold text-yellow-400/90">{money(g.gross)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Panel de reconciliación: cuánto se esperaba, cuánto llegó y la diferencia.
+// El descuadre agregado ignora los viajes sin pago registrado, así que solo
+// muestra lo que de verdad hay que arreglar.
+function ReconciliationPanel({ summary, groups }: { summary: ReconSummary; groups: PlatformGroup[] }) {
+  const tone = Math.abs(summary.diff) < 0.005 ? RECON_TONE.ok : summary.diff < 0 ? RECON_TONE.short : RECON_TONE.over
+  const withDiff = groups.filter((g) => Math.abs(g.diff) >= 0.005)
+
+  return (
+    <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="flex items-center gap-2 text-[11px] font-bold tracking-wide text-neutral-300">
+          <Scale className="size-3.5 text-neutral-400" /> RECONCILIACIÓN
+        </p>
+        <span className={cn("rounded-full border px-2 py-0.5 text-[9px] font-bold", tone.border, tone.text)}>
+          {summary.problemCount === 0 ? "TODO CUADRA" : `${summary.problemCount} CON DIFERENCIA`}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2">
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[9px] font-bold text-neutral-500">ESPERADO</span>
+          <span className="text-sm font-extrabold text-neutral-200">{money(summary.expected)}</span>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[9px] font-bold text-neutral-500">RECIBIDO</span>
+          <span className="text-sm font-extrabold text-neutral-200">{money(summary.received)}</span>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[9px] font-bold text-neutral-500">DIFERENCIA</span>
+          <span className={cn("text-sm font-extrabold", tone.text)}>{signed(summary.diff)}</span>
+        </div>
+      </div>
+
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        <span className="rounded-full border border-neutral-700 px-2 py-0.5 text-[9px] font-bold text-neutral-400">
+          {summary.pendingCount} sin pago
+        </span>
+        {summary.shortCount > 0 && (
+          <span className={cn("rounded-full border px-2 py-0.5 text-[9px] font-bold", RECON_TONE.short.border, RECON_TONE.short.text)}>
+            {summary.shortCount} de menos
+          </span>
+        )}
+        {summary.overCount > 0 && (
+          <span className={cn("rounded-full border px-2 py-0.5 text-[9px] font-bold", RECON_TONE.over.border, RECON_TONE.over.text)}>
+            {summary.overCount} de más
+          </span>
+        )}
+        {summary.okCount > 0 && (
+          <span className={cn("rounded-full border px-2 py-0.5 text-[9px] font-bold", RECON_TONE.ok.border, RECON_TONE.ok.text)}>
+            {summary.okCount} cuadran
+          </span>
+        )}
+      </div>
+
+      {withDiff.length > 0 && (
+        <div className="mt-2 flex flex-col gap-1 border-t border-neutral-800 pt-2">
+          {withDiff.map((g) => (
+            <div key={g.platform} className="flex items-center justify-between text-[10px]">
+              <span className="font-semibold text-neutral-300">{g.platform}</span>
+              <span className={cn("font-bold", g.diff < 0 ? RECON_TONE.short.text : RECON_TONE.over.text)}>
+                {signed(g.diff)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+function TripCard({
+  trip,
+  onClick,
+  onApplyReconciliation,
+}: {
+  trip: Trip
+  onClick: () => void
+  onApplyReconciliation: (t: Trip) => void
+}) {
+  const recon = {
+    state: reconStateOf(trip),
+    expected: expectedOf(trip),
+    received: receivedOf(trip),
+    diff: diffOf(trip),
+  }
   const route =
     trip.pickup && trip.dropoff
       ? `${trip.pickup} → ${trip.dropoff}`
@@ -62,18 +203,112 @@ function TripCard({ trip, onClick }: { trip: Trip; onClick: () => void }) {
           <ArrowRight className="size-3 shrink-0 text-neutral-600" />
           <span className="truncate">{route}</span>
         </p>
-        <span
-          className={cn(
-            "shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase",
-            trip.status === "pending"
-              ? "border-orange-400/60 text-orange-400"
-              : "border-green-400/60 text-green-400",
+        <span className="flex shrink-0 items-center gap-1">
+          {/* La diferencia manda sobre el estado manual: si no cuadra, se ve. */}
+          {recon.state === "pending" ? (
+            <span
+              className={cn(
+                "rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase",
+                trip.status === "pending"
+                  ? "border-orange-400/60 text-orange-400"
+                  : "border-green-400/60 text-green-400",
+              )}
+            >
+              {trip.status === "pending" ? "Pendiente" : "Matched"}
+            </span>
+          ) : (
+            <>
+              <span
+                className={cn(
+                  "rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase",
+                  RECON_TONE[recon.state].border,
+                  RECON_TONE[recon.state].text,
+                )}
+                title={`Esperado ${money(recon.expected)} · recibido ${money(recon.received ?? 0)}`}
+              >
+                {recon.state === "ok" ? "Cuadra" : signed(recon.diff)}
+              </span>
+              {/* Arreglar el descuadre sin abrir el editor */}
+              {recon.state !== "ok" && (
+                <span
+                  role="button"
+                  tabIndex={0}
+                  title={`Ajustar earnings en ${signed(recon.diff)} para que cuadre`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onApplyReconciliation(trip)
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.stopPropagation()
+                      e.preventDefault()
+                      onApplyReconciliation(trip)
+                    }
+                  }}
+                  className="rounded-full border border-yellow-400/60 bg-yellow-400/10 px-2 py-0.5 text-[9px] font-bold uppercase text-yellow-400"
+                >
+                  Ajustar
+                </span>
+              )}
+            </>
           )}
-        >
-          {trip.status === "pending" ? "Pendiente" : "Matched"}
         </span>
       </div>
     </button>
+  )
+}
+
+// Bloque de una plataforma: cabecera con su nombre, su subtotal y su descuadre,
+// y debajo sus viajes. Es lo que permite ver de un vistazo cuánto va por cada
+// plataforma y cuál no cuadra.
+function PlatformGroupBlock({
+  group,
+  onEdit,
+  onApplyReconciliation,
+}: {
+  group: PlatformGroup
+  onEdit: (t: Trip) => void
+  onApplyReconciliation: (t: Trip) => void
+}) {
+  const hasDiff = Math.abs(group.diff) >= 0.005
+  const diffTone = group.diff < 0 ? RECON_TONE.short : RECON_TONE.over
+
+  return (
+    <section className="rounded-2xl border border-neutral-800 bg-black/20 p-2">
+      <header className="mb-2 flex items-start justify-between gap-2 px-1.5 pt-1">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <div className="flex items-center gap-1.5">
+            <span className="flex size-4 shrink-0 items-center justify-center rounded-sm bg-white text-[8px] font-bold text-black">
+              {group.platform.slice(0, 1)}
+            </span>
+            <span className="truncate text-xs font-extrabold tracking-wide text-white">{group.platform}</span>
+            <span className="shrink-0 rounded-full border border-neutral-700 px-1.5 py-0.5 text-[9px] font-bold text-neutral-400">
+              {group.count}
+            </span>
+          </div>
+          <p className="text-[10px] text-neutral-500">
+            Bruto <span className="font-bold text-yellow-400/90">{money(group.gross)}</span> · neto{" "}
+            <span className="font-bold text-green-400">{money(group.net)}</span>
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-0.5">
+          {hasDiff && (
+            <span className={cn("rounded-full border px-2 py-0.5 text-[9px] font-bold", diffTone.border, diffTone.text)}>
+              {signed(group.diff)}
+            </span>
+          )}
+          {group.pendingCount > 0 && (
+            <span className="text-[9px] text-neutral-500">{group.pendingCount} sin pago</span>
+          )}
+        </div>
+      </header>
+
+      <div className="space-y-2">
+        {group.trips.map((t) => (
+          <TripCard key={t.id} trip={t} onClick={() => onEdit(t)} onApplyReconciliation={onApplyReconciliation} />
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -150,6 +385,7 @@ export function RegisterScreen({
   onExport,
   onImport,
   onResetStorage,
+  onApplyReconciliation,
 }: {
   trips: Trip[]
   onEdit: (t: Trip) => void
@@ -159,8 +395,11 @@ export function RegisterScreen({
   onExport: () => void
   onImport: (file: File) => void
   onResetStorage: () => void
+  // Ajusta un viaje para que su neto cuadre con el pago recibido.
+  onApplyReconciliation: (t: Trip) => void
 }) {
   const [filter, setFilter] = useState<Filter>("ALL")
+  const [sortKey, setSortKey] = useState<SortKey>("platform")
   const [schedules, setSchedules] = useState<ScheduledEntry[]>([])
   const [tollBills, setTollBills] = useState<TollBill[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -210,19 +449,36 @@ export function RegisterScreen({
     })
   }
 
-  const totals = useMemo(() => {
-    const gross = trips.reduce((s, t) => s + grossOf(t), 0)
-    const fee = trips.reduce((s, t) => s + t.platformFee, 0)
-    const net = gross - fee
-    const pending = trips.filter((t) => t.status === "pending").length
-    return { gross, fee, net, pending }
-  }, [trips])
-
+  // El filtro es la única fuente de verdad: los totales, el desglose por
+  // plataforma y el panel de reconciliación se recalculan todos desde aquí, así
+  // que al filtrar por PENDING todo lo que se ve son los pendientes.
   const visible = useMemo(() => {
     if (filter === "PENDING") return trips.filter((t) => t.status === "pending")
     if (filter === "MATCHED") return trips.filter((t) => t.status === "matched")
     return trips
   }, [trips, filter])
+
+  const totals = useMemo(() => {
+    const gross = visible.reduce((s, t) => s + grossOf(t), 0)
+    const fee = visible.reduce((s, t) => s + t.platformFee, 0)
+    return { gross, fee, net: gross - fee, pending: visible.filter((t) => t.status === "pending").length }
+  }, [visible])
+
+  // Desglose por plataforma del TOTAL GROSS (misma caja).
+  const platformGroups = useMemo(() => groupByPlatform(visible), [visible])
+
+  // Esperado vs. recibido de lo que se está viendo.
+  const summary = useMemo(() => reconSummary(visible), [visible])
+
+  // Agrupado por plataforma con subtotal, o lista plana ordenada por monto/hora.
+  const grouped = sortKey === "platform"
+  const flat = useMemo(() => (grouped ? [] : sortTrips(visible, sortKey)), [grouped, visible, sortKey])
+
+  const sortOptions: { key: SortKey; label: string }[] = [
+    { key: "platform", label: "PLATAFORMA" },
+    { key: "amount", label: "MONTO" },
+    { key: "time", label: "HORA" },
+  ]
 
   return (
     <div className="flex h-full flex-col">
@@ -236,12 +492,15 @@ export function RegisterScreen({
 
       {/* Scrollable body */}
       <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {/* Stats */}
-        <div className="flex gap-2">
-          <StatCard label="TOTAL GROSS" value={money(totals.gross)} valueClass="text-yellow-400" />
+        {/* Stats — el TOTAL GROSS lleva dentro su desglose por plataforma */}
+        <div className="flex items-stretch gap-2">
+          <GrossByPlatformCard total={totals.gross} groups={platformGroups} />
           <StatCard label="TOTAL NET" value={money(totals.net)} valueClass="text-green-400" />
           <StatCard label="COUNT PENDING" value={String(totals.pending)} valueClass="text-white" />
         </div>
+
+        {/* Reconciliación: esperado vs. recibido y el descuadre a arreglar */}
+        <ReconciliationPanel summary={summary} groups={platformGroups} />
 
         {/* REGISTER conserva únicamente los viajes para reconciliarlos con invoices y pagos de plataformas. */}
 
@@ -316,12 +575,47 @@ export function RegisterScreen({
           />
         </div>
 
-        {/* Trip list */}
+        {/* Orden: por plataforma agrupa con subtotal; monto y hora son listas planas */}
+        <div className="flex items-center gap-2">
+          <span className="flex items-center gap-1 text-[10px] font-bold text-neutral-500">
+            <ArrowUpDown className="size-3" /> ORDEN
+          </span>
+          <div className="flex flex-1 gap-1.5">
+            {sortOptions.map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => setSortKey(opt.key)}
+                className={cn(
+                  "flex-1 rounded-lg border py-1.5 text-[10px] font-bold transition-colors",
+                  sortKey === opt.key
+                    ? "border-yellow-400/60 bg-yellow-400/10 text-yellow-400"
+                    : "border-neutral-800 text-neutral-400 hover:text-neutral-200",
+                )}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Trip list — agrupada por plataforma con subtotal, o plana */}
         <div className="space-y-3 pt-1">
           {visible.length === 0 ? (
             <p className="py-10 text-center text-sm text-neutral-600">No hay viajes en esta vista.</p>
+          ) : grouped ? (
+            platformGroups.map((group) => (
+              <PlatformGroupBlock
+                key={group.platform}
+                group={group}
+                onEdit={onEdit}
+                onApplyReconciliation={onApplyReconciliation}
+              />
+            ))
           ) : (
-            visible.map((t) => <TripCard key={t.id} trip={t} onClick={() => onEdit(t)} />)
+            flat.map((t) => (
+              <TripCard key={t.id} trip={t} onClick={() => onEdit(t)} onApplyReconciliation={onApplyReconciliation} />
+            ))
           )}
         </div>
       </div>

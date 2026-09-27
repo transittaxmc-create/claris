@@ -1,4 +1,5 @@
-import { type Trip, type Platform, PLATFORMS, type Expense, stampExpense } from "./types"
+import { type Trip, type Platform, type Reconciliation, PLATFORMS, type Expense, stampExpense } from "./types"
+import { round2, reconciliationMatches } from "./reconciliation"
 import { parseTombstones, pruneTombstones, type Tombstones } from "@/lib/sync"
 
 // Reads and writes the exact same localStorage key/format used by the
@@ -45,7 +46,27 @@ function normalizePlatform(p: unknown): Platform {
   return (PLATFORMS as string[]).includes(p as string) ? (p as Platform) : "Other"
 }
 
+// Lee un número del objeto reconciliation aceptando que venga como string
+// (exports antiguos) o como número. Devuelve undefined si no es utilizable.
+function reconNumber(value: unknown): number | undefined {
+  if (value == null || value === "") return undefined
+  const n = Number(value)
+  return Number.isFinite(n) ? n : undefined
+}
+
 export function entryToTrip(e: RawEntry): Trip {
+  const rec = e.reconciliation ?? {}
+  const expected = reconNumber(rec.expected)
+  const received = reconNumber(rec.received)
+  const note = typeof rec.note === "string" && rec.note ? rec.note : undefined
+  const reconciledAt = typeof rec.reconciledAt === "string" && rec.reconciledAt ? rec.reconciledAt : undefined
+  // Se deja undefined cuando no hay nada: así un viaje sin reconciliar no
+  // arrastra un objeto vacío por todo el estado.
+  const reconciliation: Reconciliation | undefined =
+    expected === undefined && received === undefined && !note && !reconciledAt
+      ? undefined
+      : { expected, received, note, reconciledAt }
+
   return {
     id: String(e.id ?? crypto.randomUUID()),
     platform: normalizePlatform(e.platform),
@@ -60,6 +81,7 @@ export function entryToTrip(e: RawEntry): Trip {
     time: e.datetime ? toTime(e.datetime) : "",
     ref: e.notes ?? "",
     status: e.reconciliation?.status === "matched" ? "matched" : "pending",
+    reconciliation,
     raw: e,
   }
 }
@@ -68,6 +90,22 @@ export function tripToEntry(t: Trip): RawEntry {
   const base: RawEntry = t.raw ? { ...t.raw } : {}
   const gross = t.earnings + t.extraCash + t.tips + t.toll
   const net = gross - t.platformFee
+
+  // La reconciliación conserva lo que ya existiera en el objeto original
+  // (incluido `status`, que es el campo que lee la app vieja) y añade los
+  // montos. Se escriben solo si tienen valor, para no ensuciar el export.
+  const rec = t.reconciliation ?? {}
+  //
+  // El `status` que ya usaba la app vieja se mantiene coherente con los montos:
+  // si el pago registrado cuadra con el neto, el viaje ES matched. Antes había
+  // que marcarlo a mano y el filtro MATCHED quedaba mintiendo.
+  const reconciliado = t.status === "matched" || reconciliationMatches(t)
+  const reconciliation: RawEntry = { ...(base.reconciliation ?? {}), status: reconciliado ? "matched" : "pending" }
+  if (typeof rec.expected === "number" && Number.isFinite(rec.expected)) reconciliation.expected = round2(rec.expected)
+  if (typeof rec.received === "number" && Number.isFinite(rec.received)) reconciliation.received = round2(rec.received)
+  if (rec.note) reconciliation.note = rec.note
+  if (rec.reconciledAt) reconciliation.reconciledAt = rec.reconciledAt
+
   return {
     ...base,
     id: t.id,
@@ -86,7 +124,7 @@ export function tripToEntry(t: Trip): RawEntry {
     dropoff: { ...(base.dropoff ?? {}), address: t.dropoff },
     notes: t.ref,
     status: base.status ?? "open",
-    reconciliation: { ...(base.reconciliation ?? {}), status: t.status },
+    reconciliation,
   }
 }
 
