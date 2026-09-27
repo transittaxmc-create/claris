@@ -35,6 +35,17 @@ assert.equal(toggleMoneySign("-12"), "12")
 assert.equal(moneyTextToNumber(toggleMoneySign("12")), -12)
 assert.equal(moneyTextToNumber(toggleMoneySign("-12")), 12)
 
+// Casos que usa el botón ± del campo (money-input.tsx): negar en mitad de una
+// edición y conservar la parte decimal que ya se escribió.
+assert.equal(toggleMoneySign("12."), "-12.")
+assert.equal(toggleMoneySign("-12."), "12.")
+assert.equal(toggleMoneySign("0.75"), "-0.75")
+assert.equal(toggleMoneySign("-0.75"), "0.75")
+assert.equal(toggleMoneySign("0"), "-0")
+// El signo se conserva si el texto ya lo tenía al negarlo dos veces.
+assert.equal(toggleMoneySign(toggleMoneySign("12.5")), "12.5")
+assert.equal(toggleMoneySign(toggleMoneySign("-7")), "-7")
+
 // Ida y vuelta: lo que se escribe es lo que se guarda.
 for (const raw of ["-12.5", "0.01", "1500", "-0.5"]) {
   const saved = moneyTextToNumber(normalizeMoneyText(raw))
