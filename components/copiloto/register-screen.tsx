@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Lock, Plus, ArrowRight, Download, Upload, CalendarClock, Sparkles, Pencil, Trash2, Receipt, Check, ArrowUpDown, Scale, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { type Trip, type ScheduledEntry, type ScheduleFrequency, type TollBill, grossOf, netOf, money } from "./types"
+import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
 import {
   diffOf,
   expectedOf,
@@ -66,9 +67,7 @@ function GrossByPlatformCard({ total, groups }: { total: number; groups: Platfor
           {groups.map((g) => (
             <div key={g.platform} className="flex items-center justify-between gap-2 text-[10px] leading-tight">
               <span className="flex min-w-0 items-center gap-1">
-                <span className="flex size-3.5 shrink-0 items-center justify-center rounded-sm bg-white text-[7px] font-bold text-black">
-                  {g.platform.slice(0, 1)}
-                </span>
+                <PlatformAvatar platform={g.platform} size={14} />
                 <span className="truncate font-semibold text-neutral-300">{g.platform}</span>
                 <span className="shrink-0 text-neutral-600">×{g.count}</span>
               </span>
@@ -183,9 +182,7 @@ function TripCard({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-white text-[9px] font-bold text-black">
-            {trip.platform.slice(0, 1)}
-          </span>
+          <PlatformAvatar platform={trip.platform} size={24} />
           <span className="truncate font-bold text-white">{trip.platform}</span>
           {trip.isVoucher && (
             <span className="shrink-0 rounded-full border border-orange-400/60 px-2 py-0.5 text-[9px] font-bold text-orange-400">
@@ -278,10 +275,9 @@ function PlatformGroupBlock({
       <header className="mb-2 flex items-start justify-between gap-2 px-1.5 pt-1">
         <div className="flex min-w-0 flex-col gap-0.5">
           <div className="flex items-center gap-1.5">
-            <span className="flex size-4 shrink-0 items-center justify-center rounded-sm bg-white text-[8px] font-bold text-black">
-              {group.platform.slice(0, 1)}
-            </span>
+            <PlatformAvatar platform={group.platform} size={18} />
             <span className="truncate text-xs font-extrabold tracking-wide text-white">{group.platform}</span>
+            <PlatformBadge platform={group.platform} />
             <span className="shrink-0 rounded-full border border-neutral-700 px-1.5 py-0.5 text-[9px] font-bold text-neutral-400">
               {group.count}
             </span>

@@ -1,6 +1,18 @@
 import type { LocationPoint } from "./geo"
 
-export type Platform = "Uber" | "Lyft" | "Aventus Ride" | "Cash" | "Other"
+// Plataformas soportadas. Los viajes guardados por versiones anteriores (o por
+// la app vieja) usan nombres como "EcoRide" o "Aventus"; LEGACY_PLATFORM_ALIASES
+// los traduce a estos para que no acaben todos en "Other".
+export type Platform =
+  | "Uber"
+  | "Lyft"
+  | "Eco Ride"
+  | "Throo"
+  | "AKI Technology"
+  | "Classic Ryde"
+  | "Aventus Ride"
+  | "Cash"
+  | "Other"
 
 export type TripStatus = "pending" | "matched"
 
@@ -119,7 +131,55 @@ export type Trip = {
   raw?: Record<string, unknown>
 }
 
-export const PLATFORMS: Platform[] = ["Uber", "Lyft", "Aventus Ride", "Cash", "Other"]
+// Orden en el que aparecen en el desplegable de ENTRY y en los chips del editor.
+export const PLATFORMS: Platform[] = [
+  "Uber",
+  "Lyft",
+  "Eco Ride",
+  "Throo",
+  "AKI Technology",
+  "Classic Ryde",
+  "Aventus Ride",
+  "Cash",
+  "Other",
+]
+
+// Nombres antiguos -> nombre canónico actual. Se aplican al leer de disco, así
+// que un viaje guardado como "EcoRide" sigue siendo Eco Ride y NO se convierte
+// en "Other". La comparación es insensible a mayúsculas y espacios sobrantes.
+export const LEGACY_PLATFORM_ALIASES: Record<string, Platform> = {
+  ecoride: "Eco Ride",
+  "eco ride": "Eco Ride",
+  ecorides: "Eco Ride",
+  aventus: "Aventus Ride",
+  "aventus ride": "Aventus Ride",
+  aki: "AKI Technology",
+  "aki technology": "AKI Technology",
+  "aki tech": "AKI Technology",
+  "classic ryde": "Classic Ryde",
+  classicryde: "Classic Ryde",
+  classic: "Classic Ryde",
+  lyft: "Lyft",
+  uber: "Uber",
+  cash: "Cash",
+  other: "Other",
+  throo: "Throo",
+  empower: "Other",
+  gallant: "Other",
+  "access-a-ride": "Other",
+  "access a ride": "Other",
+}
+
+// Devuelve la plataforma canónica para cualquier nombre de entrada; "Other" si
+// no se reconoce.
+export function normalizePlatformName(value: unknown): Platform {
+  const raw = String(value ?? "").trim()
+  if (!raw) return "Other"
+  const exact = PLATFORMS.find((p) => p === raw)
+  if (exact) return exact
+  const key = raw.toLowerCase()
+  return LEGACY_PLATFORM_ALIASES[key] ?? "Other"
+}
 
 export function grossOf(t: Trip): number {
   // Gross income is calculated before platform fees:
