@@ -10,7 +10,7 @@ import { ExpensesScreen } from "./expenses-screen"
 import { FinanceScreen } from "./finance-screen"
 import { RegisterScreen } from "./register-screen"
 import { TripEditSheet } from "./trip-edit-sheet"
-import { applyDifferenceToTrip, normalizeTripStatus } from "./reconciliation"
+import { applyDifferenceToTrip, applyBankMatchesToTrips, normalizeTripStatus } from "./reconciliation"
 import { SEED_TRIPS, newTrip, stampExpense, type Expense, type Trip } from "./types"
 import {
   addExpenseTombstone,
@@ -204,6 +204,17 @@ export function CopilotoApp() {
     const fixed = normalizeTripStatus(applyDifferenceToTrip(t))
     if (fixed === t) return
     setTrips((prev) => prev.map((p) => (p.id === fixed.id ? stampTrip(fixed) : p)))
+  }
+
+  // Conciliación bancaria: la IA devolvió matches {tripId, amount}. Se marcan
+  // los viajes con lo que el banco pagó y se normaliza su estado. Devuelve
+  // cuántos viajes se actualizaron para la nota del chat.
+  function applyBankMatches(matches: { tripId: string; amount: number }[]): number {
+    const result = applyBankMatchesToTrips(tripsRef.current, matches)
+    if (result.applied === 0) return 0
+    tripsRef.current = result.trips
+    setTrips(result.trips.map((t) => stampTrip(t)))
+    return result.applied
   }
 
   function deleteTrip(id: string) {
@@ -415,7 +426,7 @@ export function CopilotoApp() {
               {tab === "FINANCE" && (
                 <FinanceScreen trips={trips} expenses={expenses} onSave={saveExpense} onDelete={deleteExpense} />
               )}
-              {tab === "AI" && <AIScreen trips={trips} expenses={expenses} />}
+              {tab === "AI" && <AIScreen trips={trips} expenses={expenses} onApplyBankMatches={applyBankMatches} />}
               {tab === "DATA" && (
                 <DataScreen
                   trips={trips}

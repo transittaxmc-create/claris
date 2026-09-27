@@ -271,3 +271,51 @@ export function applyDifferenceToTrip(t: Trip): Trip {
     },
   }
 }
+
+// ---------------------------------------------------------------------------
+// Conciliación bancaria: aplicar los pagos que la IA reconoció del extracto
+// ---------------------------------------------------------------------------
+
+export type BankMatch = {
+  tripId: string
+  amount: number // lo que el banco pagó por ese viaje
+}
+
+export type BankMatchResult = {
+  trips: Trip[]
+  applied: number
+  appliedTotal: number
+}
+
+// Marca los viajes coincidentes con el monto que el banco pagó (received) y
+// normaliza su estado. Los viajes que no aparecen en matches quedan intactos.
+// Lógica pura: no toca almacenamiento, se prueba en Node.
+export function applyBankMatchesToTrips(trips: Trip[], matches: BankMatch[]): BankMatchResult {
+  const valid = matches.filter((m) => {
+    if (!m || typeof m.tripId !== "string") return false
+    const n = Number(m.amount)
+    return Number.isFinite(n)
+  })
+
+  let applied = 0
+  let appliedTotal = 0
+  const next = trips.map((t) => {
+    const match = valid.find((m) => m.tripId === t.id)
+    if (!match) return t
+    const amount = round2(Number(match.amount))
+    applied += 1
+    appliedTotal += amount
+    const updated: Trip = {
+      ...t,
+      reconciliation: {
+        ...(t.reconciliation ?? {}),
+        expected: round2(netOf(t)),
+        received: amount,
+        reconciledAt: new Date().toISOString(),
+      },
+    }
+    return normalizeTripStatus(updated)
+  })
+
+  return { trips: next, applied, appliedTotal: round2(appliedTotal) }
+}

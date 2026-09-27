@@ -49,7 +49,7 @@ for (const name of ["types", "reconciliation"]) {
 }
 
 const R = await import(pathToFileURL(join(tmp, "reconciliation.mjs")).href)
-const { expectedOf, receivedOf, diffOf, reconStateOf, groupByPlatform, reconSummary, sortTrips, applyDifferenceToTrip, round2, buildPlatformGroup } = R
+const { expectedOf, receivedOf, diffOf, reconStateOf, groupByPlatform, reconSummary, sortTrips, applyDifferenceToTrip, applyBankMatchesToTrips, round2, buildPlatformGroup } = R
 
 let passed = 0
 let failed = 0
@@ -202,6 +202,28 @@ check("sin pago -> pending", R.normalizeTripStatus(trip({ earnings: 100, status:
 check("marcado a mano se respeta", R.normalizeTripStatus(trip({ earnings: 100, status: "matched" })).status, "matched")
 const unchanged = trip({ earnings: 100, status: "pending" })
 check("si no cambia, devuelve el mismo objeto", R.normalizeTripStatus(unchanged) === unchanged, true)
+
+console.log("\n== conciliación bancaria: aplicar matches de la IA ==")
+const bancarios = [
+  trip({ id: "b1", earnings: 85.66 }),
+  trip({ id: "b2", earnings: 38.04 }),
+  trip({ id: "b3", earnings: 54 }),
+]
+const r1 = applyBankMatchesToTrips(bancarios, [
+  { tripId: "b1", amount: 85.66 },
+  { tripId: "b2", amount: 30 }, // pagaron de menos
+])
+check("aplica los dos matches", r1.applied, 2)
+check("b1 recibido exacto -> matched", r1.trips[0].reconciliation.received, 85.66)
+check("b1 status matched", r1.trips[0].status, "matched")
+check("b2 recibido 30 (de menos) -> pending", r1.trips[1].status, "pending")
+check("b2 diferencia visible", diffOf(r1.trips[1]), -8.04)
+check("b3 intacto sin recibido", receivedOf(r1.trips[2]), null)
+check("b3 sin tocar status", r1.trips[2].status, "pending")
+check("total aplicado", r1.appliedTotal, 115.66)
+check("match con id inexistente no cuenta", applyBankMatchesToTrips(bancarios, [{ tripId: "no-existe", amount: 10 }]).applied, 0)
+check("match con monto inválido se ignora", applyBankMatchesToTrips(bancarios, [{ tripId: "b1", amount: "abc" }]).applied, 0)
+check("sin matches no toca nada", applyBankMatchesToTrips(bancarios, []).trips, bancarios)
 
 rmSync(tmp, { recursive: true, force: true })
 

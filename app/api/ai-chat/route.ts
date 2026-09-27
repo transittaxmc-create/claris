@@ -93,6 +93,44 @@ TU MISIÓN:
       })
     }
 
+    // Conciliación bancaria: si el último mensaje empieza con el marcador, la
+    // respuesta debe ser JSON estructurado para poder ACTUALIZAR los viajes
+    // (no solo reportar).
+    const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? ""
+    const bankMode = String(lastUser).trimStart().startsWith("[CONCILIACIÓN BANCARIA]")
+
+    let generationConfig: Record<string, unknown> = {
+      temperature: 0.35,
+      maxOutputTokens: 1800,
+    }
+    if (bankMode) {
+      generationConfig = {
+        temperature: 0.1,
+        maxOutputTokens: 2200,
+        responseMimeType: "application/json",
+      }
+      contents.push({
+        role: "user",
+        parts: [
+          {
+            text:
+              `[FORMATO DE RESPUESTA OBLIGATORIO] Responde ÚNICAMENTE un objeto JSON válido con estas claves exactas:\n` +
+              `{\n` +
+              `  "reply": "texto breve en español con tu análisis",\n` +
+              `  "matches": [ { "tripId": "el id exacto del viaje de la lista", "bankAmount": 85.66, "note": "UBER PAYMENT" } ],\n` +
+              `  "differences": [ "descripciones cortas de descuadres o transacciones sin correspondencia" ]\n` +
+              `}\n` +
+              `REGLAS:\n` +
+              `- matches SOLO para transacciones que coinciden con un viaje por monto (±1%) y fecha (±2 días). Usa el id exacto de la LISTA DE VIAJES RECIENTES.\n` +
+              `- bankAmount = el monto que el banco pagó (puede ser negativo si es un cargo).\n` +
+              `- Si un viaje ya tiene received registrado, NO lo incluyas en matches salvo que el banco muestre otro monto.\n` +
+              `- differences: enumera lo que NO cuadra (transacciones sin viaje, viajes sin pago en el extracto, diferencias de monto).\n` +
+              `- reply: resume en pocas líneas cuántos pagos se reconocieron, cuánto se actualizará y cuáles son las diferencias más importantes.`,
+          },
+        ],
+      })
+    }
+
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent`
 
     const controller = new AbortController()
@@ -109,10 +147,7 @@ TU MISIÓN:
         signal: controller.signal,
         body: JSON.stringify({
           contents,
-          generationConfig: {
-            temperature: 0.35,
-            maxOutputTokens: 1800,
-          },
+          generationConfig,
         }),
       })
     } finally {
@@ -129,13 +164,33 @@ TU MISIÓN:
     }
 
     const data = await response.json()
-    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text || "No se pudo generar respuesta."
+    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "No se pudo generar respuesta."
+
+    // En modo banco se parsea el JSON estructurado; si el modelo no lo cumple,
+    // se cae al texto plano y no se actualiza nada (más seguro que aplicar mal).
+    let reply = rawText
+    let structured: { matches: { tripId: string; amount: number }[] } | null = null
+    if (bankMode) {
+      try {
+        const parsed = JSON.parse(rawText)
+        reply = typeof parsed.reply === "string" && parsed.reply ? parsed.reply : rawText
+        const rawMatches = Array.isArray(parsed.matches) ? parsed.matches : []
+        structured = {
+          matches: rawMatches
+            .filter((m: any) => m && typeof m.tripId === "string" && Number.isFinite(Number(m.bankAmount)))
+            .map((m: any) => ({ tripId: m.tripId, amount: Number(m.bankAmount) })),
+        }
+      } catch {
+        structured = null
+      }
+    }
 
     console.log(`[ai-chat] Respondido con éxito en ${Date.now() - start}ms`)
 
     return NextResponse.json({
       success: true,
       reply,
+      ...(structured ? { structured } : {}),
     })
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Error desconocido"
