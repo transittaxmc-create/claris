@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react"
 import { Sparkles, Send, Loader2, Bot, User, TrendingUp, Receipt, Car, Zap, AlertTriangle, Scale, Upload } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { grossOf, tripDateOf, daysUntil, type Trip, type Expense } from "./types"
+import { grossOf, tripDateOf, daysUntil, netOf, type Trip, type Expense } from "./types"
 import { reconSummary, reconViewOf, expectedOf, receivedOf } from "./reconciliation"
 import { parseBankCsv } from "@/lib/bank-csv"
 
@@ -88,9 +88,13 @@ function saveHistory(messages: Message[]) {
 export function AIScreen({
   trips,
   expenses,
+  onApplyBankMatches,
 }: {
   trips: Trip[]
   expenses: Expense[]
+  // La conciliación bancaria devuelve matches {tripId, amount}: el padre los
+  // aplica a los viajes (received) y persiste.
+  onApplyBankMatches?: (matches: { tripId: string; amount: number }[]) => number
 }) {
   const [messages, setMessages] = useState<Message[]>(() => loadHistory() ?? [welcomeMessage()])
   const [input, setInput] = useState("")
@@ -208,13 +212,20 @@ export function AIScreen({
     const topCategory =
       Object.entries(expByCategory).sort((a, b) => b[1] - a[1])[0]?.[0] || "Ninguna"
 
-    // Mapeo detallado de viajes recientes para que la IA los examine minuciosamente
-    const recentTripsList = trips.slice(-15).map((t) => ({
+    // Mapeo detallado de viajes recientes para que la IA los examine minuciosamente.
+    // Incluye id, fecha, esperado y recibido: son los datos que la conciliación
+    // bancaria necesita para casar transacciones y ACTUALIZAR los viajes.
+    const recentTripsList = trips.slice(-50).map((t) => ({
+      id: t.id,
       platform: t.platform,
+      date: tripDateOf(t),
       earnings: t.earnings,
       tips: t.tips,
       extraCash: t.extraCash,
       fee: t.platformFee,
+      net: netOf(t),
+      expected: expectedOf(t),
+      received: receivedOf(t),
       time: t.time,
       pickup: t.pickup ? t.pickup.slice(0, 35) : "",
       dropoff: t.dropoff ? t.dropoff.slice(0, 35) : "",
@@ -366,12 +377,21 @@ export function AIScreen({
 
       const data = await response.json()
       if (response.ok && data.reply) {
+        // Conciliación bancaria: la IA devolvió matches estructurados. Se
+        // ACTUALIZAN los viajes (received = lo que pagó el banco) y se añade
+        // una nota al chat con cuántos se aplicaron.
+        let appliedNote = ""
+        const matches = data.structured?.matches
+        if (Array.isArray(matches) && matches.length > 0 && onApplyBankMatches) {
+          const applied = onApplyBankMatches(matches)
+          appliedNote = `\n\n✅ ACTUALIZADO: ${applied} viaje${applied === 1 ? "" : "s"} marcado${applied === 1 ? "" : "s"} con el pago del banco. Revisa REGISTER para ver el descuadre restante.`
+        }
         setMessages((prev) => [
           ...prev,
           {
             id: `a-${Date.now()}`,
             role: "assistant",
-            content: data.reply,
+            content: data.reply + appliedNote,
             time: new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
           },
         ])
