@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react"
 import { Camera, Loader2, Pencil, Plus, Search, Sparkles, Trash2, Upload } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { EXPENSE_CATEGORIES, type Expense, expenseTotal, money } from "./types"
+import { EXPENSE_CATEGORIES, findDuplicateExpense, type Expense, expenseTotal, money } from "./types"
 import { MoneyInput } from "./money-input"
 
 // Pantalla de gastos (pestaña EXPENSES). Mismo estilo que REGISTER y el mismo
@@ -66,7 +66,7 @@ function ExpenseRow({
         </span>
         {expense.isAiGenerated && (
           <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 text-[9px] font-bold text-sky-400">
-            <Sparkles className="size-2.5" /> IA
+            <Sparkles className="size-2.5" /> ESCANEADO
           </span>
         )}
         {expense.isEditedByUser && (
@@ -214,6 +214,21 @@ export function ExpensesScreen({
       window.alert("Completa el vendedor y el monto.")
       return
     }
+
+    // Antes de guardar: ¿este recibo ya está registrado? Mismo vendedor, misma
+    // fecha y mismo monto = el mismo ticket. Se avisa, y el usuario decide si
+    // es un gasto legítimo distinto o un escaneo repetido.
+    const dup = findDuplicateExpense(draft, expenses)
+    if (dup) {
+      const msg =
+        `⚠️ Posible duplicado:\n\n` +
+        `${dup.expense.vendor} · ${dup.expense.date} · ${money(dup.expense.amount)} · ${dup.expense.category}\n\n` +
+        `Ya existe un gasto idéntico (vendedor + fecha + monto).\n\n` +
+        `"Aceptar" lo guarda igual (¿dos compras iguales el mismo día?)\n` +
+        `"Cancelar" no guarda nada.`
+      if (!window.confirm(msg)) return
+    }
+
     const expense: Expense = {
       id: draft.id ?? crypto.randomUUID(),
       date: draft.date,
