@@ -138,6 +138,35 @@ export function ExpensesScreen({
   const [isScanning, setIsScanning] = useState(false)
   const [scanStatus, setScanStatus] = useState<string | null>(null)
 
+  // Categorías personalizadas: si la IA no tiene la categoría correcta, el
+  // usuario añade una y queda disponible en el formulario y en el filtro.
+  const [customCategories, setCustomCategories] = useState<string[]>(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem("claris_custom_categories") || "[]")
+      return Array.isArray(raw) ? raw.filter((c) => typeof c === "string" && c.trim()) : []
+    } catch {
+      return []
+    }
+  })
+  const [newCategory, setNewCategory] = useState("")
+
+  function addCustomCategory() {
+    const name = newCategory.trim()
+    if (!name || name === "__new__") return
+    if ([...EXPENSE_CATEGORIES, ...customCategories].some((c) => c.toLowerCase() === name.toLowerCase())) {
+      setDraft((d) => (d ? { ...d, category: name } : d))
+      setNewCategory("")
+      return
+    }
+    const next = [...customCategories, name]
+    setCustomCategories(next)
+    try {
+      localStorage.setItem("claris_custom_categories", JSON.stringify(next))
+    } catch {}
+    setDraft((d) => (d ? { ...d, category: name } : d))
+    setNewCategory("")
+  }
+
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -421,14 +450,35 @@ export function ExpensesScreen({
                   onChange={(e) => setDraft({ ...draft, category: e.target.value })}
                   className="rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white outline-none"
                 >
-                  {EXPENSE_CATEGORIES.map((c) => (
+                  {[...EXPENSE_CATEGORIES, ...customCategories].map((c) => (
                     <option key={c} value={c}>
                       {c}
                     </option>
                   ))}
+                  <option value="__new__">＋ Nueva categoría…</option>
                 </select>
               </label>
             </div>
+
+            {/* Categoría personalizada: si la IA no tiene la correcta, se añade */}
+            {draft.category === "__new__" && (
+              <div className="mt-2 flex gap-2">
+                <input
+                  autoFocus
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  placeholder="Nombre de la categoría nueva"
+                  className="min-w-0 flex-1 rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white outline-none placeholder:text-neutral-600"
+                />
+                <button
+                  type="button"
+                  onClick={addCustomCategory}
+                  className="shrink-0 rounded-xl bg-yellow-400 px-3 py-2 text-xs font-bold text-black"
+                >
+                  Añadir
+                </button>
+              </div>
+            )}
 
             <label className="mt-2 flex flex-col gap-1">
               <span className="text-[10px] font-bold text-neutral-400">VENDEDOR</span>
@@ -486,8 +536,8 @@ export function ExpensesScreen({
                   <option value="annual">Anual</option>
                 </select>
                 {draft.frequency === "once" ? (
-                  <div className="flex items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900/40 text-[11px] text-neutral-500">
-                    Sin vencimiento
+                  <div className="flex items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900/40 text-[11px] text-neutral-400">
+                    Vence el día del gasto ({draft.date})
                   </div>
                 ) : (
                   <input
@@ -534,7 +584,7 @@ export function ExpensesScreen({
             className="max-w-[45%] rounded-xl border border-neutral-800 bg-neutral-950 px-2 py-2 text-[11px] text-neutral-300 outline-none"
           >
             <option value="Todas">Todas</option>
-            {EXPENSE_CATEGORIES.map((c) => (
+            {[...EXPENSE_CATEGORIES, ...customCategories].map((c) => (
               <option key={c} value={c}>
                 {c}
               </option>

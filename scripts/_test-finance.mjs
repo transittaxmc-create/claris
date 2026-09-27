@@ -26,7 +26,7 @@ execFileSync(
 )
 renameSync(join(tmp, "finance-bridge.js"), join(tmp, "finance-bridge.mjs"))
 
-const { groupRealTrips, applyTripsToDays, computeRealWeekTotals } = await import(
+const { groupRealTrips, applyTripsToDays, computeRealWeekTotals, weekdayAverages, computePanorama } = await import(
   pathToFileURL(join(tmp, "finance-bridge.mjs")).href
 )
 
@@ -103,6 +103,64 @@ check("ingreso real 150.5", totals.realIncome, 150.5)
 check("solo viajes positivos cuentan", totals.realTripCount, 2)
 check("desglose Uber", totals.platforms.find((p) => p.platform === "Uber")?.total, 100)
 check("desglose Lyft", totals.platforms.find((p) => p.platform === "Lyft")?.total, 50.5)
+
+console.log("\n== PROYECCION POR DIA DE LA SEMANA ==")
+// Tres lunes con 100, 200 y 300 -> promedio 200
+const historico = [
+  { date: "2026-09-07", platform: "Uber", net: 100 }, // lunes
+  { date: "2026-09-14", platform: "Uber", net: 200 }, // lunes
+  { date: "2026-09-21", platform: "Uber", net: 300 }, // lunes
+  { date: "2026-09-08", platform: "Lyft", net: 50 }, // martes
+  { date: "2026-09-15", platform: "Lyft", net: 150 }, // martes
+]
+const avgs = weekdayAverages(historico)
+check("promedio lunes 200", avgs.mon, 200)
+check("promedio martes 100", avgs.tue, 100)
+check("miercoles sin dato", avgs.wed, undefined)
+check("viajes negativos no cuentan", weekdayAverages([{ date: "2026-09-07", platform: "Uber", net: -5 }]).mon, undefined)
+
+console.log("\n== PANORAMA: balance real + cobertura de pagos ==")
+// Semana lun-dom 2026-09-28..2026-10-04
+const semana = [
+  day("d1", "2026-09-28", { Uber: { actual: 120 } }),
+  day("d2", "2026-09-29"),
+  day("d3", "2026-09-30", { Uber: { actual: 80 } }),
+]
+const panorama = computePanorama({
+  startingBalance: 100,
+  days: semana,
+  scheduled: [{ description: "Geico", amount: 400, nextDate: "2026-09-29" }],
+  expenses: [{ date: "2026-09-28", amount: 30 }],
+  trips: historico,
+})
+// d1: 100 + 120 real − 30 gasto = 190
+// d2: 190 + 100 proyectado − 400 pago = −110
+// d3: −110 + 80 real = −30
+check("ingreso real semana 200", panorama.weekIncomeReal, 200)
+check("gastos semana 30", panorama.weekExpenses, 30)
+check("pagos semana 400", panorama.weekPayments, 400)
+check("balance final -30", panorama.finalBalance, -30)
+check("no cubre", panorama.covered, false)
+check("faltante 110", panorama.shortfall, 110)
+check("dia 1 con pago de 400", panorama.days[1].payments[0].description, "Geico")
+check("dia 1 en rojo", panorama.days[1].belowZero, true)
+check("dia 2 en rojo tambien", panorama.days[2].belowZero, true)
+check("dia 0 sano", panorama.days[0].belowZero, false)
+// Martes proyectado desde historico (sin real): promedio martes 100
+check("dia 2 proyectado 100", panorama.days[1].projectedIncome, 100)
+check("dia con real no proyecta", panorama.days[0].projectedIncome, 0)
+
+console.log("\n== PANORAMA CON COBERTURA ==")
+const cubierto = computePanorama({
+  startingBalance: 500,
+  days: semana,
+  scheduled: [{ description: "Geico", amount: 150, nextDate: "2026-09-29" }],
+  expenses: [],
+  trips: historico,
+})
+check("con saldo alto cubre", cubierto.covered, true)
+check("sin faltante", cubierto.shortfall, 0)
+check("balance final positivo", cubierto.finalBalance > 0, true)
 
 rmSync(tmp, { recursive: true, force: true })
 console.log(`\n${"=".repeat(50)}`)

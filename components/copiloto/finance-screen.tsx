@@ -36,6 +36,7 @@ import { ExpenseRegisterForm } from "./expense-register-form"
 import { FinanceRegisterTable } from "./finance-register-table"
 import { UpcomingBillsForm } from "./upcoming-bills-form"
 import { useFinance, applyRealTrips, computeRealWeekTotals } from "./finance-store"
+import { computePanorama } from "./finance-bridge"
 import {
   daysUntil,
   money,
@@ -357,7 +358,7 @@ export function FinanceScreen({
 }) {
   const [activeTab, setActiveTab] = useState<SubTab>("caja")
 
-  const { startingBalance, reserveBalance, resetAllData } = useFinance()
+  const { startingBalance, reserveBalance, days, resetAllData } = useFinance()
   const { getUpcomingExpensesTotal, getInvestableSurplus, getEmergencyPlan } = useFinance()
   const upcomingBills = getUpcomingExpensesTotal(7)
   const { amount: surplus, isSafe } = getInvestableSurplus()
@@ -390,6 +391,30 @@ export function FinanceScreen({
       if (b) setBills(JSON.parse(b))
     } catch {}
   }, [])
+
+  // Panorama semanal: balance real + proyección diaria + cobertura de pagos en
+  // su vencimiento. Lo calcula finance-bridge (lógica pura y probada).
+  const panorama = useMemo(() => {
+    const scheduled = schedules
+      .filter((s) => s.kind === "expense" && s.active !== false && s.nextDate)
+      .map((s) => ({ description: s.description, amount: Number(s.amount) || 0, nextDate: s.nextDate }))
+    const expenseList = expenses.map((e) => ({ date: e.date, amount: e.amount }))
+    return computePanorama({
+      startingBalance,
+      days,
+      scheduled,
+      expenses: expenseList,
+      trips: realTrips,
+    })
+  }, [startingBalance, days, schedules, expenses, realTrips])
+
+  const paymentsByDate: Record<string, { description: string; amount: number }[]> = {}
+  for (const d of panorama.days) {
+    if (d.payments.length > 0) {
+      paymentsByDate[d.date] = d.payments.map((p) => ({ description: p.description, amount: p.amount }))
+    }
+  }
+  const belowZeroDates = new Set(panorama.days.filter((d) => d.belowZero).map((d) => d.date))
   function saveSchedule(entry: ScheduledEntry) {
     setSchedules((current) => {
       const next = current.some((item) => item.id === entry.id)
@@ -491,6 +516,61 @@ export function FinanceScreen({
               </div>
             </div>
 
+            {/* PANORAMA: balance real + proyección diaria y cobertura de pagos */}
+            <section
+              className={cn(
+                "rounded-2xl border p-3.5",
+                panorama.covered ? "border-emerald-500/30 bg-emerald-950/15" : "border-rose-500/40 bg-rose-950/20",
+              )}
+            >
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-[11px] font-bold tracking-wide text-neutral-300">PANORAMA DE LA SEMANA</p>
+                <span
+                  className={cn(
+                    "rounded-full px-2 py-0.5 text-[9px] font-bold",
+                    panorama.covered ? "bg-emerald-500/15 text-emerald-400" : "bg-rose-500/15 text-rose-400",
+                  )}
+                >
+                  {panorama.covered ? "✅ TUS INGRESOS CUBREN TUS PAGOS" : `⚠️ FALTAN $${panorama.shortfall.toFixed(2)}`}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-4 gap-2 text-center">
+                <div className="rounded-xl bg-black/20 p-2">
+                  <div className="text-[9px] font-bold text-neutral-500">INGRESO REAL</div>
+                  <div className="text-sm font-extrabold text-emerald-400">+${panorama.weekIncomeReal.toFixed(2)}</div>
+                </div>
+                <div className="rounded-xl bg-black/20 p-2">
+                  <div className="text-[9px] font-bold text-neutral-500">GASTOS</div>
+                  <div className="text-sm font-extrabold text-rose-400">-${panorama.weekExpenses.toFixed(2)}</div>
+                </div>
+                <div className="rounded-xl bg-black/20 p-2">
+                  <div className="text-[9px] font-bold text-neutral-500">PAGOS VENCEN</div>
+                  <div className="text-sm font-extrabold text-amber-300">-${panorama.weekPayments.toFixed(2)}</div>
+                </div>
+                <div className={cn("rounded-xl p-2", panorama.covered ? "bg-emerald-500/10" : "bg-rose-500/10")}>
+                  <div className="text-[9px] font-bold text-neutral-400">BALANCE PROYECTADO</div>
+                  <div className={cn("text-sm font-black", panorama.covered ? "text-emerald-400" : "text-rose-400")}>
+                    ${panorama.finalBalance.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Días en riesgo: si algún día cae por debajo de cero, se muestra */}
+              {!panorama.covered && (
+                <div className="mt-2 flex flex-col gap-1">
+                  {panorama.days
+                    .filter((d) => d.belowZero)
+                    .map((d) => (
+                      <p key={d.date} className="text-[10px] text-rose-300">
+                        📉 {d.date}: quedarías en <strong>-${Math.abs(d.balanceAfter).toFixed(2)}</strong>
+                        {d.payments.length > 0 ? ` (vence ${d.payments.map((p) => p.description).join(", ")})` : ""}
+                      </p>
+                    ))}
+                </div>
+              )}
+            </section>
+
             <div className="flex items-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900/40 px-4 py-2.5 text-[11px] text-neutral-400">
               <Wallet className="size-3.5 shrink-0 text-yellow-300" />
               <span>
@@ -566,7 +646,7 @@ export function FinanceScreen({
               </div>
             )}
 
-            <FinanceRegisterTable />
+            <FinanceRegisterTable paymentsByDate={paymentsByDate} belowZeroDates={belowZeroDates} />
           </div>
         )}
         {activeTab === "plan" && (
