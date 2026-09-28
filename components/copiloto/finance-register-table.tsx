@@ -29,7 +29,11 @@ export function FinanceRegisterTable({
   let runningBalance = startingBalance
   const rows = days.map((day) => {
     const income = day.platforms.reduce(
-      (sum, platform) => sum + (mode === "bank" ? Number(platform.actualAmount) || 0 : Number(platform.projectedAmount) || 0),
+      (sum, platform) =>
+        sum +
+        (mode === "bank"
+          ? Number(platform.actualAmount) || 0
+          : (Number(platform.actualAmount) || 0) + (Number(platform.projectedAmount) || 0)),
       0,
     )
     const expenses = (paymentsByDate[day.date] ?? []).reduce((sum, payment) => sum + payment.amount, 0)
@@ -87,22 +91,33 @@ export function FinanceRegisterTable({
                   <td className="min-w-[430px] px-3 py-2">
                     <div className="grid grid-cols-4 gap-x-2 gap-y-1.5">
                       {day.platforms.map((platform) => {
-                        const field = mode === "bank" ? "actualAmount" : "projectedAmount"
-                        const value = platform[field]
+                        const fields = mode === "bank"
+                          ? [{ key: "actualAmount" as const, label: "Banco", value: platform.actualAmount }]
+                          : [
+                              { key: "actualAmount" as const, label: "Banco", value: platform.actualAmount },
+                              { key: "projectedAmount" as const, label: "Proy.", value: platform.projectedAmount },
+                            ]
                         return (
-                          <label key={platform.platformName} className="flex min-w-0 items-center gap-1 rounded-md border border-neutral-800 bg-neutral-900/70 px-1.5 py-1 focus-within:border-yellow-400/60">
-                            <span className="min-w-0 flex-1 truncate text-[9px] text-neutral-400" title={platform.platformName}>{platform.platformName}</span>
-                            <span className="text-[9px] text-neutral-600">$</span>
-                            <input
-                              aria-label={`${platform.platformName} ${dayLabel(day.date)}`}
-                              type="number"
-                              inputMode="decimal"
-                              value={value || ""}
-                              placeholder="0"
-                              onChange={(event) => updatePlatformAmount(day.id, platform.platformName, field, Number(event.target.value) || 0)}
-                              className="w-[62px] bg-transparent text-right text-[10px] font-semibold text-white outline-none placeholder:text-neutral-700"
-                            />
-                          </label>
+                          <div key={platform.platformName} className="rounded-md border border-neutral-800 bg-neutral-900/70 px-1.5 py-1 focus-within:border-yellow-400/60">
+                            <span className="block truncate text-[9px] text-neutral-400" title={platform.platformName}>{platform.platformName}</span>
+                            <div className={cn("mt-1 grid gap-1", mode === "projected" ? "grid-cols-2" : "grid-cols-1")}>
+                              {fields.map(({ key, label, value }) => (
+                                <label key={key} className="flex min-w-0 items-center gap-0.5">
+                                  <span className="text-[8px] text-neutral-600">{label}</span>
+                                  <span className="text-[9px] text-neutral-600">$</span>
+                                  <input
+                                    aria-label={`${label} ${platform.platformName} ${dayLabel(day.date)}`}
+                                    type="number"
+                                    inputMode="decimal"
+                                    value={value || ""}
+                                    placeholder="0"
+                                    onChange={(event) => updatePlatformAmount(day.id, platform.platformName, key, Number(event.target.value) || 0)}
+                                    className="min-w-0 flex-1 bg-transparent text-right text-[10px] font-semibold text-white outline-none placeholder:text-neutral-700"
+                                  />
+                                </label>
+                              ))}
+                            </div>
+                          </div>
                         )
                       })}
                     </div>
