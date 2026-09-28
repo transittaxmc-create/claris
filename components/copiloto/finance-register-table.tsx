@@ -1,15 +1,26 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useMemo, type ReactNode } from "react"
 import { cn } from "@/lib/utils"
 import { useFinance } from "./finance-store"
 
+type Payment = { description: string; amount: number }
+
+type LedgerRow = {
+  id: string
+  date: string
+  description: string
+  source: "Banco" | "Proyectada" | "Sistema"
+  income: number
+  expense: number
+  balance: number
+  editor?: ReactNode
+  low?: boolean
+}
+
+const money = (value: number) => `${value < 0 ? "−" : ""}$${Math.abs(value).toFixed(2)}`
 const dayLabel = (iso: string) =>
-  new Date(`${iso}T00:00:00`).toLocaleDateString("es-US", {
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-  })
+  new Date(`${iso}T00:00:00`).toLocaleDateString("es-US", { weekday: "short", day: "numeric", month: "short" })
 
 export function FinanceRegisterTable({
   mode = "bank",
@@ -17,134 +28,116 @@ export function FinanceRegisterTable({
   belowZeroDates = new Set<string>(),
 }: {
   mode?: "bank" | "projected"
-  paymentsByDate?: Record<string, { description: string; amount: number }[]>
+  paymentsByDate?: Record<string, Payment[]>
   belowZeroDates?: Set<string>
 }) {
-  const { days, startingBalance, toggleWorkingDay, updatePlatformAmount, initializeWeek } = useFinance()
+  const { days, startingBalance, updatePlatformAmount, initializeWeek } = useFinance()
 
   useEffect(() => {
     if (days.length === 0) initializeWeek()
   }, [days.length, initializeWeek])
 
-  let runningBalance = startingBalance
-  const rows = days.map((day) => {
-    const income = day.platforms.reduce(
-      (sum, platform) =>
-        sum +
-        (mode === "bank"
-          ? Number(platform.actualAmount) || 0
-          : (Number(platform.actualAmount) || 0) + (Number(platform.projectedAmount) || 0)),
-      0,
-    )
-    const expenses = (paymentsByDate[day.date] ?? []).reduce((sum, payment) => sum + payment.amount, 0)
-    const net = income - expenses
-    runningBalance += net
-    return { day, income, expenses, net, balance: runningBalance }
-  })
+  const rows = useMemo(() => {
+    let balance = startingBalance
+    const result: LedgerRow[] = [
+      { id: "opening", date: days[0]?.date ?? "", description: "Balance inicial del banco", source: "Banco", income: 0, expense: 0, balance },
+    ]
+
+    for (const day of days) {
+      const actual = day.platforms.filter((platform) => Number(platform.actualAmount) > 0)
+      const projected = day.platforms.filter((platform) => Number(platform.projectedAmount) > 0)
+      const entries = mode === "bank"
+        ? actual.map((platform) => ({ platform, isProjected: false }))
+        : [
+            ...actual.map((platform) => ({ platform, isProjected: false })),
+            ...projected.map((platform) => ({ platform, isProjected: true })),
+          ]
+
+      for (const { platform, isProjected } of entries) {
+        const amount = Number(isProjected ? platform.projectedAmount : platform.actualAmount) || 0
+        balance += amount
+        result.push({
+          id: `${day.id}-${platform.platformName}-${isProjected ? "projected" : "actual"}`,
+          date: day.date,
+          description: platform.platformName,
+          source: isProjected ? "Proyectada" : "Banco",
+          income: amount,
+          expense: 0,
+          balance,
+          editor: (
+            <label className="inline-flex items-center gap-1">
+              <span className="text-neutral-500">$</span>
+              <input
+                aria-label={`${isProjected ? "Proyección" : "Banco"} ${platform.platformName} ${dayLabel(day.date)}`}
+                type="number"
+                inputMode="decimal"
+                value={amount || ""}
+                placeholder="0"
+                onChange={(event) => updatePlatformAmount(day.id, platform.platformName, isProjected ? "projectedAmount" : "actualAmount", Number(event.target.value) || 0)}
+                className="w-20 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-right font-bold text-white outline-none hover:border-neutral-700 focus:border-yellow-400"
+              />
+            </label>
+          ),
+          low: balance < 0,
+        })
+      }
+
+      if (mode === "projected") {
+        for (const payment of paymentsByDate[day.date] ?? []) {
+          balance -= payment.amount
+          result.push({
+            id: `${day.id}-${payment.description}`,
+            date: day.date,
+            description: payment.description,
+            source: "Proyectada",
+            income: 0,
+            expense: payment.amount,
+            balance,
+            low: balance < 0 || belowZeroDates.has(day.date),
+          })
+        }
+      }
+    }
+    return result
+  }, [days, startingBalance, mode, paymentsByDate, belowZeroDates, updatePlatformAmount])
 
   return (
     <section className="overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-950" aria-label={mode === "bank" ? "Registro bancario" : "Registro proyectado"}>
       <div className="flex items-center justify-between border-b border-neutral-800 bg-neutral-900 px-4 py-3">
         <div>
           <h2 className="text-sm font-extrabold text-white">{mode === "bank" ? "Registro bancario" : "Registro proyectado"}</h2>
-          <p className="mt-0.5 text-[10px] text-neutral-400">
-            {mode === "bank" ? "Entradas reales y conciliación diaria" : "Banco + ingresos y pagos programados"}
-          </p>
+          <p className="mt-0.5 text-[10px] text-neutral-400">{mode === "bank" ? "Transacciones reales para reconciliación" : "Balance bancario + ingresos y pagos proyectados"}</p>
         </div>
         <span className="rounded-full bg-yellow-400/15 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-yellow-300">Editable</span>
       </div>
 
       <div className="overflow-x-auto">
-        <table className="min-w-[920px] w-full border-collapse text-left text-xs">
-          <thead className="bg-neutral-900/70 text-[10px] uppercase tracking-wide text-neutral-500">
+        <table className="min-w-[760px] w-full border-collapse text-left text-xs">
+          <thead className="bg-neutral-900/80 text-[10px] uppercase tracking-wide text-neutral-500">
             <tr>
               <th className="sticky left-0 z-10 bg-neutral-900 px-4 py-3 font-bold">Fecha</th>
-              <th className="px-3 py-3 font-bold">Transacciones por plataforma</th>
-              <th className="px-3 py-3 text-right font-bold">Entradas</th>
-              <th className="px-3 py-3 text-right font-bold">Salidas</th>
-              <th className="px-3 py-3 text-right font-bold">Neto</th>
+              <th className="px-3 py-3 font-bold">Descripción</th>
+              <th className="px-3 py-3 font-bold">Origen</th>
+              <th className="px-3 py-3 text-right font-bold">Entrada</th>
+              <th className="px-3 py-3 text-right font-bold">Salida</th>
               <th className="px-4 py-3 text-right font-bold">Balance acumulado</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-800">
-            <tr className="bg-neutral-900/40 text-[11px]">
-              <td className="sticky left-0 bg-neutral-900/90 px-4 py-2 font-semibold text-neutral-400">Saldo inicial</td>
-              <td className="px-3 py-2 text-neutral-600">—</td>
-              <td colSpan={3} className="px-3 py-2 text-right text-neutral-600">—</td>
-              <td className="px-4 py-2 text-right font-bold text-white">${startingBalance.toFixed(2)}</td>
-            </tr>
-            {rows.map(({ day, income, expenses, net, balance }) => {
-              const paymentsDue = paymentsByDate[day.date] ?? []
-              const low = belowZeroDates.has(day.date) || balance < 0
-              return (
-                <tr key={day.id} className={cn("align-top", low && "bg-rose-950/20")}>
-                  <td className="sticky left-0 z-[1] bg-neutral-950 px-4 py-3">
-                    <div className="whitespace-nowrap font-bold capitalize text-white">{dayLabel(day.date)}</div>
-                    <button
-                      type="button"
-                      onClick={() => toggleWorkingDay(day.id)}
-                      className={cn("mt-1 rounded-full border px-2 py-0.5 text-[9px] font-bold", day.isWorkingDay ? "border-yellow-400/30 bg-yellow-400/10 text-yellow-300" : "border-neutral-700 text-neutral-500")}
-                    >
-                      {day.isWorkingDay ? "WORKING" : "OFF"}
-                    </button>
-                  </td>
-                  <td className="min-w-[430px] px-3 py-2">
-                    <div className="grid grid-cols-4 gap-x-2 gap-y-1.5">
-                      {day.platforms.map((platform) => {
-                        const fields = mode === "bank"
-                          ? [{ key: "actualAmount" as const, label: "Banco", value: platform.actualAmount }]
-                          : [
-                              { key: "actualAmount" as const, label: "Banco", value: platform.actualAmount },
-                              { key: "projectedAmount" as const, label: "Proy.", value: platform.projectedAmount },
-                            ]
-                        return (
-                          <div key={platform.platformName} className="rounded-md border border-neutral-800 bg-neutral-900/70 px-1.5 py-1 focus-within:border-yellow-400/60">
-                            <span className="block truncate text-[9px] text-neutral-400" title={platform.platformName}>{platform.platformName}</span>
-                            <div className={cn("mt-1 grid gap-1", mode === "projected" ? "grid-cols-2" : "grid-cols-1")}>
-                              {fields.map(({ key, label, value }) => (
-                                <label key={key} className="flex min-w-0 items-center gap-0.5">
-                                  <span className="text-[8px] text-neutral-600">{label}</span>
-                                  <span className="text-[9px] text-neutral-600">$</span>
-                                  <input
-                                    aria-label={`${label} ${platform.platformName} ${dayLabel(day.date)}`}
-                                    type="number"
-                                    inputMode="decimal"
-                                    value={value || ""}
-                                    placeholder="0"
-                                    onChange={(event) => updatePlatformAmount(day.id, platform.platformName, key, Number(event.target.value) || 0)}
-                                    className="min-w-0 flex-1 bg-transparent text-right text-[10px] font-semibold text-white outline-none placeholder:text-neutral-700"
-                                  />
-                                </label>
-                              ))}
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                    {paymentsDue.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
-                        {paymentsDue.map((payment, index) => (
-                          <span key={`${payment.description}-${index}`} className="rounded-full bg-amber-400/10 px-2 py-1 text-[9px] font-semibold text-amber-300">
-                            {payment.description} −${payment.amount.toFixed(2)}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-3 py-3 text-right font-bold text-emerald-400">${income.toFixed(2)}</td>
-                  <td className="px-3 py-3 text-right font-semibold text-rose-300">{expenses ? `−$${expenses.toFixed(2)}` : "—"}</td>
-                  <td className={cn("px-3 py-3 text-right font-bold", net >= 0 ? "text-emerald-400" : "text-rose-300")}>{net >= 0 ? "+" : "−"}${Math.abs(net).toFixed(2)}</td>
-                  <td className={cn("px-4 py-3 text-right text-sm font-extrabold", low ? "text-rose-400" : "text-white")}>
-                    ${balance.toFixed(2)}
-                    <span className={cn("mt-1 block text-[9px] font-bold", low ? "text-rose-400" : "text-neutral-500")}>{low ? "BAJO" : "ACUMULADO"}</span>
-                  </td>
-                </tr>
-              )
-            })}
+            {rows.map((row, index) => (
+              <tr key={row.id} className={cn("align-middle", row.low && "bg-rose-950/25", index === 0 && "bg-neutral-900/50")}>
+                <td className="sticky left-0 z-[1] whitespace-nowrap bg-neutral-950 px-4 py-3 font-semibold capitalize text-neutral-300">{index === 0 ? "—" : dayLabel(row.date)}</td>
+                <td className="px-3 py-3 font-semibold text-white">{row.description}</td>
+                <td className="px-3 py-3"><span className={cn("rounded-full px-2 py-1 text-[9px] font-bold", row.source === "Banco" ? "bg-sky-400/10 text-sky-300" : row.source === "Proyectada" ? "bg-amber-400/10 text-amber-300" : "text-neutral-500")}>{row.source}</span></td>
+                <td className="px-3 py-3 text-right font-bold text-emerald-400">{row.editor ?? (row.income ? `+${money(row.income)}` : "—")}</td>
+                <td className="px-3 py-3 text-right font-semibold text-rose-300">{row.expense ? `−$${row.expense.toFixed(2)}` : "—"}</td>
+                <td className={cn("px-4 py-3 text-right text-sm font-extrabold", row.low ? "text-rose-400" : "text-white")}>{money(row.balance)}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
-      <p className="border-t border-neutral-800 px-4 py-2 text-[10px] text-neutral-500">Toca cualquier monto para corregirlo. Los cambios se guardan automáticamente.</p>
+      <p className="border-t border-neutral-800 px-4 py-2 text-[10px] text-neutral-500">Toca cualquier entrada para corregirla. El balance acumulado se recalcula automáticamente.</p>
     </section>
   )
 }
