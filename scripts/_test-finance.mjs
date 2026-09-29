@@ -83,6 +83,31 @@ check("dia 2: real 90 > manual 10 -> 90", applied[1].platforms[0].actualAmount, 
 check("dia 3 Eco Ride real = 25", applied[2].platforms[2].actualAmount, 25)
 check("proyectado no se toca", applied[0].platforms[0].projectedAmount, 0)
 
+console.log("\n== PLATAFORMA QUE NO ESTA EN LA LISTA FIJA ==")
+// Antes se descartaba: los viajes de Aventus Ride o AKI Technology no entraban
+// en la semana y el panorama mostraba menos ingresos de los reales.
+const conNuevas = applyTripsToDays(days, [
+  { date: "2026-09-28", platform: "Uber", net: 100 },
+  { date: "2026-09-28", platform: "Aventus Ride", net: 30 },
+  { date: "2026-09-28", platform: "AKI Technology", net: 22 },
+])
+const dia1 = conNuevas[0]
+const aventus = dia1.platforms.find((p) => p.platformName === "Aventus Ride")
+const aki = dia1.platforms.find((p) => p.platformName === "AKI Technology")
+check("la plataforma nueva se agrega", Boolean(aventus && aki), true)
+check("Aventus Ride conserva su importe", aventus?.actualAmount, 30)
+check("AKI Technology conserva su importe", aki?.actualAmount, 22)
+check("las plataformas fijas siguen", dia1.platforms.slice(0, 3).map((p) => p.platformName), ["Uber", "Lyft", "Eco Ride"])
+check("sin duplicar la que ya existia", dia1.platforms.filter((p) => p.platformName === "Uber").length, 1)
+const totalDia1 = dia1.platforms.reduce((s, p) => s + p.actualAmount, 0)
+check("el total del dia suma las tres", totalDia1, 152)
+const totalSemana = computeRealWeekTotals([
+  { date: "2026-09-28", platform: "Uber", net: 100 },
+  { date: "2026-09-28", platform: "Aventus Ride", net: 30 },
+  { date: "2026-09-28", platform: "AKI Technology", net: 22 },
+]).realIncome
+check("los totales reales incluyen la plataforma nueva", totalSemana, 152)
+
 console.log("\n== NUNCA REDUCE LO MANUAL ==")
 const noReduce = applyTripsToDays(days, [
   { date: "2026-09-29", platform: "Uber", net: 5 }, // 5 < 10 manual

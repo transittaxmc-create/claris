@@ -53,6 +53,10 @@ export function groupRealTrips(trips: RealTripInput[]): Map<string, Map<string, 
 //   mayor entre lo calculado y lo existente: un importe manual previo nunca se
 //   reduce, un real mayor se refleja.
 // - Los días sin viajes quedan exactamente como estaban.
+// - Una plataforma que NO esté en la lista fija del día se AGREGA. Antes se
+//   descartaba en silencio: los viajes de Aventus Ride, AKI Technology o Throo
+//   no entraban en la semana y el panorama mostraba menos ingresos de los reales
+//   (con 6 viajes y $254.50 el panorama decía $202.50).
 export function applyTripsToDays(days: FinanceDay[], trips: RealTripInput[]): FinanceDay[] {
   const byDay = groupRealTrips(trips)
   if (byDay.size === 0) return days
@@ -60,17 +64,23 @@ export function applyTripsToDays(days: FinanceDay[], trips: RealTripInput[]): Fi
   return days.map((d) => {
     const real = byDay.get(d.date)
     if (!real) return d
-    return {
-      ...d,
-      platforms: d.platforms.map((p) => {
-        const incoming = real.get(p.platformName)
-        if (incoming === undefined) return p
-        const realCents = cents(incoming)
-        const currentCents = cents(p.actualAmount)
-        if (realCents <= currentCents) return p
-        return { ...p, actualAmount: realCents / 100 }
-      }),
-    }
+    const existentes = new Set(d.platforms.map((p) => p.platformName))
+    const plataformas = d.platforms.map((p) => {
+      const incoming = real.get(p.platformName)
+      if (incoming === undefined) return p
+      const realCents = cents(incoming)
+      const currentCents = cents(p.actualAmount)
+      if (realCents <= currentCents) return p
+      return { ...p, actualAmount: realCents / 100 }
+    })
+    const nuevas = [...real.entries()]
+      .filter(([platformName]) => !existentes.has(platformName))
+      .map(([platformName, amount]) => ({
+        platformName,
+        projectedAmount: 0,
+        actualAmount: cents(amount) / 100,
+      }))
+    return { ...d, platforms: [...plataformas, ...nuevas] }
   })
 }
 
