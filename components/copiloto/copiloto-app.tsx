@@ -47,6 +47,10 @@ import {
 } from "@/lib/sync"
 import { localDateKey } from "@/lib/dates"
 
+// Alias de producción: contra este se comprueba si el teléfono está abriendo una
+// copia vieja (una URL de preview que quedó viva).
+const PRODUCCION_URL = "https://claris-lime.vercel.app"
+
 function Placeholder({ label }: { label: string }) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
@@ -73,6 +77,10 @@ export function CopilotoApp() {
   const [syncMessage, setSyncMessage] = useState<string | null>(null)
   const [syncTone, setSyncTone] = useState<"ok" | "error" | "info">("info")
   const [syncing, setSyncing] = useState(false)
+  // Aviso de "copia vieja": si este teléfono abrió una URL de preview antigua,
+  // se compara su versión con la de producción y se ofrece el enlace bueno.
+  const [copiaVieja, setCopiaVieja] = useState<string | null>(null)
+  const [avisoCerrado, setAvisoCerrado] = useState(false)
 
   const tripsRef = useRef<Trip[]>([])
   const expensesRef = useRef<Expense[]>([])
@@ -84,6 +92,37 @@ export function CopilotoApp() {
   useEffect(() => {
     tripsRef.current = trips
   }, [trips])
+
+  // Comprobación de copia vieja: se pregunta a producción por su commit y se
+  // compara con el de esta página. Se pide dos veces (ahora y a los 8 s) para no
+  // avisar por un despliegue a medias.
+  useEffect(() => {
+    const propio = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA
+    if (!propio) return
+    let vivo = true
+    let desajustes = 0
+    async function revisar() {
+      try {
+        const res = await fetch(`${PRODUCCION_URL}/api/version`, { cache: "no-store" })
+        if (!res.ok) return
+        const data = (await res.json()) as { sha?: string; short?: string }
+        if (!vivo || !data.sha) return
+        if (data.sha !== propio) {
+          desajustes += 1
+          if (desajustes >= 2) setCopiaVieja(data.short ?? data.sha.slice(0, 7))
+        } else {
+          desajustes = 0
+          setCopiaVieja(null)
+        }
+      } catch {}
+    }
+    revisar()
+    const id = window.setTimeout(revisar, 8000)
+    return () => {
+      vivo = false
+      window.clearTimeout(id)
+    }
+  }, [])
 
   useEffect(() => {
     expensesRef.current = expenses
@@ -546,6 +585,38 @@ export function CopilotoApp() {
             </>
           )}
         </main>
+
+        {/* Copia vieja: este teléfono abrió una URL de preview antigua. Se avisa
+            arriba, con el enlace a la versión buena, y se puede cerrar. */}
+        {copiaVieja && !avisoCerrado && (
+          <div className="absolute left-1/2 top-[calc(env(safe-area-inset-top)+0.5rem)] z-50 w-[94%] max-w-[520px] -translate-x-1/2 rounded-2xl border border-amber-500/50 bg-amber-950/95 px-3 py-2.5 shadow-xl">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-300" />
+              <div className="min-w-0 flex-1">
+                <p className="text-[11px] font-bold text-amber-200">
+                  Estás viendo una copia vieja de la app
+                </p>
+                <p className="mt-0.5 text-[10px] leading-snug text-amber-100/80">
+                  Esta dirección quedó apuntando a una versión anterior. La última es {copiaVieja}.
+                </p>
+                <a
+                  href={`${PRODUCCION_URL}/?v=${copiaVieja}`}
+                  className="mt-1.5 inline-flex items-center gap-1 rounded-lg bg-amber-400 px-2.5 py-1 text-[10px] font-bold text-black"
+                >
+                  ABRIR LA VERSIÓN NUEVA
+                </a>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAvisoCerrado(true)}
+                aria-label="Cerrar aviso"
+                className="shrink-0 rounded-lg border border-amber-500/40 px-1.5 py-0.5 text-[10px] font-bold text-amber-200"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Aviso de guardado: si el teléfono no deja guardar, se ve en pantalla */}
         {saveError ? (
