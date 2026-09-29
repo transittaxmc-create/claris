@@ -363,7 +363,14 @@ export function netOf(t: Trip): number {
 }
 
 export function money(n: number): string {
-  return `$${n.toFixed(2)}`
+  // Con separador de miles: $2,425.00 se lee de un golpe; $2425.00 hay que
+  // descifrarlo. Los centavos se mantienen porque aquí se concilia al centavo.
+  const valor = Number(n) || 0
+  const texto = Math.abs(valor).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+  return `${valor < 0 ? "-" : ""}$${texto}`
 }
 
 export function newTrip(): Trip {
