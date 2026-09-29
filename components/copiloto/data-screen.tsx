@@ -72,6 +72,21 @@ export function DataScreen({
   const [codeDraft, setCodeDraft] = useState("")
   const [confirmReset, setConfirmReset] = useState(false)
   const [confirmCache, setConfirmCache] = useState(false)
+  // Versión que está sirviendo producción, para comparar con la de este teléfono.
+  const [ultimaVersion, setUltimaVersion] = useState<string | null>(null)
+
+  useEffect(() => {
+    let vivo = true
+    fetch("https://claris-lime.vercel.app/api/version", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { short?: string } | null) => {
+        if (vivo && data?.short) setUltimaVersion(data.short)
+      })
+      .catch(() => {})
+    return () => {
+      vivo = false
+    }
+  }, [])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -123,6 +138,20 @@ export function DataScreen({
           />
           <Row label="ESPACIO USADO" value={info ? `${fmtBytes(info.bytes)} · ${info.keys} claves` : "…"} />
           <Row label="BORRADOS PENDIENTES" value={String(info?.tombstones ?? 0)} tone="text-neutral-400" />
+          {/* Versión: sirve para saber si este teléfono abrió la última copia. */}
+          <Row
+            label="VERSIÓN DE LA APP"
+            value={
+              process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA
+                ? `${process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA.slice(0, 7)}${ultimaVersion && ultimaVersion !== process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA.slice(0, 7) ? ` (hay ${ultimaVersion})` : " · al día"}`
+                : "local"
+            }
+            tone={
+              ultimaVersion && ultimaVersion !== (process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 7)
+                ? "text-amber-300"
+                : "text-green-400"
+            }
+          />
           <p className="mt-2 text-[10px] leading-tight text-neutral-500">
             Cada viaje se guarda en dos sitios (localStorage + IndexedDB) y con copia de seguridad. Si el teléfono borra
             el navegador, IndexedDB devuelve los viajes al abrir la app.
