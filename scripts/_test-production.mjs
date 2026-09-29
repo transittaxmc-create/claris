@@ -1,7 +1,7 @@
 // Pruebas de producción por hora y plan realista.
 // Ejecutar: node scripts/_test-production.mjs
 import { execFileSync } from "node:child_process"
-import { mkdtempSync, renameSync, rmSync, cpSync } from "node:fs"
+import { mkdtempSync, renameSync, rmSync, cpSync, readFileSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join, resolve } from "node:path"
 import { pathToFileURL } from "node:url"
@@ -9,12 +9,16 @@ import { pathToFileURL } from "node:url"
 const ROOT = resolve(import.meta.dirname, "..")
 const tmp = mkdtempSync(join(tmpdir(), "production-test-"))
 
+// Se compilan los dos archivos: production.ts ahora usa la clave de fecha local
+// de lib/dates.ts, así que hay que llevarlo también al directorio temporal.
 cpSync(join(ROOT, "lib", "production.ts"), join(tmp, "production.ts"))
+cpSync(join(ROOT, "lib", "dates.ts"), join(tmp, "dates.ts"))
 execFileSync(
   process.execPath,
   [
     join(ROOT, "node_modules", "typescript", "bin", "tsc"),
     join(tmp, "production.ts"),
+    join(tmp, "dates.ts"),
     "--outDir", tmp,
     "--module", "esnext",
     "--target", "es2022",
@@ -25,6 +29,14 @@ execFileSync(
   { stdio: "inherit" },
 )
 renameSync(join(tmp, "production.js"), join(tmp, "production.mjs"))
+renameSync(join(tmp, "dates.js"), join(tmp, "dates.mjs"))
+
+// Node exige la extensión en los imports de ESM.
+{
+  const salida = join(tmp, "production.mjs")
+  const src = readFileSync(salida, "utf8").replace('from "./dates"', 'from "./dates.mjs"')
+  writeFileSync(salida, src)
+}
 
 const {
   hourWindow,

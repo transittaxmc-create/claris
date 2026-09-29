@@ -32,6 +32,7 @@ import {
   Wallet,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { localDateKey } from "@/lib/dates"
 import { BankAuditSheet } from "./bank-audit-sheet"
 import { ExpenseRegisterForm } from "./expense-register-form"
 import { FinanceRegisterTable } from "./finance-register-table"
@@ -58,7 +59,7 @@ type RegisterView = "bank" | "projected"
 function addDays(date: string, days: number) {
   const next = new Date(`${date}T12:00:00`)
   next.setDate(next.getDate() + days)
-  return next.toISOString().slice(0, 10)
+  return localDateKey(next)
 }
 const SCHEDULE_FREQUENCIES: { value: ScheduleFrequency; label: string }[] = [
   { value: "once", label: "Una vez" },
@@ -78,7 +79,7 @@ function suggestScheduleCategory(value: string): string {
 }
 
 function newScheduleDraft(): ScheduledEntry {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localDateKey(new Date())
   return {
     id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `sch-${Date.now()}`,
     kind: "expense",
@@ -106,7 +107,7 @@ function ScheduleLedger({
 
   function commit() {
     if (!draft?.description?.trim() || !(Number(draft.amount) > 0)) return
-    const today = new Date().toISOString().slice(0, 10)
+    const today = localDateKey(new Date())
     onSave({
       id: typeof draft.id === "string" && draft.id ? draft.id : `sch-${Date.now()}`,
       kind: draft.kind ?? "expense",
@@ -173,7 +174,7 @@ function ScheduleLedger({
           <div className="flex gap-2">
             <input
               type="date"
-              value={draft.startDate ?? new Date().toISOString().slice(0, 10)}
+              value={draft.startDate ?? localDateKey(new Date())}
               onChange={(e) => setDraft({ ...draft, startDate: e.target.value, nextDate: e.target.value })}
               className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-2 text-xs text-white"
             />
@@ -558,15 +559,21 @@ export function FinanceScreen({
               <div className="grid grid-cols-4 gap-2 text-center">
                 <div className="rounded-xl bg-black/20 p-2">
                   <div className="text-[9px] font-bold text-neutral-500">INGRESO REAL</div>
-                  <div className="text-sm font-extrabold text-emerald-400">+${panorama.weekIncomeReal.toFixed(2)}</div>
+                  <div className="text-sm font-extrabold text-emerald-400">
+                    {panorama.weekIncomeReal > 0 ? "+" : ""}${panorama.weekIncomeReal.toFixed(2)}
+                  </div>
                 </div>
                 <div className="rounded-xl bg-black/20 p-2">
                   <div className="text-[9px] font-bold text-neutral-500">GASTOS</div>
-                  <div className="text-sm font-extrabold text-rose-400">-${panorama.weekExpenses.toFixed(2)}</div>
+                  <div className="text-sm font-extrabold text-rose-400">
+                    {panorama.weekExpenses > 0 ? "-" : ""}${panorama.weekExpenses.toFixed(2)}
+                  </div>
                 </div>
                 <div className="rounded-xl bg-black/20 p-2">
                   <div className="text-[9px] font-bold text-neutral-500">PAGOS VENCEN</div>
-                  <div className="text-sm font-extrabold text-amber-300">-${panorama.weekPayments.toFixed(2)}</div>
+                  <div className="text-sm font-extrabold text-amber-300">
+                    {panorama.weekPayments > 0 ? "-" : ""}${panorama.weekPayments.toFixed(2)}
+                  </div>
                 </div>
                 <div className={cn("rounded-xl p-2", panorama.covered ? "bg-emerald-500/10" : "bg-rose-500/10")}>
                   <div className="text-[9px] font-bold text-neutral-400">BALANCE PROYECTADO</div>

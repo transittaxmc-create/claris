@@ -11,6 +11,10 @@ export type HourlyTrip = {
   net: number // neto del viaje
 }
 
+// Clave de fecha local. Se importa de lib/dates para que TODO el producto use el
+// mismo criterio (el día del conductor, no el día UTC).
+import { localDateKey } from "./dates"
+
 // Redondeo a centavos, simétrico con los negativos.
 function round2(n: number): number {
   const abs = Math.round(Math.abs(Number(n) || 0) * 100) / 100
@@ -308,7 +312,8 @@ export function improveAdvice(input: { stats: HourStat[]; goalRate: number }): I
 
 // Suma de lo producido en la hora en curso (los viajes cuya hora coincide).
 export function productionThisHour(trips: HourlyTrip[], now: Date): number {
-  const today = now.toISOString().slice(0, 10)
+  // Fecha LOCAL: las claves de los viajes se calculan con el día del conductor.
+  const today = localDateKey(now)
   const hour = now.getHours()
   let total = 0
   for (const t of trips) {

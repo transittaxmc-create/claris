@@ -7,6 +7,7 @@
 
 import { useSyncExternalStore } from "react"
 import { applyTripsToDays, computeRealWeekTotals as computeRealTotals, type RealTripInput } from "./finance-bridge"
+import { localDateKey } from "@/lib/dates"
 
 export interface IncomePlatform {
   platformName: string
@@ -71,7 +72,10 @@ const RESERVE_RATE = 0.1
 const STORE_KEY = "claris_finance_week_v1"
 
 const makeId = () => Math.random().toString(36).slice(2, 10)
-const todayIso = () => new Date().toISOString().slice(0, 10)
+// Fecha del día del conductor (local). Antes era UTC y, a partir de las 20:00 en
+// Nueva York, la semana arrancaba en el día siguiente: los viajes de esa tarde
+// quedaban fuera del panorama y "INGRESO REAL" mostraba $0.00.
+const todayIso = () => localDateKey(new Date())
 
 type FinanceState = {
   startingBalance: number
@@ -88,7 +92,7 @@ function buildWeekDays(startDate?: Date): DayData[] {
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(monday)
     d.setDate(monday.getDate() + i)
-    const iso = d.toISOString().slice(0, 10)
+    const iso = localDateKey(d)
     return {
       id: `day-${iso}`,
       date: iso,

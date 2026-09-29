@@ -3,6 +3,7 @@
 import { useMemo, useRef, useState } from "react"
 import { CalendarClock, Camera, Loader2, Pencil, Plus, Search, Sparkles, Trash2, Upload } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { localDateKey } from "@/lib/dates"
 import {
   EXPENSE_CATEGORIES,
   findDuplicateExpense,
@@ -43,7 +44,7 @@ type Draft = {
 }
 
 function emptyDraft(): Draft {
-  const today = new Date().toISOString().slice(0, 10)
+  const today = localDateKey(new Date())
   return {
     id: null,
     date: today,
@@ -256,7 +257,7 @@ export function ExpensesScreen({
       }
 
       const { result } = json
-      const scanDate = result.date || new Date().toISOString().slice(0, 10)
+      const scanDate = result.date || localDateKey(new Date())
       setDraft({
         id: null,
         date: scanDate,

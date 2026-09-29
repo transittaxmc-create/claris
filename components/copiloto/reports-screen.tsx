@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react"
 import { Download, FileText, Printer } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { localDateKey } from "@/lib/dates"
 import {
   grossOf,
   netOf,
@@ -30,8 +31,9 @@ const PRESETS: { id: Preset; label: string }[] = [
   { id: "custom", label: "Personalizado" },
 ]
 
+// Fecha local del rango (antes era UTC: por la noche el rango se corría un día).
 function iso(d: Date): string {
-  return d.toISOString().slice(0, 10)
+  return localDateKey(d)
 }
 
 // Rango de fechas del preset, en fechas locales "YYYY-MM-DD".
@@ -205,7 +207,7 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
     lines.push(`Propinas,${data.tips}`)
     lines.push(`Extra cash,${data.extra}`)
     lines.push(`Peajes cobrados,${data.tolls}`)
-    lines.push(`Comisiones de plataforma,-${data.fees}`)
+    lines.push(`Comisiones de plataforma,${data.fees > 0 ? "-" : ""}${data.fees}`)
     lines.push(`NETO,${data.net}`)
     lines.push("")
     lines.push("POR PLATAFORMA,VIAJES,BRUTO,NETO")
@@ -222,7 +224,7 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
     lines.push("")
     lines.push("RESULTADO,MONTO")
     lines.push(`Neto,${data.net}`)
-    lines.push(`Gastos,-${data.expenseTotal}`)
+    lines.push(`Gastos,${data.expenseTotal > 0 ? "-" : ""}${data.expenseTotal}`)
     lines.push(`RESULTADO DEL PERIODO,${data.result}`)
     lines.push("")
     lines.push("RECONCILIACION,MONTO")
@@ -307,7 +309,7 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
           <Row label="· Propinas" value={money(data.tips)} indent tone="muted" />
           <Row label="· Extra cash" value={money(data.extra)} indent tone="muted" />
           <Row label="· Peajes cobrados" value={money(data.tolls)} indent tone="muted" />
-          <Row label="Comisiones de plataforma" value={`-${money(data.fees)}`} tone="expense" />
+          <Row label="Comisiones de plataforma" value={`${data.fees > 0 ? "-" : ""}${money(data.fees)}`} tone="expense" />
           <Row label="NETO DE INGRESOS" value={money(data.net)} bold tone="total" />
 
           {data.byPlatform.length > 0 && (
@@ -327,7 +329,12 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
               <Row key={c.category} label={c.category} value={`-${money(c.amount)}`} tone="expense" />
             ))
           )}
-          <Row label="TOTAL GASTOS" value={`-${money(data.expenseTotal)}`} bold tone="total" />
+          <Row
+            label="TOTAL GASTOS"
+            value={`${data.expenseTotal > 0 ? "-" : ""}${money(data.expenseTotal)}`}
+            bold
+            tone="total"
+          />
 
           <p className="mt-3 text-[10px] font-bold uppercase tracking-wide text-neutral-400">Clasificación fiscal</p>
           <Row label="💼 Business (deducible)" value={money(data.business)} tone="income" />

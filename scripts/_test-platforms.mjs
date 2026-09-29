@@ -15,6 +15,13 @@ const tmp = mkdtempSync(join(tmpdir(), "platforms-test-"))
 for (const f of ["types.ts", "geo.ts", "platform-meta.ts"]) {
   cpSync(join(ROOT, "components", "copiloto", f), join(tmp, f))
 }
+cpSync(join(ROOT, "lib", "dates.ts"), join(tmp, "dates.ts"))
+for (const f of ["types.ts", "geo.ts", "dates.ts"]) {
+  try {
+    const p = join(tmp, f)
+    writeFileSync(p, readFileSync(p, "utf8").replace(/"@\/lib\/dates"/g, '"./dates"'))
+  } catch {}
+}
 execFileSync(
   process.execPath,
   [
@@ -23,6 +30,7 @@ execFileSync(
     // desde los archivos que se le pasan.
     join(tmp, "types.ts"),
     join(tmp, "platform-meta.ts"),
+    join(tmp, "dates.ts"),
     "--outDir", tmp,
     "--module", "esnext",
     "--target", "es2022",
@@ -32,9 +40,9 @@ execFileSync(
   ],
   { stdio: "inherit" },
 )
-for (const name of ["geo", "types", "platform-meta"]) {
+for (const name of ["geo", "types", "platform-meta", "dates"]) {
   const js = join(tmp, `${name}.js`)
-  writeFileSync(js, readFileSync(js, "utf8").replace(/from "\.\/geo"/g, 'from "./geo.mjs"'))
+  writeFileSync(js, readFileSync(js, "utf8").replace(/from "\.\/geo"/g, 'from "./geo.mjs"').replace(/from "\.\/dates"/g, 'from "./dates.mjs"'))
   renameSync(js, join(tmp, `${name}.mjs`))
 }
 
