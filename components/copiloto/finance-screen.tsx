@@ -575,12 +575,12 @@ export function FinanceScreen({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-neutral-800 px-4 pb-3 pt-3">
-        <div>
-          <h1 className="text-xl font-extrabold text-white">Gastos y Finanzas</h1>
-          <p className="text-xs text-neutral-400">Tu dinero, tus pagos y lo que te deben</p>
+      <div className="flex items-center justify-between gap-2 border-b border-neutral-800 px-4 pb-3 pt-3">
+        <div className="min-w-0">
+          <h1 className="truncate text-lg font-extrabold text-white">Gastos y Finanzas</h1>
+          <p className="truncate text-[11px] text-neutral-400">Tu dinero, tus pagos y lo que te deben</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           {/* SIMPLE / COMPLETO: un toque para ver menos o ver todo. */}
           <div className="flex overflow-hidden rounded-full border border-neutral-800 text-[9px] font-bold" role="group" aria-label="Nivel de detalle">
             <button
@@ -674,19 +674,19 @@ export function FinanceScreen({
                   hero.amount < 0 ? "text-rose-400" : "text-yellow-400",
                 )}
               >
-                ${money(Math.abs(hero.amount))}
+                {money(Math.abs(hero.amount))}
               </div>
 
               <p className="mt-1.5 text-[11.5px] leading-snug text-neutral-300">
                 {hero.amount < 0 ? (
                   <>
-                    Te faltan <strong className="text-rose-300">${money(Math.abs(hero.amount))}</strong> para cubrir los{" "}
-                    <strong className="text-white">${money(commitments7d)}</strong> que vencen en 7 días.
+                    Te faltan <strong className="text-rose-300">{money(Math.abs(hero.amount))}</strong> para cubrir los{" "}
+                    <strong className="text-white">{money(commitments7d)}</strong> que vencen en 7 días.
                   </>
                 ) : (
                   <>
-                    Saldo del banco menos <strong className="text-white">${money(commitments7d)}</strong> que vencen en 7
-                    días y la reserva <strong className="text-white">${money(reserveBalance)}</strong>.
+                    Saldo del banco menos <strong className="text-white">{money(commitments7d)}</strong> que vencen en 7
+                    días y la reserva <strong className="text-white">{money(reserveBalance)}</strong>.
                   </>
                 )}
               </p>
@@ -700,13 +700,33 @@ export function FinanceScreen({
                   style={{ width: `${Math.min(100, hero.coveragePct)}%` }}
                 />
               </div>
-              <div className="mt-1.5 flex items-center justify-between text-[9.5px] text-neutral-400">
-                <span>
-                  <strong className="text-neutral-200">{hero.coveragePct} %</strong> de los compromisos cubiertos
+              <div className="mt-1.5 flex items-center justify-between gap-2 text-[9.5px] text-neutral-400">
+                <span className="min-w-0">
+                  {commitments7d <= 0 ? (
+                    <>Sin compromisos pendientes en 7 días</>
+                  ) : hero.coveragePct >= 100 ? (
+                    <>
+                      Cubres los compromisos y sobran{" "}
+                      <strong className="text-emerald-300">
+                        {money(Math.max(0, startingBalance - reserveBalance - commitments7d))}
+                      </strong>
+                    </>
+                  ) : (
+                    <>
+                      <strong className="text-neutral-200">{hero.coveragePct} %</strong> de los compromisos cubiertos
+                    </>
+                  )}
                 </span>
                 {diaAjustado && (
-                  <span>
-                    aprieta el <strong className="text-neutral-200">{diaAjustado.date.slice(5)}</strong>
+                  <span className="shrink-0">
+                    aprieta{" "}
+                    <strong className="text-neutral-200">
+                      {diaAjustado.date === localDateKey(new Date())
+                        ? "hoy"
+                        : diaAjustado.date === localDateKey(new Date(Date.now() + 86400000))
+                          ? "mañana"
+                          : diaAjustado.date.slice(5)}
+                    </strong>
                   </span>
                 )}
               </div>
@@ -719,7 +739,7 @@ export function FinanceScreen({
                   <Receipt className="size-3 text-amber-400" /> ¿ME ESTÁN PAGANDO?
                 </p>
                 <div className="mt-1 text-lg font-extrabold tracking-tight text-amber-300">
-                  ${money(porCobrar.amount)}
+                  {money(porCobrar.amount)}
                 </div>
                 <p className="mt-0.5 text-[9.5px] leading-snug text-neutral-400">
                   <strong className="text-neutral-200">{porCobrar.count}</strong>{" "}
@@ -737,7 +757,7 @@ export function FinanceScreen({
                 <p className="flex items-center gap-1 text-[9px] font-bold tracking-wide text-neutral-500">
                   <TrendingUp className="size-3 text-emerald-400" /> ¿CUÁNTO LLEVO HOY?
                 </p>
-                <div className="mt-1 text-lg font-extrabold tracking-tight text-emerald-400">${money(hoy.produced)}</div>
+                <div className="mt-1 text-lg font-extrabold tracking-tight text-emerald-400">{money(hoy.produced)}</div>
                 <p className="mt-0.5 text-[9.5px] leading-snug text-neutral-400">
                   {hoy.rate !== null ? (
                     <>
