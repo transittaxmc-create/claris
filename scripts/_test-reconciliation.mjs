@@ -23,12 +23,21 @@ const tmp = mkdtempSync(join(tmpdir(), "recon-test-"))
 for (const file of ["reconciliation.ts", "types.ts", "geo.ts"]) {
   cpSync(join(SRC, file), join(tmp, file))
 }
+// types.ts y geo.ts usan la clave de fecha local de lib/dates.
+cpSync(join(ROOT, "lib", "dates.ts"), join(tmp, "dates.ts"))
 
+for (const f of ["types.ts", "geo.ts", "dates.ts"]) {
+  try {
+    const p = join(tmp, f)
+    writeFileSync(p, readFileSync(p, "utf8").replace(/"@\/lib\/dates"/g, '"./dates"'))
+  } catch {}
+}
 execFileSync(
   process.execPath,
   [
     join(ROOT, "node_modules", "typescript", "bin", "tsc"),
     join(tmp, "reconciliation.ts"),
+    join(tmp, "dates.ts"),
     "--outDir", tmp,
     "--module", "esnext",
     "--target", "es2022",
@@ -42,9 +51,14 @@ execFileSync(
 
 // El tsc deja los imports sin extensión, que Node ESM no resuelve: se añade
 // ".mjs" y se renombran los archivos para que Node los trate como módulos.
-for (const name of ["types", "reconciliation"]) {
+for (const name of ["types", "reconciliation", "dates"]) {
   const js = join(tmp, `${name}.js`)
-  writeFileSync(js, readFileSync(js, "utf8").replace(/from "\.\/types"/g, 'from "./types.mjs"'))
+  writeFileSync(
+    js,
+    readFileSync(js, "utf8")
+      .replace(/from "\.\/types"/g, 'from "./types.mjs"')
+      .replace(/from "\.\/dates"/g, 'from "./dates.mjs"'),
+  )
   renameSync(js, join(tmp, `${name}.mjs`))
 }
 

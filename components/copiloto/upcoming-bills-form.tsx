@@ -7,12 +7,13 @@ import { useState } from "react"
 import { Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useFinance } from "./finance-store"
+import { localDateKey } from "@/lib/dates"
 
 export function UpcomingBillsForm() {
   const { upcomingExpenses, addUpcomingExpense, removeUpcomingExpense } = useFinance()
   const [name, setName] = useState("")
   const [amount, setAmount] = useState("")
-  const [dueDate, setDueDate] = useState(new Date().toISOString().slice(0, 10))
+  const [dueDate, setDueDate] = useState(localDateKey(new Date()))
   const [priority, setPriority] = useState<1 | 2>(1)
 
   const submit = () => {

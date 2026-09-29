@@ -45,6 +45,7 @@ import {
   syncWithCloud,
   type Tombstones,
 } from "@/lib/sync"
+import { localDateKey } from "@/lib/dates"
 
 function Placeholder({ label }: { label: string }) {
   return (
@@ -328,7 +329,7 @@ export function CopilotoApp() {
     const blob = new Blob([json], { type: "application/json" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
-    const stamp = new Date().toISOString().slice(0, 10)
+    const stamp = localDateKey(new Date())
     a.href = url
     a.download = `islandcity-tip-tracker-${stamp}.json`
     a.click()
@@ -421,7 +422,7 @@ export function CopilotoApp() {
   // índice HTML legible, para no tener que empezar nunca desde cero.
   function exportFullBackup() {
     persist(tripsRef.current, expensesRef.current)
-    const stamp = new Date().toISOString().slice(0, 10)
+    const stamp = localDateKey(new Date())
     const keys = collectAppKeys(localStorage)
     const input = {
       date: stamp,

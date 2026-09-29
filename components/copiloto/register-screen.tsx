@@ -15,6 +15,7 @@ import {
   EllipsisVertical,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { localDateKey } from "@/lib/dates"
 import { type Trip, type TollBill, grossOf, netOf, money } from "./types"
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
 import { isVoucherPlatform } from "./platform-meta"
@@ -312,7 +313,7 @@ function PlatformGroupBlock({
 function addDays(date: string, days: number): string {
   const next = new Date(`${date}T12:00:00`)
   next.setDate(next.getDate() + days)
-  return next.toISOString().slice(0, 10)
+  return localDateKey(next)
 }
 
 export function RegisterScreen({
@@ -354,7 +355,7 @@ export function RegisterScreen({
   }, [])
 
   function closeDayAndCreateBill() {
-    const serviceDate = new Date().toISOString().slice(0, 10)
+    const serviceDate = localDateKey(new Date())
     const amount = trips.reduce((sum, trip) => sum + (Number(trip.toll) || 0), 0)
     setTollBills((current) => {
       if (current.some((bill) => bill.serviceDate === serviceDate)) return current

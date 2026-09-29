@@ -3,6 +3,8 @@
 // enforces quality threshold (accuracy <= 50m), and resolves address using
 // OpenStreetMap Nominatim with granular place classification.
 
+import { localDateKey } from "@/lib/dates"
+
 export type PlaceKind = "airport" | "business" | "residence"
 
 export type LocationPoint = {
@@ -212,7 +214,7 @@ export async function captureLocation(): Promise<LocationPoint> {
     lng,
     accuracy: roundedAccuracy,
     timestamp: now.toISOString(),
-    day: now.toISOString().slice(0, 10),
+    day: localDateKey(now),
     time: now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
   }
 }

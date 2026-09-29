@@ -1,4 +1,5 @@
 import type { LocationPoint } from "./geo"
+import { localDateKey } from "@/lib/dates"
 
 // Plataformas soportadas. Los viajes guardados por versiones anteriores (o por
 // la app vieja) usan nombres como "EcoRide" o "Aventus"; LEGACY_PLATFORM_ALIASES
@@ -82,7 +83,7 @@ export type ExpenseClassification = "business" | "personal"
 export function newExpense(): Expense {
   return {
     id: crypto.randomUUID(),
-    date: new Date().toISOString().slice(0, 10),
+    date: localDateKey(new Date()),
     vendor: "",
     category: "Varios",
     amount: 0,
@@ -163,7 +164,7 @@ export function nextOccurrenceDate(date: string, frequency: ScheduleFrequency): 
   else if (frequency === "weekly") d.setDate(d.getDate() + 7)
   else if (frequency === "monthly") d.setMonth(d.getMonth() + 1)
   else if (frequency === "annual") d.setFullYear(d.getFullYear() + 1)
-  return d.toISOString().slice(0, 10)
+  return localDateKey(d)
 }
 
 // Crea la entrada del ledger programado a partir de un gasto. Solo tiene
@@ -338,15 +339,17 @@ export function normalizePlatformName(value: unknown): Platform {
 
 // La fecha de un viaje vive en raw.datetime (formato del objeto original de
 // ic_tip_tracker). Se expone como "YYYY-MM-DD" para poder agrupar por día en
-// FINANCE. Sin dato, se usa la fecha de hoy como respaldo conservador.
+// FINANCE. OJO: `datetime` se guarda en UTC, así que la clave se calcula en hora
+// LOCAL — si no, un viaje de las 22:00 en Nueva York caería en el día siguiente y
+// FINANCE lo perdería. Sin dato, se usa la fecha de hoy como respaldo.
 export function tripDateOf(t: Trip): string {
   const raw = t.raw as { datetime?: unknown } | undefined
   const value = raw?.datetime
   if (typeof value === "string" && value.length >= 10) {
     const parsed = new Date(value)
-    if (!Number.isNaN(parsed.getTime())) return value.slice(0, 10)
+    if (!Number.isNaN(parsed.getTime())) return localDateKey(parsed)
   }
-  return new Date().toISOString().slice(0, 10)
+  return localDateKey(new Date())
 }
 
 export function grossOf(t: Trip): number {

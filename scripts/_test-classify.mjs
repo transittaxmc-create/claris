@@ -12,13 +12,19 @@ import { pathToFileURL } from "node:url"
 const ROOT = resolve(import.meta.dirname, "..")
 const tmp = mkdtempSync(join(tmpdir(), "classify-test-"))
 
-// geo.ts no importa nada más, así que se compila solo.
+// geo.ts usa la clave de fecha local de lib/dates, así que se compilan los dos.
 cpSync(join(ROOT, "components", "copiloto", "geo.ts"), join(tmp, "geo.ts"))
+cpSync(join(ROOT, "lib", "dates.ts"), join(tmp, "dates.ts"))
+writeFileSync(
+  join(tmp, "geo.ts"),
+  readFileSync(join(tmp, "geo.ts"), "utf8").replace(/"@\/lib\/dates"/g, '"./dates"'),
+)
 execFileSync(
   process.execPath,
   [
     join(ROOT, "node_modules", "typescript", "bin", "tsc"),
     join(tmp, "geo.ts"),
+    join(tmp, "dates.ts"),
     "--outDir", tmp,
     "--module", "esnext",
     "--target", "es2022",
@@ -29,6 +35,12 @@ execFileSync(
   { stdio: "inherit" },
 )
 renameSync(join(tmp, "geo.js"), join(tmp, "geo.mjs"))
+renameSync(join(tmp, "dates.js"), join(tmp, "dates.mjs"))
+// Node ESM exige la extensión en los imports.
+writeFileSync(
+  join(tmp, "geo.mjs"),
+  readFileSync(join(tmp, "geo.mjs"), "utf8").replace('from "./dates"', 'from "./dates.mjs"'),
+)
 
 const { __testClassify } = await import(pathToFileURL(join(tmp, "geo.mjs")).href)
 const classify = __testClassify
