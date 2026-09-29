@@ -415,12 +415,6 @@ export function RegisterScreen({
     { key: "time", label: "HORA" },
   ]
 
-  // Un solo botón de orden que rota, en vez de una fila de tres botones.
-  function cycleSort() {
-    const index = sortOptions.findIndex((option) => option.key === sortKey)
-    setSortKey(sortOptions[(index + 1) % sortOptions.length].key)
-  }
-
   const filterChips: { key: Filter; label: string; count: number }[] = [
     { key: "ALL", label: "TODOS", count: counts.all },
     { key: "PENDING", label: "PENDIENTES", count: counts.pending },
@@ -499,33 +493,23 @@ export function RegisterScreen({
 
       {/* Scrollable body */}
       <div className="flex-1 space-y-2.5 overflow-y-auto px-4 py-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {/* Filtros con su conteo, en una sola fila, y el orden en un botón que
-            rota: la lista de viajes empieza mucho más arriba. */}
-        <div className="flex items-center gap-1.5">
-          <div className="flex flex-1 gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {filterChips.map((chip) => (
-              <button
-                key={chip.key}
-                type="button"
-                onClick={() => setFilter(chip.key)}
-                className={cn(
-                  "shrink-0 rounded-xl px-2.5 py-1.5 text-[10px] font-bold transition-colors",
-                  filter === chip.key ? "bg-yellow-400 text-black" : "bg-neutral-900 text-neutral-400 hover:text-neutral-200",
-                )}
-              >
-                {chip.label} {chip.count}
-              </button>
-            ))}
-          </div>
-          <button
-            type="button"
-            onClick={cycleSort}
-            title="Cambiar el orden de la lista"
-            className="flex shrink-0 items-center gap-1 rounded-xl border border-neutral-800 px-2.5 py-1.5 text-[10px] font-bold text-neutral-300 transition-colors hover:border-neutral-600"
-          >
-            <ArrowUpDown className="size-3 text-neutral-500" />
-            {sortOptions.find((o) => o.key === sortKey)?.label}
-          </button>
+        {/* Filtros con su conteo. Ocupan la fila completa para que se vean los
+            cuatro: el ORDEN vive en la hoja de acciones (no se usa a cada rato)
+            y así ningún filtro queda cortado. */}
+        <div className="flex gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {filterChips.map((chip) => (
+            <button
+              key={chip.key}
+              type="button"
+              onClick={() => setFilter(chip.key)}
+              className={cn(
+                "shrink-0 rounded-xl px-2.5 py-1.5 text-[10px] font-bold transition-colors",
+                filter === chip.key ? "bg-yellow-400 text-black" : "bg-neutral-900 text-neutral-400 hover:text-neutral-200",
+              )}
+            >
+              {chip.label} {chip.count}
+            </button>
+          ))}
         </div>
 
         {/* Detalle plegado: desglose por plataforma y panel de conciliación.
@@ -540,7 +524,20 @@ export function RegisterScreen({
         {/* Trip list — agrupada por plataforma con subtotal, o plana */}
         <div className="space-y-3 pt-1">
           {visible.length === 0 ? (
-            <p className="py-10 text-center text-sm text-neutral-600">No hay viajes en esta vista.</p>
+            <div className="flex flex-col items-center gap-3 py-10">
+              <p className="text-center text-sm text-neutral-600">
+                {filter === "ALL" ? "Todavía no hay viajes registrados." : "No hay viajes en esta vista."}
+              </p>
+              {filter !== "ALL" && (
+                <button
+                  type="button"
+                  onClick={() => setFilter("ALL")}
+                  className="rounded-xl border border-neutral-700 px-3 py-1.5 text-[11px] font-bold text-neutral-300 transition-colors hover:border-neutral-500"
+                >
+                  VER TODOS LOS VIAJES
+                </button>
+              )}
+            </div>
           ) : grouped ? (
             platformGroups.map((group) => (
               <PlatformGroupBlock
@@ -583,6 +580,31 @@ export function RegisterScreen({
             </div>
 
             <div className="flex flex-col gap-2">
+              {/* Orden de la lista: por plataforma agrupa con subtotal; monto y
+                  hora son listas planas. */}
+              <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-2.5">
+                <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold tracking-wide text-neutral-400">
+                  <ArrowUpDown className="size-3" /> ORDEN DE LA LISTA
+                </p>
+                <div className="flex gap-1.5">
+                  {sortOptions.map((option) => (
+                    <button
+                      key={option.key}
+                      type="button"
+                      onClick={() => setSortKey(option.key)}
+                      className={cn(
+                        "flex-1 rounded-xl border py-2 text-[10px] font-bold transition-colors",
+                        sortKey === option.key
+                          ? "border-yellow-400/60 bg-yellow-400/10 text-yellow-400"
+                          : "border-neutral-800 text-neutral-400 hover:text-neutral-200",
+                      )}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <button
                 type="button"
                 onClick={() => {
