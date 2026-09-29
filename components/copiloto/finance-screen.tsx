@@ -20,6 +20,7 @@ import {
   AlertTriangle,
   CalendarClock,
   Check,
+  ChevronRight,
   Pencil,
   Plus,
   PlusCircle,
@@ -29,7 +30,7 @@ import {
   ShieldCheck,
   Sparkles,
   Trash2,
-  Wallet,
+  TrendingUp,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { localDateKey } from "@/lib/dates"
@@ -39,7 +40,9 @@ import { FinanceRegisterTable } from "./finance-register-table"
 import { UpcomingBillsForm } from "./upcoming-bills-form"
 import { useFinance, applyRealTrips, computeRealWeekTotals } from "./finance-store"
 import { computePanorama } from "./finance-bridge"
-import { planToCover } from "@/lib/production"
+import { planToCover, hourlyStats, hourlyTotals } from "@/lib/production"
+import { moneyAlerts, spendable, tightestDay } from "@/lib/decisions"
+import { reconSummary } from "./reconciliation"
 import {
   daysUntil,
   money,
@@ -362,6 +365,9 @@ export function FinanceScreen({
 }) {
   const [activeTab, setActiveTab] = useState<SubTab>("caja")
   const [registerView, setRegisterView] = useState<RegisterView>("bank")
+  // SIMPLE deja solo el héroe, las tres preguntas y los avisos; COMPLETO añade el
+  // panorama, los próximos pagos y el plan. Se recuerda en el teléfono.
+  const [mode, setMode] = useState<"simple" | "completo">("completo")
   
   const { startingBalance, reserveBalance, days, resetAllData } = useFinance()
   const { getUpcomingExpensesTotal, getInvestableSurplus, getEmergencyPlan } = useFinance()
@@ -394,8 +400,17 @@ export function FinanceScreen({
       if (s) setSchedules(JSON.parse(s))
       const b = localStorage.getItem("claris_toll_bills")
       if (b) setBills(JSON.parse(b))
+      const m = localStorage.getItem("claris_finance_mode")
+      if (m === "simple" || m === "completo") setMode(m)
     } catch {}
   }, [])
+
+  function changeMode(next: "simple" | "completo") {
+    setMode(next)
+    try {
+      localStorage.setItem("claris_finance_mode", next)
+    } catch {}
+  }
 
   // Panorama semanal: balance real + proyección diaria + cobertura de pagos en
   // su vencimiento. Lo calcula finance-bridge (lógica pura y probada).
@@ -436,6 +451,96 @@ export function FinanceScreen({
     const daysUntilDue = dueSoon.length > 0 ? Math.max(1, Math.min(...dueSoon)) : 7
     return planToCover({ shortfall: panorama.shortfall, goalRate, hoursPerDay: 8, daysUntilDue })
   }, [panorama.shortfall, schedules])
+
+  // ---------------------------------------------------------------------------
+  // DECISIONES: el héroe "¿PUEDO GASTAR?" y las tres preguntas.
+  // Todo se calcula con lo que ya existe: no se guardan datos nuevos.
+  // ---------------------------------------------------------------------------
+
+  // Meta por hora del conductor (la misma que usa el cronómetro de ENTRY).
+  const goalRate = useMemo(() => {
+    try {
+      const stored = Number(localStorage.getItem("claris_hourly_goal"))
+      if (Number.isFinite(stored) && stored > 0) return stored
+    } catch {}
+    return 55
+  }, [])
+
+  // Compromisos de los próximos 7 días: facturas del plan de pagos + pagos
+  // programados. Es lo que hay que dejar apartado antes de gastar.
+  const commitments7d = useMemo(() => {
+    const programados = schedules
+      .filter((s) => {
+        if (s.kind !== "expense" || s.active === false || !s.nextDate) return false
+        const dias = daysUntil(s.nextDate)
+        return dias >= 0 && dias <= 7
+      })
+      .reduce((sum, s) => sum + (Number(s.amount) || 0), 0)
+    return Math.round((upcomingBills + programados) * 100) / 100
+  }, [schedules, upcomingBills])
+
+  // HÉROE: solo cuenta la plata que ya está (el banco).
+  const hero = useMemo(
+    () => spendable({ bank: startingBalance, commitments: commitments7d, reserve: reserveBalance }),
+    [startingBalance, commitments7d, reserveBalance],
+  )
+
+  // ¿ME ESTÁN PAGANDO? Esperado menos recibido, y cuántos días lleva el más viejo.
+  const porCobrar = useMemo(() => {
+    const summary = reconSummary(trips)
+    const pendientes = trips.filter((t) => t.status === "pending")
+    const atraso = pendientes.length > 0 ? Math.max(0, -Math.min(...pendientes.map((t) => daysUntil(tripDateOf(t))))) : 0
+    return {
+      amount: Math.max(0, Math.round((summary.expected - summary.received) * 100) / 100),
+      count: pendientes.length,
+      oldestDays: atraso,
+    }
+  }, [trips])
+
+  // ¿CUÁNTO LLEVO HOY? Lo mismo que muestra el cronómetro de ENTRY.
+  const hoy = useMemo(() => {
+    let worked: Record<string, number> = {}
+    try {
+      const raw = localStorage.getItem("claris_hours_worked")
+      if (raw) worked = JSON.parse(raw) ?? {}
+    } catch {}
+    const list = trips.map((t) => ({ date: tripDateOf(t), time: t.time, net: netOf(t) }))
+    const stats = hourlyStats({ trips: list, worked, day: localDateKey(new Date()) })
+    const totals = hourlyTotals(stats, goalRate)
+    return { produced: totals.produced, rate: totals.rate, goalHours: totals.goalHours, measuredHours: totals.measuredHours }
+  }, [trips, goalRate])
+
+  // ¿ME ALCANZA LA SEMANA? El día que aprieta, con lo que vence ese día.
+  const diaAjustado = useMemo(() => tightestDay(panorama.days), [panorama.days])
+
+  // QUÉ HACER AHORA: máximo tres, urgente primero y luego por dinero.
+  const avisos = useMemo(() => {
+    const vencidos = schedules
+      .filter((s) => s.kind === "expense" && s.active !== false && s.nextDate && daysUntil(s.nextDate) < 0)
+      .map((s) => ({
+        description: s.description,
+        amount: Number(s.amount) || 0,
+        daysLate: -daysUntil(s.nextDate),
+      }))
+    const sinRecibo = expenses.filter((e) => !e.isAiGenerated && Number(e.amount) > 0)
+    const sinClasificar = expenses.filter((e) => !e.classification)
+    const peajesImpagos = bills.filter((b) => b.status === "unpaid")
+    return moneyAlerts({
+      overdue: vencidos,
+      unpaidTollBills: {
+        count: peajesImpagos.length,
+        amount: peajesImpagos.reduce((sum, b) => sum + (Number(b.amount) || 0), 0),
+      },
+      shortfall: panorama.shortfall,
+      tightDay: diaAjustado,
+      expensesWithoutReceipt: {
+        count: sinRecibo.length,
+        amount: sinRecibo.reduce((sum, e) => sum + (Number(e.amount) || 0), 0),
+      },
+      unclassified: { count: sinClasificar.length },
+    })
+  }, [schedules, expenses, bills, panorama.shortfall, diaAjustado])
+
   function saveSchedule(entry: ScheduledEntry) {
     setSchedules((current) => {
       const next = current.some((item) => item.id === entry.id)
@@ -473,9 +578,28 @@ export function FinanceScreen({
       <div className="flex items-center justify-between border-b border-neutral-800 px-4 pb-3 pt-3">
         <div>
           <h1 className="text-xl font-extrabold text-white">Gastos y Finanzas</h1>
-          <p className="text-xs text-neutral-400">Corrida de caja, plan de pagos y reconciliación</p>
+          <p className="text-xs text-neutral-400">Tu dinero, tus pagos y lo que te deben</p>
         </div>
         <div className="flex items-center gap-2">
+          {/* SIMPLE / COMPLETO: un toque para ver menos o ver todo. */}
+          <div className="flex overflow-hidden rounded-full border border-neutral-800 text-[9px] font-bold" role="group" aria-label="Nivel de detalle">
+            <button
+              type="button"
+              onClick={() => changeMode("simple")}
+              aria-pressed={mode === "simple"}
+              className={cn("px-2.5 py-1.5 transition-colors", mode === "simple" ? "bg-yellow-400 text-black" : "text-neutral-400 hover:text-white")}
+            >
+              SIMPLE
+            </button>
+            <button
+              type="button"
+              onClick={() => changeMode("completo")}
+              aria-pressed={mode === "completo"}
+              className={cn("px-2.5 py-1.5 transition-colors", mode === "completo" ? "bg-yellow-400 text-black" : "text-neutral-400 hover:text-white")}
+            >
+              COMPLETO
+            </button>
+          </div>
           <button
             type="button"
             onClick={() => {
@@ -516,45 +640,169 @@ export function FinanceScreen({
           ))}
         </div>
         {activeTab === "caja" && (
-          <div className="space-y-4">
-            {/* Ingresos reales del copiloto (viajes), alimentan la corrida */}
-            <div className="flex items-center justify-between rounded-2xl border border-emerald-500/30 bg-emerald-950/20 px-4 py-2.5">
-              <span className="text-[11px] font-bold text-emerald-300">
-                Ingresos reales de los viajes ({realTotals.realTripCount})
-              </span>
-              <span className="text-lg font-extrabold text-emerald-400">${realTotals.realIncome.toFixed(2)}</span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="relative overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900/90 p-4">
-                <div className="absolute right-0 top-0 h-full w-1.5 bg-green-400" />
-                <span className="text-[10px] font-bold uppercase text-neutral-400">Saldo Disponible</span>
-                <div className="mt-1 text-2xl font-black text-green-400">${startingBalance.toFixed(2)}</div>
-              </div>
-              <div className="rounded-2xl border border-neutral-800 bg-neutral-900/90 p-4">
-                <span className="text-[10px] font-bold uppercase text-neutral-400">Facturas 7 Días</span>
-                <div className="mt-1 text-2xl font-black text-white">${upcomingBills.toFixed(2)}</div>
-              </div>
-            </div>
-
-            {/* PANORAMA: balance real + proyección diaria y cobertura de pagos */}
+          <div className="space-y-3">
+            {/* HÉROE: un solo número manda. Solo cuenta la plata que ya está. */}
             <section
               className={cn(
-                "rounded-2xl border p-3.5",
-                panorama.covered ? "border-emerald-500/30 bg-emerald-950/15" : "border-rose-500/40 bg-rose-950/20",
+                "relative overflow-hidden rounded-2xl border p-3.5",
+                hero.verdict === "corto"
+                  ? "border-rose-500/40 bg-rose-950/20"
+                  : hero.verdict === "ajustado"
+                    ? "border-amber-500/40 bg-amber-950/15"
+                    : "border-yellow-400/35 bg-yellow-400/[0.06]",
               )}
             >
-              <div className="mb-2 flex items-center justify-between">
-                <p className="text-[11px] font-bold tracking-wide text-neutral-300">PANORAMA DE LA SEMANA</p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[10px] font-bold tracking-[0.13em] text-neutral-400">¿PUEDO GASTAR?</p>
                 <span
                   className={cn(
                     "rounded-full px-2 py-0.5 text-[9px] font-bold",
-                    panorama.covered ? "bg-emerald-500/15 text-emerald-400" : "bg-rose-500/15 text-rose-400",
+                    hero.verdict === "corto"
+                      ? "bg-rose-500/15 text-rose-300"
+                      : hero.verdict === "ajustado"
+                        ? "bg-amber-500/15 text-amber-300"
+                        : "bg-emerald-500/15 text-emerald-400",
                   )}
                 >
-                  {panorama.covered ? "✅ TUS INGRESOS CUBREN TUS PAGOS" : `⚠️ FALTAN $${panorama.shortfall.toFixed(2)}`}
+                  {hero.verdict === "corto" ? "ESTOY CORTO" : hero.verdict === "ajustado" ? "AJUSTADO" : "SÍ, CON AIRE"}
                 </span>
               </div>
+
+              <div
+                className={cn(
+                  "mt-1 text-[40px] font-extrabold leading-none tracking-tight",
+                  hero.amount < 0 ? "text-rose-400" : "text-yellow-400",
+                )}
+              >
+                ${money(Math.abs(hero.amount))}
+              </div>
+
+              <p className="mt-1.5 text-[11.5px] leading-snug text-neutral-300">
+                {hero.amount < 0 ? (
+                  <>
+                    Te faltan <strong className="text-rose-300">${money(Math.abs(hero.amount))}</strong> para cubrir los{" "}
+                    <strong className="text-white">${money(commitments7d)}</strong> que vencen en 7 días.
+                  </>
+                ) : (
+                  <>
+                    Saldo del banco menos <strong className="text-white">${money(commitments7d)}</strong> que vencen en 7
+                    días y la reserva <strong className="text-white">${money(reserveBalance)}</strong>.
+                  </>
+                )}
+              </p>
+
+              <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-white/10">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all",
+                    hero.coveragePct >= 100 ? "bg-emerald-400" : hero.coveragePct >= 60 ? "bg-amber-400" : "bg-rose-400",
+                  )}
+                  style={{ width: `${Math.min(100, hero.coveragePct)}%` }}
+                />
+              </div>
+              <div className="mt-1.5 flex items-center justify-between text-[9.5px] text-neutral-400">
+                <span>
+                  <strong className="text-neutral-200">{hero.coveragePct} %</strong> de los compromisos cubiertos
+                </span>
+                {diaAjustado && (
+                  <span>
+                    aprieta el <strong className="text-neutral-200">{diaAjustado.date.slice(5)}</strong>
+                  </span>
+                )}
+              </div>
+            </section>
+
+            {/* TRES PREGUNTAS: la explicación del héroe, no cinco tarjetas iguales. */}
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-2.5">
+                <p className="flex items-center gap-1 text-[9px] font-bold tracking-wide text-neutral-500">
+                  <Receipt className="size-3 text-amber-400" /> ¿ME ESTÁN PAGANDO?
+                </p>
+                <div className="mt-1 text-lg font-extrabold tracking-tight text-amber-300">
+                  ${money(porCobrar.amount)}
+                </div>
+                <p className="mt-0.5 text-[9.5px] leading-snug text-neutral-400">
+                  <strong className="text-neutral-200">{porCobrar.count}</strong>{" "}
+                  {porCobrar.count === 1 ? "viaje" : "viajes"} sin pagar
+                  {porCobrar.oldestDays > 0 ? (
+                    <>
+                      {" "}
+                      · el más viejo <strong className="text-amber-300">{porCobrar.oldestDays} días</strong>
+                    </>
+                  ) : null}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-neutral-800 bg-neutral-900/50 p-2.5">
+                <p className="flex items-center gap-1 text-[9px] font-bold tracking-wide text-neutral-500">
+                  <TrendingUp className="size-3 text-emerald-400" /> ¿CUÁNTO LLEVO HOY?
+                </p>
+                <div className="mt-1 text-lg font-extrabold tracking-tight text-emerald-400">${money(hoy.produced)}</div>
+                <p className="mt-0.5 text-[9.5px] leading-snug text-neutral-400">
+                  {hoy.rate !== null ? (
+                    <>
+                      <strong className="text-neutral-200">${hoy.rate.toFixed(0)}/h</strong> · meta ${Math.round(goalRate)}
+                    </>
+                  ) : (
+                    <>sin tiempo medido hoy</>
+                  )}{" "}
+                  · {hoy.goalHours} de {hoy.measuredHours} horas
+                </p>
+              </div>
+            </div>
+
+            {/* QUÉ HACER AHORA: máximo tres, urgente primero y luego por dinero. */}
+            {avisos.length > 0 && (
+              <section className="overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900/40">
+                <p className="px-3 pb-1 pt-2.5 text-[9px] font-bold tracking-[0.12em] text-neutral-500">
+                  QUÉ HACER AHORA · {avisos.length}
+                </p>
+                {avisos.map((aviso) => (
+                  <div
+                    key={aviso.id}
+                    className="flex items-center gap-2.5 border-t border-white/5 px-3 py-2"
+                  >
+                    <span
+                      className={cn(
+                        "size-1.5 shrink-0 rounded-full",
+                        aviso.tone === "danger" ? "bg-rose-400" : aviso.tone === "warn" ? "bg-amber-400" : "bg-sky-400",
+                      )}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[11.5px] font-bold text-neutral-100">{aviso.title}</span>
+                      <span className="block text-[9.5px] text-neutral-500">{aviso.detail}</span>
+                    </span>
+                    <ChevronRight className="size-3.5 shrink-0 text-neutral-600" />
+                  </div>
+                ))}
+              </section>
+            )}
+
+            {mode === "completo" && (
+              <>
+                {/* PANORAMA: el detalle de la semana detrás del héroe */}
+                <section
+                  className={cn(
+                    "rounded-2xl border p-3.5",
+                    panorama.covered ? "border-emerald-500/30 bg-emerald-950/15" : "border-rose-500/40 bg-rose-950/20",
+                  )}
+                >
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="text-[11px] font-bold tracking-wide text-neutral-300">
+                      PANORAMA DE LA SEMANA
+                      <span className="ml-1 font-semibold text-neutral-500">· {realTotals.realTripCount} viajes</span>
+                    </p>
+                    <span
+                      className={cn(
+                        "rounded-full px-2 py-0.5 text-[9px] font-bold",
+                        panorama.covered ? "bg-emerald-500/15 text-emerald-400" : "bg-rose-500/15 text-rose-400",
+                      )}
+                    >
+                      {panorama.covered
+                        ? "✅ TUS INGRESOS CUBREN TUS PAGOS"
+                        : `⚠️ FALTAN $${panorama.shortfall.toFixed(2)}`}
+                    </span>
+                  </div>
 
               <div className="grid grid-cols-4 gap-2 text-center">
                 <div className="rounded-xl bg-black/20 p-2">
@@ -605,14 +853,6 @@ export function FinanceScreen({
                 </p>
               )}
             </section>
-
-            <div className="flex items-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900/40 px-4 py-2.5 text-[11px] text-neutral-400">
-              <Wallet className="size-3.5 shrink-0 text-yellow-300" />
-              <span>
-                Reserva de imprevistos: <strong className="text-white">${reserveBalance.toFixed(2)}</strong>{" "}
-                (10% de cada gasto registrado)
-              </span>
-            </div>
 
             {/* Seguimiento de pagos programados: qué vence en los próximos 7 días */}
             {(() => {
@@ -679,6 +919,8 @@ export function FinanceScreen({
                   {emergencyData.daysRemaining} días laborables restantes.
                 </div>
               </div>
+            )}
+              </>
             )}
 
             <div className="mb-2 flex justify-end print:hidden">
