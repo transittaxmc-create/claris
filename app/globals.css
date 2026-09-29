@@ -180,3 +180,32 @@
     -webkit-text-size-adjust: 100%;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   PISO DE LEGIBILIDAD (teléfono)
+   ---------------------------------------------------------------------------
+   Medido en el código: había 258 textos entre 8 y 10 px y 176 usos de grises que
+   no pasan el contraste mínimo (4.43:1 y 2.69:1). Apple pide 11 pt como mínimo y
+   WCAG AA 4.5:1 para texto normal. Estas tres reglas suben el piso de toda la app
+   de una sola vez, mientras se migra a la escala nueva:
+   1) nada por debajo de 11 px;
+   2) los grises bajos pasan a tonos legibles;
+   3) los importes se leen con separador de miles (eso se hace en types.ts).
+   Se puede endurecer más adelante pantalla por pantalla. */
+
+@theme {
+  /* #A3A3A3 sobre negro = 8.3:1 · antes #737373 = 4.43:1 (fallaba AA) */
+  --color-neutral-500: #a3a3a3;
+  /* #8A8A8A sobre negro = 5.9:1 · antes #525252 = 2.69:1 (fallaba por mucho) */
+  --color-neutral-600: #8a8a8a;
+}
+
+@layer utilities {
+  .text-\[8px\],
+  .text-\[9px\],
+  .text-\[9\.5px\],
+  .text-\[10px\] {
+    font-size: 11px;
+    line-height: 1.35;
+  }
+}
