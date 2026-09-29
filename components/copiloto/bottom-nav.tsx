@@ -1,15 +1,6 @@
 "use client"
 
-import {
-  Home,
-  ClipboardList,
-  Receipt,
-  Gauge,
-  Wallet,
-  BarChart3,
-  Sparkles,
-  Boxes,
-} from "lucide-react"
+import { Home, ClipboardList, Wallet, BarChart3, LayoutGrid, Receipt, Gauge, Sparkles, Boxes } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export type Tab =
@@ -22,26 +13,39 @@ export type Tab =
   | "AI"
   | "DATA"
 
+// CINCO destinos, no ocho.
+//
+// Medido en un teléfono de 390 px: con ocho pestañas cada una tiene 48 px de
+// ancho y una etiqueta legible (11 px) no cabe — se pegaban unas con otras
+// ("REGISTEREXPENSES"). Apple recomienda 3-5 pestañas principales. Las otras
+// cuatro viven en MÁS, a un toque.
 const ITEMS: { key: Tab; label: string; icon: typeof Home }[] = [
-  { key: "ENTRY", label: "ENTRY", icon: Home },
-  { key: "REGISTER", label: "REGISTER", icon: ClipboardList },
-  { key: "EXPENSES", label: "EXPENSES", icon: Receipt },
-  { key: "DASH", label: "DASH", icon: Gauge },
-  { key: "FINANCE", label: "FINANCE", icon: Wallet },
-  { key: "REPORTS", label: "REPORTS", icon: BarChart3 },
-  { key: "AI", label: "AI", icon: Sparkles },
-  { key: "DATA", label: "DATA", icon: Boxes },
+  { key: "ENTRY", label: "HOY", icon: Home },
+  { key: "REGISTER", label: "COBROS", icon: ClipboardList },
+  { key: "FINANCE", label: "DINERO", icon: Wallet },
+  { key: "REPORTS", label: "REPORTES", icon: BarChart3 },
+]
+
+export const TABS_EN_MAS: { key: Tab; label: string; hint: string; icon: typeof Home }[] = [
+  { key: "EXPENSES", label: "GASTOS", hint: "Facturas, recibos y categorías", icon: Receipt },
+  { key: "DASH", label: "PANEL", hint: "Resumen del día", icon: Gauge },
+  { key: "AI", label: "COPILOTO IA", hint: "Preguntas, gastos y conciliación", icon: Sparkles },
+  { key: "DATA", label: "DATOS Y COPIA", hint: "Copia de seguridad, sync y reset", icon: Boxes },
 ]
 
 export function BottomNav({
   active,
   onChange,
+  onOpenMore,
 }: {
   active: Tab
   onChange: (t: Tab) => void
+  onOpenMore: () => void
 }) {
+  const enMas = TABS_EN_MAS.some((item) => item.key === active)
+
   return (
-    <nav className="shrink-0 flex min-h-[4.25rem] items-stretch gap-0 border-t border-neutral-800 bg-black px-0.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
+    <nav className="flex shrink-0 items-stretch gap-1 border-t border-neutral-800 bg-black px-1 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
       {ITEMS.map(({ key, label, icon: Icon }) => {
         const isActive = active === key
         return (
@@ -49,17 +53,31 @@ export function BottomNav({
             key={key}
             type="button"
             onClick={() => onChange(key)}
-            className={cn(
-              "flex min-w-[48px] flex-1 flex-col items-center gap-1 rounded-lg py-1 transition-colors",
-              isActive ? "text-yellow-400" : "text-neutral-500 hover:text-neutral-300",
-            )}
             aria-current={isActive ? "page" : undefined}
+            className={cn(
+              "flex min-h-[44px] min-w-[44px] flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1 transition-colors",
+              isActive ? "text-yellow-400" : "text-neutral-400 hover:text-neutral-200",
+            )}
           >
             <Icon className="size-6" strokeWidth={isActive ? 2.5 : 2} />
-            <span className="text-[9px] font-semibold tracking-tight">{label}</span>
+            <span className="text-[11px] font-semibold tracking-tight">{label}</span>
           </button>
         )
       })}
+
+      <button
+        type="button"
+        onClick={onOpenMore}
+        aria-current={enMas ? "page" : undefined}
+        aria-label="Más secciones"
+        className={cn(
+          "flex min-h-[44px] min-w-[44px] flex-1 flex-col items-center justify-center gap-1 rounded-xl py-1 transition-colors",
+          enMas ? "text-yellow-400" : "text-neutral-400 hover:text-neutral-200",
+        )}
+      >
+        <LayoutGrid className="size-6" strokeWidth={enMas ? 2.5 : 2} />
+        <span className="text-[11px] font-semibold tracking-tight">MÁS</span>
+      </button>
     </nav>
   )
 }

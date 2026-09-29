@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { AlertTriangle, Check } from "lucide-react"
-import { BottomNav, type Tab } from "./bottom-nav"
+import { BottomNav, TABS_EN_MAS, type Tab } from "./bottom-nav"
 import { AIScreen } from "./ai-screen"
 import { DataScreen } from "./data-screen"
 import { EntryScreen } from "./entry-screen"
@@ -79,6 +79,7 @@ export function CopilotoApp() {
   const [syncing, setSyncing] = useState(false)
   // Aviso de "copia vieja": si este teléfono abrió una URL de preview antigua,
   // se compara su versión con la de producción y se ofrece el enlace bueno.
+  const [mas, setMas] = useState(false)
   const [copiaVieja, setCopiaVieja] = useState<string | null>(null)
   const [avisoCerrado, setAvisoCerrado] = useState(false)
 
@@ -633,8 +634,54 @@ export function CopilotoApp() {
           </div>
         ) : null}
 
-        <BottomNav active={tab} onChange={setTab} />
+        <BottomNav active={tab} onChange={setTab} onOpenMore={() => setMas(true)} />
       </div>
+
+      {/* MÁS: las cuatro secciones que no caben abajo, con nombre completo. */}
+      {mas && (
+        <div
+          className="fixed inset-0 z-50 flex items-end bg-black/70"
+          onClick={() => setMas(false)}
+          role="presentation"
+        >
+          <div
+            className="w-full rounded-t-3xl border-t border-neutral-800 bg-neutral-950 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-[15px] font-bold text-white">Más secciones</p>
+              <button
+                type="button"
+                onClick={() => setMas(false)}
+                aria-label="Cerrar"
+                className="flex size-11 items-center justify-center rounded-xl border border-neutral-800 text-neutral-300"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex flex-col">
+              {TABS_EN_MAS.map(({ key, label, hint, icon: Icon }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => {
+                    setTab(key)
+                    setMas(false)
+                  }}
+                  className="flex min-h-[56px] items-center gap-3 border-t border-white/5 px-1 text-left first:border-t-0"
+                >
+                  <Icon className="size-5 shrink-0 text-yellow-400" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[15px] font-bold text-white">{label}</span>
+                    <span className="block text-[13px] text-neutral-400">{hint}</span>
+                  </span>
+                  <span className="text-neutral-500">›</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <TripEditSheet
         trip={editing}
