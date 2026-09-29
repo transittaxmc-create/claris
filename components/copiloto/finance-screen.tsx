@@ -577,8 +577,8 @@ export function FinanceScreen({
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between gap-2 border-b border-neutral-800 px-4 pb-3 pt-3">
         <div className="min-w-0">
-          <h1 className="truncate text-lg font-extrabold text-white">Gastos y Finanzas</h1>
-          <p className="truncate text-[11px] text-neutral-400">Tu dinero, tus pagos y lo que te deben</p>
+          <h1 className="truncate text-lg font-extrabold text-white">Finanzas</h1>
+          <p className="truncate text-[11px] text-neutral-400">Tu dinero y tus pagos</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {/* SIMPLE / COMPLETO: un toque para ver menos o ver todo. */}
@@ -700,7 +700,7 @@ export function FinanceScreen({
                   style={{ width: `${Math.min(100, hero.coveragePct)}%` }}
                 />
               </div>
-              <div className="mt-1.5 flex items-center justify-between gap-2 text-[9.5px] text-neutral-400">
+              <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[9.5px] text-neutral-400">
                 <span className="min-w-0">
                   {commitments7d <= 0 ? (
                     <>Sin compromisos pendientes en 7 días</>
