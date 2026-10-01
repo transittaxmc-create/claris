@@ -409,7 +409,7 @@ export function EntryScreen({
         </section>
 
         {/* Tips + Tolls + Fee + Ref */}
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3 sm:col-span-1 sm:col-start-2 sm:row-start-2">
+        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-2.5 sm:col-span-1 sm:col-start-2 sm:row-start-2">
           <div className="flex gap-2">
             <MoneyInput
               label="TIPS"
@@ -433,14 +433,14 @@ export function EntryScreen({
           {/* REF / INVOICE con el motivador de la hora AL LADO (cronómetro y
               $/hora), para que la pantalla no quede llena: el widget ocupa la
               segunda columna y la sugerencia va debajo, a todo el ancho. */}
-          <div className="mt-2 grid grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)] items-end gap-2">
-            <label className="flex min-w-0 flex-col gap-1.5">
-              <span className="text-[11px] font-bold tracking-wide text-neutral-400">REF / INVOICE</span>
+          <div className="mt-1.5 grid grid-cols-[minmax(0,0.48fr)_minmax(0,1.52fr)] items-end gap-2">
+            <label className="flex min-w-0 flex-col gap-1">
+              <span className="text-[10px] font-bold tracking-wide text-neutral-500">REF / INVOICE</span>
               <input
                 value={draft.ref}
                 onChange={(e) => set("ref", e.target.value)}
                 placeholder="Reference"
-                className="min-h-[3.1rem] rounded-xl border border-neutral-800 bg-neutral-950 px-2.5 py-2 text-sm text-white outline-none placeholder:text-neutral-600 focus:border-neutral-600"
+                className="min-h-[2.65rem] rounded-lg border border-neutral-800 bg-neutral-950 px-2 py-1.5 text-xs text-white outline-none placeholder:text-neutral-600 focus:border-neutral-600"
               />
             </label>
             <HourlyProduction trips={trips} />
