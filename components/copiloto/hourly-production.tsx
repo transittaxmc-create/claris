@@ -214,8 +214,8 @@ export function HourlyProduction({ trips }: { trips: Trip[] }) {
     <>
       {/* Los dos recuadros: cronómetro con su botón de encender/parar, y la
           producción de la hora. Van al lado del box REF / INVOICE. */}
-      <div className="flex shrink-0 items-stretch gap-1.5">
-        <div className="flex w-[74px] flex-col rounded-xl border border-neutral-800 bg-black/25 px-2 py-1.5">
+      <div className="flex min-w-0 w-full items-stretch gap-2">
+        <div className="flex min-w-0 flex-1 flex-col rounded-xl border border-neutral-800 bg-black/25 px-2.5 py-1.5">
           <div className="flex items-center justify-between gap-1 text-[8px] font-bold tracking-wide text-neutral-500">
             <span className="flex items-center gap-1">
               <Timer className={cn("size-2.5", timer.running ? "text-yellow-400" : "text-neutral-600")} /> HORA
@@ -258,7 +258,7 @@ export function HourlyProduction({ trips }: { trips: Trip[] }) {
           type="button"
           onClick={() => setEditingGoal((v) => !v)}
           title="Tocar para ajustar la meta por hora"
-          className="w-[84px] rounded-xl border border-neutral-800 bg-black/25 px-2 py-1.5 text-left transition-colors hover:border-neutral-700"
+          className="min-w-0 flex-1 rounded-xl border border-neutral-800 bg-black/25 px-2.5 py-1.5 text-left transition-colors hover:border-neutral-700"
         >
           <div className="flex items-center gap-1 text-[8px] font-bold tracking-wide text-neutral-500">
             <TrendingUp className="size-2.5 text-emerald-400" /> $ / HORA
