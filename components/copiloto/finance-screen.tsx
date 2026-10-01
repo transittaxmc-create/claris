@@ -446,11 +446,12 @@ export function FinanceScreen({
     return [...totals.entries()].sort((a, b) => b[1] - a[1])
   }, [trips, todayKey])
   const grossToday = todayPlatformTotals.reduce((total, [, amount]) => total + amount, 0)
+  const registerGrossTotal = trips.reduce((total, trip) => total + grossOf(trip), 0)
 
   // Plan realista: horas/días de trabajo necesarios para cubrir el faltante a la
   // meta por hora del usuario, antes del vencimiento más próximo.
   const coverPlan = useMemo(() => {
-    let goalRate = 55
+    let goalRate = 60
     try {
       const stored = Number(localStorage.getItem("claris_hourly_goal"))
       if (Number.isFinite(stored) && stored > 0) goalRate = stored
@@ -964,12 +965,17 @@ export function FinanceScreen({
               </button>
             </div>
             <section className="mb-2 overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-950 print:hidden" aria-label="Resumen de ingresos de hoy">
-              <div className="flex items-center justify-between gap-3 border-b border-neutral-800 bg-neutral-900/70 px-3.5 py-2.5">
-                <div>
+              <div className="grid grid-cols-2 gap-px border-b border-neutral-800 bg-neutral-800">
+                <div className="bg-neutral-900/70 px-3.5 py-2.5">
                   <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-emerald-300">Gross today</p>
-                  <p className="mt-0.5 text-[10px] text-neutral-500">Trabajo registrado hoy · todas las plataformas</p>
+                  <p className="mt-0.5 text-[10px] text-neutral-500">Trabajo de hoy · todas las plataformas</p>
+                  <p className="mt-1 text-xl font-black tabular-nums text-emerald-300">{money(grossToday)}</p>
                 </div>
-                <p className="text-xl font-black tabular-nums text-emerald-300">{money(grossToday)}</p>
+                <div className="bg-neutral-900/70 px-3.5 py-2.5">
+                  <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-sky-300">Register total</p>
+                  <p className="mt-0.5 text-[10px] text-neutral-500">Historial completo abierto</p>
+                  <p className="mt-1 text-xl font-black tabular-nums text-sky-300">{money(registerGrossTotal)}</p>
+                </div>
               </div>
               <div className="grid grid-cols-2 gap-px bg-neutral-800 sm:grid-cols-4">
                 {todayPlatformTotals.length > 0 ? todayPlatformTotals.map(([platform, amount]) => (
