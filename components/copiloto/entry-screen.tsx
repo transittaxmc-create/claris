@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ChevronDown, MapPin, Coffee, Loader2, X, AlertTriangle, RotateCw, Edit2 } from "lucide-react"
+import { ChevronDown, MapPin, Coffee, Loader2, X, AlertTriangle, RotateCw, Edit2, DollarSign, Timer } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip, grossOf, tripDateOf } from "./types"
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
@@ -355,8 +355,18 @@ export function EntryScreen({
           </button>
         </div>
 
-        {/* Earnings + Extra Cash */}
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
+        {/* ============================================== */}
+        {/* BOX 1: ECONOMÍA — all money fields + summaries  */}
+        {/* ============================================== */}
+        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3 sm:col-span-2">
+          {/* Box header */}
+          <div className="mb-3 flex items-center gap-2">
+            <DollarSign className="size-4 text-emerald-400" />
+            <span className="text-[11px] font-bold tracking-wide text-neutral-400">ECONOMÍA</span>
+            <div className="ml-auto h-px flex-1 bg-neutral-800" />
+          </div>
+
+          {/* Row 1: EARNINGS + EXTRA CASH */}
           <div className="flex gap-3">
             <MoneyInput
               label="EARNINGS"
@@ -371,10 +381,85 @@ export function EntryScreen({
               onChange={(n) => set("extraCash", n)}
             />
           </div>
+
+          {/* Row 2: TIPS + TOLLS + FEE */}
+          <div className="mt-3 flex gap-3">
+            <MoneyInput
+              label="TIPS"
+              color="text-yellow-400"
+              value={draft.tips}
+              onChange={(n) => set("tips", n)}
+            />
+            <MoneyInput
+              label="TOLLS"
+              color="text-amber-400"
+              value={draft.toll}
+              onChange={(n) => set("toll", n)}
+            />
+            <MoneyInput
+              label="FEE"
+              color="text-rose-400"
+              value={draft.platformFee}
+              onChange={(n) => set("platformFee", n)}
+            />
+          </div>
+
+          {/* Compact summary cards */}
+          <div className="mt-2.5 grid grid-cols-2 gap-2 border-t border-neutral-800/80 pt-2.5">
+            <div className="flex items-center justify-between rounded-lg border border-emerald-900/50 bg-emerald-950/20 px-2.5 py-1.5">
+              <div className="min-w-0">
+                <p className="text-[9px] font-bold tracking-[0.1em] text-emerald-300/70">GROSS TODAY</p>
+                <p className="text-sm font-black tabular-nums text-emerald-300">${grossIncomeToday.toFixed(2)}</p>
+              </div>
+              <span className="shrink-0 text-[9px] text-neutral-500">{tripCountToday}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-lg border border-sky-900/50 bg-sky-950/20 px-2.5 py-1.5">
+              <div className="min-w-0">
+                <p className="text-[9px] font-bold tracking-[0.1em] text-sky-300/70">REGISTER</p>
+                <p className="text-sm font-black tabular-nums text-sky-300">${trips.reduce((total, trip) => total + grossOf(trip), 0).toFixed(2)}</p>
+              </div>
+              <span className="shrink-0 text-[9px] text-neutral-500">all</span>
+            </div>
+          </div>
         </section>
 
-        {/* GPS Pickup + Dropoff */}
+        {/* ============================================== */}
+        {/* BOX 2: CRONÓMETRO — timer + REF + HOY + MIS HORAS */}
+        {/* ============================================== */}
         <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3 sm:col-span-2">
+          {/* Box header */}
+          <div className="mb-3 flex items-center gap-2">
+            <Timer className="size-4 text-yellow-400" />
+            <span className="text-[11px] font-bold tracking-wide text-neutral-400">CRONÓMETRO</span>
+            <div className="ml-auto h-px flex-1 bg-neutral-800" />
+          </div>
+
+          {/* REF / INVOICE + HourlyProduction (timer + HOY + MIS HORAS + stats) */}
+          <div className="grid grid-cols-[minmax(0,0.48fr)_minmax(0,1.52fr)] items-end gap-2">
+            <label className="flex min-w-0 flex-col gap-1">
+              <span className="text-[10px] font-bold tracking-wide text-neutral-500">REF / INVOICE</span>
+              <input
+                value={draft.ref}
+                onChange={(e) => set("ref", e.target.value)}
+                placeholder="Reference"
+                className="min-h-[2.65rem] rounded-lg border border-neutral-800 bg-neutral-950 px-2 py-1.5 text-xs text-white outline-none placeholder:text-neutral-600 focus:border-neutral-600"
+              />
+            </label>
+            <HourlyProduction trips={trips} />
+          </div>
+        </section>
+
+        {/* ============================================== */}
+        {/* BOX 3: UBICACIONES — PICKUP + DROPOFF              */}
+        {/* ============================================== */}
+        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3 sm:col-span-2">
+          {/* Box header */}
+          <div className="mb-3 flex items-center gap-2">
+            <MapPin className="size-4 text-green-400" />
+            <span className="text-[11px] font-bold tracking-wide text-neutral-400">UBICACIONES</span>
+            <div className="ml-auto h-px flex-1 bg-neutral-800" />
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <LocationColumn
               label="PICKUP"
@@ -406,58 +491,6 @@ export function EntryScreen({
           {geoError && (
             <p className="mt-2 text-center text-[11px] font-semibold text-rose-400">{geoError}</p>
           )}
-        </section>
-
-        {/* Tips + Tolls + Fee + Ref */}
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-2.5 sm:col-span-1 sm:col-start-2 sm:row-start-2">
-          <div className="flex gap-2">
-            <MoneyInput
-              label="TIPS"
-              color="text-yellow-400"
-              value={draft.tips}
-              onChange={(n) => set("tips", n)}
-            />
-            <MoneyInput
-              label="TOLLS"
-              color="text-amber-400"
-              value={draft.toll}
-              onChange={(n) => set("toll", n)}
-            />
-            <MoneyInput
-              label="FEE"
-              color="text-rose-400"
-              value={draft.platformFee}
-              onChange={(n) => set("platformFee", n)}
-            />
-          </div>
-          {/* REF / INVOICE con el motivador de la hora AL LADO (cronómetro y
-              $/hora), para que la pantalla no quede llena: el widget ocupa la
-              segunda columna y la sugerencia va debajo, a todo el ancho. */}
-          <div className="mt-1.5 grid grid-cols-[minmax(0,0.48fr)_minmax(0,1.52fr)] items-end gap-2">
-            <label className="flex min-w-0 flex-col gap-1">
-              <span className="text-[10px] font-bold tracking-wide text-neutral-500">REF / INVOICE</span>
-              <input
-                value={draft.ref}
-                onChange={(e) => set("ref", e.target.value)}
-                placeholder="Reference"
-                className="min-h-[2.65rem] rounded-lg border border-neutral-800 bg-neutral-950 px-2 py-1.5 text-xs text-white outline-none placeholder:text-neutral-600 focus:border-neutral-600"
-              />
-            </label>
-            <HourlyProduction trips={trips} />
-          </div>
-
-          <div className="mt-3 grid grid-cols-2 gap-2 border-t border-neutral-800/80 pt-3">
-            <div className="rounded-xl border border-emerald-900/50 bg-emerald-950/20 px-3 py-2.5">
-              <p className="text-[10px] font-bold tracking-[0.12em] text-emerald-300/70">GROSS INCOME TODAY</p>
-              <p className="mt-1 text-xl font-black tabular-nums text-emerald-300">${grossIncomeToday.toFixed(2)}</p>
-              <p className="mt-0.5 text-[10px] text-neutral-500">{tripCountToday} transacciones de hoy</p>
-            </div>
-            <div className="rounded-xl border border-sky-900/50 bg-sky-950/20 px-3 py-2.5">
-              <p className="text-[10px] font-bold tracking-[0.12em] text-sky-300/70">REGISTER TOTAL</p>
-              <p className="mt-1 text-xl font-black tabular-nums text-sky-300">${trips.reduce((total, trip) => total + grossOf(trip), 0).toFixed(2)}</p>
-              <p className="mt-0.5 text-[10px] text-neutral-500">historial completo abierto</p>
-            </div>
-          </div>
         </section>
       </div>
 
