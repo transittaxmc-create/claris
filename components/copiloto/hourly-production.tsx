@@ -7,10 +7,8 @@ import { netOf, tripDateOf, type Trip } from "./types"
 import {
   commitWorkedRange,
   hourKeyOf,
-  hourlyAdvice,
   hourlyStats,
   hourlyTotals,
-  hourWindow,
   improveAdvice,
   productionThisHour,
   startOfHourMs,
@@ -149,7 +147,6 @@ export function HourlyProduction({ trips }: { trips: Trip[] }) {
     } catch {}
   }, [worked])
 
-  const win = useMemo(() => hourWindow(now), [now])
   const timer = useMemo(() => timerReading({ now, on: timerOn, startedAt }), [now, timerOn, startedAt])
 
   const earned = useMemo(() => {
@@ -158,8 +155,6 @@ export function HourlyProduction({ trips }: { trips: Trip[] }) {
     // now cambia cada segundo: el importe depende de la hora, no del segundo,
     // pero recalcular es barato y mantiene todo coherente al cambiar de hora.
   }, [trips, now])
-
-  const advice = useMemo(() => hourlyAdvice(earned, win, goal), [earned, win, goal])
 
   // Estadística: lo producido (viajes) cruzado con lo trabajado (cronómetro).
   const stats = useMemo(() => {
@@ -171,22 +166,6 @@ export function HourlyProduction({ trips }: { trips: Trip[] }) {
   const todayStats = useMemo(() => stats.filter((s) => s.day === todayKey), [stats, todayKey])
   const todayTotals = useMemo(() => hourlyTotals(todayStats, goal), [todayStats, goal])
   const tips = useMemo(() => improveAdvice({ stats, goalRate: goal }), [stats, goal])
-
-  const toneClass =
-    advice.tone === "goal-met"
-      ? "border-emerald-500/40 bg-emerald-950/25 text-emerald-300"
-      : advice.tone === "on-track"
-        ? "border-emerald-500/30 bg-emerald-950/15 text-emerald-300"
-        : advice.tone === "reachable"
-          ? "border-amber-500/40 bg-amber-950/20 text-amber-200"
-          : "border-rose-500/40 bg-rose-950/20 text-rose-200"
-
-  // Con el cronómetro apagado no se empuja a producir: se informa y se recuerda
-  // encenderlo al volver.
-  const adviceClass = timerOn ? toneClass : "border-neutral-700 bg-neutral-900/60 text-neutral-300"
-  const adviceMessage = timerOn
-    ? advice.message
-    : `⏸ Cronómetro apagado y en cero. Esta hora llevas $${earned.toFixed(2)}. Enciéndelo cuando vuelvas a trabajar.`
 
   const elapsedPct = Math.min(100, Math.round((timer.elapsedSec / 3600) * 100))
   const mm = String(Math.floor(timer.elapsedSec / 60)).padStart(2, "0")
@@ -261,21 +240,12 @@ export function HourlyProduction({ trips }: { trips: Trip[] }) {
           className="min-w-0 flex-1 rounded-xl border border-neutral-800 bg-black/25 px-2.5 py-1.5 text-left transition-colors hover:border-neutral-700"
         >
           <div className="flex items-center gap-1 text-[8px] font-bold tracking-wide text-neutral-500">
-            <TrendingUp className="size-2.5 text-emerald-400" /> $ / HORA
+            <TrendingUp className="size-2.5 text-emerald-400" /> HOY
           </div>
           <div className={cn("text-base font-black leading-tight", timerOn ? "text-emerald-400" : "text-neutral-500")}>
             ${earned.toFixed(2)}
           </div>
-          <div className="mt-0.5 truncate text-[8px] text-neutral-500">
-            {!timerOn
-              ? "en cero"
-              : advice.remainingToGoal > 0
-                ? `faltan $${advice.remainingToGoal.toFixed(2)}`
-                : "meta cumplida"}
-          </div>
-          <div className="mt-0.5 flex items-center gap-0.5 text-[8px] font-bold text-yellow-400/90">
-            <Target className="size-2.5" /> META ${goal}
-          </div>
+
         </button>
       </div>
 
@@ -295,13 +265,6 @@ export function HourlyProduction({ trips }: { trips: Trip[] }) {
           <span className="w-12 shrink-0 text-right text-[11px] font-bold text-yellow-300">${goal}/h</span>
         </div>
       )}
-
-      {/* Sugerencia realista, en una línea y a todo el ancho */}
-      <p
-        className={cn("col-span-2 rounded-xl border px-2.5 py-1.5 text-[9px] font-semibold leading-snug", adviceClass)}
-      >
-        {adviceMessage}
-      </p>
 
       {/* Estadística por hora + cómo mejorar */}
       <button
