@@ -38,7 +38,7 @@ const TIMER_STARTED_KEY = "claris_timer_started_at"
 const TIMER_SEEN_KEY = "claris_timer_last_seen"
 const WORKED_KEY = "claris_hours_worked"
 const KEEP_DAYS = 30
-const DEFAULT_GOAL = 55
+const DEFAULT_GOAL = 60
 
 function loadNumber(key: string): number | null {
   try {
