@@ -433,14 +433,14 @@ export function EntryScreen({
           {/* REF / INVOICE con el motivador de la hora AL LADO (cronómetro y
               $/hora), para que la pantalla no quede llena: el widget ocupa la
               segunda columna y la sugerencia va debajo, a todo el ancho. */}
-          <div className="mt-3 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2">
+          <div className="mt-2 grid grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)] items-end gap-2">
             <label className="flex min-w-0 flex-col gap-1.5">
               <span className="text-[11px] font-bold tracking-wide text-neutral-400">REF / INVOICE</span>
               <input
                 value={draft.ref}
                 onChange={(e) => set("ref", e.target.value)}
                 placeholder="Reference"
-                className="min-h-[4.5rem] rounded-xl border border-neutral-800 bg-neutral-950 px-4 py-3 text-lg text-white outline-none placeholder:text-neutral-600 focus:border-neutral-600"
+                className="min-h-[3.1rem] rounded-xl border border-neutral-800 bg-neutral-950 px-2.5 py-2 text-sm text-white outline-none placeholder:text-neutral-600 focus:border-neutral-600"
               />
             </label>
             <HourlyProduction trips={trips} />
