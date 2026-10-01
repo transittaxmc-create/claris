@@ -45,6 +45,7 @@ import { moneyAlerts, spendable, tightestDay } from "@/lib/decisions"
 import { reconSummary } from "./reconciliation"
 import {
   daysUntil,
+  grossOf,
   money,
   netOf,
   tripDateOf,
@@ -435,6 +436,16 @@ export function FinanceScreen({
     }
   }
   const belowZeroDates = new Set(panorama.days.filter((d) => d.belowZero).map((d) => d.date))
+  const todayKey = localDateKey(new Date())
+  const todayPlatformTotals = useMemo(() => {
+    const totals = new Map<string, number>()
+    for (const trip of trips) {
+      if (tripDateOf(trip) !== todayKey) continue
+      totals.set(trip.platform, (totals.get(trip.platform) ?? 0) + grossOf(trip))
+    }
+    return [...totals.entries()].sort((a, b) => b[1] - a[1])
+  }, [trips, todayKey])
+  const grossToday = todayPlatformTotals.reduce((total, [, amount]) => total + amount, 0)
 
   // Plan realista: horas/días de trabajo necesarios para cubrir el faltante a la
   // meta por hora del usuario, antes del vencimiento más próximo.
@@ -952,6 +963,25 @@ export function FinanceScreen({
                 <Printer className="size-3.5" /> Imprimir PDF · ambos registros
               </button>
             </div>
+            <section className="mb-2 overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-950 print:hidden" aria-label="Resumen de ingresos de hoy">
+              <div className="flex items-center justify-between gap-3 border-b border-neutral-800 bg-neutral-900/70 px-3.5 py-2.5">
+                <div>
+                  <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-emerald-300">Gross today</p>
+                  <p className="mt-0.5 text-[10px] text-neutral-500">Trabajo registrado hoy · todas las plataformas</p>
+                </div>
+                <p className="text-xl font-black tabular-nums text-emerald-300">{money(grossToday)}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-px bg-neutral-800 sm:grid-cols-4">
+                {todayPlatformTotals.length > 0 ? todayPlatformTotals.map(([platform, amount]) => (
+                  <div key={platform} className="min-w-0 bg-neutral-950 px-3 py-2.5">
+                    <p className="truncate text-[9px] font-bold uppercase tracking-wide text-neutral-500">{platform}</p>
+                    <p className="mt-0.5 text-sm font-extrabold tabular-nums text-white">{money(amount)}</p>
+                  </div>
+                )) : (
+                  <p className="col-span-2 bg-neutral-950 px-3 py-3 text-[10px] text-neutral-500 sm:col-span-4">Aún no hay transacciones registradas hoy.</p>
+                )}
+              </div>
+            </section>
             <div className="rounded-2xl border border-neutral-800 bg-neutral-950 p-1 print:hidden">
               <div className="grid grid-cols-2 gap-1" role="tablist" aria-label="Vistas del register">
                 {([['bank', 'Registro bancario'], ['projected', 'Registro proyectado']] as [RegisterView, string][]).map(([view, label]) => (
