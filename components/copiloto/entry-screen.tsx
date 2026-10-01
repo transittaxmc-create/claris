@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { ChevronDown, MapPin, Coffee, Loader2, X, AlertTriangle, RotateCw, Edit2 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip } from "./types"
+import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip, grossOf, tripDateOf } from "./types"
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
 import { isVoucherPlatform } from "./platform-meta"
 import { HourlyProduction } from "./hourly-production"
@@ -265,6 +265,12 @@ export function EntryScreen({
     setDraft(newTrip())
   }
 
+  const today = new Date()
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+  const todayTrips = trips.filter((trip) => tripDateOf(trip) === todayKey)
+  const grossIncomeToday = todayTrips.reduce((total, trip) => total + grossOf(trip), 0)
+  const tripCountToday = todayTrips.length
+
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* Header */}
@@ -438,6 +444,19 @@ export function EntryScreen({
               />
             </label>
             <HourlyProduction trips={trips} />
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-2 border-t border-neutral-800/80 pt-3">
+            <div className="rounded-xl border border-emerald-900/50 bg-emerald-950/20 px-3 py-2.5">
+              <p className="text-[10px] font-bold tracking-[0.12em] text-emerald-300/70">GROSS INCOME TODAY</p>
+              <p className="mt-1 text-xl font-black tabular-nums text-emerald-300">${grossIncomeToday.toFixed(2)}</p>
+              <p className="mt-0.5 text-[10px] text-neutral-500">{tripCountToday} transacciones de hoy</p>
+            </div>
+            <div className="rounded-xl border border-sky-900/50 bg-sky-950/20 px-3 py-2.5">
+              <p className="text-[10px] font-bold tracking-[0.12em] text-sky-300/70">REGISTER TOTAL</p>
+              <p className="mt-1 text-xl font-black tabular-nums text-sky-300">${trips.reduce((total, trip) => total + grossOf(trip), 0).toFixed(2)}</p>
+              <p className="mt-0.5 text-[10px] text-neutral-500">historial completo abierto</p>
+            </div>
           </div>
         </section>
       </div>
