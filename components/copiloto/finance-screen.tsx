@@ -55,9 +55,10 @@ import {
   type TollBill,
   type Trip,
 } from "./types"
+import { CashFlowRegister } from "./cash-flow-register"
 import { ExpensesScreen } from "./expenses-screen"
 
-type SubTab = "caja" | "plan" | "peajes" | "gastos"
+type SubTab = "caja" | "libro" | "plan" | "peajes" | "gastos"
 type RegisterView = "bank" | "projected"
 
 function addDays(date: string, days: number) {
@@ -370,7 +371,7 @@ export function FinanceScreen({
   // panorama, los próximos pagos y el plan. Se recuerda en el teléfono.
   const [mode, setMode] = useState<"simple" | "completo">("completo")
   
-  const { startingBalance, reserveBalance, days, resetAllData } = useFinance()
+  const { startingBalance, reserveBalance, days, setStartingBalance, resetAllData } = useFinance()
   const { getUpcomingExpensesTotal, getInvestableSurplus, getEmergencyPlan } = useFinance()
   const upcomingBills = getUpcomingExpensesTotal(7)
   const { amount: surplus, isSafe } = getInvestableSurplus()
@@ -629,10 +630,11 @@ export function FinanceScreen({
       </div>
 
       <div className="flex-1 space-y-5 overflow-y-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <div className="grid grid-cols-4 gap-1 rounded-xl border border-neutral-800 bg-neutral-900 p-1 text-[11px] font-semibold">
+        <div className="grid grid-cols-3 gap-1 rounded-xl border border-neutral-800 bg-neutral-900 p-1 text-[11px] font-semibold sm:grid-cols-5">
           {(
             [
               ["caja", "Corrida de Caja"],
+              ["libro", "Libro Mayor"],
               ["plan", "Plan de Pagos"],
               ["peajes", "Peajes"],
               ["gastos", "Mis Gastos"],
@@ -1016,6 +1018,12 @@ export function FinanceScreen({
               <FinanceRegisterTable mode="projected" paymentsByDate={paymentsByDate} belowZeroDates={belowZeroDates} />
             </section>
           </div>
+        )}
+        {activeTab === "libro" && (
+          <CashFlowRegister
+            startingActualBalance={startingBalance}
+            onUpdateStartingBalance={setStartingBalance}
+          />
         )}
         {activeTab === "plan" && (
           <div className="space-y-3">

@@ -368,6 +368,8 @@ const ALL_KEYS = [
   // Ledger programado + facturas de peajes (mismas claves que REGISTER).
   "claris_scheduled_entries",
   "claris_toll_bills",
+  // Cash Flow Register (Libro Mayor) — asientos reales y proyectados.
+  "claris_cash_flow_entries",
 ]
 
 // Build the full export document (version 2) in the exact shape the original

@@ -58,6 +58,29 @@ export type TollBill = {
   status: "unpaid" | "paid"
 }
 
+// ---------------------------------------------------------------------------
+// Cash Flow Register (pestaña FINANCE ➔ Libro Mayor)
+// ---------------------------------------------------------------------------
+export type CashFlowStatus = "actual" | "projected"
+export type CashFlowType = "income" | "expense"
+export type CashFlowSource = "bank" | "receipt" | "trip" | "projection" | "manual"
+
+export type CashFlowEntry = {
+  id: string
+  date: string // "YYYY-MM-DD"
+  description: string
+  source: CashFlowSource
+  sourceLabel?: string // "Banco Chase", "Uber Trip", "Recibo Shell", ...
+  type: CashFlowType
+  status: CashFlowStatus
+  amount: number
+  category?: string
+  // Escaneos y extractos son 100% editables; solo se marca como editado.
+  isManuallyEdited?: boolean
+  notes?: string
+  createdAt?: string
+}
+
 export type Expense = {
   id: string
   date: string // "YYYY-MM-DD"
