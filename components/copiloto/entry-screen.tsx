@@ -7,7 +7,16 @@ import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip, gross
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
 import { isVoucherPlatform } from "./platform-meta"
 import { HourlyProduction } from "./hourly-production"
-import { captureLocation, GpsAccuracyError, saveTempLocation, loadTempLocation, clearTempLocations } from "./geo"
+import {
+  captureLocation,
+  GpsAccuracyError,
+  saveTempLocation,
+  loadTempLocation,
+  clearTempLocations,
+  loadHeaderPlace,
+  refreshHeaderPlace,
+  type HeaderPlace,
+} from "./geo"
 import { MoneyInput } from "./money-input"
 
 function LocationColumn({
@@ -241,6 +250,25 @@ export function EntryScreen({
     return () => window.clearInterval(timer)
   }, [])
 
+  // Ubicación actual (CALLE + CIUDAD) para la cabecera. Se muestra al instante
+  // si hay una cacheada y se refresca en segundo plano sin bloquear la pantalla.
+  const [place, setPlace] = useState<HeaderPlace | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    try {
+      setPlace(loadHeaderPlace())
+    } catch {}
+    refreshHeaderPlace()
+      .then((p) => {
+        if (alive && p) setPlace(p)
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [])
+
   const greeting = now
     ? now.getHours() < 12
       ? "Good morning"
@@ -281,6 +309,22 @@ export function EntryScreen({
             {now
               ? `${now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} ${now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`
               : "—"}
+          </p>
+          {/* From the GPS: CALLE, CIUDAD */}
+          <p
+            className="mt-1 flex items-center gap-1 text-xs"
+            title={place?.address || undefined}
+            suppressHydrationWarning
+          >
+            <MapPin className="size-3 shrink-0 text-yellow-400" />
+            {place ? (
+              <span className="truncate text-neutral-500">
+                <span className="font-semibold text-neutral-300">{place.street || place.city}</span>
+                {place.street && place.city ? <span>, {place.city}</span> : null}
+              </span>
+            ) : (
+              <span className="truncate text-neutral-600">Buscando ubicación…</span>
+            )}
           </p>
         </div>
         <span className="flex shrink-0 items-center gap-1.5 rounded-full border border-green-500/40 bg-green-500/10 px-2.5 py-1 text-[10px] font-bold text-green-400">

@@ -218,3 +218,94 @@ export async function captureLocation(): Promise<LocationPoint> {
     time: now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
   }
 }
+
+// ---------------------------------------------------------------------------
+// Cabecera de HOY: lugar actual (CALLE + CIUDAD) para mostrar bajo la fecha.
+//
+// A diferencia de captureLocation() no exige precisión ≤ 50m (dentro de un
+// edificio casi nunca se cumple) y guarda el resultado 10 minutos para no
+// martillear Nominatim ni gastar batería en cada render.
+// ---------------------------------------------------------------------------
+export type HeaderPlace = {
+  street: string
+  city: string
+  address: string
+  icon: string
+  accuracy: number
+  savedAt: string // ISO
+}
+
+const HEADER_PLACE_KEY = "claris_header_place"
+const HEADER_PLACE_TTL_MS = 10 * 60 * 1000
+
+// Lee el último lugar cacheado. Caduca a los 10 minutos.
+export function loadHeaderPlace(): HeaderPlace | null {
+  try {
+    const raw = localStorage.getItem(HEADER_PLACE_KEY)
+    if (!raw) return null
+    const p = JSON.parse(raw) as HeaderPlace
+    if (!p || (!p.street && !p.city)) return null
+    const saved = new Date(p.savedAt).getTime()
+    if (!Number.isFinite(saved) || Date.now() - saved > HEADER_PLACE_TTL_MS) return null
+    return p
+  } catch {
+    return null
+  }
+}
+
+function getPositionCached(): Promise<GeolocationPosition> {
+  return new Promise((resolve, reject) => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      reject(new Error("Geolocalización no disponible"))
+      return
+    }
+    // maximumAge: reutiliza una fijada hace ≤5 min → más rápido y con menos
+    // batería; el header solo necesita "más o menos dónde estoy".
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+      timeout: 8000,
+      maximumAge: 300_000,
+    })
+  })
+}
+
+// Nunca lanza: si el GPS o la red fallan devuelve null y la cabecera se queda
+// sin línea de ubicación en vez de romper la pantalla.
+export async function refreshHeaderPlace(): Promise<HeaderPlace | null> {
+  try {
+    const pos = await getPositionCached()
+    const { latitude: lat, longitude: lng, accuracy = 0 } = pos.coords
+
+    let data: any = {}
+    try {
+      data = await reverseGeocode(lat, lng)
+    } catch {
+      data = {}
+    }
+
+    const { icon } = classify(data)
+    const a = data?.address ?? {}
+    const houseNumber = a.house_number ?? ""
+    const road = a.road ?? a.pedestrian ?? a.footway ?? a.neighbourhood ?? ""
+    const street = [houseNumber, road].filter(Boolean).join(" ")
+    const city = a.city ?? a.town ?? a.village ?? a.suburb ?? a.hamlet ?? ""
+    if (!street && !city) return null
+
+    const place: HeaderPlace = {
+      street,
+      city,
+      address: data?.display_name ?? [street, city].filter(Boolean).join(", "),
+      icon,
+      accuracy: Math.round((accuracy ?? 0) * 10) / 10,
+      savedAt: new Date().toISOString(),
+    }
+    try {
+      localStorage.setItem(HEADER_PLACE_KEY, JSON.stringify(place))
+    } catch {
+      // modo privado / cuota llena: no pasa nada, solo no se cachea
+    }
+    return place
+  } catch {
+    return null
+  }
+}
