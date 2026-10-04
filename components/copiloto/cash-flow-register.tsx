@@ -436,18 +436,18 @@ export function CashFlowRegister({
             onClick={() => setShowProjectedIncomes(!showProjectedIncomes)}
             className="flex w-full items-center justify-between px-4 py-3 text-left transition hover:bg-neutral-800/50"
           >
-            <div className="flex items-center gap-2">
-              <span className="flex size-6 items-center justify-center rounded-full bg-green-500/10 text-green-400">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-green-500/10 text-green-400">
                 <ArrowDownLeft className="size-3.5" />
               </span>
-              <div>
-                <span className="text-xs font-bold text-white">Proyecciones de Ingresos</span>
-                <span className="ml-2 text-[10px] text-neutral-500">
+              <div className="min-w-0">
+                <span className="block truncate text-xs font-bold text-white">Proyecciones de Ingresos</span>
+                <span className="block text-[10px] text-neutral-500">
                   ({projectedIncomes.length} previstos)
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex shrink-0 items-center gap-3">
               <span className="text-xs font-black text-green-400">
                 +{money(totalProjectedIncome)}
               </span>
@@ -525,18 +525,18 @@ export function CashFlowRegister({
             onClick={() => setShowProjectedExpenses(!showProjectedExpenses)}
             className="flex w-full items-center justify-between px-4 py-3 text-left transition hover:bg-neutral-800/50"
           >
-            <div className="flex items-center gap-2">
-              <span className="flex size-6 items-center justify-center rounded-full bg-rose-500/10 text-rose-400">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-rose-500/10 text-rose-400">
                 <ArrowUpRight className="size-3.5" />
               </span>
-              <div>
-                <span className="text-xs font-bold text-white">Proyecciones de Gastos</span>
-                <span className="ml-2 text-[10px] text-neutral-500">
+              <div className="min-w-0">
+                <span className="block truncate text-xs font-bold text-white">Proyecciones de Gastos</span>
+                <span className="block text-[10px] text-neutral-500">
                   ({projectedExpenses.length} programados)
                 </span>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex shrink-0 items-center gap-3">
               <span className="text-xs font-black text-rose-400">
                 -{money(totalProjectedExpense)}
               </span>
