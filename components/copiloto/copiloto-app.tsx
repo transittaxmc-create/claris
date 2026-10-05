@@ -589,7 +589,12 @@ export function CopilotoApp() {
                 />
               )}
               {tab === "EXPENSES" && (
-                <ExpensesScreen expenses={expenses} onSave={saveExpense} onDelete={deleteExpense} />
+                <ExpensesScreen
+                  expenses={expenses}
+                  onSave={saveExpense}
+                  onDelete={deleteExpense}
+                  onScanReceipt={() => setScannerOpen(true)}
+                />
               )}
               {tab === "FINANCE" && (
                 <FinanceScreen trips={trips} expenses={expenses} onSave={saveExpense} onDelete={deleteExpense} />
@@ -738,21 +743,6 @@ export function CopilotoApp() {
         onSave={saveEdit}
         onDelete={deleteTrip}
       />
-
-      {/* Botón de escanear recibo: visible en cualquier pestaña, porque un
-          recibo te lo dan en cualquier momento. */}
-      <button
-        type="button"
-        onClick={() => setScannerOpen(true)}
-        aria-label="Escanear un recibo"
-        className="absolute bottom-20 right-3 z-40 flex size-14 items-center justify-center rounded-full text-white shadow-lg transition-transform active:scale-95"
-        style={{ background: "#F86810" }}
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-6">
-          <path d="M3 7V5.5A2.5 2.5 0 0 1 5.5 3H7M17 3h1.5A2.5 2.5 0 0 1 21 5.5V7M21 17v1.5a2.5 2.5 0 0 1-2.5 2.5H17M7 21H5.5A2.5 2.5 0 0 1 3 18.5V17" />
-          <circle cx="12" cy="12" r="3.2" />
-        </svg>
-      </button>
 
       {scannerOpen && (
         <ReceiptScanner
