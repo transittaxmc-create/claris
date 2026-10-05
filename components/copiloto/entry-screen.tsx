@@ -142,7 +142,7 @@ function LocationColumn({
             value={value}
             onChange={(e) => onManual(e.target.value)}
             placeholder={`Toca ${label.toLowerCase()}`}
-            className={cn("rounded-lg border bg-neutral-950/60 px-2.5 py-2 text-sm text-white outline-none placeholder:text-neutral-500", border)}
+            className={cn("rounded-lg border bg-neutral-950/60 px-2.5 py-1.5 text-[13px] text-white outline-none placeholder:text-neutral-500", border)}
           />
           <button
             type="button"
@@ -305,11 +305,6 @@ export function EntryScreen({
       <div className="flex items-start justify-between gap-3 px-4 pt-2 sm:px-8 sm:pt-3">
         <div className="min-w-0">
           <h1 className="truncate text-lg font-bold text-white">{greeting}</h1>
-          <p className="text-xs text-neutral-500" suppressHydrationWarning>
-            {now
-              ? `${now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} ${now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`
-              : "—"}
-          </p>
           {/* From the GPS: CALLE, CIUDAD */}
           <p
             className="mt-0.5 flex items-center gap-1 text-xs"
@@ -551,7 +546,7 @@ export function EntryScreen({
           onClick={handleSave}
           disabled={!!lowAccuracy}
           className={cn(
-            "w-full rounded-2xl py-4 text-lg font-extrabold tracking-wide transition-all",
+            "w-full rounded-2xl py-3 text-base font-extrabold tracking-wide transition-all",
             storageSaved
               ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20"
               : lowAccuracy
