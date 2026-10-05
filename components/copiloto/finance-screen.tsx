@@ -39,7 +39,7 @@ import { ExpenseRegisterForm } from "./expense-register-form"
 import { FinanceRegisterTable } from "./finance-register-table"
 import { UpcomingBillsForm } from "./upcoming-bills-form"
 import { useFinance, applyRealTrips, computeRealWeekTotals } from "./finance-store"
-import { computePanorama } from "./finance-bridge"
+import { computePanorama, tollBillsToPayments } from "./finance-bridge"
 import { planToCover, hourlyStats, hourlyTotals } from "@/lib/production"
 import { moneyAlerts, spendable, tightestDay } from "@/lib/decisions"
 import { reconSummary } from "./reconciliation"
@@ -420,9 +420,15 @@ export function FinanceScreen({
   // Panorama semanal: balance real + proyección diaria + cobertura de pagos en
   // su vencimiento. Lo calcula finance-bridge (lógica pura y probada).
   const panorama = useMemo(() => {
-    const scheduled = schedules
-      .filter((s) => s.kind === "expense" && s.active !== false && s.nextDate)
-      .map((s) => ({ description: s.description, amount: Number(s.amount) || 0, nextDate: s.nextDate }))
+    const scheduled = [
+      ...schedules
+        .filter((s) => s.kind === "expense" && s.active !== false && s.nextDate)
+        .map((s) => ({ description: s.description, amount: Number(s.amount) || 0, nextDate: s.nextDate })),
+      // Los peajes del día ya se acumulan en una factura con vencimiento
+      // (createTollBill). Sin esto el panorama decía "cubierto" ignorando un
+      // pago que vence mañana: se avisaba de ellos pero no se planificaban.
+      ...tollBillsToPayments(bills),
+    ]
     const expenseList = expenses.map((e) => ({ date: e.date, amount: e.amount }))
     return computePanorama({
       startingBalance,
@@ -431,7 +437,7 @@ export function FinanceScreen({
       expenses: expenseList,
       trips: realTrips,
     })
-  }, [startingBalance, days, schedules, expenses, realTrips])
+  }, [startingBalance, days, schedules, expenses, realTrips, bills])
 
   const paymentsByDate: Record<string, { description: string; amount: number }[]> = {}
   for (const d of panorama.days) {
