@@ -12,6 +12,7 @@ import { RegisterScreen } from "./register-screen"
 import { ReportsScreen } from "./reports-screen"
 import { TripEditSheet } from "./trip-edit-sheet"
 import { ReceiptScanner } from "./receipt-scanner"
+import { guardarMovimiento, movimientoDeGasto } from "./cash-flow-store"
 import { applyDifferenceToTrip, applyBankMatchesToTrips, normalizeTripStatus } from "./reconciliation"
 import { SEED_TRIPS, newTrip, stampExpense, applyExpenseUpdatesToExpenses, grossOf, netOf, tripDateOf, type Expense, type Trip, type ScheduledEntry } from "./types"
 import { buildBackupBundle, buildBackupHtml, collectAppKeys } from "@/lib/backup"
@@ -297,12 +298,18 @@ export function CopilotoApp() {
   }
 
   // Gastos: alta / edición (siempre con hora de modificación para el sync).
+  //
+  // Todo gasto entra TAMBIÉN en el libro mayor. Es el embudo por donde pasan
+  // todos (manual, escaneado, importado), así que ninguno se queda fuera de la
+  // unión. El id es determinista ("claris:gasto:<id>"), así que editar el gasto
+  // actualiza su movimiento en vez de crear otro.
   function saveExpense(e: Expense) {
     const stamped = stampExpense(e)
     setExpenses((prev) => {
       const exists = prev.some((p) => p.id === stamped.id)
       return exists ? prev.map((p) => (p.id === stamped.id ? stamped : p)) : [stamped, ...prev]
     })
+    guardarMovimiento(movimientoDeGasto(stamped))
   }
 
   function deleteExpense(id: string) {
