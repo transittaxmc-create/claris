@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AlertTriangle, Check } from "lucide-react"
 import { BottomNav, TABS_EN_MAS, type Tab } from "./bottom-nav"
 import { AIScreen } from "./ai-screen"
@@ -11,6 +11,7 @@ import { FinanceScreen } from "./finance-screen"
 import { RegisterScreen } from "./register-screen"
 import { ReportsScreen } from "./reports-screen"
 import { TripEditSheet } from "./trip-edit-sheet"
+import { ReceiptScanner } from "./receipt-scanner"
 import { applyDifferenceToTrip, applyBankMatchesToTrips, normalizeTripStatus } from "./reconciliation"
 import { SEED_TRIPS, newTrip, stampExpense, applyExpenseUpdatesToExpenses, grossOf, netOf, tripDateOf, type Expense, type Trip, type ScheduledEntry } from "./types"
 import { buildBackupBundle, buildBackupHtml, collectAppKeys } from "@/lib/backup"
@@ -77,6 +78,8 @@ export function CopilotoApp() {
   const [syncMessage, setSyncMessage] = useState<string | null>(null)
   const [syncTone, setSyncTone] = useState<"ok" | "error" | "info">("info")
   const [syncing, setSyncing] = useState(false)
+  // El escáner de recibos: pantalla completa, encima de todo.
+  const [scannerOpen, setScannerOpen] = useState(false)
   // Aviso de "copia vieja": si este teléfono abrió una URL de preview antigua,
   // se compara su versión con la de producción y se ofrece el enlace bueno.
   const [mas, setMas] = useState(false)
@@ -306,6 +309,52 @@ export function CopilotoApp() {
     expenseTombstonesRef.current = addExpenseTombstone(id)
     setExpenses((prev) => prev.filter((p) => p.id !== id))
   }
+
+  // Ingreso escaneado (un recibo de cobro, un comprobante): va al ledger
+  // programado con kind "income", que es lo que ya lee FINANCE. No hay una
+  // lista de ingresos sueltos aparte de los viajes, así que se usa esa.
+  function saveScannedIncome(e: { description: string; category: string; amount: number; date: string; notes?: string }) {
+    const entry: ScheduledEntry = {
+      id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `sch-${Date.now()}`,
+      kind: "income",
+      description: e.description || "Ingreso",
+      category: e.category,
+      amount: Number(e.amount) || 0,
+      startDate: e.date,
+      nextDate: e.date,
+      frequency: "once",
+      active: true,
+    }
+    try {
+      const prev: ScheduledEntry[] = JSON.parse(localStorage.getItem("claris_scheduled_entries") || "[]")
+      localStorage.setItem("claris_scheduled_entries", JSON.stringify([entry, ...(Array.isArray(prev) ? prev : [])]))
+    } catch {
+      try {
+        localStorage.setItem("claris_scheduled_entries", JSON.stringify([entry]))
+      } catch {}
+    }
+  }
+
+  // Totales del mes en curso, para la cabecera del escáner.
+  const escanerTotales = useMemo(() => {
+    const mes = localDateKey(new Date()).slice(0, 7)
+    const ingresos = trips
+      .filter((t) => tripDateOf(t).slice(0, 7) === mes)
+      .reduce((s, t) => s + netOf(t), 0)
+    const gastos = expenses
+      .filter((e) => String(e.date || "").slice(0, 7) === mes)
+      .reduce((s, e) => s + (Number(e.amount) || 0), 0)
+    let presupuesto = 0
+    try {
+      const guardado = Number(localStorage.getItem("claris_monthly_budget"))
+      if (Number.isFinite(guardado) && guardado > 0) presupuesto = guardado
+    } catch {}
+    return {
+      ingresos: Math.round(ingresos * 100) / 100,
+      gastos: Math.round(gastos * 100) / 100,
+      presupuesto,
+    }
+  }, [trips, expenses])
 
   const refreshInfo = useCallback(() => {
     storageInfo(tripsRef.current.length, expensesRef.current.length)
@@ -689,6 +738,30 @@ export function CopilotoApp() {
         onSave={saveEdit}
         onDelete={deleteTrip}
       />
+
+      {/* Botón de escanear recibo: visible en cualquier pestaña, porque un
+          recibo te lo dan en cualquier momento. */}
+      <button
+        type="button"
+        onClick={() => setScannerOpen(true)}
+        aria-label="Escanear un recibo"
+        className="absolute bottom-20 right-3 z-40 flex size-14 items-center justify-center rounded-full text-white shadow-lg transition-transform active:scale-95"
+        style={{ background: "#F86810" }}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-6">
+          <path d="M3 7V5.5A2.5 2.5 0 0 1 5.5 3H7M17 3h1.5A2.5 2.5 0 0 1 21 5.5V7M21 17v1.5a2.5 2.5 0 0 1-2.5 2.5H17M7 21H5.5A2.5 2.5 0 0 1 3 18.5V17" />
+          <circle cx="12" cy="12" r="3.2" />
+        </svg>
+      </button>
+
+      {scannerOpen && (
+        <ReceiptScanner
+          onClose={() => setScannerOpen(false)}
+          onSaveExpense={saveExpense}
+          onSaveIncome={saveScannedIncome}
+          totales={escanerTotales}
+        />
+      )}
     </div>
   )
 }
