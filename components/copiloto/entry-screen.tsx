@@ -400,7 +400,7 @@ export function EntryScreen({
         </div>
 
         {/* ============================================== */}
-        {/* BOX 1: ECONOMÍA — all money fields + summaries  */}
+        {/* BOX 1: ECONOMÍA — money fields */}
         {/* ============================================== */}
         <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3 sm:col-span-2">
           {/* Box header */}
@@ -448,23 +448,6 @@ export function EntryScreen({
             />
           </div>
 
-          {/* Compact summary cards */}
-          <div className="mt-2.5 grid grid-cols-2 gap-2 border-t border-neutral-800/80 pt-2.5">
-            <div className="flex items-center justify-between rounded-lg border border-emerald-900/50 bg-emerald-950/20 px-2.5 py-1.5">
-              <div className="min-w-0">
-                <p className="text-[9px] font-bold tracking-[0.1em] text-emerald-300/70">GROSS TODAY</p>
-                <p className="text-sm font-black tabular-nums text-emerald-300">${grossIncomeToday.toFixed(2)}</p>
-              </div>
-              <span className="shrink-0 text-[9px] text-neutral-500">{tripCountToday}</span>
-            </div>
-            <div className="flex items-center justify-between rounded-lg border border-sky-900/50 bg-sky-950/20 px-2.5 py-1.5">
-              <div className="min-w-0">
-                <p className="text-[9px] font-bold tracking-[0.1em] text-sky-300/70">REGISTER</p>
-                <p className="text-sm font-black tabular-nums text-sky-300">${trips.reduce((total, trip) => total + grossOf(trip), 0).toFixed(2)}</p>
-              </div>
-              <span className="shrink-0 text-[9px] text-neutral-500">all</span>
-            </div>
-          </div>
         </section>
 
         {/* ============================================== */}
@@ -536,6 +519,24 @@ export function EntryScreen({
             <HourlyProduction trips={trips} />
           </div>
         </section>
+
+        {/* Resumen discreto al final: GROSS TODAY + REGISTER */}
+        <div className="grid grid-cols-2 gap-2 sm:col-span-2">
+          <div className="flex items-center justify-between rounded-lg border border-emerald-900/50 bg-emerald-950/20 px-2.5 py-1.5">
+            <div className="min-w-0">
+              <p className="text-[9px] font-bold tracking-[0.1em] text-emerald-300/70">GROSS TODAY</p>
+              <p className="text-sm font-black tabular-nums text-emerald-300">${grossIncomeToday.toFixed(2)}</p>
+            </div>
+            <span className="shrink-0 text-[9px] text-neutral-500">{tripCountToday}</span>
+          </div>
+          <div className="flex items-center justify-between rounded-lg border border-sky-900/50 bg-sky-950/20 px-2.5 py-1.5">
+            <div className="min-w-0">
+              <p className="text-[9px] font-bold tracking-[0.1em] text-sky-300/70">REGISTER</p>
+              <p className="text-sm font-black tabular-nums text-sky-300">${trips.reduce((total, trip) => total + grossOf(trip), 0).toFixed(2)}</p>
+            </div>
+            <span className="shrink-0 text-[9px] text-neutral-500">all</span>
+          </div>
+        </div>
       </div>
 
       {/* Sticky record button con calidad y feedback */}
