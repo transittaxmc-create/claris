@@ -41,7 +41,7 @@ import { UpcomingBillsForm } from "./upcoming-bills-form"
 import { useFinance, applyRealTrips, computeRealWeekTotals } from "./finance-store"
 import { computePanorama, tollBillsToPayments } from "./finance-bridge"
 import { planToCover, hourlyStats, hourlyTotals } from "@/lib/production"
-import { moneyAlerts, spendable, tightestDay } from "@/lib/decisions"
+import { moneyAlerts, tightestDay } from "@/lib/decisions"
 import { reconSummary } from "./reconciliation"
 import {
   daysUntil,
@@ -374,7 +374,7 @@ export function FinanceScreen({
   // Se recuerda en el teléfono (claris_finance_mode).
   const [mode, setMode] = useState<"simple" | "completo">("completo")
   
-  const { startingBalance, reserveBalance, days, setStartingBalance, resetAllData } = useFinance()
+  const { startingBalance, days, setStartingBalance, resetAllData } = useFinance()
   const { getUpcomingExpensesTotal, getInvestableSurplus, getEmergencyPlan } = useFinance()
   const upcomingBills = getUpcomingExpensesTotal(7)
   const { amount: surplus, isSafe } = getInvestableSurplus()
@@ -475,8 +475,16 @@ export function FinanceScreen({
   }, [panorama.shortfall, schedules])
 
   // ---------------------------------------------------------------------------
-  // DECISIONES: el héroe "¿PUEDO GASTAR?" y las tres preguntas.
+  // DECISIONES: las tres preguntas (¿me están pagando?, ¿cuánto llevo hoy?,
+  // ¿me alcanza la semana?).
   // Todo se calcula con lo que ya existe: no se guardan datos nuevos.
+  //
+  // Aquí estaba la tarjeta "¿PUEDO GASTAR?". Se quitó porque leía
+  // `upcomingExpenses` del store mientras el panorama lee
+  // `claris_scheduled_entries`: dos listas distintas de "lo que hay que
+  // pagar", así que la tarjeta decía "sin compromisos pendientes" mientras
+  // el resumen de abajo listaba los pagos. El panorama ya es la respuesta
+  // buena y sale justo debajo.
   // ---------------------------------------------------------------------------
 
   // Meta por hora del conductor (la misma que usa el cronómetro de ENTRY).
@@ -488,24 +496,7 @@ export function FinanceScreen({
     return 55
   }, [])
 
-  // Compromisos de los próximos 7 días: facturas del plan de pagos + pagos
-  // programados. Es lo que hay que dejar apartado antes de gastar.
-  const commitments7d = useMemo(() => {
-    const programados = schedules
-      .filter((s) => {
-        if (s.kind !== "expense" || s.active === false || !s.nextDate) return false
-        const dias = daysUntil(s.nextDate)
-        return dias >= 0 && dias <= 7
-      })
-      .reduce((sum, s) => sum + (Number(s.amount) || 0), 0)
-    return Math.round((upcomingBills + programados) * 100) / 100
-  }, [schedules, upcomingBills])
 
-  // HÉROE: solo cuenta la plata que ya está (el banco).
-  const hero = useMemo(
-    () => spendable({ bank: startingBalance, commitments: commitments7d, reserve: reserveBalance }),
-    [startingBalance, commitments7d, reserveBalance],
-  )
 
   // ¿ME ESTÁN PAGANDO? Esperado menos recibido, y cuántos días lleva el más viejo.
   const porCobrar = useMemo(() => {
@@ -682,100 +673,9 @@ export function FinanceScreen({
         </div>
         {activeTab === "caja" && (
           <div className="space-y-3">
-            {/* HÉROE: un solo número manda. Solo cuenta la plata que ya está. */}
-            <section
-              className={cn(
-                "relative overflow-hidden rounded-2xl border p-3.5",
-                hero.verdict === "corto"
-                  ? "border-rose-500/40 bg-rose-950/20"
-                  : hero.verdict === "ajustado"
-                    ? "border-amber-500/40 bg-amber-950/15"
-                    : "border-yellow-400/35 bg-yellow-400/[0.06]",
-              )}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-[10px] font-bold tracking-[0.13em] text-neutral-400">PUEDO GASTAR</p>
-                <span
-                  className={cn(
-                    "rounded-full px-2 py-0.5 text-[9px] font-bold",
-                    hero.verdict === "corto"
-                      ? "bg-rose-500/15 text-rose-300"
-                      : hero.verdict === "ajustado"
-                        ? "bg-amber-500/15 text-amber-300"
-                        : "bg-emerald-500/15 text-emerald-400",
-                  )}
-                >
-                  {hero.verdict === "corto" ? "ESTOY CORTO" : hero.verdict === "ajustado" ? "AJUSTADO" : "SÍ, CON AIRE"}
-                </span>
-              </div>
 
-              <div
-                className={cn(
-                  "mt-1 text-[40px] font-extrabold leading-none tracking-tight",
-                  hero.amount < 0 ? "text-rose-400" : "text-yellow-400",
-                )}
-              >
-                {money(Math.abs(hero.amount))}
-              </div>
-
-              <p className="mt-1.5 text-[11.5px] leading-snug text-neutral-300">
-                {hero.amount < 0 ? (
-                  <>
-                    Te faltan <strong className="text-rose-300">{money(Math.abs(hero.amount))}</strong> para cubrir los{" "}
-                    <strong className="text-white">{money(commitments7d)}</strong> que vencen en 7 días.
-                  </>
-                ) : (
-                  <>
-                    Saldo del banco menos <strong className="text-white">{money(commitments7d)}</strong> que vencen en 7
-                    días y la reserva <strong className="text-white">{money(reserveBalance)}</strong>.
-                  </>
-                )}
-              </p>
-
-              <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-white/10">
-                <div
-                  className={cn(
-                    "h-full rounded-full transition-all",
-                    hero.coveragePct >= 100 ? "bg-emerald-400" : hero.coveragePct >= 60 ? "bg-amber-400" : "bg-rose-400",
-                  )}
-                  style={{ width: `${Math.min(100, hero.coveragePct)}%` }}
-                />
-              </div>
-              <div className="mt-1.5 flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 text-[9.5px] text-neutral-400">
-                <span className="min-w-0">
-                  {commitments7d <= 0 ? (
-                    <>Sin compromisos pendientes en 7 días</>
-                  ) : hero.coveragePct >= 100 ? (
-                    <>
-                      Cubres los compromisos y sobran{" "}
-                      <strong className="text-emerald-300">
-                        {money(Math.max(0, startingBalance - reserveBalance - commitments7d))}
-                      </strong>
-                    </>
-                  ) : (
-                    <>
-                      <strong className="text-neutral-200">{hero.coveragePct} %</strong> de los compromisos cubiertos
-                    </>
-                  )}
-                </span>
-                {diaAjustado && (
-                  <span className="shrink-0">
-                    aprieta{" "}
-                    <strong className="text-neutral-200">
-                      {diaAjustado.date === localDateKey(new Date())
-                        ? "hoy"
-                        : diaAjustado.date === localDateKey(new Date(Date.now() + 86400000))
-                          ? "mañana"
-                          : diaAjustado.date.slice(5)}
-                    </strong>
-                  </span>
-                )}
-              </div>
-            </section>
-
-            {/* RESUMEN: los cuatro números de la semana, justo debajo del héroe
-                y SIEMPRE visibles (en SIMPLE y en COMPLETO). Es lo que explica
-                el número grande de arriba. */}
+            {/* RESUMEN: los cuatro números de la semana, SIEMPRE visibles
+                (en SIMPLE y en COMPLETO). Es la vista de la semana de un vistazo. */}
             <section
               className={cn(
                 "rounded-2xl border p-3.5",
