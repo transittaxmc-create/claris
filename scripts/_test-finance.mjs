@@ -26,7 +26,7 @@ execFileSync(
 )
 renameSync(join(tmp, "finance-bridge.js"), join(tmp, "finance-bridge.mjs"))
 
-const { groupRealTrips, applyTripsToDays, computeRealWeekTotals, weekdayAverages, computePanorama } = await import(
+const { groupRealTrips, applyTripsToDays, computeRealWeekTotals, weekdayAverages, computePanorama, tollBillsToPayments } = await import(
   pathToFileURL(join(tmp, "finance-bridge.mjs")).href
 )
 
@@ -186,6 +186,71 @@ const cubierto = computePanorama({
 check("con saldo alto cubre", cubierto.covered, true)
 check("sin faltante", cubierto.shortfall, 0)
 check("balance final positivo", cubierto.finalBalance > 0, true)
+
+console.log("\n== PEAJES: la factura del dia entra en el panorama ==")
+// createTollBill acumula los peajes del dia en UNA factura con dueDate
+// (serviceDate + 1). Antes se avisaba de ellas pero no se planificaban: el
+// panorama decia "cubierto" ignorando un pago que vencia al dia siguiente.
+const facturas = [
+  { serviceDate: "2026-09-28", dueDate: "2026-09-29", amount: 45.5, status: "unpaid" },
+  { serviceDate: "2026-09-27", dueDate: "2026-09-28", amount: 12, status: "paid" },   // pagada: fuera
+  { serviceDate: "2026-09-30", dueDate: "2026-10-01", amount: 8.25, status: "unpaid" },
+]
+const pagosPeaje = tollBillsToPayments(facturas)
+check("solo entran las impagas", pagosPeaje.length, 2)
+check("respeta el importe", pagosPeaje[0].amount, 45.5)
+check("usa el dia del servicio en el nombre", pagosPeaje[0].description, "Peajes del 2026-09-28")
+check("vence el dia de la factura", pagosPeaje[0].nextDate, "2026-09-29")
+check("la pagada no aparece", pagosPeaje.some((p) => p.amount === 12), false)
+check("los centavos se conservan", pagosPeaje[1].amount, 8.25)
+
+// Casos raros: no puede reventar ni colar basura
+check("sin lista devuelve vacio", tollBillsToPayments(null), [])
+check("undefined devuelve vacio", tollBillsToPayments(undefined), [])
+check("importe cero se descarta", tollBillsToPayments([{ serviceDate: "2026-09-28", dueDate: "2026-09-29", amount: 0, status: "unpaid" }]), [])
+check("importe negativo se descarta", tollBillsToPayments([{ serviceDate: "2026-09-28", dueDate: "2026-09-29", amount: -5, status: "unpaid" }]), [])
+check("sin estado no entra (igual que el aviso)",
+  tollBillsToPayments([{ serviceDate: "2026-09-28", dueDate: "2026-09-29", amount: 10 }]), [])
+check("sin dueDate usa el dia del servicio",
+  tollBillsToPayments([{ serviceDate: "2026-09-28", amount: 10, status: "unpaid" }])[0].nextDate, "2026-09-28")
+const redondeo = tollBillsToPayments([{ serviceDate: "2026-09-28", dueDate: "2026-09-29", amount: 33.333333, status: "unpaid" }])
+check("redondea a centavos", redondeo[0].amount, 33.33)
+
+// EL CASO QUE IMPORTA: el panorama tiene que ver el peaje y dejar de decir que cubre
+const sinPeajes = computePanorama({
+  startingBalance: 500,
+  days: semana,
+  scheduled: [],
+  expenses: [],
+  trips: historico,
+})
+// El peaje tiene que ser mayor que lo que hay mas lo proyectado, o el balance
+// aguanta y el veredicto no cambia: 500 + 120 (d1) + 100 (proyectado d2) = 720.
+const PEAJE_QUE_DESCUADRA = 750
+const conPeajes = computePanorama({
+  startingBalance: 500,
+  days: semana,
+  scheduled: tollBillsToPayments([{ serviceDate: "2026-09-28", dueDate: "2026-09-29", amount: PEAJE_QUE_DESCUADRA, status: "unpaid" }]),
+  expenses: [],
+  trips: historico,
+})
+check("sin peajes dice que cubre", sinPeajes.covered, true)
+check("con el peaje ya no cubre", conPeajes.covered, false)
+check("y el pago aparece en su dia", conPeajes.days[1].payments[0].description, "Peajes del 2026-09-28")
+check("el pago se suma a la semana", conPeajes.weekPayments, PEAJE_QUE_DESCUADRA)
+check("el balance lo acusa", conPeajes.finalBalance < sinPeajes.finalBalance, true)
+check("y sale el faltante", conPeajes.shortfall > 0, true)
+
+// Un peaje pagado no puede mover el balance: seria contar el dinero dos veces
+const pagado = computePanorama({
+  startingBalance: 500,
+  days: semana,
+  scheduled: tollBillsToPayments([{ serviceDate: "2026-09-28", dueDate: "2026-09-29", amount: PEAJE_QUE_DESCUADRA, status: "paid" }]),
+  expenses: [],
+  trips: historico,
+})
+check("una factura pagada no altera el panorama", pagado.finalBalance, sinPeajes.finalBalance)
+check("y el veredicto sigue siendo cubierto", pagado.covered, true)
 
 rmSync(tmp, { recursive: true, force: true })
 console.log(`\n${"=".repeat(50)}`)

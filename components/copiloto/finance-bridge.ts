@@ -144,6 +144,41 @@ export function weekdayAverages(trips: RealTripInput[]): Record<string, number> 
 
 export type PanoramaPayment = { description: string; amount: number; nextDate: string }
 
+// ---------------------------------------------------------------------------
+// Peajes: la factura del día entra en el panorama como pago con vencimiento
+// ---------------------------------------------------------------------------
+//
+// createTollBill() ya acumula los peajes del día en UNA factura con su dueDate
+// (serviceDate + 1 día). Lo que faltaba era que el panorama la viera: los
+// peajes impagos se AVISABAN (moneyAlerts) pero no se PLANIFICABAN, así que el
+// balance y la cobertura decían "cubierto" ignorando un pago que vence mañana.
+//
+// Solo entran las impagas, y con el mismo criterio que el aviso
+// (status === "unpaid"): si el aviso y el panorama usaran criterios distintos,
+// habría peajes avisados que el panorama ignora. Una pagada ya salió de la
+// cuenta; contarla otra vez sería contar el dinero dos veces.
+
+export type TollBillInput = {
+  serviceDate: string
+  dueDate?: string
+  amount: number
+  status?: string
+}
+
+export function tollBillsToPayments(bills: TollBillInput[] | null | undefined): PanoramaPayment[] {
+  if (!Array.isArray(bills)) return []
+  return bills
+    .filter((b) => b && b.status === "unpaid")
+    .map((b) => ({
+      description: `Peajes del ${String(b.serviceDate ?? "").slice(0, 10)}`,
+      amount: cents(Number(b.amount) || 0) / 100,
+      // Si no hay dueDate se usa el propio día del servicio: mejor contarlo en
+      // su día que perderlo en silencio.
+      nextDate: String(b.dueDate || b.serviceDate || "").slice(0, 10),
+    }))
+    .filter((p) => p.amount > 0 && p.nextDate.length === 10)
+}
+
 export type PanoramaInput = {
   startingBalance: number
   days: FinanceDay[] // semana actual (con actualAmount reales por plataforma)
