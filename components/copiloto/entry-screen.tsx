@@ -402,23 +402,25 @@ export function EntryScreen({
         {/* ============================================== */}
         {/* BOX 1: ECONOMÍA — money fields */}
         {/* ============================================== */}
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3 sm:col-span-2">
+        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-2.5 sm:col-span-2">
           {/* Box header */}
-          <div className="mb-3 flex items-center gap-2">
+          <div className="mb-2 flex items-center gap-2">
             <DollarSign className="size-4 text-emerald-400" />
             <span className="text-[11px] font-bold tracking-wide text-neutral-400">ECONOMÍA</span>
             <div className="ml-auto h-px flex-1 bg-neutral-800" />
           </div>
 
           {/* Row 1: EARNINGS + EXTRA CASH */}
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <MoneyInput
+              size="sm"
               label="EARNINGS"
               color="text-blue-400"
               value={draft.earnings}
               onChange={(n) => set("earnings", n)}
             />
             <MoneyInput
+              size="sm"
               label="EXTRA CASH"
               color="text-green-400"
               value={draft.extraCash}
@@ -427,20 +429,23 @@ export function EntryScreen({
           </div>
 
           {/* Row 2: TIPS + TOLLS + FEE */}
-          <div className="mt-3 flex gap-3">
+          <div className="mt-2 flex gap-2">
             <MoneyInput
+              size="sm"
               label="TIPS"
               color="text-yellow-400"
               value={draft.tips}
               onChange={(n) => set("tips", n)}
             />
             <MoneyInput
+              size="sm"
               label="TOLLS"
               color="text-amber-400"
               value={draft.toll}
               onChange={(n) => set("toll", n)}
             />
             <MoneyInput
+              size="sm"
               label="FEE"
               color="text-rose-400"
               value={draft.platformFee}
