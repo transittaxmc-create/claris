@@ -271,11 +271,11 @@ export function EntryScreen({
 
   const greeting = now
     ? now.getHours() < 12
-      ? "Good morning"
+      ? "Buenos días"
       : now.getHours() < 18
-        ? "Good afternoon"
-        : "Good evening"
-    : "Good morning"
+        ? "Buenas tardes"
+        : "Buenas noches"
+    : "Buenos días"
 
   function handleSave() {
     if (lowAccuracy) return
