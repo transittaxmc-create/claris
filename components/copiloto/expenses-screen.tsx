@@ -142,10 +142,13 @@ export function ExpensesScreen({
   expenses,
   onSave,
   onDelete,
+  onScanReceipt,
 }: {
   expenses: Expense[]
   onSave: (e: Expense) => void
   onDelete: (id: string) => void
+  /** Abre el escáner nuevo, a pantalla completa. Si no viene, se usa el de antes. */
+  onScanReceipt?: () => void
 }) {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [search, setSearch] = useState("")
@@ -384,7 +387,7 @@ export function ExpensesScreen({
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => cameraInputRef.current?.click()}
+                onClick={() => (onScanReceipt ? onScanReceipt() : cameraInputRef.current?.click())}
                 disabled={isScanning}
                 aria-label="Escanear recibo con cámara"
                 className="flex items-center gap-1 rounded-full border border-sky-500/50 bg-sky-950/40 px-2.5 py-1.5 text-[11px] font-bold text-sky-300 hover:bg-sky-900/50 active:scale-95 disabled:opacity-50"

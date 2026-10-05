@@ -20,6 +20,7 @@ import {
   FileSpreadsheet,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { sinSemillas } from "./cash-flow-store"
 import {
   money,
   type CashFlowEntry,
@@ -58,65 +59,24 @@ export function CashFlowRegister({
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
-      if (saved) {
-        setEntries(JSON.parse(saved))
-      } else {
-        const today = new Date().toISOString().slice(0, 10)
-        const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
-        const inThreeDays = new Date(Date.now() + 86400000 * 3).toISOString().slice(0, 10)
+      const parsed = saved ? JSON.parse(saved) : []
+      const lista: CashFlowEntry[] = Array.isArray(parsed) ? parsed : []
 
-        const initialSeeds: CashFlowEntry[] = [
-          {
-            id: "seed-1",
-            date: today,
-            description: "Depósito Semanal Uber",
-            source: "bank",
-            sourceLabel: "Banco Chase",
-            type: "income",
-            status: "actual",
-            amount: 485.5,
-            category: "Ingreso Conducción",
-            createdAt: new Date().toISOString(),
-          },
-          {
-            id: "seed-2",
-            date: today,
-            description: "Gasolina Shell Autopista",
-            source: "receipt",
-            sourceLabel: "Recibo Escaneado",
-            type: "expense",
-            status: "actual",
-            amount: 45.0,
-            category: "Combustible",
-            createdAt: new Date().toISOString(),
-          },
-          {
-            id: "seed-3",
-            date: tomorrow,
-            description: "Ingreso estimado Lyft jornada",
-            source: "projection",
-            sourceLabel: "Proyección",
-            type: "income",
-            status: "projected",
-            amount: 180.0,
-            category: "Proyección Ingresos",
-            createdAt: new Date().toISOString(),
-          },
-          {
-            id: "seed-4",
-            date: inThreeDays,
-            description: "Factura E-ZPass Peajes Quincenal",
-            source: "projection",
-            sourceLabel: "Proyección",
-            type: "expense",
-            status: "projected",
-            amount: 65.25,
-            category: "Peajes",
-            createdAt: new Date().toISOString(),
-          },
-        ]
-        setEntries(initialSeeds)
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(initialSeeds))
+      // Las cuatro semillas de ejemplo (seed-1..seed-4) se plantaban la primera
+      // vez que se abria esta pestana: un deposito de Uber, gasolina, un ingreso
+      // de Lyft y una factura de E-ZPass que NO eran del usuario, cada una con su
+      // saldo acumulado. Se veian igual que un movimiento real, nadie las
+      // borraba, y producian un "BALANCE REAL (BANCO)" que no era de nadie.
+      //
+      // Se quitan por id EXACTO (ver cash-flow-store.ts), nunca por prefijo: en
+      // la otra app, purgar por prefijo borro datos del usuario y le vacio los
+      // saldos.
+      const limpio = sinSemillas(lista)
+
+      setEntries(limpio)
+      // Si habia semillas guardadas, se reescribe para que no vuelvan.
+      if (limpio.length !== lista.length) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(limpio))
       }
     } catch {
       // fallback
