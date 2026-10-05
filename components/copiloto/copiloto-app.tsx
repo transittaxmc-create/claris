@@ -5,6 +5,7 @@ import { AlertTriangle, Check } from "lucide-react"
 import { BottomNav, TABS_EN_MAS, type Tab } from "./bottom-nav"
 import { AIScreen } from "./ai-screen"
 import { DataScreen } from "./data-screen"
+import { DashScreen } from "./dash-screen"
 import { EntryScreen } from "./entry-screen"
 import { ExpensesScreen } from "./expenses-screen"
 import { FinanceScreen } from "./finance-screen"
@@ -636,6 +637,9 @@ export function CopilotoApp() {
                   onDisconnectSync={disconnectSync}
                 />
               )}
+              {tab === "DASH" && (
+                <DashScreen trips={trips} expenses={expenses} />
+              )}
               {tab === "REPORTS" && <ReportsScreen trips={trips} expenses={expenses} />}
               {tab !== "ENTRY" &&
                 tab !== "REGISTER" &&
@@ -643,7 +647,8 @@ export function CopilotoApp() {
                 tab !== "FINANCE" &&
                 tab !== "REPORTS" &&
                 tab !== "AI" &&
-                tab !== "DATA" && <Placeholder label={tab} />}
+                tab !== "DATA" &&
+                tab !== "DASH" && <Placeholder label={tab} />}
             </>
           )}
         </main>

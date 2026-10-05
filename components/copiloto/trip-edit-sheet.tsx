@@ -271,7 +271,9 @@ export function TripEditSheet({
         <div className="flex gap-3 border-t border-neutral-800 px-4 py-3">
           <button
             type="button"
-            onClick={() => onDelete(draft.id)}
+            onClick={() => {
+              if (window.confirm("¿Eliminar este viaje? Esta acción no se puede deshacer.")) onDelete(draft.id)
+            }}
             className="flex items-center justify-center gap-1.5 rounded-xl border border-red-500/50 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-400"
           >
             <Trash2 className="size-4" />
