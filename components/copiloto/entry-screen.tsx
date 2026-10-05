@@ -302,9 +302,9 @@ export function EntryScreen({
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 px-5 pt-4 sm:px-8 sm:pt-5">
+      <div className="flex items-start justify-between gap-3 px-4 pt-2 sm:px-8 sm:pt-3">
         <div className="min-w-0">
-          <h1 className="truncate text-xl font-bold text-white">{greeting}</h1>
+          <h1 className="truncate text-lg font-bold text-white">{greeting}</h1>
           <p className="text-xs text-neutral-500" suppressHydrationWarning>
             {now
               ? `${now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} ${now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`
@@ -312,7 +312,7 @@ export function EntryScreen({
           </p>
           {/* From the GPS: CALLE, CIUDAD */}
           <p
-            className="mt-1 flex items-center gap-1 text-xs"
+            className="mt-0.5 flex items-center gap-1 text-xs"
             title={place?.address || undefined}
             suppressHydrationWarning
           >
@@ -468,32 +468,6 @@ export function EntryScreen({
         </section>
 
         {/* ============================================== */}
-        {/* BOX 2: CRONÓMETRO — timer + REF + HOY + MIS HORAS */}
-        {/* ============================================== */}
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3 sm:col-span-2">
-          {/* Box header */}
-          <div className="mb-3 flex items-center gap-2">
-            <Timer className="size-4 text-yellow-400" />
-            <span className="text-[11px] font-bold tracking-wide text-neutral-400">CRONÓMETRO</span>
-            <div className="ml-auto h-px flex-1 bg-neutral-800" />
-          </div>
-
-          {/* REF / INVOICE + HourlyProduction (timer + HOY + MIS HORAS + stats) */}
-          <div className="grid grid-cols-[minmax(0,0.48fr)_minmax(0,1.52fr)] items-end gap-2">
-            <label className="flex min-w-0 flex-col gap-1">
-              <span className="text-[10px] font-bold tracking-wide text-neutral-500">REF / INVOICE</span>
-              <input
-                value={draft.ref}
-                onChange={(e) => set("ref", e.target.value)}
-                placeholder="Reference"
-                className="min-h-[2.65rem] rounded-lg border border-neutral-800 bg-neutral-950 px-2 py-1.5 text-xs text-white outline-none placeholder:text-neutral-600 focus:border-neutral-600"
-              />
-            </label>
-            <HourlyProduction trips={trips} />
-          </div>
-        </section>
-
-        {/* ============================================== */}
         {/* BOX 3: UBICACIONES — PICKUP + DROPOFF              */}
         {/* ============================================== */}
         <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3 sm:col-span-2">
@@ -535,6 +509,32 @@ export function EntryScreen({
           {geoError && (
             <p className="mt-2 text-center text-[11px] font-semibold text-rose-400">{geoError}</p>
           )}
+        </section>
+
+{/* ============================================== */}
+        {/* BOX 2: CRONÓMETRO — timer + REF + HOY + MIS HORAS */}
+        {/* ============================================== */}
+        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3 sm:col-span-2">
+          {/* Box header */}
+          <div className="mb-3 flex items-center gap-2">
+            <Timer className="size-4 text-yellow-400" />
+            <span className="text-[11px] font-bold tracking-wide text-neutral-400">CRONÓMETRO</span>
+            <div className="ml-auto h-px flex-1 bg-neutral-800" />
+          </div>
+
+          {/* REF / INVOICE + HourlyProduction (timer + HOY + MIS HORAS + stats) */}
+          <div className="grid grid-cols-[minmax(0,0.48fr)_minmax(0,1.52fr)] items-end gap-2">
+            <label className="flex min-w-0 flex-col gap-1">
+              <span className="text-[10px] font-bold tracking-wide text-neutral-500">REF / INVOICE</span>
+              <input
+                value={draft.ref}
+                onChange={(e) => set("ref", e.target.value)}
+                placeholder="Reference"
+                className="min-h-[2.65rem] rounded-lg border border-neutral-800 bg-neutral-950 px-2 py-1.5 text-xs text-white outline-none placeholder:text-neutral-600 focus:border-neutral-600"
+              />
+            </label>
+            <HourlyProduction trips={trips} />
+          </div>
         </section>
       </div>
 
