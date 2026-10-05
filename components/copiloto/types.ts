@@ -75,10 +75,122 @@ export type CashFlowEntry = {
   status: CashFlowStatus
   amount: number
   category?: string
+  // Cuenta bancaria a la que pertenece (ver BankAccount). Vacío = sin asignar.
+  accountId?: string
+  // Marcado al conciliar contra el statement mensual.
+  reconciled?: boolean
   // Escaneos y extractos son 100% editables; solo se marca como editado.
   isManuallyEdited?: boolean
   notes?: string
   createdAt?: string
+}
+
+// ---------------------------------------------------------------------------
+// Registro bancario: cuentas + reglas recurrentes
+// ---------------------------------------------------------------------------
+
+export type BankAccount = {
+  id: string
+  name: string // "Chase", "TD Bank", ...
+  last4?: string // últimos 4 dígitos (opcional)
+  // Saldo de apertura: punto de partida del balance real de esta cuenta.
+  openingBalance?: number
+  createdAt: string
+}
+
+export function newBankAccount(name: string, last4?: string): BankAccount {
+  return {
+    id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `cta-${Date.now()}`,
+    name: name.trim(),
+    last4: (last4 || "").replace(/\D/g, "").slice(-4) || undefined,
+    createdAt: new Date().toISOString(),
+  }
+}
+
+// Regla recurrente: genera movimientos PROYECTADOS (nunca tocan el saldo real).
+// Frecuencia: once | daily | weekly | monthly | annual (ver ScheduleFrequency).
+export type RecurringRule = {
+  id: string
+  accountId?: string
+  kind: "income" | "expense"
+  description: string
+  category?: string
+  amount: number
+  frequency: ScheduleFrequency
+  startDate: string // YYYY-MM-DD
+  endDate?: string // hasta cuándo; vacío = se expande 12 meses
+  active: boolean
+  createdAt: string
+}
+
+export function newRecurringRule(init: Partial<RecurringRule> & { kind: "income" | "expense"; description: string; amount: number; startDate: string }): RecurringRule {
+  return {
+    id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `regla-${Date.now()}`,
+    frequency: "monthly",
+    active: true,
+    createdAt: new Date().toISOString(),
+    ...init,
+  } as RecurringRule
+}
+
+// Firma estable de un movimiento bancario: cuenta + fecha + centavos +
+// descripción normalizada. Dos lecturas del mismo movimiento (dos screenshots
+// del banco) generan el mismo id, así upsertMovimiento lo actualiza en vez de
+// duplicarlo. Tolerancia de 1 centavo por redondeos de OCR.
+export function bankMoveId(accountId: string, date: string, amount: unknown, description: unknown): string {
+  const cents = expenseCents(amount)
+  const slug = normalizeVendorName(description).replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "mov"
+  return `claris:banco:${accountId}:${String(date).slice(0, 10)}:${cents}:${slug}`
+}
+
+// Expande una regla recurrente en movimientos proyectados entre dos fechas.
+// Los ids son deterministas ("claris:regla:<id>:<fecha>") para no duplicar.
+export function expandRecurringRule(rule: RecurringRule, fromDate: string, toDate: string): CashFlowEntry[] {
+  if (!rule.active) return []
+  const out: CashFlowEntry[] = []
+  const end = rule.endDate && rule.endDate < toDate ? rule.endDate : toDate
+  // "once": una sola ocurrencia si cae en el rango.
+  if (rule.frequency === "once") {
+    if (rule.startDate >= fromDate && rule.startDate <= end) {
+      out.push(recurringEntry(rule, rule.startDate))
+    }
+    return out
+  }
+  let d = rule.startDate < fromDate ? advanceToRange(rule, fromDate) : rule.startDate
+  let guard = 0
+  while (d <= end && guard < 400) {
+    out.push(recurringEntry(rule, d))
+    d = nextOccurrenceDate(d, rule.frequency)
+    guard++
+  }
+  return out
+}
+
+function recurringEntry(rule: RecurringRule, date: string): CashFlowEntry {
+  return {
+    id: `claris:regla:${rule.id}:${date}`,
+    date,
+    description: rule.description,
+    source: "projection",
+    sourceLabel: "Recurrente",
+    type: rule.kind,
+    status: "projected",
+    amount: Math.round((Number(rule.amount) || 0) * 100) / 100,
+    category: rule.category,
+    accountId: rule.accountId,
+    createdAt: new Date().toISOString(),
+  }
+}
+
+// Avanza la fecha de una regla hasta alcanzar el inicio del rango visible.
+function advanceToRange(rule: RecurringRule, fromDate: string): string {
+  let d = rule.startDate
+  let guard = 0
+  while (d < fromDate && guard < 400) {
+    d = nextOccurrenceDate(d, rule.frequency)
+    guard++
+  }
+  return d
 }
 
 export type Expense = {

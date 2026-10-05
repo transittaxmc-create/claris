@@ -650,7 +650,7 @@ export function FinanceScreen({
           {(
             [
               ["caja", "Corrida de Caja"],
-              ["libro", "Libro Mayor"],
+              ["libro", "Registro"],
               ["plan", "Plan de Pagos"],
               ["peajes", "Peajes"],
               ["gastos", "Mis Gastos"],

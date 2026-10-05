@@ -98,3 +98,128 @@ export function guardarMovimiento(nuevo: CashFlowEntry): CashFlowEntry[] {
   } catch {}
   return next
 }
+
+// ============================================================================
+// REGISTRO BANCARIO: cuentas + reglas recurrentes
+//
+// Las cuentas permiten llevar 2, 3 o 4 bancos con su balance cada uno. Cada
+// movimiento lleva accountId (opcional: los viejos quedan "sin asignar").
+// Las reglas recurrentes generan movimientos PROYECTADOS (ingresos y gastos
+// con frecuencia once/daily/weekly/monthly/annual y fecha de fin).
+// ============================================================================
+
+import type { BankAccount, CashFlowEntry, RecurringRule } from "./types"
+import { bankMoveId, expandRecurringRule, newRecurringRule } from "./types"
+
+export const CUENTAS_KEY = "claris_bank_accounts"
+export const REGLAS_KEY = "claris_recurring_rules"
+
+function leerJSON<T>(key: string): T[] {
+  try {
+    const raw = localStorage.getItem(key)
+    if (!raw) return []
+    const v = JSON.parse(raw)
+    return Array.isArray(v) ? v : []
+  } catch {
+    return []
+  }
+}
+
+function guardarJSON(key: string, value: unknown[]) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value))
+  } catch {}
+}
+
+// ---------------- Cuentas ----------------
+
+export function leerCuentas(): BankAccount[] {
+  return leerJSON<BankAccount>(CUENTAS_KEY)
+}
+
+export function guardarCuenta(name: string, last4?: string): BankAccount[] {
+  const cuentas = leerCuentas()
+  const nueva = newBankAccount(name, last4)
+  const next = [...cuentas, nueva]
+  guardarJSON(CUENTAS_KEY, next)
+  return next
+}
+
+export function eliminarCuenta(id: string): BankAccount[] {
+  const next = leerCuentas().filter((c) => c.id !== id)
+  guardarJSON(CUENTAS_KEY, next)
+  return next
+}
+
+// ---------------- Reglas recurrentes ----------------
+
+export function leerReglas(): RecurringRule[] {
+  return leerJSON<RecurringRule>(REGLAS_KEY)
+}
+
+export function guardarRegla(rule: RecurringRule): RecurringRule[] {
+  const reglas = leerReglas()
+  const next = reglas.some((r) => r.id === rule.id)
+    ? reglas.map((r) => (r.id === rule.id ? rule : r))
+    : [...reglas, rule]
+  guardarJSON(REGLAS_KEY, next)
+  return next
+}
+
+export function crearRegla(init: Parameters<typeof newRecurringRule>[0]): { reglas: RecurringRule[]; regla: RecurringRule } {
+  const regla = newRecurringRule(init)
+  return { reglas: guardarRegla(regla), regla }
+}
+
+export function eliminarRegla(id: string): RecurringRule[] {
+  const next = leerReglas().filter((r) => r.id !== id)
+  guardarJSON(REGLAS_KEY, next)
+  return next
+}
+
+export function alternarRegla(id: string): RecurringRule[] {
+  const next = leerReglas().map((r) => (r.id === id ? { ...r, active: !r.active } : r))
+  guardarJSON(REGLAS_KEY, next)
+  return next
+}
+
+// Expande todas las reglas activas en movimientos proyectados para el rango.
+export function movimientosProyectadosDeReglas(fromDate: string, toDate: string): CashFlowEntry[] {
+  return leerReglas().flatMap((r) => expandRecurringRule(r, fromDate, toDate))
+}
+
+// ---------------- Movimientos bancarios (importación AI) ----------------
+
+// Crea un movimiento bancario REAL con id determinista anti-duplicados:
+// la misma transacción leída en dos screenshots genera el mismo id.
+export function movimientoDeBanco(
+  accountId: string,
+  input: { date: string; description: string; amount: number; type: "income" | "expense"; category?: string },
+): CashFlowEntry {
+  const cents = Math.round((Number(input.amount) || 0) * 100) / 100
+  return {
+    id: bankMoveId(accountId, input.date, cents, input.description),
+    date: String(input.date).slice(0, 10),
+    description: input.description.trim() || "Movimiento",
+    source: "bank",
+    sourceLabel: "Banco",
+    type: input.type,
+    status: "actual",
+    amount: cents,
+    category: input.category,
+    accountId,
+    createdAt: new Date().toISOString(),
+  }
+}
+
+// Cuenta cuántos de los candidatos ya existen (para el resumen "N nuevas, M duplicadas").
+export function contarDuplicados(candidatos: CashFlowEntry[]): { nuevas: number; duplicadas: number } {
+  const existentes = new Set(leerLibroMayor().map((e) => e.id))
+  let nuevas = 0
+  for (const c of candidatos) {
+    if (existentes.has(c.id)) continue
+    existentes.add(c.id)
+    nuevas++
+  }
+  return { nuevas, duplicadas: candidatos.length - nuevas }
+}
