@@ -28,6 +28,8 @@ export async function POST(req: Request) {
     const systemPrompt = `Eres Claris AI Copiloto, un asistente inteligente experto en contabilidad, finanzas personales, análisis de productividad y optimización de ganancias para conductores y repartidores de plataformas (Uber, Lyft, DoorDash, Aventus Ride, taxis y transporte).
 
 INFORMACIÓN DEL USUARIO EN TIEMPO REAL:
+- Sección abierta en la aplicación: ${context?.currentSection || "Copiloto"}
+- Adapta tus instrucciones a esta pantalla y sugiere pasos concretos dentro de Claris cuando sea útil.
 - Resumen General de Viajes: ${context?.tripsSummary || "Sin viajes registrados"}
 - Total Viajes Registrados: ${context?.tripsCount || 0}
 - Ingresos Brutos Totales (Gross): $${Number(context?.totalGross || context?.totalIncome || 0).toFixed(2)}

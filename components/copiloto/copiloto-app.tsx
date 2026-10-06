@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { AlertTriangle, Check } from "lucide-react"
+import { AlertTriangle, Check, Sparkles } from "lucide-react"
 import { BottomNav, TABS_EN_MAS, type Tab } from "./bottom-nav"
 import { AIScreen } from "./ai-screen"
 import { DataScreen } from "./data-screen"
@@ -82,6 +82,7 @@ export function CopilotoApp() {
   const [syncing, setSyncing] = useState(false)
   // El escáner de recibos: pantalla completa, encima de todo.
   const [scannerOpen, setScannerOpen] = useState(false)
+  const [assistantOpen, setAssistantOpen] = useState(false)
   // Aviso de "copia vieja": si este teléfono abrió una URL de preview antigua,
   // se compara su versión con la de producción y se ofrece el enlace bueno.
   const [mas, setMas] = useState(false)
@@ -94,6 +95,25 @@ export function CopilotoApp() {
   const expenseTombstonesRef = useRef<Tombstones>({})
   const savedTimer = useRef<number | null>(null)
   const autoSynced = useRef(false)
+  const sectionNames: Record<Tab, string> = {
+    ENTRY: "Inicio y registro de viaje",
+    REGISTER: "Cobros y reconciliación",
+    EXPENSES: "Gastos",
+    DASH: "Panel del día",
+    FINANCE: "Finanzas",
+    REPORTS: "Reportes",
+    AI: "Copiloto",
+    DATA: "Datos y copias de seguridad",
+  }
+
+  useEffect(() => {
+    if (!assistantOpen) return
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setAssistantOpen(false)
+    }
+    window.addEventListener("keydown", closeOnEscape)
+    return () => window.removeEventListener("keydown", closeOnEscape)
+  }, [assistantOpen])
 
   useEffect(() => {
     tripsRef.current = trips
@@ -611,10 +631,11 @@ export function CopilotoApp() {
                 <AIScreen
                   trips={trips}
                   expenses={expenses}
+                  currentSection={sectionNames[tab]}
                   onApplyBankMatches={applyBankMatches}
-  onApplyExpenseUpdates={applyExpenseUpdates}
-  onApplySchedules={applySchedules}
-  />
+                  onApplyExpenseUpdates={applyExpenseUpdates}
+                  onApplySchedules={applySchedules}
+                />
               )}
               {tab === "DATA" && (
                 <DataScreen
@@ -652,6 +673,18 @@ export function CopilotoApp() {
             </>
           )}
         </main>
+
+        {hydrated && tab !== "AI" && !scannerOpen && (
+          <button
+            type="button"
+            onClick={() => setAssistantOpen(true)}
+            aria-label="Abrir copiloto por voz o texto"
+            className="absolute bottom-[calc(5.25rem+env(safe-area-inset-bottom))] right-4 z-30 flex min-h-12 items-center gap-2 rounded-full border border-yellow-300/40 bg-yellow-400 px-4 text-sm font-extrabold text-black shadow-lg shadow-black/50 transition hover:bg-yellow-300"
+          >
+            <Sparkles className="size-4" />
+            <span>Copiloto</span>
+          </button>
+        )}
 
         {/* Copia vieja: este teléfono abrió una URL de preview antigua. Se avisa
             arriba, con el enlace a la versión buena, y se puede cerrar. */}
@@ -702,6 +735,32 @@ export function CopilotoApp() {
 
         <BottomNav active={tab} onChange={setTab} onOpenMore={() => setMas(true)} />
       </div>
+
+      {assistantOpen && tab !== "AI" && (
+        <div
+          className="fixed inset-0 z-[60] flex items-end justify-center bg-black/75 pt-[env(safe-area-inset-top)] sm:items-center sm:p-6"
+          onClick={() => setAssistantOpen(false)}
+          role="presentation"
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-label="Copiloto de Claris"
+            className="h-[min(88dvh,760px)] w-full max-w-[780px] overflow-hidden rounded-t-3xl border border-neutral-800 bg-black shadow-2xl sm:h-[min(82dvh,760px)] sm:rounded-3xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <AIScreen
+              trips={trips}
+              expenses={expenses}
+              currentSection={sectionNames[tab]}
+              onClose={() => setAssistantOpen(false)}
+              onApplyBankMatches={applyBankMatches}
+              onApplyExpenseUpdates={applyExpenseUpdates}
+              onApplySchedules={applySchedules}
+            />
+          </section>
+        </div>
+      )}
 
       {/* MÁS: las cuatro secciones que no caben abajo, con nombre completo. */}
       {mas && (
