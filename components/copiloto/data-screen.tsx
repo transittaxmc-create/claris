@@ -217,15 +217,15 @@ export function DataScreen({
           )}
         </section>
 
-        {/* Sincronización entre teléfonos */}
+        {/* Sincronización privada entre dispositivos */}
         <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
           <div className="mb-1 flex items-center gap-2">
             {syncCode ? <Cloud className="size-4 text-green-400" /> : <CloudOff className="size-4 text-neutral-500" />}
-            <h2 className="text-xs font-bold tracking-wide text-neutral-200">SINCRONIZAR CON OTRO TELÉFONO</h2>
+            <h2 className="text-xs font-bold tracking-wide text-neutral-200">SINCRONIZAR TUS DISPOSITIVOS</h2>
           </div>
           <p className="mb-2 text-[10px] leading-tight text-neutral-500">
-            Escribe el mismo código privado en tus dos teléfonos. Los viajes se cifran aquí antes de salir y nadie más
-            (ni el servidor) puede leerlos. Sin código no hay sincronización.
+            Usa el mismo código privado en tu teléfono y laptop. Tus datos se cifran en cada dispositivo antes de
+            sincronizarse; solo tú puedes descifrarlos. Sin código no hay sincronización.
           </p>
 
           {syncCode ? (

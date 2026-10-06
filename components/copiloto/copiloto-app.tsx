@@ -467,7 +467,7 @@ export function CopilotoApp() {
       } else if (result.reason === "not_configured") {
         setSyncTone("info")
         setSyncMessage(
-          "Falta activar la base de datos de sync en Vercel (Storage → KV). Mientras tanto puedes usar EXPORTAR/IMPORTAR JSON.",
+          "Falta configurar el almacenamiento de sincronización en el servidor (Supabase o KV). Mientras tanto puedes usar EXPORTAR/IMPORTAR JSON.",
         )
       } else {
         setSyncTone("error")
