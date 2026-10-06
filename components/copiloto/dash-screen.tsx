@@ -3,7 +3,7 @@
 import { useMemo } from "react"
 import { Banknote, Car, CircleAlert, PiggyBank, ReceiptText, Wallet } from "lucide-react"
 import { localDateKey } from "@/lib/dates"
-import { grossOf, money, netOf, type Expense, type Trip } from "./types"
+import { grossOf, money, netOf, tripDateOf, type Expense, type Trip } from "./types"
 import { PlatformAvatar } from "./platform-avatar"
 
 function StatCard({
@@ -23,25 +23,26 @@ function StatCard({
         {icon}
         <span className="text-[10px] font-bold tracking-wide text-neutral-500">{label}</span>
       </div>
-      <p className={`mt-1 text-xl font-extrabold ${valueClass}`}>{value}</p>
+      <p className={`mt-1 text-xl font-extrabold tabular-nums ${valueClass}`}>{value}</p>
     </div>
   )
 }
 
 export function DashScreen({ trips, expenses }: { trips: Trip[]; expenses: Expense[] }) {
   const today = localDateKey(new Date())
+  const todayTrips = useMemo(() => trips.filter((trip) => tripDateOf(trip) === today), [trips, today])
 
   const data = useMemo(() => {
-    const gross = trips.reduce((s, t) => s + grossOf(t), 0)
-    const fee = trips.reduce((s, t) => s + (Number(t.platformFee) || 0), 0)
+    const gross = todayTrips.reduce((s, t) => s + grossOf(t), 0)
+    const fee = todayTrips.reduce((s, t) => s + (Number(t.platformFee) || 0), 0)
     const net = gross - fee
-    const tips = trips.reduce((s, t) => s + (Number(t.tips) || 0), 0)
-    const tolls = trips.reduce((s, t) => s + (Number(t.toll) || 0), 0)
-    const pending = trips.filter((t) => t.status === "pending")
+    const tips = todayTrips.reduce((s, t) => s + (Number(t.tips) || 0), 0)
+    const tolls = todayTrips.reduce((s, t) => s + (Number(t.toll) || 0), 0)
+    const pending = todayTrips.filter((t) => t.status === "pending")
     const pendingAmount = pending.reduce((s, t) => s + netOf(t), 0)
 
     const byPlatform = new Map<string, { gross: number; count: number }>()
-    for (const t of trips) {
+    for (const t of todayTrips) {
       const g = byPlatform.get(t.platform) ?? { gross: 0, count: 0 }
       g.gross += grossOf(t)
       g.count += 1
@@ -54,8 +55,8 @@ export function DashScreen({ trips, expenses }: { trips: Trip[]; expenses: Expen
     const expensesToday = expenses.filter((e) => e.date === today)
     const expensesTotal = expensesToday.reduce((s, e) => s + (Number(e.amount) || 0), 0)
 
-    return { gross, net, tips, tolls, pending, pendingAmount, platforms, expensesTotal, count: trips.length }
-  }, [trips, expenses, today])
+    return { gross, net, tips, tolls, pending, pendingAmount, platforms, expensesTotal, count: todayTrips.length }
+  }, [todayTrips, expenses, today])
 
   const fecha = new Date().toLocaleDateString("es-US", {
     weekday: "long",

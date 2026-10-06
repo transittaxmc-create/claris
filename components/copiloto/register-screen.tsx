@@ -419,7 +419,7 @@ export function RegisterScreen({
   const filterChips: { key: Filter; label: string; count: number }[] = [
     { key: "ALL", label: "TODOS", count: counts.all },
     { key: "PENDING", label: "PENDIENTES", count: counts.pending },
-    { key: "MATCHED", label: "MATCHED", count: counts.matched },
+    { key: "MATCHED", label: "PAGADOS", count: counts.matched },
     { key: "DIFF", label: "DIFERENCIA", count: counts.diff },
   ]
 

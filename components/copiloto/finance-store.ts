@@ -6,13 +6,18 @@
 // clave claris_finance_week_v1. El hook re-renderiza con useSyncExternalStore.
 
 import { useSyncExternalStore } from "react"
-import { applyTripsToDays, computeRealWeekTotals as computeRealTotals, type RealTripInput } from "./finance-bridge"
+import {
+  applyTripsToDays,
+  computeRealWeekTotals as computeRealTotals,
+  effectivePlatformAmount,
+  type RealTripInput,
+} from "./finance-bridge"
 import { localDateKey } from "@/lib/dates"
 
 export interface IncomePlatform {
   platformName: string
   projectedAmount: number
-  actualAmount: number
+  actualAmount: number | null
 }
 
 export interface DayData {
@@ -78,6 +83,7 @@ const makeId = () => Math.random().toString(36).slice(2, 10)
 const todayIso = () => localDateKey(new Date())
 
 type FinanceState = {
+  schemaVersion: 2
   startingBalance: number
   reserveBalance: number
   days: DayData[]
@@ -100,13 +106,14 @@ function buildWeekDays(startDate?: Date): DayData[] {
       platforms: DEFAULT_PLATFORMS.map((platformName) => ({
         platformName,
         projectedAmount: 0,
-        actualAmount: 0,
+        actualAmount: null,
       })),
     }
   })
 }
 
 const INITIAL: FinanceState = {
+  schemaVersion: 2,
   startingBalance: 0,
   reserveBalance: 0,
   days: [],
@@ -125,10 +132,29 @@ function notify() {
 function sanitize(parsed: unknown): FinanceState {
   if (!parsed || typeof parsed !== "object") return { ...INITIAL, days: buildWeekDays() }
   const p = parsed as Partial<FinanceState>
+  const hasExplicitActuals = p.schemaVersion === 2
+  const days = Array.isArray(p.days) && p.days.length > 0 ? p.days : buildWeekDays()
   return {
+    schemaVersion: 2,
     startingBalance: Number(p.startingBalance) || 0,
     reserveBalance: Number(p.reserveBalance) || 0,
-    days: Array.isArray(p.days) && p.days.length > 0 ? (p.days as DayData[]) : buildWeekDays(),
+    days: days.map((day) => ({
+      ...day,
+      platforms: Array.isArray(day.platforms)
+        ? day.platforms.map((platform) => {
+            const actual = Number(platform.actualAmount)
+            return {
+              ...platform,
+              actualAmount:
+                hasExplicitActuals && platform.actualAmount !== null && Number.isFinite(actual)
+                  ? actual
+                  : !hasExplicitActuals && Number.isFinite(actual) && actual !== 0
+                    ? actual
+                    : null,
+            }
+          })
+        : [],
+    })),
     upcomingExpenses: Array.isArray(p.upcomingExpenses) ? (p.upcomingExpenses as UpcomingExpense[]) : [],
     loggedExpenses: Array.isArray(p.loggedExpenses) ? (p.loggedExpenses as LoggedExpense[]) : [],
   }
@@ -196,7 +222,7 @@ export function updatePlatformAmount(
   dayId: string,
   platformName: string,
   field: "projectedAmount" | "actualAmount",
-  value: number,
+  value: number | null,
 ) {
   hydrate()
   set({
@@ -206,7 +232,7 @@ export function updatePlatformAmount(
         : {
             ...d,
             platforms: d.platforms.map((p) =>
-              p.platformName === platformName ? { ...p, [field]: Number(value) || 0 } : p,
+              p.platformName === platformName ? { ...p, [field]: field === "actualAmount" ? value : Number(value) || 0 } : p,
             ),
           },
     ),
@@ -352,7 +378,7 @@ export function getDailyRunningBalances(): {
   const s = snapshot()
   let running = s.startingBalance
   return s.days.map((d) => {
-    const dayTotal = d.platforms.reduce((acc, p) => acc + (Number(p.actualAmount) || Number(p.projectedAmount) || 0), 0)
+    const dayTotal = d.platforms.reduce((acc, p) => acc + effectivePlatformAmount(p), 0)
     running += dayTotal
     return {
       dayId: d.id,
@@ -388,6 +414,4 @@ export function useFinance() {
     getDailyRunningBalances,
   }
 }
-
-
 

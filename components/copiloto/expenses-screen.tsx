@@ -62,7 +62,7 @@ function StatCard({ label, value, valueClass }: { label: string; value: string; 
   return (
     <div className="flex flex-1 flex-col items-center gap-1 rounded-2xl border border-neutral-800 bg-neutral-900/50 px-2 py-3">
       <span className="text-[10px] font-bold tracking-wide text-neutral-500">{label}</span>
-      <span className={cn("text-lg font-extrabold", valueClass)}>{value}</span>
+      <span className={cn("text-lg font-extrabold tabular-nums", valueClass)}>{value}</span>
     </div>
   )
 }
