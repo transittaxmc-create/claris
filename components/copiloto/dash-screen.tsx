@@ -3,7 +3,7 @@
 import { useMemo } from "react"
 import { Banknote, Car, CircleAlert, PiggyBank, ReceiptText, Wallet } from "lucide-react"
 import { localDateKey } from "@/lib/dates"
-import { grossOf, money, netOf, tripDateOf, type Expense, type Trip } from "./types"
+import { grossOf, money, netOf, tripDateOf, type Expense, type Platform, type Trip } from "./types"
 import { PlatformAvatar } from "./platform-avatar"
 
 function StatCard({
@@ -41,7 +41,7 @@ export function DashScreen({ trips, expenses }: { trips: Trip[]; expenses: Expen
     const pending = todayTrips.filter((t) => t.status === "pending")
     const pendingAmount = pending.reduce((s, t) => s + netOf(t), 0)
 
-    const byPlatform = new Map<string, { gross: number; count: number }>()
+    const byPlatform = new Map<Platform, { gross: number; count: number }>()
     for (const t of todayTrips) {
       const g = byPlatform.get(t.platform) ?? { gross: 0, count: 0 }
       g.gross += grossOf(t)
