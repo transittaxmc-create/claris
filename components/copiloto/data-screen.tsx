@@ -94,9 +94,9 @@ export function DataScreen({
   }, [onRefreshInfo])
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between px-4 pt-3">
-        <h1 className="text-sm font-bold tracking-widest text-neutral-400">DATA</h1>
+    <div className="screen-frame">
+      <div className="shrink-0 flex items-center justify-between px-4 pt-3 sm:px-8">
+        <h1 className="text-base font-extrabold tracking-tight text-white">Datos</h1>
         <button
           type="button"
           onClick={onRefreshInfo}
@@ -106,7 +106,7 @@ export function DataScreen({
         </button>
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="screen-scroll space-y-3 px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-8">
         {saveError && (
           <div className="flex items-start gap-2 rounded-2xl border border-rose-500/50 bg-rose-500/10 p-3 text-rose-200">
             <AlertTriangle className="mt-0.5 size-4 shrink-0 text-rose-400" />
@@ -217,15 +217,15 @@ export function DataScreen({
           )}
         </section>
 
-        {/* Sincronización entre teléfonos */}
+        {/* Sincronización privada entre dispositivos */}
         <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
           <div className="mb-1 flex items-center gap-2">
             {syncCode ? <Cloud className="size-4 text-green-400" /> : <CloudOff className="size-4 text-neutral-500" />}
-            <h2 className="text-xs font-bold tracking-wide text-neutral-200">SINCRONIZAR CON OTRO TELÉFONO</h2>
+            <h2 className="text-xs font-bold tracking-wide text-neutral-200">SINCRONIZAR TUS DISPOSITIVOS</h2>
           </div>
           <p className="mb-2 text-[10px] leading-tight text-neutral-500">
-            Escribe el mismo código privado en tus dos teléfonos. Los viajes se cifran aquí antes de salir y nadie más
-            (ni el servidor) puede leerlos. Sin código no hay sincronización.
+            Usa el mismo código privado en tu teléfono y laptop. Tus datos se cifran en cada dispositivo antes de
+            sincronizarse; solo tú puedes descifrarlos. Sin código no hay sincronización.
           </p>
 
           {syncCode ? (

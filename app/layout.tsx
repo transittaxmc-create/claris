@@ -3,15 +3,15 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Copiloto v.1',
-  applicationName: 'Copiloto',
-  description: 'Registro de viajes y ganancias',
+  title: 'Claris | Registro de viajes y ganancias',
+  applicationName: 'Claris',
+  description: 'Registra viajes, gastos y ganancias.',
   generator: 'v0.app',
   // Permite añadir la app a la pantalla de inicio y abrirla a pantalla completa
   // (sin la barra del navegador): así se ve igual que desde el preview.
   appleWebApp: {
     capable: true,
-    title: 'Copiloto',
+    title: 'Claris',
     statusBarStyle: 'black-translucent',
   },
   formatDetection: { telephone: false, date: false, email: false, address: false },
@@ -52,7 +52,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="es">
       <body className="antialiased">
         {children}
         {process.env.NODE_ENV === 'production' && <Analytics />}

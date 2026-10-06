@@ -14,7 +14,13 @@ export type RealTripInput = {
 export type PlatformAmount = {
   platformName: string
   projectedAmount: number
-  actualAmount: number
+  actualAmount: number | null
+}
+
+export function effectivePlatformAmount(platform: PlatformAmount): number {
+  return platform.actualAmount !== null
+    ? Number(platform.actualAmount) || 0
+    : Number(platform.projectedAmount) || 0
 }
 
 export type FinanceDay = {
@@ -69,7 +75,7 @@ export function applyTripsToDays(days: FinanceDay[], trips: RealTripInput[]): Fi
       const incoming = real.get(p.platformName)
       if (incoming === undefined) return p
       const realCents = cents(incoming)
-      const currentCents = cents(p.actualAmount)
+      const currentCents = cents(p.actualAmount ?? 0)
       if (realCents <= currentCents) return p
       return { ...p, actualAmount: realCents / 100 }
     })

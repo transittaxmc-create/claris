@@ -28,6 +28,8 @@ export async function POST(req: Request) {
     const systemPrompt = `Eres Claris AI Copiloto, un asistente inteligente experto en contabilidad, finanzas personales, análisis de productividad y optimización de ganancias para conductores y repartidores de plataformas (Uber, Lyft, DoorDash, Aventus Ride, taxis y transporte).
 
 INFORMACIÓN DEL USUARIO EN TIEMPO REAL:
+- Sección abierta en la aplicación: ${context?.currentSection || "Copiloto"}
+- Adapta tus instrucciones a esta pantalla y sugiere pasos concretos dentro de Claris cuando sea útil.
 - Resumen General de Viajes: ${context?.tripsSummary || "Sin viajes registrados"}
 - Total Viajes Registrados: ${context?.tripsCount || 0}
 - Ingresos Brutos Totales (Gross): $${Number(context?.totalGross || context?.totalIncome || 0).toFixed(2)}
@@ -100,6 +102,11 @@ TU MISIÓN:
     const bankMode = String(lastUser).trimStart().startsWith("[CONCILIACIÓN BANCARIA]")
     const expenseMode = String(lastUser).trimStart().startsWith("[ANÁLISIS DE GASTOS]")
     const scheduleMode = /\b(program|programa|programar|programe|programado|programada|schedule|scheduled)\b/i.test(String(lastUser))
+    const recordMode =
+      !bankMode &&
+      !expenseMode &&
+      !scheduleMode &&
+      /\b(registra|registrar|anota|anotar|agrega|agregar|crea|crear|guarda|guardar)\b/i.test(String(lastUser))
 
     let generationConfig: Record<string, unknown> = {
       temperature: 0.35,
@@ -176,6 +183,23 @@ TU MISIÓN:
       })
     }
 
+    if (recordMode) {
+      generationConfig = {
+        temperature: 0.1,
+        maxOutputTokens: 1600,
+        responseMimeType: "application/json",
+      }
+      contents.push({
+        role: "user",
+        parts: [{
+          text:
+            `[SOLICITUD DE REGISTRO] El usuario pidió explícitamente registrar un viaje o gasto. No guardes ni afirmes que se guardó: prepara una propuesta para que la persona la revise y confirme en la app.\n` +
+            `Responde SOLO JSON válido con: {"reply":"resumen breve o qué dato obligatorio falta","record":{"type":"trip"|"expense","date":"YYYY-MM-DD","amount":0,"vendor":"...","category":"...","platform":"Uber|Lyft|Eco Ride|Throo|AKI Technology|Classic Ryde|Aventus Ride|Cash|Other","earnings":0,"tips":0,"toll":0,"platformFee":0,"pickup":"...","dropoff":"...","time":"HH:mm","notes":"..." } o null}\n` +
+            `Reglas: amount es monto del gasto; para viaje amount no se usa y earnings es la tarifa base. No inventes montos, vendedores, plataformas ni ubicaciones. Si faltan tipo de registro, monto o (para gasto) vendedor, devuelve record:null y pregunta lo que falta. Puedes usar la fecha/hora local actual como valor predeterminado cuando no se indique: ${new Date().toISOString().slice(0, 10)}. Usa SOLO categorías de gastos: Gasolina / Combustible, Mantenimiento / Vehículo, Peajes, Alimentación / Comida, Lavado de Auto, Seguros / Permisos, Varios. Para campos de dinero opcionales no mencionados usa 0; deja ubicación vacía si no se indicó.`
+        }],
+      })
+    }
+
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent`
 
     const controller = new AbortController()
@@ -219,9 +243,25 @@ TU MISIÓN:
       matches?: { tripId: string; amount: number }[]
       expenseUpdates?: { expenseId: string; category?: string; classification?: string }[]
       schedules?: Array<{ kind: "income" | "expense"; description: string; category?: string; amount: number; startDate: string; frequency: string; nextDate: string; active?: boolean }>
+      record?: {
+        type: "trip" | "expense"
+        date: string
+        amount?: number
+        vendor?: string
+        category?: string
+        platform?: string
+        earnings?: number
+        tips?: number
+        toll?: number
+        platformFee?: number
+        pickup?: string
+        dropoff?: string
+        time?: string
+        notes?: string
+      } | null
       needsConfirmation?: boolean
     } | null = null
-    if (bankMode || expenseMode || scheduleMode) {
+    if (bankMode || expenseMode || scheduleMode || recordMode) {
       try {
         const parsed = JSON.parse(rawText)
         reply = typeof parsed.reply === "string" && parsed.reply ? parsed.reply : rawText
@@ -257,6 +297,46 @@ TU MISIÓN:
               ...(u.category !== undefined ? { category: u.category } : {}),
               ...(u.classification !== undefined ? { classification: u.classification } : {}),
             }))
+        }
+        if (recordMode) {
+          const r = parsed.record
+          if (
+            r &&
+            (r.type === "trip" || r.type === "expense") &&
+            /^\d{4}-\d{2}-\d{2}$/.test(r.date) &&
+            new Date(`${r.date}T12:00:00.000Z`).toISOString().slice(0, 10) === r.date &&
+            (r.time === undefined || r.time === "" || (typeof r.time === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(r.time))) &&
+            (r.type === "expense"
+              ? typeof r.vendor === "string" && r.vendor.trim().length > 0 &&
+                Number.isFinite(Number(r.amount)) && Number(r.amount) > 0 &&
+                ["Gasolina / Combustible", "Mantenimiento / Vehículo", "Peajes", "Alimentación / Comida", "Lavado de Auto", "Seguros / Permisos", "Varios"].includes(r.category)
+              : typeof r.platform === "string" &&
+                ["Uber", "Lyft", "Eco Ride", "Throo", "AKI Technology", "Classic Ryde", "Aventus Ride", "Cash", "Other"].includes(r.platform) &&
+                Number.isFinite(Number(r.earnings)) && Number(r.earnings) > 0 &&
+                Number.isFinite(Number(r.tips ?? 0)) && Number(r.tips ?? 0) >= 0 &&
+                Number.isFinite(Number(r.toll ?? 0)) && Number(r.toll ?? 0) >= 0 &&
+                Number.isFinite(Number(r.platformFee ?? 0)) && Number(r.platformFee ?? 0) >= 0)
+          ) {
+            structured.record = {
+              type: r.type,
+              date: r.date,
+              ...(r.type === "expense"
+                ? { amount: Number(r.amount), vendor: r.vendor.trim(), category: r.category }
+                : {
+                    platform: r.platform,
+                    earnings: Number(r.earnings),
+                    tips: Number(r.tips ?? 0),
+                    toll: Number(r.toll ?? 0),
+                    platformFee: Number(r.platformFee ?? 0),
+                  }),
+              pickup: typeof r.pickup === "string" ? r.pickup.trim().slice(0, 160) : "",
+              dropoff: typeof r.dropoff === "string" ? r.dropoff.trim().slice(0, 160) : "",
+              time: typeof r.time === "string" && /^\d{2}:\d{2}$/.test(r.time) ? r.time : "",
+              notes: typeof r.notes === "string" ? r.notes.trim().slice(0, 300) : "",
+            }
+          } else {
+            structured.record = null
+          }
         }
       } catch {
         structured = null

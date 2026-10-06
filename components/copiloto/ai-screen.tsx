@@ -1,9 +1,9 @@
 "use client"
 
 import { useState, useRef, useEffect, useMemo } from "react"
-import { Sparkles, Send, Loader2, Bot, User, TrendingUp, Receipt, Car, Zap, AlertTriangle, Scale } from "lucide-react"
+import { Sparkles, Send, Loader2, Bot, User, TrendingUp, Receipt, Car, Zap, AlertTriangle, Scale, Mic, Volume2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { grossOf, tripDateOf, daysUntil, netOf, type Trip, type Expense, type ScheduledEntry } from "./types"
+import { grossOf, tripDateOf, daysUntil, netOf, money, type Trip, type Expense, type ScheduledEntry } from "./types"
 import { reconSummary, reconViewOf, expectedOf, receivedOf } from "./reconciliation"
 import { parseBankCsv } from "@/lib/bank-csv"
 
@@ -12,6 +12,43 @@ interface Message {
   role: "user" | "assistant"
   content: string
   time: string
+}
+
+type SpeechRecognitionResultLike = {
+  isFinal: boolean
+  0: { transcript: string }
+}
+
+type SpeechRecognitionLike = {
+  lang: string
+  interimResults: boolean
+  onresult: ((event: { results: ArrayLike<SpeechRecognitionResultLike> }) => void) | null
+  onerror: ((event: { error: string }) => void) | null
+  onend: (() => void) | null
+  start: () => void
+  stop: () => void
+}
+
+type SpeechWindow = Window & {
+  SpeechRecognition?: new () => SpeechRecognitionLike
+  webkitSpeechRecognition?: new () => SpeechRecognitionLike
+}
+
+type RecordProposal = {
+  type: "trip" | "expense"
+  date: string
+  amount?: number
+  vendor?: string
+  category?: string
+  platform?: string
+  earnings?: number
+  tips?: number
+  toll?: number
+  platformFee?: number
+  pickup?: string
+  dropoff?: string
+  time?: string
+  notes?: string
 }
 
 const QUICK_PROMPTS = [
@@ -94,12 +131,18 @@ function saveHistory(messages: Message[]) {
 export function AIScreen({
   trips,
   expenses,
+  currentSection = "Copiloto",
+  onClose,
+  onApplyRecord,
   onApplyBankMatches,
   onApplyExpenseUpdates,
   onApplySchedules,
 }: {
   trips: Trip[]
   expenses: Expense[]
+  currentSection?: string
+  onClose?: () => void
+  onApplyRecord?: (record: RecordProposal) => boolean
   // La conciliación bancaria devuelve matches {tripId, amount}: el padre los
   // aplica a los viajes (received) y persiste.
   onApplyBankMatches?: (matches: { tripId: string; amount: number }[]) => number
@@ -112,8 +155,76 @@ export function AIScreen({
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [bankCsvName, setBankCsvName] = useState<string | null>(null)
+  const [listening, setListening] = useState(false)
+  const [voiceNote, setVoiceNote] = useState<string | null>(null)
+  const [recordProposal, setRecordProposal] = useState<RecordProposal | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const bankFileRef = useRef<HTMLInputElement>(null)
+  const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
+
+  useEffect(
+    () => () => {
+      recognitionRef.current?.stop()
+      window.speechSynthesis?.cancel()
+    },
+    [],
+  )
+
+  function toggleVoiceInput() {
+    if (listening) {
+      recognitionRef.current?.stop()
+      setListening(false)
+      return
+    }
+
+    const voiceWindow = window as SpeechWindow
+    const Recognition = voiceWindow.SpeechRecognition ?? voiceWindow.webkitSpeechRecognition
+    if (!Recognition) {
+      setVoiceNote("El dictado por voz no está disponible en este navegador. Puedes escribir tu pregunta.")
+      return
+    }
+
+    setVoiceNote("El navegador procesará tu voz para transcribirla; revisa el texto antes de enviarlo a Claris AI.")
+    try {
+      const recognition = new Recognition()
+      recognition.lang = "es-US"
+      recognition.interimResults = false
+      recognition.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .filter((result) => result.isFinal)
+          .map((result) => result[0].transcript.trim())
+          .filter(Boolean)
+          .join(" ")
+        if (transcript) setInput((current) => [current.trim(), transcript].filter(Boolean).join(" "))
+      }
+      recognition.onerror = (event) => {
+        setVoiceNote(
+          event.error === "not-allowed"
+            ? "Permite el acceso al micrófono en el navegador para dictar."
+            : "No se pudo reconocer la voz. Inténtalo de nuevo o escribe tu pregunta.",
+        )
+        setListening(false)
+      }
+      recognition.onend = () => setListening(false)
+      recognitionRef.current = recognition
+      recognition.start()
+      setListening(true)
+    } catch {
+      setListening(false)
+      setVoiceNote("No se pudo iniciar el micrófono. Inténtalo de nuevo o escribe tu pregunta.")
+    }
+  }
+
+  function readAloud(text: string) {
+    if (!("speechSynthesis" in window)) {
+      setVoiceNote("La lectura en voz alta no está disponible en este navegador.")
+      return
+    }
+    window.speechSynthesis.cancel()
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = "es-US"
+    window.speechSynthesis.speak(utterance)
+  }
 
   // Parser tolerante de estados de cuenta: vive en lib/bank-csv.ts (puro y
   // probado en Node), aquí solo se consume.
@@ -340,12 +451,13 @@ export function AIScreen({
       },
       reconciliationProblems,
       finance: financeSummary,
+      currentSection,
       tripsSummary: `${totalTrips} viajes registrados: $${totalGross.toFixed(2)} brutos (earnings $${totalEarnings.toFixed(2)} + propinas $${totalTips.toFixed(2)} + extra $${totalExtraCash.toFixed(2)} + peajes $${totalTolls.toFixed(2)}), comisiones de plataforma $${totalPlatformFees.toFixed(2)}, pago neto $${netPayout.toFixed(2)}. ${totalTips > 0 ? `Propinas: $${totalTips.toFixed(2)}.` : "Sin propinas."} Horas estimadas: ${estimatedHoursSpan}h (desde ${firstTripTime || "N/A"} hasta ${lastTripTime || "N/A"}). Ganancia/h estimada: $${grossPerHour}/h bruto, $${netPerHour}/h neto.`,
       expensesSummary: `${expenses.length} gastos registrados totalizando $${totalExpenses.toFixed(2)} (${topCategory}: mayor categoría). Beneficio tras gastos: $${netProfit.toFixed(2)}.`,
       reconciliationSummary: `Reconciliación de pagos: esperado $${recon.expected.toFixed(2)}, recibido $${recon.received.toFixed(2)}, diferencia $${recon.diff.toFixed(2)}. ${recon.pendingCount} viajes sin pago registrado, ${recon.shortCount} pagaron de menos, ${recon.overCount} pagaron de más, ${recon.okCount} cuadran.`,
       financeSummaryText: `Finanzas semanales: saldo disponible $${startingBalance.toFixed(2)}, reserva $${reserveBalance.toFixed(2)}, facturas próximas $${upcomingBillsTotal.toFixed(2)}, peajes pendientes $${unpaidTollsTotal.toFixed(2)} (${unpaidTollBills.length} facturas). Pagos programados con vencimiento en 7 días: ${scheduledDueSoon.length === 0 ? "ninguno" : scheduledDueSoon.map((s: any) => `${s.description} $${s.amount.toFixed(2)} (${s.days < 0 ? "vencido" : s.days === 0 ? "hoy" : `en ${s.days}d`})`).join(", ")}.`,
     }
-  }, [trips, expenses])
+  }, [trips, expenses, currentSection])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -359,6 +471,7 @@ export function AIScreen({
   const sendMessage = async (textToSend?: string) => {
     const content = (textToSend || input).trim()
     if (!content || loading) return
+    setRecordProposal(null)
 
     const now = new Date().toLocaleTimeString("es-ES", {
       hour: "2-digit",
@@ -409,6 +522,11 @@ export function AIScreen({
           const applied = onApplyExpenseUpdates(expenseUpdates)
           appliedNote += `\n\n🏷️ GASTOS: ${applied} corrección${applied === 1 ? "" : "es"} aplicada${applied === 1 ? "" : "s"} (categoría y clasificación business/personal). Revisa EXPENSES.`
         }
+        const record = data.structured?.record
+        if (record && onApplyRecord) {
+          setRecordProposal(record)
+          appliedNote += "\n\nRevisa la propuesta de registro y confirma para guardarla."
+        }
         setMessages((prev) => [
           ...prev,
           {
@@ -444,9 +562,9 @@ export function AIScreen({
     }
   }
   return (
-    <div className="flex h-full flex-col">
+    <div className="screen-frame">
       {/* Top Header */}
-      <div className="flex items-center justify-between border-b border-neutral-800 bg-neutral-950 px-4 py-3">
+      <div className="flex shrink-0 items-center justify-between border-b border-neutral-800 bg-neutral-950 px-4 py-3 sm:px-8">
         <div className="flex items-center gap-2">
           <div className="flex size-8 items-center justify-center rounded-xl bg-gradient-to-tr from-yellow-500/20 to-amber-500/30 border border-yellow-500/30">
             <Sparkles className="size-4 text-yellow-400" />
@@ -464,6 +582,16 @@ export function AIScreen({
         </div>
 
         <div className="flex items-center gap-3">
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Cerrar copiloto"
+              className="flex size-10 items-center justify-center rounded-xl border border-neutral-700 text-neutral-300 hover:bg-neutral-800"
+            >
+              <X className="size-4" />
+            </button>
+          )}
           {/* Limpiar el historial guardado (el seguimiento empieza de nuevo) */}
           <button
             type="button"
@@ -508,7 +636,7 @@ export function AIScreen({
       </div>
 
       {/* Messages Scroll Area */}
-      <div className="flex-1 space-y-4 overflow-y-auto p-4">
+      <div className="screen-scroll space-y-4 px-4 py-4 sm:px-8">
         {messages.map((m) => {
           const isUser = m.role === "user"
           return (
@@ -538,18 +666,65 @@ export function AIScreen({
                 >
                   {m.content}
                 </div>
-                <div
-                  className={cn(
-                    "text-[9px] text-neutral-500 font-mono px-1",
-                    isUser ? "text-right" : "text-left",
-                  )}
-                >
-                  {m.time}
-                </div>
+              <div className={cn("flex items-center gap-2 px-1", isUser ? "justify-end" : "justify-start")}>
+                {!isUser && (
+                  <button
+                    type="button"
+                    onClick={() => readAloud(m.content)}
+                    aria-label="Leer respuesta en voz alta"
+                    className="flex size-7 items-center justify-center rounded-lg text-neutral-400 hover:bg-neutral-800 hover:text-white"
+                  >
+                    <Volume2 className="size-3.5" />
+                  </button>
+                )}
+                <span className="text-[9px] font-mono text-neutral-500">{m.time}</span>
               </div>
+            </div>
             </div>
           )
         })}
+
+        {recordProposal && (
+          <section className="mx-3 mb-2 shrink-0 rounded-2xl border border-yellow-400/40 bg-yellow-400/10 p-3" aria-label="Propuesta de registro">
+            <p className="text-xs font-extrabold text-yellow-200">
+              Revisar antes de guardar · {recordProposal.type === "trip" ? "Viaje" : "Gasto"}
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-neutral-200">
+              {recordProposal.type === "trip"
+                ? `${recordProposal.platform} · ${recordProposal.date} ${recordProposal.time || ""} · tarifa ${money(Number(recordProposal.earnings) || 0)} · propina ${money(Number(recordProposal.tips) || 0)}${recordProposal.pickup || recordProposal.dropoff ? ` · ${recordProposal.pickup || "—"} → ${recordProposal.dropoff || "—"}` : ""}`
+                : `${recordProposal.vendor} · ${recordProposal.date} · ${recordProposal.category} · ${money(Number(recordProposal.amount) || 0)}`}
+              {recordProposal.notes ? ` · ${recordProposal.notes}` : ""}
+            </p>
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const saved = onApplyRecord?.(recordProposal) ?? false
+                  setRecordProposal(null)
+                  setMessages((previous) => [
+                    ...previous,
+                    {
+                      id: `a-${Date.now()}`,
+                      role: "assistant",
+                      content: saved ? "Registro guardado. Ya está disponible en la sección correspondiente." : "No se pudo guardar la propuesta. Revisa los datos e inténtalo de nuevo.",
+                      time: new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
+                    },
+                  ])
+                }}
+                className="min-h-10 flex-1 rounded-xl bg-yellow-400 px-3 text-xs font-extrabold text-black"
+              >
+                Confirmar y guardar
+              </button>
+              <button
+                type="button"
+                onClick={() => setRecordProposal(null)}
+                className="min-h-10 rounded-xl border border-neutral-700 px-4 text-xs font-bold text-neutral-300"
+              >
+                Cancelar
+              </button>
+            </div>
+          </section>
+        )}
 
         {loading && (
           <div className="flex gap-2.5 mr-auto max-w-[85%]">
@@ -627,18 +802,35 @@ export function AIScreen({
             onChange={(e) => setInput(e.target.value)}
             placeholder="Escribe o dicta en tu teléfono una instrucción..."
             disabled={loading}
-            className="flex-1 rounded-xl border border-neutral-800 bg-neutral-900/80 px-3.5 py-2.5 text-xs text-white placeholder-neutral-500 focus:border-yellow-400 focus:outline-none focus:ring-1 focus:ring-yellow-400 disabled:opacity-50"
+            className="min-w-0 flex-1 rounded-xl border border-neutral-800 bg-neutral-900/80 px-3.5 py-2.5 text-xs text-white placeholder-neutral-500 focus:border-yellow-400 focus:outline-none focus:ring-1 focus:ring-yellow-400 disabled:opacity-50"
           />
-  <button
-  type="submit"
-  disabled={!input.trim() || loading}
-            className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-yellow-400 text-black font-bold transition hover:bg-yellow-300 disabled:opacity-40 disabled:hover:bg-yellow-400"
+          <button
+            type="button"
+            onClick={toggleVoiceInput}
+            disabled={loading}
+            aria-label={listening ? "Detener dictado" : "Dictar pregunta"}
+            aria-pressed={listening}
+            className={cn(
+              "flex size-10 shrink-0 items-center justify-center rounded-xl border transition-colors disabled:opacity-50",
+              listening ? "border-rose-500 bg-rose-500/20 text-rose-300" : "border-neutral-700 bg-neutral-900 text-neutral-200 hover:border-yellow-400",
+            )}
+          >
+            <Mic className="size-4" />
+          </button>
+          <button
+            type="submit"
+            disabled={!input.trim() || loading}
+            className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-yellow-400 font-bold text-black transition hover:bg-yellow-300 disabled:opacity-40 disabled:hover:bg-yellow-400"
           >
             {loading ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
           </button>
         </form>
+        {voiceNote && (
+          <p className="mt-2 text-[11px] leading-snug text-neutral-400" role="status">
+            {voiceNote}
+          </p>
+        )}
       </div>
     </div>
   )
 }
-

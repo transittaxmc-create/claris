@@ -419,18 +419,18 @@ export function RegisterScreen({
   const filterChips: { key: Filter; label: string; count: number }[] = [
     { key: "ALL", label: "TODOS", count: counts.all },
     { key: "PENDING", label: "PENDIENTES", count: counts.pending },
-    { key: "MATCHED", label: "MATCHED", count: counts.matched },
+    { key: "MATCHED", label: "PAGADOS", count: counts.matched },
     { key: "DIFF", label: "DIFERENCIA", count: counts.diff },
   ]
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="screen-frame">
       {/* Encabezado fijo: se queda arriba mientras se baja por la lista, así el
           bruto, el neto y las colas pendientes nunca se pierden de vista. */}
-      <header className="shrink-0 border-b border-neutral-800 bg-black/95 px-4 pb-2.5 pt-3 backdrop-blur">
+      <header className="shrink-0 border-b border-neutral-800 bg-black/95 px-4 pb-2.5 pt-3 backdrop-blur sm:px-8">
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
-            <h1 className="text-sm font-bold tracking-widest text-neutral-400">REGISTER</h1>
+            <h1 className="text-base font-extrabold tracking-tight text-white">Cobros</h1>
             <span
               className={cn(
                 "shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold",
@@ -452,10 +452,10 @@ export function RegisterScreen({
 
         <div className="mt-2 flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <span className="shrink-0 text-[10px] font-bold tracking-wide text-neutral-500">
-            GROSS <strong className="text-sm text-yellow-400">{money(totals.gross)}</strong>
+            BRUTO <strong className="tabular-nums text-sm text-yellow-400">{money(totals.gross)}</strong>
           </span>
           <span className="shrink-0 text-[10px] font-bold tracking-wide text-neutral-500">
-            NET <strong className="text-sm text-green-400">{money(totals.net)}</strong>
+            NETO <strong className="tabular-nums text-sm text-green-400">{money(totals.net)}</strong>
           </span>
           <button
             type="button"
@@ -493,7 +493,7 @@ export function RegisterScreen({
       </header>
 
       {/* Scrollable body */}
-      <div className="flex-1 space-y-2.5 overflow-y-auto px-4 py-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="screen-scroll space-y-2.5 px-4 py-2.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-8">
         {/* Filtros con su conteo. Ocupan la fila completa para que se vean los
             cuatro: el ORDEN vive en la hoja de acciones (no se usa a cada rato)
             y así ningún filtro queda cortado. */}
@@ -672,7 +672,7 @@ export function RegisterScreen({
       )}
 
       {/* Add button */}
-      <div className="border-t border-neutral-800 bg-black px-4 py-3">
+      <div className="shrink-0 border-t border-neutral-800 bg-black px-4 py-3">
         <button
           type="button"
           onClick={onAdd}

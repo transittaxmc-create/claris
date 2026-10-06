@@ -44,7 +44,7 @@ export function FinanceRegisterTable({
     ]
 
     for (const day of days) {
-      const actual = day.platforms.filter((platform) => Number(platform.actualAmount) > 0)
+      const actual = day.platforms.filter((platform) => platform.actualAmount !== null)
       const projected = day.platforms.filter((platform) => Number(platform.projectedAmount) > 0)
       const entries = mode === "bank"
         ? actual.map((platform) => ({ platform, isProjected: false }))
@@ -71,9 +71,17 @@ export function FinanceRegisterTable({
                 aria-label={`${isProjected ? "Proyección" : "Banco"} ${platform.platformName} ${dayLabel(day.date)}`}
                 type="number"
                 inputMode="decimal"
-                value={amount || ""}
+                value={amount}
                 placeholder="0"
-                onChange={(event) => updatePlatformAmount(day.id, platform.platformName, isProjected ? "projectedAmount" : "actualAmount", Number(event.target.value) || 0)}
+                onChange={(event) => {
+                  const value = event.target.value
+                  updatePlatformAmount(
+                    day.id,
+                    platform.platformName,
+                    isProjected ? "projectedAmount" : "actualAmount",
+                    !isProjected && value === "" ? null : Number(value) || 0,
+                  )
+                }}
                 className="w-20 rounded-md border border-transparent bg-transparent px-1 py-0.5 text-right font-bold text-white outline-none hover:border-neutral-700 focus:border-yellow-400"
               />
             </label>

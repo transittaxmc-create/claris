@@ -26,7 +26,7 @@ execFileSync(
 )
 renameSync(join(tmp, "finance-bridge.js"), join(tmp, "finance-bridge.mjs"))
 
-const { groupRealTrips, applyTripsToDays, computeRealWeekTotals, weekdayAverages, computePanorama, tollBillsToPayments } = await import(
+const { groupRealTrips, applyTripsToDays, computeRealWeekTotals, effectivePlatformAmount, weekdayAverages, computePanorama, tollBillsToPayments } = await import(
   pathToFileURL(join(tmp, "finance-bridge.mjs")).href
 )
 
@@ -70,6 +70,16 @@ check("Lyft 28", g.get("2026-09-28")?.get("Lyft"), 30)
 check("29 sin viajes validos", g.has("2026-09-29"), false)
 
 console.log("\n== APLICACION A DIAS ==")
+check(
+  "un real explícito en cero no usa la proyección",
+  effectivePlatformAmount({ platformName: "Uber", actualAmount: 0, projectedAmount: 125 }),
+  0,
+)
+check(
+  "sin un real usa la proyección",
+  effectivePlatformAmount({ platformName: "Uber", actualAmount: null, projectedAmount: 125 }),
+  125,
+)
 const applied = applyTripsToDays(days, [
   { date: "2026-09-28", platform: "Uber", net: 150 },
   { date: "2026-09-28", platform: "Lyft", net: 30 },

@@ -62,7 +62,7 @@ function StatCard({ label, value, valueClass }: { label: string; value: string; 
   return (
     <div className="flex flex-1 flex-col items-center gap-1 rounded-2xl border border-neutral-800 bg-neutral-900/50 px-2 py-3">
       <span className="text-[10px] font-bold tracking-wide text-neutral-500">{label}</span>
-      <span className={cn("text-lg font-extrabold", valueClass)}>{value}</span>
+      <span className={cn("text-lg font-extrabold tabular-nums", valueClass)}>{value}</span>
     </div>
   )
 }
@@ -143,12 +143,14 @@ export function ExpensesScreen({
   onSave,
   onDelete,
   onScanReceipt,
+  embedded = false,
 }: {
   expenses: Expense[]
   onSave: (e: Expense) => void
   onDelete: (id: string) => void
   /** Abre el escáner nuevo, a pantalla completa. Si no viene, se usa el de antes. */
   onScanReceipt?: () => void
+  embedded?: boolean
 }) {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [search, setSearch] = useState("")
@@ -361,7 +363,7 @@ export function ExpensesScreen({
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="screen-frame">
       {/* Inputs ocultos para captura directa de cámara o subida de archivo */}
       <input
         ref={cameraInputRef}
@@ -380,9 +382,9 @@ export function ExpensesScreen({
       />
 
       {/* Header + totales + formulario + filtros */}
-      <div className="px-4 pt-3">
+      <div className={cn("shrink-0 px-4 pt-3", !embedded && "sm:px-8", draft && "max-h-[55%] overflow-y-auto overscroll-contain")}>
         <div className="flex items-center justify-between gap-2">
-          <h1 className="text-sm font-bold tracking-widest text-neutral-400">EXPENSES</h1>
+          <h1 className="text-base font-extrabold tracking-tight text-white">Gastos</h1>
           {!draft && (
             <div className="flex items-center gap-1.5">
               <button
@@ -646,7 +648,7 @@ export function ExpensesScreen({
       </div>
 
       {/* Lista */}
-      <div className="flex-1 space-y-2.5 overflow-y-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className={cn("screen-scroll space-y-2.5 px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", !embedded && "sm:px-8")}>
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-10 text-center">
             <p className="text-sm text-neutral-600">
