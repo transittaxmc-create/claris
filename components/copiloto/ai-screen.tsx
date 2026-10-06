@@ -471,6 +471,7 @@ export function AIScreen({
   const sendMessage = async (textToSend?: string) => {
     const content = (textToSend || input).trim()
     if (!content || loading) return
+    setRecordProposal(null)
 
     const now = new Date().toLocaleTimeString("es-ES", {
       hour: "2-digit",

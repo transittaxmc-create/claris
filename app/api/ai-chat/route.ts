@@ -304,7 +304,8 @@ TU MISIÓN:
             r &&
             (r.type === "trip" || r.type === "expense") &&
             /^\d{4}-\d{2}-\d{2}$/.test(r.date) &&
-            Number.isFinite(Date.parse(`${r.date}T12:00:00`)) &&
+            new Date(`${r.date}T12:00:00.000Z`).toISOString().slice(0, 10) === r.date &&
+            (r.time === undefined || r.time === "" || (typeof r.time === "string" && /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(r.time))) &&
             (r.type === "expense"
               ? typeof r.vendor === "string" && r.vendor.trim().length > 0 &&
                 Number.isFinite(Number(r.amount)) && Number(r.amount) > 0 &&
