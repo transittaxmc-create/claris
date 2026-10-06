@@ -427,7 +427,7 @@ export function RegisterScreen({
     <div className="screen-frame">
       {/* Encabezado fijo: se queda arriba mientras se baja por la lista, así el
           bruto, el neto y las colas pendientes nunca se pierden de vista. */}
-      <header className="screen-header shrink-0 border-b border-neutral-800 bg-black/95 px-4 pb-2.5 pt-3 backdrop-blur">
+      <header className="shrink-0 border-b border-neutral-800 bg-black/95 px-4 pb-2.5 pt-3 backdrop-blur">
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
             <h1 className="text-base font-extrabold tracking-tight text-white">Cobros</h1>

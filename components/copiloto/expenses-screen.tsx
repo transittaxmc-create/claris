@@ -380,7 +380,7 @@ export function ExpensesScreen({
       />
 
       {/* Header + totales + formulario + filtros */}
-      <div className="shrink-0 px-4 pt-3">
+      <div className={cn("shrink-0 px-4 pt-3", draft && "max-h-[55%] overflow-y-auto overscroll-contain")}>
         <div className="flex items-center justify-between gap-2">
           <h1 className="text-base font-extrabold tracking-tight text-white">Gastos</h1>
           {!draft && (
