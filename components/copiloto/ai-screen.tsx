@@ -654,48 +654,6 @@ export function AIScreen({
                 {isUser ? <User className="size-3.5" /> : <Bot className="size-3.5" />}
               </div>
 
-              {recordProposal && (
-                <section className="mx-3 mb-2 shrink-0 rounded-2xl border border-yellow-400/40 bg-yellow-400/10 p-3" aria-label="Propuesta de registro">
-                  <p className="text-xs font-extrabold text-yellow-200">
-                    Revisar antes de guardar · {recordProposal.type === "trip" ? "Viaje" : "Gasto"}
-                  </p>
-                  <p className="mt-1 text-xs leading-relaxed text-neutral-200">
-                    {recordProposal.type === "trip"
-                      ? `${recordProposal.platform} · ${recordProposal.date} ${recordProposal.time || ""} · tarifa ${money(Number(recordProposal.earnings) || 0)} · propina ${money(Number(recordProposal.tips) || 0)}${recordProposal.pickup || recordProposal.dropoff ? ` · ${recordProposal.pickup || "—"} → ${recordProposal.dropoff || "—"}` : ""}`
-                      : `${recordProposal.vendor} · ${recordProposal.date} · ${recordProposal.category} · ${money(Number(recordProposal.amount) || 0)}`}
-                    {recordProposal.notes ? ` · ${recordProposal.notes}` : ""}
-                  </p>
-                  <div className="mt-2 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const saved = onApplyRecord?.(recordProposal) ?? false
-                        setRecordProposal(null)
-                        setMessages((previous) => [
-                          ...previous,
-                          {
-                            id: `a-${Date.now()}`,
-                            role: "assistant",
-                            content: saved ? "Registro guardado. Ya está disponible en la sección correspondiente." : "No se pudo guardar la propuesta. Revisa los datos e inténtalo de nuevo.",
-                            time: new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
-                          },
-                        ])
-                      }}
-                      className="min-h-10 flex-1 rounded-xl bg-yellow-400 px-3 text-xs font-extrabold text-black"
-                    >
-                      Confirmar y guardar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setRecordProposal(null)}
-                      className="min-h-10 rounded-xl border border-neutral-700 px-4 text-xs font-bold text-neutral-300"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                </section>
-              )}
-
               <div className="space-y-1">
                 <div
                   className={cn(
@@ -721,8 +679,51 @@ export function AIScreen({
                 <span className="text-[9px] font-mono text-neutral-500">{m.time}</span>
               </div>
             </div>
+            </div>
           )
         })}
+
+        {recordProposal && (
+          <section className="mx-3 mb-2 shrink-0 rounded-2xl border border-yellow-400/40 bg-yellow-400/10 p-3" aria-label="Propuesta de registro">
+            <p className="text-xs font-extrabold text-yellow-200">
+              Revisar antes de guardar · {recordProposal.type === "trip" ? "Viaje" : "Gasto"}
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-neutral-200">
+              {recordProposal.type === "trip"
+                ? `${recordProposal.platform} · ${recordProposal.date} ${recordProposal.time || ""} · tarifa ${money(Number(recordProposal.earnings) || 0)} · propina ${money(Number(recordProposal.tips) || 0)}${recordProposal.pickup || recordProposal.dropoff ? ` · ${recordProposal.pickup || "—"} → ${recordProposal.dropoff || "—"}` : ""}`
+                : `${recordProposal.vendor} · ${recordProposal.date} · ${recordProposal.category} · ${money(Number(recordProposal.amount) || 0)}`}
+              {recordProposal.notes ? ` · ${recordProposal.notes}` : ""}
+            </p>
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const saved = onApplyRecord?.(recordProposal) ?? false
+                  setRecordProposal(null)
+                  setMessages((previous) => [
+                    ...previous,
+                    {
+                      id: `a-${Date.now()}`,
+                      role: "assistant",
+                      content: saved ? "Registro guardado. Ya está disponible en la sección correspondiente." : "No se pudo guardar la propuesta. Revisa los datos e inténtalo de nuevo.",
+                      time: new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
+                    },
+                  ])
+                }}
+                className="min-h-10 flex-1 rounded-xl bg-yellow-400 px-3 text-xs font-extrabold text-black"
+              >
+                Confirmar y guardar
+              </button>
+              <button
+                type="button"
+                onClick={() => setRecordProposal(null)}
+                className="min-h-10 rounded-xl border border-neutral-700 px-4 text-xs font-bold text-neutral-300"
+              >
+                Cancelar
+              </button>
+            </div>
+          </section>
+        )}
 
         {loading && (
           <div className="flex gap-2.5 mr-auto max-w-[85%]">
