@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useMemo } from "react"
 import { Sparkles, Send, Loader2, Bot, User, TrendingUp, Receipt, Car, Zap, AlertTriangle, Scale, Mic, Volume2, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { grossOf, tripDateOf, daysUntil, netOf, type Trip, type Expense, type ScheduledEntry } from "./types"
+import { grossOf, tripDateOf, daysUntil, netOf, money, type Trip, type Expense, type ScheduledEntry } from "./types"
 import { reconSummary, reconViewOf, expectedOf, receivedOf } from "./reconciliation"
 import { parseBankCsv } from "@/lib/bank-csv"
 
@@ -32,6 +32,23 @@ type SpeechRecognitionLike = {
 type SpeechWindow = Window & {
   SpeechRecognition?: new () => SpeechRecognitionLike
   webkitSpeechRecognition?: new () => SpeechRecognitionLike
+}
+
+type RecordProposal = {
+  type: "trip" | "expense"
+  date: string
+  amount?: number
+  vendor?: string
+  category?: string
+  platform?: string
+  earnings?: number
+  tips?: number
+  toll?: number
+  platformFee?: number
+  pickup?: string
+  dropoff?: string
+  time?: string
+  notes?: string
 }
 
 const QUICK_PROMPTS = [
@@ -116,6 +133,7 @@ export function AIScreen({
   expenses,
   currentSection = "Copiloto",
   onClose,
+  onApplyRecord,
   onApplyBankMatches,
   onApplyExpenseUpdates,
   onApplySchedules,
@@ -124,6 +142,7 @@ export function AIScreen({
   expenses: Expense[]
   currentSection?: string
   onClose?: () => void
+  onApplyRecord?: (record: RecordProposal) => boolean
   // La conciliación bancaria devuelve matches {tripId, amount}: el padre los
   // aplica a los viajes (received) y persiste.
   onApplyBankMatches?: (matches: { tripId: string; amount: number }[]) => number
@@ -138,6 +157,7 @@ export function AIScreen({
   const [bankCsvName, setBankCsvName] = useState<string | null>(null)
   const [listening, setListening] = useState(false)
   const [voiceNote, setVoiceNote] = useState<string | null>(null)
+  const [recordProposal, setRecordProposal] = useState<RecordProposal | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const bankFileRef = useRef<HTMLInputElement>(null)
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null)
@@ -501,6 +521,11 @@ export function AIScreen({
           const applied = onApplyExpenseUpdates(expenseUpdates)
           appliedNote += `\n\n🏷️ GASTOS: ${applied} corrección${applied === 1 ? "" : "es"} aplicada${applied === 1 ? "" : "s"} (categoría y clasificación business/personal). Revisa EXPENSES.`
         }
+        const record = data.structured?.record
+        if (record && onApplyRecord) {
+          setRecordProposal(record)
+          appliedNote += "\n\nRevisa la propuesta de registro y confirma para guardarla."
+        }
         setMessages((prev) => [
           ...prev,
           {
@@ -628,6 +653,48 @@ export function AIScreen({
               >
                 {isUser ? <User className="size-3.5" /> : <Bot className="size-3.5" />}
               </div>
+
+              {recordProposal && (
+                <section className="mx-3 mb-2 shrink-0 rounded-2xl border border-yellow-400/40 bg-yellow-400/10 p-3" aria-label="Propuesta de registro">
+                  <p className="text-xs font-extrabold text-yellow-200">
+                    Revisar antes de guardar · {recordProposal.type === "trip" ? "Viaje" : "Gasto"}
+                  </p>
+                  <p className="mt-1 text-xs leading-relaxed text-neutral-200">
+                    {recordProposal.type === "trip"
+                      ? `${recordProposal.platform} · ${recordProposal.date} ${recordProposal.time || ""} · tarifa ${money(Number(recordProposal.earnings) || 0)} · propina ${money(Number(recordProposal.tips) || 0)}${recordProposal.pickup || recordProposal.dropoff ? ` · ${recordProposal.pickup || "—"} → ${recordProposal.dropoff || "—"}` : ""}`
+                      : `${recordProposal.vendor} · ${recordProposal.date} · ${recordProposal.category} · ${money(Number(recordProposal.amount) || 0)}`}
+                    {recordProposal.notes ? ` · ${recordProposal.notes}` : ""}
+                  </p>
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const saved = onApplyRecord?.(recordProposal) ?? false
+                        setRecordProposal(null)
+                        setMessages((previous) => [
+                          ...previous,
+                          {
+                            id: `a-${Date.now()}`,
+                            role: "assistant",
+                            content: saved ? "Registro guardado. Ya está disponible en la sección correspondiente." : "No se pudo guardar la propuesta. Revisa los datos e inténtalo de nuevo.",
+                            time: new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
+                          },
+                        ])
+                      }}
+                      className="min-h-10 flex-1 rounded-xl bg-yellow-400 px-3 text-xs font-extrabold text-black"
+                    >
+                      Confirmar y guardar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRecordProposal(null)}
+                      className="min-h-10 rounded-xl border border-neutral-700 px-4 text-xs font-bold text-neutral-300"
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </section>
+              )}
 
               <div className="space-y-1">
                 <div

@@ -254,6 +254,54 @@ export function CopilotoApp() {
     setTab("REGISTER")
   }
 
+  function applyAssistantRecord(record: {
+    type: "trip" | "expense"
+    date: string
+    amount?: number
+    vendor?: string
+    category?: string
+    platform?: string
+    earnings?: number
+    tips?: number
+    toll?: number
+    platformFee?: number
+    pickup?: string
+    dropoff?: string
+    time?: string
+    notes?: string
+  }): boolean {
+    if (record.type === "expense") {
+      if (!record.vendor?.trim() || !record.category || !(Number(record.amount) > 0)) return false
+      saveExpense({
+        id: crypto.randomUUID(),
+        date: record.date,
+        vendor: record.vendor.trim(),
+        category: record.category,
+        amount: Number(record.amount),
+        notes: record.notes || undefined,
+        isAiGenerated: false,
+        isEditedByUser: false,
+      })
+      return true
+    }
+
+    const trip = newTrip()
+    trip.platform = record.platform as Trip["platform"]
+    trip.earnings = Number(record.earnings) || 0
+    trip.tips = Number(record.tips) || 0
+    trip.toll = Number(record.toll) || 0
+    trip.platformFee = Number(record.platformFee) || 0
+    trip.pickup = record.pickup || ""
+    trip.dropoff = record.dropoff || ""
+    trip.time = record.time || trip.time
+    trip.ref = record.notes || ""
+    const localDateTime = new Date(`${record.date}T${trip.time}:00`)
+    if (!Number.isFinite(localDateTime.getTime()) || !(trip.earnings > 0)) return false
+    trip.raw = { datetime: localDateTime.toISOString() }
+    saveNewFromEntry(trip)
+    return true
+  }
+
   function saveEdit(t: Trip) {
     // normalizeTripStatus deja el status en sintonía con los montos de
     // reconciliación: sin esto el disco guardaba "matched" pero la memoria
@@ -632,6 +680,7 @@ export function CopilotoApp() {
                   trips={trips}
                   expenses={expenses}
                   currentSection={sectionNames[tab]}
+                  onApplyRecord={applyAssistantRecord}
                   onApplyBankMatches={applyBankMatches}
                   onApplyExpenseUpdates={applyExpenseUpdates}
                   onApplySchedules={applySchedules}
@@ -753,6 +802,7 @@ export function CopilotoApp() {
               trips={trips}
               expenses={expenses}
               currentSection={sectionNames[tab]}
+              onApplyRecord={applyAssistantRecord}
               onClose={() => setAssistantOpen(false)}
               onApplyBankMatches={applyBankMatches}
               onApplyExpenseUpdates={applyExpenseUpdates}
