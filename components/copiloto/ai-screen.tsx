@@ -444,7 +444,7 @@ export function AIScreen({
     }
   }
   return (
-    <div className="flex h-full flex-col">
+    <div className="screen-frame">
       {/* Top Header */}
       <div className="flex items-center justify-between border-b border-neutral-800 bg-neutral-950 px-4 py-3">
         <div className="flex items-center gap-2">
@@ -508,7 +508,7 @@ export function AIScreen({
       </div>
 
       {/* Messages Scroll Area */}
-      <div className="flex-1 space-y-4 overflow-y-auto p-4">
+      <div className="screen-scroll space-y-4 p-4">
         {messages.map((m) => {
           const isUser = m.role === "user"
           return (
@@ -641,4 +641,3 @@ export function AIScreen({
     </div>
   )
 }
-

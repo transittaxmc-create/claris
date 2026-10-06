@@ -300,7 +300,7 @@ export function EntryScreen({
   const tripCountToday = todayTrips.length
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+    <div className="screen-frame">
       {/* Header */}
       <div className="flex items-start justify-between gap-3 px-4 pt-2 sm:px-8 sm:pt-3">
         <div className="min-w-0">
@@ -329,7 +329,7 @@ export function EntryScreen({
       </div>
 
       {/* Scrollable body */}
-      <div className="flex-1 space-y-2 overflow-y-auto px-4 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:content-start sm:gap-4 sm:px-8 sm:py-5">
+      <div className="screen-scroll space-y-2 px-4 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:content-start sm:gap-4 sm:px-8 sm:py-5">
         {/* Platform + break */}
         <div className="flex items-center gap-2 sm:col-span-2">
           <div className="relative flex-1">

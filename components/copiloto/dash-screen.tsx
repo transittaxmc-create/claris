@@ -64,12 +64,13 @@ export function DashScreen({ trips, expenses }: { trips: Trip[]; expenses: Expen
   })
 
   return (
-    <div className="flex flex-col gap-3 px-4 pb-6 pt-2">
-      <div>
+    <div className="screen-frame">
+      <div className="shrink-0 px-4 pt-3">
         <h1 className="text-lg font-extrabold text-white">Resumen del día</h1>
         <p className="text-xs capitalize text-neutral-500">{fecha}</p>
       </div>
 
+      <div className="screen-scroll space-y-3 px-4 pb-6 pt-2">
       {data.count === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900/60 px-6 py-10 text-center">
           <Car className="size-8 text-neutral-600" />
@@ -156,6 +157,7 @@ export function DashScreen({ trips, expenses }: { trips: Trip[]; expenses: Expen
           )}
         </>
       )}
+      </div>
     </div>
   )
 }

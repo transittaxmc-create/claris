@@ -361,7 +361,7 @@ export function ExpensesScreen({
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="screen-frame">
       {/* Inputs ocultos para captura directa de cámara o subida de archivo */}
       <input
         ref={cameraInputRef}
@@ -380,9 +380,9 @@ export function ExpensesScreen({
       />
 
       {/* Header + totales + formulario + filtros */}
-      <div className="px-4 pt-3">
+      <div className="shrink-0 px-4 pt-3">
         <div className="flex items-center justify-between gap-2">
-          <h1 className="text-sm font-bold tracking-widest text-neutral-400">EXPENSES</h1>
+          <h1 className="text-base font-extrabold tracking-tight text-white">Gastos</h1>
           {!draft && (
             <div className="flex items-center gap-1.5">
               <button
@@ -646,7 +646,7 @@ export function ExpensesScreen({
       </div>
 
       {/* Lista */}
-      <div className="flex-1 space-y-2.5 overflow-y-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="screen-scroll space-y-2.5 px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-10 text-center">
             <p className="text-sm text-neutral-600">

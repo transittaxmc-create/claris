@@ -242,15 +242,15 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between px-4 pt-3">
-        <h1 className="text-sm font-bold tracking-widest text-neutral-400">REPORTS</h1>
+    <div className="screen-frame">
+      <div className="shrink-0 flex items-center justify-between px-4 pt-3">
+        <h1 className="text-base font-extrabold tracking-tight text-white">Reportes</h1>
         <span className="rounded-full border border-sky-400/50 px-2.5 py-1 text-[11px] font-bold text-sky-300">
           {from} → {to}
         </span>
       </div>
 
-      <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="screen-scroll space-y-3 px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {/* Rango */}
         <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
           <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold tracking-wide text-neutral-400">

@@ -201,6 +201,23 @@
 }
 
 @layer utilities {
+  .screen-frame {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .screen-scroll {
+    min-height: 0;
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    overflow-anchor: none;
+  }
+
   .text-\[8px\],
   .text-\[9px\],
   .text-\[9\.5px\],
