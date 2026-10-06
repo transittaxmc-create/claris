@@ -95,7 +95,7 @@ export function DataScreen({
 
   return (
     <div className="screen-frame">
-      <div className="shrink-0 flex items-center justify-between px-4 pt-3">
+      <div className="shrink-0 flex items-center justify-between px-4 pt-3 sm:px-8">
         <h1 className="text-base font-extrabold tracking-tight text-white">Datos</h1>
         <button
           type="button"
@@ -106,7 +106,7 @@ export function DataScreen({
         </button>
       </div>
 
-      <div className="screen-scroll space-y-3 px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="screen-scroll space-y-3 px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-8">
         {saveError && (
           <div className="flex items-start gap-2 rounded-2xl border border-rose-500/50 bg-rose-500/10 p-3 text-rose-200">
             <AlertTriangle className="mt-0.5 size-4 shrink-0 text-rose-400" />

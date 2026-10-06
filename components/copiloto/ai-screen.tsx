@@ -564,7 +564,7 @@ export function AIScreen({
   return (
     <div className="screen-frame">
       {/* Top Header */}
-      <div className="flex shrink-0 items-center justify-between border-b border-neutral-800 bg-neutral-950 px-4 py-3">
+      <div className="flex shrink-0 items-center justify-between border-b border-neutral-800 bg-neutral-950 px-4 py-3 sm:px-8">
         <div className="flex items-center gap-2">
           <div className="flex size-8 items-center justify-center rounded-xl bg-gradient-to-tr from-yellow-500/20 to-amber-500/30 border border-yellow-500/30">
             <Sparkles className="size-4 text-yellow-400" />
@@ -636,7 +636,7 @@ export function AIScreen({
       </div>
 
       {/* Messages Scroll Area */}
-      <div className="screen-scroll space-y-4 p-4">
+      <div className="screen-scroll space-y-4 px-4 py-4 sm:px-8">
         {messages.map((m) => {
           const isUser = m.role === "user"
           return (

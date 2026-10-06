@@ -45,7 +45,7 @@ export function BottomNav({
   const enMas = TABS_EN_MAS.some((item) => item.key === active)
 
   return (
-    <nav className="flex shrink-0 items-stretch gap-1 border-t border-neutral-800 bg-black px-1 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2">
+    <nav className="flex shrink-0 items-stretch gap-0.5 border-t border-neutral-800 bg-black px-1 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 sm:gap-1">
       {ITEMS.map(({ key, label, icon: Icon }) => {
         const isActive = active === key
         return (

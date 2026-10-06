@@ -588,7 +588,7 @@ export function FinanceScreen({
 
   return (
     <div className="screen-frame">
-      <div className="shrink-0 border-b border-neutral-800 px-4 pb-3 pt-3">
+      <div className="shrink-0 border-b border-neutral-800 px-4 pb-3 pt-3 sm:px-8">
         {/* Fila 1: el título manda; el subtítulo no compite con él. */}
         <div className="flex items-baseline justify-between gap-3">
           <h1 className="truncate text-xl font-extrabold tracking-tight text-white">Finanzas</h1>
@@ -645,7 +645,7 @@ export function FinanceScreen({
         </div>
       </div>
 
-      <div className="screen-scroll space-y-5 px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="screen-scroll space-y-5 px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-8">
         <div className="grid grid-cols-3 gap-1 rounded-xl border border-neutral-800 bg-neutral-900 p-1 text-[11px] font-semibold sm:grid-cols-5">
           {(
             [
@@ -999,12 +999,11 @@ export function FinanceScreen({
               <ExpenseRegisterForm />
             </div>
             {/* Gastos del copiloto (viajes/sincronizados): misma lista de la pestaña EXPENSES. */}
-            <ExpensesScreen expenses={expenses} onSave={onSave} onDelete={onDelete} />
+            <ExpensesScreen expenses={expenses} onSave={onSave} onDelete={onDelete} embedded />
           </div>
         )}
       </div>
     </div>
   )
 }
-
 

@@ -143,12 +143,14 @@ export function ExpensesScreen({
   onSave,
   onDelete,
   onScanReceipt,
+  embedded = false,
 }: {
   expenses: Expense[]
   onSave: (e: Expense) => void
   onDelete: (id: string) => void
   /** Abre el escáner nuevo, a pantalla completa. Si no viene, se usa el de antes. */
   onScanReceipt?: () => void
+  embedded?: boolean
 }) {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [search, setSearch] = useState("")
@@ -380,7 +382,7 @@ export function ExpensesScreen({
       />
 
       {/* Header + totales + formulario + filtros */}
-      <div className={cn("shrink-0 px-4 pt-3", draft && "max-h-[55%] overflow-y-auto overscroll-contain")}>
+      <div className={cn("shrink-0 px-4 pt-3", !embedded && "sm:px-8", draft && "max-h-[55%] overflow-y-auto overscroll-contain")}>
         <div className="flex items-center justify-between gap-2">
           <h1 className="text-base font-extrabold tracking-tight text-white">Gastos</h1>
           {!draft && (
@@ -646,7 +648,7 @@ export function ExpensesScreen({
       </div>
 
       {/* Lista */}
-      <div className="screen-scroll space-y-2.5 px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className={cn("screen-scroll space-y-2.5 px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", !embedded && "sm:px-8")}>
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-10 text-center">
             <p className="text-sm text-neutral-600">
