@@ -12,11 +12,11 @@
 // de hoy (bug de v1); aquí suma los viajes reales del mes, que es lo que la
 // tarjeta promete ("October 2026"). Todo lo demás es idéntico.
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react"
+import { useMemo, useState, type CSSProperties } from "react"
 import { localDateKey } from "@/lib/dates"
 import { grossOf, tripDateOf, type Expense, type Trip } from "../types"
 import { recommendZones } from "./v1-dash-zones"
-import { useV1Shift } from "./v1-shift"
+import type { ShiftApi } from "../shift"
 
 // Estilo dorado de v1 (const us del bundle), intacto.
 const GOLD_TEXT: CSSProperties = {
@@ -495,20 +495,18 @@ const COACH_STYLE: Record<CoachType, string> = {
 export function V1DashScreen({
   trips,
   expenses,
+  shift,
   onGoData,
 }: {
   trips: Trip[]
   expenses: Expense[]
+  shift: ShiftApi
   onGoData: () => void
 }) {
-  const [clock, setClock] = useState(() => new Date())
   const [dailyGoal] = useState<number>(() => loadDailyGoal())
 
-  useEffect(() => {
-    const id = window.setInterval(() => setClock(new Date()), 1000)
-    return () => window.clearInterval(id)
-  }, [])
-
+  // Reloj y estado del turno vienen del turno unificado (el mismo que HOY).
+  const clock = shift.now
   const {
     shiftActive,
     isOnBreak,
@@ -521,8 +519,7 @@ export function V1DashScreen({
     onBreak,
     onEnd,
     onRefreshGps,
-    toast,
-  } = useV1Shift(clock)
+  } = shift
 
   const todayKey = localDateKey(clock)
   const monthKey = `${clock.getFullYear()}-${String(clock.getMonth() + 1).padStart(2, "0")}`
@@ -931,12 +928,6 @@ export function V1DashScreen({
           </button>
         </div>
       </div>
-
-      {toast && (
-        <div className="fixed top-4 z-50 rounded-full border border-[#FFD70055] bg-[#1a1a1a] px-4 py-2 text-[12px] font-bold text-white" style={{ left: "50%", transform: "translateX(-50%)" }}>
-          {toast}
-        </div>
-      )}
     </div>
   )
 }

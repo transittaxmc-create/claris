@@ -14,6 +14,7 @@ import { RegisterScreen } from "./register-screen"
 import { ReportsScreen } from "./reports-screen"
 import { TripEditSheet } from "./trip-edit-sheet"
 import { ReceiptScanner } from "./receipt-scanner"
+import { useShift } from "./shift"
 import { guardarMovimiento, movimientoDeGasto } from "./cash-flow-store"
 import { applyDifferenceToTrip, applyBankMatchesToTrips, normalizeTripStatus } from "./reconciliation"
 import { SEED_TRIPS, newTrip, stampExpense, applyExpenseUpdatesToExpenses, grossOf, netOf, tripDateOf, type Expense, type Trip, type ScheduledEntry } from "./types"
@@ -66,6 +67,9 @@ function Placeholder({ label }: { label: string }) {
 
 export function CopilotoApp() {
   const [tab, setTab] = useState<Tab>("ENTRY")
+  // Turno UNIFICADO: el mismo START/PAUSA/PARAR para HOY (cronómetro) y el
+  // DASHBOARD. Una sola fuente de verdad para "estoy trabajando".
+  const shift = useShift()
   // Se empieza vacío y se carga lo guardado: antes se arrancaba con viajes de
   // ejemplo en memoria, y eso es lo que hacía que al cerrar "volvieran los
   // viajes viejos" y se perdieran los nuevos.
@@ -583,7 +587,7 @@ export function CopilotoApp() {
             <div className="flex h-full items-center justify-center text-sm text-neutral-500">Cargando tus viajes…</div>
           ) : (
             <>
-              {tab === "ENTRY" && <EntryScreen onSave={saveNewFromEntry} trips={trips} />}
+              {tab === "ENTRY" && <EntryScreen onSave={saveNewFromEntry} trips={trips} shift={shift} />}
               {tab === "REGISTER" && (
                 <RegisterScreen
                   trips={trips}
@@ -642,7 +646,7 @@ export function CopilotoApp() {
                 <DashScreen trips={trips} expenses={expenses} />
               )}
               {tab === "V1DASH" && (
-                <V1DashScreen trips={trips} expenses={expenses} onGoData={() => setTab("DATA")} />
+                <V1DashScreen trips={trips} expenses={expenses} shift={shift} onGoData={() => setTab("DATA")} />
               )}
               {tab === "REPORTS" && <ReportsScreen trips={trips} expenses={expenses} />}
               {tab !== "ENTRY" &&
@@ -768,6 +772,16 @@ export function CopilotoApp() {
           onSaveIncome={saveScannedIncome}
           totales={escanerTotales}
         />
+      )}
+
+      {/* Avisos del turno unificado (START/PAUSA/PARAR desde HOY o DASHBOARD) */}
+      {shift.toast && (
+        <div
+          className="fixed top-4 z-50 rounded-full border border-amber-400/40 bg-[#1a1a1a] px-4 py-2 text-[12px] font-bold text-white"
+          style={{ left: "50%", transform: "translateX(-50%)" }}
+        >
+          {shift.toast}
+        </div>
       )}
     </div>
   )

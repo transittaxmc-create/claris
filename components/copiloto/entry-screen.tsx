@@ -7,6 +7,7 @@ import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip, gross
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
 import { isVoucherPlatform } from "./platform-meta"
 import { HourlyProduction } from "./hourly-production"
+import type { ShiftApi } from "./shift"
 import {
   captureLocation,
   GpsAccuracyError,
@@ -162,9 +163,11 @@ function LocationColumn({
 export function EntryScreen({
   onSave,
   trips = [],
+  shift,
 }: {
   onSave: (t: Trip) => void
   trips?: Trip[]
+  shift: ShiftApi
 }) {
   const [draft, setDraft] = useState<Trip>(() => {
     const initial = newTrip()
@@ -516,7 +519,7 @@ export function EntryScreen({
                 className="min-h-[2.65rem] rounded-lg border border-neutral-800 bg-neutral-950 px-2 py-1.5 text-xs text-white outline-none placeholder:text-neutral-600 focus:border-neutral-600"
               />
             </label>
-            <HourlyProduction trips={trips} />
+            <HourlyProduction trips={trips} shift={shift} />
           </div>
         </section>
 
