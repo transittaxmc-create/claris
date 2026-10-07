@@ -117,8 +117,12 @@ export function useShift() {
   const [shift, setShift] = useState<ShiftState>(initShift)
   const [worked, setWorked] = useState<WorkedHours>(loadWorked)
   const [hourlyGoal, setHourlyGoalState] = useState<number>(() => {
-    const v = Number(localStorage.getItem(HOURLY_GOAL_KEY))
-    return Number.isFinite(v) && v > 0 ? v : DEFAULT_HOURLY_GOAL
+    try {
+      const v = Number(localStorage.getItem(HOURLY_GOAL_KEY))
+      return Number.isFinite(v) && v > 0 ? v : DEFAULT_HOURLY_GOAL
+    } catch {
+      return DEFAULT_HOURLY_GOAL
+    }
   })
   const [gps, setGps] = useState<GpsState>({ status: "idle", lastFix: null })
   const [toast, setToast] = useState<string | null>(null)
