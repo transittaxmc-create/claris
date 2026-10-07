@@ -6,6 +6,7 @@ import { BottomNav, TABS_EN_MAS, type Tab } from "./bottom-nav"
 import { AIScreen } from "./ai-screen"
 import { DataScreen } from "./data-screen"
 import { DashScreen } from "./dash-screen"
+import { V1DashScreen } from "./v1-dash/v1-dash-screen"
 import { EntryScreen } from "./entry-screen"
 import { ExpensesScreen } from "./expenses-screen"
 import { FinanceScreen } from "./finance-screen"
@@ -640,6 +641,9 @@ export function CopilotoApp() {
               {tab === "DASH" && (
                 <DashScreen trips={trips} expenses={expenses} />
               )}
+              {tab === "V1DASH" && (
+                <V1DashScreen trips={trips} expenses={expenses} onGoData={() => setTab("DATA")} />
+              )}
               {tab === "REPORTS" && <ReportsScreen trips={trips} expenses={expenses} />}
               {tab !== "ENTRY" &&
                 tab !== "REGISTER" &&
@@ -648,7 +652,8 @@ export function CopilotoApp() {
                 tab !== "REPORTS" &&
                 tab !== "AI" &&
                 tab !== "DATA" &&
-                tab !== "DASH" && <Placeholder label={tab} />}
+                tab !== "DASH" &&
+                tab !== "V1DASH" && <Placeholder label={tab} />}
             </>
           )}
         </main>
