@@ -8,6 +8,7 @@ export type Tab =
   | "REGISTER"
   | "EXPENSES"
   | "DASH"
+  | "V1DASH"
   | "FINANCE"
   | "REPORTS"
   | "AI"
@@ -18,7 +19,7 @@ export type Tab =
 // Medido en un teléfono de 390 px: con ocho pestañas cada una tiene 48 px de
 // ancho y una etiqueta legible (11 px) no cabe — se pegaban unas con otras
 // ("REGISTEREXPENSES"). Apple recomienda 3-5 pestañas principales. Las otras
-// cuatro viven en MÁS, a un toque.
+// cinco viven en MÁS, a un toque.
 const ITEMS: { key: Tab; label: string; icon: typeof Home }[] = [
   { key: "ENTRY", label: "HOY", icon: Home },
   { key: "REGISTER", label: "COBROS", icon: ClipboardList },
@@ -29,6 +30,7 @@ const ITEMS: { key: Tab; label: string; icon: typeof Home }[] = [
 export const TABS_EN_MAS: { key: Tab; label: string; hint: string; icon: typeof Home }[] = [
   { key: "EXPENSES", label: "GASTOS", hint: "Facturas, recibos y categorías", icon: Receipt },
   { key: "DASH", label: "PANEL", hint: "Resumen del día", icon: Gauge },
+  { key: "V1DASH", label: "DASHBOARD", hint: "Tablero por hora estilo v1", icon: Gauge },
   { key: "AI", label: "COPILOTO IA", hint: "Preguntas, gastos y conciliación", icon: Sparkles },
   { key: "DATA", label: "DATOS Y COPIA", hint: "Copia de seguridad, sync y reset", icon: Boxes },
 ]
