@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { AlertTriangle, Cloud, CloudOff, Database, Download, Eraser, RefreshCw, Save, Upload } from "lucide-react"
+import { AlertTriangle, Cloud, CloudOff, Database, Download, Eraser, RefreshCw, Save, Target, Upload } from "lucide-react"
+import { V1_DAILY_GOAL_KEY } from "./v1-dash/v1-dash-screen"
 import { cn } from "@/lib/utils"
 import type { StorageInfo } from "./storage"
 import { MIN_SYNC_CODE_LENGTH } from "@/lib/sync"
@@ -74,6 +75,20 @@ export function DataScreen({
   const [confirmCache, setConfirmCache] = useState(false)
   // Versión que está sirviendo producción, para comparar con la de este teléfono.
   const [ultimaVersion, setUltimaVersion] = useState<string | null>(null)
+  // Meta diaria del DASHBOARD (clon del tablero de v1). Default 45 como en v1.
+  const [dailyGoal, setDailyGoal] = useState<number>(() => {
+    try {
+      const n = Number(localStorage.getItem(V1_DAILY_GOAL_KEY))
+      if (Number.isFinite(n) && n > 0) return n
+    } catch {}
+    return 45
+  })
+  function saveDailyGoal(v: number) {
+    setDailyGoal(v)
+    try {
+      localStorage.setItem(V1_DAILY_GOAL_KEY, String(v))
+    } catch {}
+  }
 
   useEffect(() => {
     let vivo = true
@@ -156,6 +171,35 @@ export function DataScreen({
             Cada viaje se guarda en dos sitios (localStorage + IndexedDB) y con copia de seguridad. Si el teléfono borra
             el navegador, IndexedDB devuelve los viajes al abrir la app.
           </p>
+        </section>
+
+        {/* Metas del tablero */}
+        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
+          <div className="mb-1 flex items-center gap-2">
+            <Target className="size-4 text-yellow-400" />
+            <h2 className="text-xs font-bold tracking-wide text-neutral-200">METAS DEL TABLERO</h2>
+          </div>
+          <p className="text-[10px] leading-tight text-neutral-500">
+            Las usa la pestaña DASHBOARD (el tablero por hora clonado de v1). La meta por hora también se ajusta con
+            el deslizador del propio tablero.
+          </p>
+          <div className="mt-2 flex items-center gap-2">
+            <label htmlFor="meta-diaria" className="text-[11px] font-bold text-neutral-300">
+              Meta diaria $
+            </label>
+            <input
+              id="meta-diaria"
+              type="number"
+              min={1}
+              step={1}
+              value={dailyGoal}
+              onChange={(e) => {
+                const v = Math.floor(Number(e.target.value))
+                if (Number.isFinite(v) && v > 0) saveDailyGoal(v)
+              }}
+              className="w-24 rounded-lg border border-neutral-700 bg-black px-2 py-1 text-right text-sm font-bold text-yellow-300 outline-none focus:border-yellow-500"
+            />
+          </div>
         </section>
 
         {/* Copia de seguridad */}
