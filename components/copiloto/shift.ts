@@ -51,7 +51,10 @@ export type ShiftState = {
   lastSeen: number | null // último heartbeat (para no contar tiempo con la app cerrada)
 }
 
-type GpsState = { status: "idle" | "watching" | "denied" | "error"; lastFix: string | null }
+// Fix GPS: { lat, lng, acc } cuando hay señal, null cuando no.
+// (v1-dash-screen hace `gps ? gps.lat.toFixed(4) : "Locating…"`, así que gps
+// debe ser null —y no un objeto— cuando no hay fix.)
+type GpsFix = { lat: number; lng: number; acc: number | null }
 
 const EMPTY_SHIFT: ShiftState = {
   date: "",
@@ -124,7 +127,7 @@ export function useShift() {
       return DEFAULT_HOURLY_GOAL
     }
   })
-  const [gps, setGps] = useState<GpsState>({ status: "idle", lastFix: null })
+  const [gps, setGps] = useState<GpsFix | null>(null)
   const [toast, setToast] = useState<string | null>(null)
   const shiftRef = useRef(shift)
   shiftRef.current = shift
@@ -215,11 +218,10 @@ export function useShift() {
   const startWatch = useCallback(() => {
     if (!("geolocation" in navigator)) return
     if (watchId.current != null) return
-    setGps((g) => ({ ...g, status: "watching" }))
     try {
       watchId.current = navigator.geolocation.watchPosition(
         (pos) => {
-          const { latitude, longitude } = pos.coords
+          const { latitude, longitude, accuracy } = pos.coords
           setShift((s) => {
             if (!s.active) return s
             let miles = s.miles
@@ -230,15 +232,18 @@ export function useShift() {
             lastPos.current = { lat: latitude, lon: longitude }
             return { ...s, miles }
           })
-          setGps({ status: "watching", lastFix: new Date().toLocaleTimeString() })
+          setGps({ lat: latitude, lng: longitude, acc: Number.isFinite(accuracy) ? accuracy : null })
         },
-        () => setGps((g) => ({ ...g, status: "denied" })),
+        () => {
+          setGps(null)
+          showToast("⚠️ GPS denegado: activa el permiso")
+        },
         { enableHighAccuracy: true, maximumAge: 10_000, timeout: 20_000 }
       )
     } catch {
-      setGps((g) => ({ ...g, status: "error" }))
+      setGps(null)
     }
-  }, [])
+  }, [showToast])
 
   const stopWatch = useCallback(() => {
     if (watchId.current != null) {
@@ -248,22 +253,25 @@ export function useShift() {
       watchId.current = null
     }
     lastPos.current = null
-    setGps((g) => ({ ...g, status: "idle" }))
+    setGps(null)
   }, [])
 
   const refreshGps = useCallback(() => {
     if (!("geolocation" in navigator)) {
-      setGps((g) => ({ ...g, status: "error" }))
+      setGps(null)
       return
     }
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         lastPos.current = { lat: pos.coords.latitude, lon: pos.coords.longitude }
-        setGps({ status: "watching", lastFix: new Date().toLocaleTimeString() })
+        setGps({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          acc: Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : null,
+        })
         showToast("📍 GPS listo")
       },
       () => {
-        setGps((g) => ({ ...g, status: "denied" }))
         showToast("⚠️ GPS denegado: activa el permiso")
       },
       { enableHighAccuracy: true, timeout: 15_000 }
