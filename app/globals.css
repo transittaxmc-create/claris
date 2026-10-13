@@ -1,6 +1,17 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
+
+/* Utilidad de v1 (JetBrains Mono) para el DASHBOARD clonado. */
+.font-mono-jet{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+
+/* El DASHBOARD clonado de v1 usa sus tamaños de texto exactos: el resto de
+   v6 agranda los textos de 8-10px por legibilidad, pero aquí se respeta el
+   diseño original de v1 al píxel. */
+.v1-dash .text-\[8px\]{font-size:8px;line-height:1.35}
+.v1-dash .text-\[9px\]{font-size:9px;line-height:1.35}
+.v1-dash .text-\[10px\]{font-size:10px;line-height:1.35}
 
 @custom-variant dark (&:is(.dark *));
 

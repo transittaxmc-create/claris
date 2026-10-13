@@ -7,6 +7,7 @@ import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip, gross
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
 import { isVoucherPlatform } from "./platform-meta"
 import { HourlyProduction } from "./hourly-production"
+import type { ShiftApi } from "./shift"
 import {
   captureLocation,
   GpsAccuracyError,
@@ -142,7 +143,7 @@ function LocationColumn({
             value={value}
             onChange={(e) => onManual(e.target.value)}
             placeholder={`Toca ${label.toLowerCase()}`}
-            className={cn("rounded-lg border bg-neutral-950/60 px-2.5 py-2 text-sm text-white outline-none placeholder:text-neutral-500", border)}
+            className={cn("rounded-lg border bg-neutral-950/60 px-2.5 py-1.5 text-[13px] text-white outline-none placeholder:text-neutral-500", border)}
           />
           <button
             type="button"
@@ -162,9 +163,11 @@ function LocationColumn({
 export function EntryScreen({
   onSave,
   trips = [],
+  shift,
 }: {
   onSave: (t: Trip) => void
   trips?: Trip[]
+  shift: ShiftApi
 }) {
   const [draft, setDraft] = useState<Trip>(() => {
     const initial = newTrip()
@@ -271,11 +274,11 @@ export function EntryScreen({
 
   const greeting = now
     ? now.getHours() < 12
-      ? "Good morning"
+      ? "Buenos días"
       : now.getHours() < 18
-        ? "Good afternoon"
-        : "Good evening"
-    : "Good morning"
+        ? "Buenas tardes"
+        : "Buenas noches"
+    : "Buenos días"
 
   function handleSave() {
     if (lowAccuracy) return
@@ -302,17 +305,12 @@ export function EntryScreen({
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 px-5 pt-4 sm:px-8 sm:pt-5">
+      <div className="flex items-start justify-between gap-3 px-4 pt-2 sm:px-8 sm:pt-3">
         <div className="min-w-0">
-          <h1 className="truncate text-xl font-bold text-white">{greeting}</h1>
-          <p className="text-xs text-neutral-500" suppressHydrationWarning>
-            {now
-              ? `${now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} ${now.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`
-              : "—"}
-          </p>
+          <h1 className="truncate text-lg font-bold text-white">{greeting}</h1>
           {/* From the GPS: CALLE, CIUDAD */}
           <p
-            className="mt-1 flex items-center gap-1 text-xs"
+            className="mt-0.5 flex items-center gap-1 text-xs"
             title={place?.address || undefined}
             suppressHydrationWarning
           >
@@ -400,25 +398,27 @@ export function EntryScreen({
         </div>
 
         {/* ============================================== */}
-        {/* BOX 1: ECONOMÍA — all money fields + summaries  */}
+        {/* BOX 1: ECONOMÍA — money fields */}
         {/* ============================================== */}
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3 sm:col-span-2">
+        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-2.5 sm:col-span-2">
           {/* Box header */}
-          <div className="mb-3 flex items-center gap-2">
+          <div className="mb-2 flex items-center gap-2">
             <DollarSign className="size-4 text-emerald-400" />
             <span className="text-[11px] font-bold tracking-wide text-neutral-400">ECONOMÍA</span>
             <div className="ml-auto h-px flex-1 bg-neutral-800" />
           </div>
 
           {/* Row 1: EARNINGS + EXTRA CASH */}
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <MoneyInput
+              size="sm"
               label="EARNINGS"
               color="text-blue-400"
               value={draft.earnings}
               onChange={(n) => set("earnings", n)}
             />
             <MoneyInput
+              size="sm"
               label="EXTRA CASH"
               color="text-green-400"
               value={draft.extraCash}
@@ -427,20 +427,23 @@ export function EntryScreen({
           </div>
 
           {/* Row 2: TIPS + TOLLS + FEE */}
-          <div className="mt-3 flex gap-3">
+          <div className="mt-2 flex gap-2">
             <MoneyInput
+              size="sm"
               label="TIPS"
               color="text-yellow-400"
               value={draft.tips}
               onChange={(n) => set("tips", n)}
             />
             <MoneyInput
+              size="sm"
               label="TOLLS"
               color="text-amber-400"
               value={draft.toll}
               onChange={(n) => set("toll", n)}
             />
             <MoneyInput
+              size="sm"
               label="FEE"
               color="text-rose-400"
               value={draft.platformFee}
@@ -448,49 +451,6 @@ export function EntryScreen({
             />
           </div>
 
-          {/* Compact summary cards */}
-          <div className="mt-2.5 grid grid-cols-2 gap-2 border-t border-neutral-800/80 pt-2.5">
-            <div className="flex items-center justify-between rounded-lg border border-emerald-900/50 bg-emerald-950/20 px-2.5 py-1.5">
-              <div className="min-w-0">
-                <p className="text-[9px] font-bold tracking-[0.1em] text-emerald-300/70">GROSS TODAY</p>
-                <p className="text-sm font-black tabular-nums text-emerald-300">${grossIncomeToday.toFixed(2)}</p>
-              </div>
-              <span className="shrink-0 text-[9px] text-neutral-500">{tripCountToday}</span>
-            </div>
-            <div className="flex items-center justify-between rounded-lg border border-sky-900/50 bg-sky-950/20 px-2.5 py-1.5">
-              <div className="min-w-0">
-                <p className="text-[9px] font-bold tracking-[0.1em] text-sky-300/70">REGISTER</p>
-                <p className="text-sm font-black tabular-nums text-sky-300">${trips.reduce((total, trip) => total + grossOf(trip), 0).toFixed(2)}</p>
-              </div>
-              <span className="shrink-0 text-[9px] text-neutral-500">all</span>
-            </div>
-          </div>
-        </section>
-
-        {/* ============================================== */}
-        {/* BOX 2: CRONÓMETRO — timer + REF + HOY + MIS HORAS */}
-        {/* ============================================== */}
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3 sm:col-span-2">
-          {/* Box header */}
-          <div className="mb-3 flex items-center gap-2">
-            <Timer className="size-4 text-yellow-400" />
-            <span className="text-[11px] font-bold tracking-wide text-neutral-400">CRONÓMETRO</span>
-            <div className="ml-auto h-px flex-1 bg-neutral-800" />
-          </div>
-
-          {/* REF / INVOICE + HourlyProduction (timer + HOY + MIS HORAS + stats) */}
-          <div className="grid grid-cols-[minmax(0,0.48fr)_minmax(0,1.52fr)] items-end gap-2">
-            <label className="flex min-w-0 flex-col gap-1">
-              <span className="text-[10px] font-bold tracking-wide text-neutral-500">REF / INVOICE</span>
-              <input
-                value={draft.ref}
-                onChange={(e) => set("ref", e.target.value)}
-                placeholder="Reference"
-                className="min-h-[2.65rem] rounded-lg border border-neutral-800 bg-neutral-950 px-2 py-1.5 text-xs text-white outline-none placeholder:text-neutral-600 focus:border-neutral-600"
-              />
-            </label>
-            <HourlyProduction trips={trips} />
-          </div>
         </section>
 
         {/* ============================================== */}
@@ -536,6 +496,50 @@ export function EntryScreen({
             <p className="mt-2 text-center text-[11px] font-semibold text-rose-400">{geoError}</p>
           )}
         </section>
+
+{/* ============================================== */}
+        {/* BOX 2: CRONÓMETRO — timer + REF + HOY + MIS HORAS */}
+        {/* ============================================== */}
+        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3 sm:col-span-2">
+          {/* Box header */}
+          <div className="mb-3 flex items-center gap-2">
+            <Timer className="size-4 text-yellow-400" />
+            <span className="text-[11px] font-bold tracking-wide text-neutral-400">CRONÓMETRO</span>
+            <div className="ml-auto h-px flex-1 bg-neutral-800" />
+          </div>
+
+          {/* REF / INVOICE + HourlyProduction (timer + HOY + MIS HORAS + stats) */}
+          <div className="grid grid-cols-[minmax(0,0.48fr)_minmax(0,1.52fr)] items-end gap-2">
+            <label className="flex min-w-0 flex-col gap-1">
+              <span className="text-[10px] font-bold tracking-wide text-neutral-500">REF / INVOICE</span>
+              <input
+                value={draft.ref}
+                onChange={(e) => set("ref", e.target.value)}
+                placeholder="Reference"
+                className="min-h-[2.65rem] rounded-lg border border-neutral-800 bg-neutral-950 px-2 py-1.5 text-xs text-white outline-none placeholder:text-neutral-600 focus:border-neutral-600"
+              />
+            </label>
+            <HourlyProduction trips={trips} shift={shift} />
+          </div>
+        </section>
+
+        {/* Resumen discreto al final: GROSS TODAY + REGISTER */}
+        <div className="grid grid-cols-2 gap-2 sm:col-span-2">
+          <div className="flex items-center justify-between rounded-lg border border-emerald-900/50 bg-emerald-950/20 px-2.5 py-1.5">
+            <div className="min-w-0">
+              <p className="text-[9px] font-bold tracking-[0.1em] text-emerald-300/70">GROSS TODAY</p>
+              <p className="text-sm font-black tabular-nums text-emerald-300">${grossIncomeToday.toFixed(2)}</p>
+            </div>
+            <span className="shrink-0 text-[9px] text-neutral-500">{tripCountToday}</span>
+          </div>
+          <div className="flex items-center justify-between rounded-lg border border-sky-900/50 bg-sky-950/20 px-2.5 py-1.5">
+            <div className="min-w-0">
+              <p className="text-[9px] font-bold tracking-[0.1em] text-sky-300/70">REGISTER</p>
+              <p className="text-sm font-black tabular-nums text-sky-300">${trips.reduce((total, trip) => total + grossOf(trip), 0).toFixed(2)}</p>
+            </div>
+            <span className="shrink-0 text-[9px] text-neutral-500">all</span>
+          </div>
+        </div>
       </div>
 
       {/* Sticky record button con calidad y feedback */}
@@ -545,7 +549,7 @@ export function EntryScreen({
           onClick={handleSave}
           disabled={!!lowAccuracy}
           className={cn(
-            "w-full rounded-2xl py-4 text-lg font-extrabold tracking-wide transition-all",
+            "w-full rounded-2xl py-3 text-base font-extrabold tracking-wide transition-all",
             storageSaved
               ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20"
               : lowAccuracy

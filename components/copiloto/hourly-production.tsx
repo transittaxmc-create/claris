@@ -1,153 +1,45 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
-import { Timer, TrendingUp, Target, Play, Square, BarChart3, Lightbulb } from "lucide-react"
+import { useMemo, useState } from "react"
+import { Timer, TrendingUp, Target, Play, Pause, Square, BarChart3, Lightbulb } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { netOf, tripDateOf, type Trip } from "./types"
 import {
-  commitWorkedRange,
   hourKeyOf,
   hourlyStats,
   hourlyTotals,
   improveAdvice,
   productionThisHour,
-  startOfHourMs,
   timerReading,
-  trimWorked,
-  type WorkedHours,
 } from "@/lib/production"
+import type { ShiftApi } from "./shift"
 
 // Motivador de producción por hora, en formato COMPACTO.
 //
-// Cronómetro por bloques de una hora:
-// - Al ENCENDER empieza a contar desde cero.
-// - Al PARAR vuelve a cero (se apaga y se limpia).
-// - Cada 60 minutos (al caer la hora en punto) vuelve a cero solo y arranca un
-//   bloque nuevo, para que el número sea siempre "cuánto llevo en esta hora".
-// - Lo trabajado de cada hora se guarda en el teléfono y se cruza con los viajes
-//   para sacar la estadística por hora y los consejos de mejora.
+// Usa el TURNO UNIFICADO (components/copiloto/shift.ts): el mismo START / PAUSA /
+// PARAR que el DASHBOARD. El tiempo de break no cuenta como trabajado y ambas
+// pantallas siempre dicen lo mismo.
+//
+// - ENCENDER = START: empieza el turno (y la medición) desde cero.
+// - PAUSA/SEGUIR = BREAK: pausa y reanuda sin cerrar el turno.
+// - PARAR = END SHIFT: cierra el turno y la medición vuelve a cero.
+// - Cada 60 minutos (al caer la hora en punto) el bloque vuelve a cero solo,
+//   para que el número sea siempre "cuánto llevo en esta hora". El bloque
+//   anterior queda guardado en MIS HORAS.
 //
 // IMPORTANTE (posición): este componente devuelve un fragmento con varias piezas
 // y está pensado para vivir DENTRO de una cuadrícula de dos columnas, como hijo
 // directo. Los dos recuadros ocupan la segunda columna, al lado del box
 // REF / INVOICE; el resto se extiende a las dos columnas con `col-span-2`.
 
-const GOAL_KEY = "claris_hourly_goal"
-const TIMER_ON_KEY = "claris_timer_on"
-const TIMER_STARTED_KEY = "claris_timer_started_at"
-const TIMER_SEEN_KEY = "claris_timer_last_seen"
-const WORKED_KEY = "claris_hours_worked"
-const KEEP_DAYS = 30
-const DEFAULT_GOAL = 60
-
-function loadNumber(key: string): number | null {
-  try {
-    const raw = Number(localStorage.getItem(key))
-    return Number.isFinite(raw) && raw > 0 ? raw : null
-  } catch {
-    return null
-  }
-}
-
-function loadGoal(): number {
-  return loadNumber(GOAL_KEY) ?? DEFAULT_GOAL
-}
-
-// Por defecto el cronómetro está encendido: si el conductor nunca toca el botón,
-// todo funciona como antes.
-function loadTimerOn(): boolean {
-  try {
-    return localStorage.getItem(TIMER_ON_KEY) !== "0"
-  } catch {
-    return true
-  }
-}
-
-function loadWorked(): WorkedHours {
-  try {
-    const raw = localStorage.getItem(WORKED_KEY)
-    if (!raw) return {}
-    const parsed = JSON.parse(raw)
-    if (!parsed || typeof parsed !== "object") return {}
-    const out: WorkedHours = {}
-    for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
-      const secs = Math.floor(Number(value))
-      if (Number.isFinite(secs) && secs > 0) out[key] = Math.min(3600, secs)
-    }
-    return out
-  } catch {
-    return {}
-  }
-}
-
-export function HourlyProduction({ trips }: { trips: Trip[] }) {
-  const [now, setNow] = useState<Date>(() => new Date())
-  const [goal, setGoal] = useState<number>(() => loadGoal())
+export function HourlyProduction({ trips, shift }: { trips: Trip[]; shift: ShiftApi }) {
   const [editingGoal, setEditingGoal] = useState(false)
   const [showStats, setShowStats] = useState(false)
-  const [timerOn, setTimerOn] = useState<boolean>(() => loadTimerOn())
-  const [startedAt, setStartedAt] = useState<number | null>(() => loadNumber(TIMER_STARTED_KEY))
-  const [worked, setWorked] = useState<WorkedHours>(() => loadWorked())
-  // Última hora vista: sirve para detectar el cambio de hora sin repetir trabajo.
-  const lastHourKey = useRef<string>(hourKeyOf(new Date()))
-  const recoveryDone = useRef(false)
+  const goal = shift.hourlyGoal
+  const now = shift.now
 
-  // Al abrir: si el cronómetro quedó encendido y la app estuvo cerrada, se
-  // guardan las horas completas que quedaron a medias (hasta el último latido).
-  useEffect(() => {
-    if (recoveryDone.current) return
-    recoveryDone.current = true
-    const seen = loadNumber(TIMER_SEEN_KEY)
-    if (!timerOn || startedAt === null || seen === null || seen <= startedAt) return
-    const currentHourStart = startOfHourMs(Date.now())
-    const upTo = Math.min(seen, currentHourStart)
-    if (upTo <= startedAt) return
-    setWorked((current) => trimWorked(commitWorkedRange(current, startedAt, upTo), new Date(), KEEP_DAYS))
-    setStartedAt(currentHourStart)
-  }, [timerOn, startedAt])
-
-  // El reloj avanza cada segundo. Al caer la hora en punto se cierra el bloque
-  // anterior (queda guardado) y el nuevo arranca en cero.
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      const tick = new Date()
-      setNow(tick)
-      if (!timerOn) return
-      const key = hourKeyOf(tick)
-      if (key !== lastHourKey.current) {
-        const boundary = startOfHourMs(tick.getTime())
-        setWorked((current) => trimWorked(commitWorkedRange(current, startedAt ?? boundary, boundary), tick, KEEP_DAYS))
-        setStartedAt(boundary)
-        lastHourKey.current = key
-      }
-    }, 1000)
-    return () => window.clearInterval(id)
-  }, [timerOn, startedAt])
-
-  // Guardado: meta, estado del cronómetro y latido. El latido cada 30 s permite
-  // recuperar las horas a medias si la app se cierra de golpe.
-  useEffect(() => {
-    try {
-      localStorage.setItem(GOAL_KEY, String(goal))
-      localStorage.setItem(TIMER_ON_KEY, timerOn ? "1" : "0")
-      if (timerOn && startedAt !== null) {
-        localStorage.setItem(TIMER_STARTED_KEY, String(startedAt))
-        const seen = loadNumber(TIMER_SEEN_KEY) ?? 0
-        if (Date.now() - seen > 30_000) localStorage.setItem(TIMER_SEEN_KEY, String(Date.now()))
-      } else {
-        localStorage.removeItem(TIMER_STARTED_KEY)
-        localStorage.removeItem(TIMER_SEEN_KEY)
-      }
-    } catch {}
-  }, [goal, timerOn, startedAt, now])
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(WORKED_KEY, JSON.stringify(worked))
-    } catch {}
-  }, [worked])
-
-  const timer = useMemo(() => timerReading({ now, on: timerOn, startedAt }), [now, timerOn, startedAt])
+  // Bloque en curso: corre solo mientras se trabaja (turno activo y sin break).
+  const timer = timerReading({ now, on: shift.working, startedAt: shift.measureStart })
 
   const earned = useMemo(() => {
     const list = trips.map((t) => ({ date: tripDateOf(t), time: t.time, net: netOf(t) }))
@@ -156,11 +48,11 @@ export function HourlyProduction({ trips }: { trips: Trip[] }) {
     // pero recalcular es barato y mantiene todo coherente al cambiar de hora.
   }, [trips, now])
 
-  // Estadística: lo producido (viajes) cruzado con lo trabajado (cronómetro).
+  // Estadística: lo producido (viajes) cruzado con lo trabajado (turno).
   const stats = useMemo(() => {
     const list = trips.map((t) => ({ date: tripDateOf(t), time: t.time, net: netOf(t) }))
-    return hourlyStats({ trips: list, worked })
-  }, [trips, worked])
+    return hourlyStats({ trips: list, worked: shift.worked })
+  }, [trips, shift.worked])
 
   const todayKey = hourKeyOf(now).slice(0, 10)
   const todayStats = useMemo(() => stats.filter((s) => s.day === todayKey), [stats, todayKey])
@@ -170,24 +62,7 @@ export function HourlyProduction({ trips }: { trips: Trip[] }) {
   const elapsedPct = Math.min(100, Math.round((timer.elapsedSec / 3600) * 100))
   const mm = String(Math.floor(timer.elapsedSec / 60)).padStart(2, "0")
   const ss = String(timer.elapsedSec % 60).padStart(2, "0")
-
-  // PARAR: guarda lo trabajado del bloque y vuelve a cero.
-  function stopTimer() {
-    const stoppedAt = Date.now()
-    if (startedAt !== null && stoppedAt > startedAt) {
-      setWorked((current) => trimWorked(commitWorkedRange(current, startedAt, stoppedAt), new Date(), KEEP_DAYS))
-    }
-    setTimerOn(false)
-    setStartedAt(null)
-  }
-
-  // ENCENDER: bloque nuevo, contando desde cero.
-  function startTimer() {
-    const started = Date.now()
-    setStartedAt(started)
-    lastHourKey.current = hourKeyOf(new Date(started))
-    setTimerOn(true)
-  }
+  const statusLabel = timer.running ? `${timer.remainingMin}m` : shift.isOnBreak ? "PAUSA" : "OFF"
 
   return (
     <>
@@ -199,8 +74,8 @@ export function HourlyProduction({ trips }: { trips: Trip[] }) {
             <span className="flex items-center gap-1">
               <Timer className={cn("size-2.5", timer.running ? "text-yellow-400" : "text-neutral-600")} /> HORA
             </span>
-            <span className={cn("shrink-0", timer.running ? "text-neutral-500" : "text-rose-400")}>
-              {timer.running ? `${timer.remainingMin}m` : "OFF"}
+            <span className={cn("shrink-0", timer.running ? "text-neutral-500" : shift.isOnBreak ? "text-amber-400" : "text-rose-400")}>
+              {statusLabel}
             </span>
           </div>
           <div
@@ -217,20 +92,43 @@ export function HourlyProduction({ trips }: { trips: Trip[] }) {
               style={{ width: `${elapsedPct}%` }}
             />
           </div>
-          <button
-            type="button"
-            onClick={timerOn ? stopTimer : startTimer}
-            title={timerOn ? "Parar y volver a cero porque terminé de trabajar" : "Encender el cronómetro desde cero"}
-            className={cn(
-              "mt-1.5 flex w-full items-center justify-center gap-1 rounded-lg border py-1 text-[8px] font-bold transition-colors",
-              timerOn
-                ? "border-rose-500/50 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20"
-                : "border-emerald-500/50 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20",
-            )}
-          >
-            {timerOn ? <Square className="size-2.5" /> : <Play className="size-2.5" />}
-            {timerOn ? "PARAR" : "ENCENDER"}
-          </button>
+          {!shift.shiftActive ? (
+            <button
+              type="button"
+              onClick={shift.onStart}
+              title="Empezar el turno: el cronómetro arranca desde cero"
+              className="mt-1.5 flex w-full items-center justify-center gap-1 rounded-lg border border-emerald-500/50 bg-emerald-500/10 py-1 text-[8px] font-bold text-emerald-300 transition-colors hover:bg-emerald-500/20"
+            >
+              <Play className="size-2.5" />
+              ENCENDER
+            </button>
+          ) : (
+            <div className="mt-1.5 flex w-full gap-1">
+              <button
+                type="button"
+                onClick={shift.onBreak}
+                title={shift.isOnBreak ? "Terminar el break y seguir midiendo" : "Pausar la medición sin cerrar el turno"}
+                className={cn(
+                  "flex flex-1 items-center justify-center gap-1 rounded-lg border py-1 text-[8px] font-bold transition-colors",
+                  shift.isOnBreak
+                    ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+                    : "border-amber-500/50 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20",
+                )}
+              >
+                <Pause className="size-2.5" />
+                {shift.isOnBreak ? "SEGUIR" : "PAUSA"}
+              </button>
+              <button
+                type="button"
+                onClick={shift.onEnd}
+                title="Cerrar el turno: la medición vuelve a cero"
+                className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-rose-500/50 bg-rose-500/10 py-1 text-[8px] font-bold text-rose-300 transition-colors hover:bg-rose-500/20"
+              >
+                <Square className="size-2.5" />
+                PARAR
+              </button>
+            </div>
+          )}
         </div>
 
         <button
@@ -242,7 +140,7 @@ export function HourlyProduction({ trips }: { trips: Trip[] }) {
           <div className="flex items-center gap-1 text-[8px] font-bold tracking-wide text-neutral-500">
             <TrendingUp className="size-2.5 text-emerald-400" /> HOY
           </div>
-          <div className={cn("text-base font-black leading-tight", timerOn ? "text-emerald-400" : "text-neutral-500")}>
+          <div className={cn("text-base font-black leading-tight", shift.shiftActive ? "text-emerald-400" : "text-neutral-500")}>
             ${earned.toFixed(2)}
           </div>
 
@@ -258,11 +156,11 @@ export function HourlyProduction({ trips }: { trips: Trip[] }) {
             min={20}
             max={200}
             step={5}
-            value={goal}
-            onChange={(e) => setGoal(Number(e.target.value))}
+            value={shift.hourlyGoal}
+            onChange={(e) => shift.setHourlyGoal(Number(e.target.value))}
             className="min-w-0 flex-1 accent-yellow-400"
           />
-          <span className="w-12 shrink-0 text-right text-[11px] font-bold text-yellow-300">${goal}/h</span>
+          <span className="w-12 shrink-0 text-right text-[11px] font-bold text-yellow-300">${shift.hourlyGoal}/h</span>
         </div>
       )}
 
