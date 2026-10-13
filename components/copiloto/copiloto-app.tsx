@@ -51,6 +51,7 @@ import {
   type Tombstones,
 } from "@/lib/sync"
 import { localDateKey } from "@/lib/dates"
+import { queueDualSync, flushDualSyncQueue } from "./dual-sync"
 
 // Alias de producción: contra este se comprueba si el teléfono está abriendo una
 // copia vieja (una URL de preview que quedó viva).
@@ -207,6 +208,12 @@ export function CopilotoApp() {
     }
   }, [])
 
+  // Auto-sync al Dual Register: reintenta los envíos pendientes al abrir.
+  useEffect(() => {
+    if (!hydrated) return
+    flushDualSyncQueue((id) => tripsRef.current.find((t) => t.id === id))
+  }, [hydrated])
+
   // Guardado con un retardo muy corto en cada cambio (viajes o gastos).
   useEffect(() => {
     if (!hydrated) return
@@ -237,6 +244,8 @@ export function CopilotoApp() {
     const stamped = stampTrip(normalizeTripStatus(t))
     setTrips((prev) => [stamped, ...prev])
     setTab("REGISTER")
+    // Auto-sync al Dual Register (no bloquea; reintenta si falla).
+    queueDualSync(stamped)
   }
 
   function saveEdit(t: Trip) {
@@ -249,6 +258,8 @@ export function CopilotoApp() {
       return exists ? prev.map((p) => (p.id === stamped.id ? stamped : p)) : [stamped, ...prev]
     })
     setEditing(null)
+    // Auto-sync al Dual Register (las correcciones también se propagan).
+    queueDualSync(stamped)
   }
 
   // Arregla el descuadre de un viaje ajustando sus earnings para que el neto
