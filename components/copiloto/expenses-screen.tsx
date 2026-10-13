@@ -284,7 +284,7 @@ export function ExpensesScreen({
     }
   }
 
-  function saveDraft() {
+  async function saveDraft() {
     if (!draft) return
     if (!draft.vendor.trim() || !Number.isFinite(draft.amount)) {
       window.alert("Completa el vendedor y el monto.")
@@ -319,6 +319,25 @@ export function ExpensesScreen({
       savedAt: new Date().toISOString(),
     }
     onSave(expense)
+
+    // Auto-push to Dual Register projections with pending due date
+    try {
+      await fetch('https://islandcity-register1.vercel.app/api/ingest/bill-scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vendor: expense.vendor,
+          amount: expense.amount,
+          date: expense.date,
+          dueDate: expense.date, // pending due date = receipt date
+          category: expense.category,
+          notes: expense.notes || '',
+          source: 'claris-expenses'
+        })
+      })
+    } catch (e) {
+      console.warn('[claris] Failed to push to Dual Register', e)
+    }
 
     // Programación: si el gasto se repite, queda en el ledger que ve FINANCE
     // para dar seguimiento a cada pago con su vencimiento y frecuencia.
