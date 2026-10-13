@@ -332,7 +332,8 @@ export function ExpensesScreen({
           dueDate: expense.date, // pending due date = receipt date
           category: expense.category,
           notes: expense.notes || '',
-          source: 'claris-expenses'
+          source: 'claris-expenses',
+          externalId: expense.id
         })
       })
     } catch (e) {
