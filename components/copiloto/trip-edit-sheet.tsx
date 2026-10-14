@@ -164,13 +164,12 @@ export function TripEditSheet({
                 placeholder="14:46"
                 className="rounded-lg border border-neutral-700 bg-neutral-950 px-2.5 py-2 text-sm font-semibold text-white outline-none placeholder:text-neutral-600"
               />
-              <span className="pt-1 text-[10px] font-bold tracking-wide text-neutral-400">FECHA</span>
               <input
                 type="date"
                 aria-label="Fecha de la transacción"
                 value={tripDateInputValue(draft)}
                 onChange={(e) => setDate(e.target.value)}
-                className="rounded-lg border border-neutral-700 bg-neutral-950 px-2.5 py-1.5 text-xs font-semibold text-white outline-none"
+                className="rounded-lg border border-neutral-700 bg-neutral-950 px-2.5 py-1 text-[11px] font-semibold text-white outline-none"
               />
             </label>
           </div>

@@ -3,7 +3,7 @@
 import { useMemo } from "react"
 import { Banknote, Car, CircleAlert, PiggyBank, ReceiptText, Wallet } from "lucide-react"
 import { localDateKey } from "@/lib/dates"
-import { grossOf, money, netOf, type Expense, type Trip } from "./types"
+import { grossOf, money, netOf, normalizePlatformName, type Expense, type Trip } from "./types"
 import { PlatformAvatar } from "./platform-avatar"
 
 function StatCard({
@@ -131,7 +131,7 @@ export function DashScreen({ trips, expenses }: { trips: Trip[]; expenses: Expen
               <div className="flex flex-col gap-2">
                 {data.platforms.map((p) => (
                   <div key={p.platform} className="flex items-center gap-2.5">
-                    <PlatformAvatar platform={p.platform} />
+                    <PlatformAvatar platform={normalizePlatformName(p.platform)} />
                     <span className="min-w-0 flex-1 truncate text-xs font-semibold text-neutral-200">
                       {p.platform}
                       <span className="ml-1.5 font-normal text-neutral-500">
