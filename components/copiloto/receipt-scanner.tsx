@@ -90,11 +90,12 @@ export function ReceiptScanner({
   const [notas, setNotas] = useState("")
   const [fecha, setFecha] = useState(localDateKey(new Date()))
   const [verCategorias, setVerCategorias] = useState(false)
-  const [docTipo, setDocTipo] = useState<ExpenseDocType>("recibo")
+  // Empty until user chooses — Easy Pass / Tower look like receipts but are Bills
+  const [docTipo, setDocTipo] = useState<ExpenseDocType | "">("")
   const inputRef = useRef<HTMLInputElement>(null)
 
   const balance = totales.ingresos - totales.gastos
-  const listo = importe !== "" && Number(importe) > 0
+  const listo = importe !== "" && Number(importe) > 0 && (docTipo === "factura" || docTipo === "recibo")
 
   const escanear = useCallback(async (file: File) => {
     setLeyendo(true)
@@ -102,7 +103,7 @@ export function ReceiptScanner({
     try {
       const { image, mimeType } = await reducir(file)
       setFoto(image)
-      setDocTipo("recibo")
+      setDocTipo("")
       setAviso({ tipo: "info", texto: "Reading document with AI…" })
       const res = await fetch("/api/scan-receipt", {
         method: "POST",
@@ -118,7 +119,7 @@ export function ReceiptScanner({
       if (r.category && EXPENSE_CATEGORIES.includes(r.category as ExpenseCategory)) setCategoria(String(r.category))
       if (r.notes) setNotas(String(r.notes))
       if (typeof r.confidence === "number") setConfianza(r.confidence)
-      setAviso({ tipo: "ok", texto: "Document read. Choose Bill or Receipt, then save." })
+      setAviso({ tipo: "ok", texto: "Document read. Select Bill or Receipt, then save." })
     } catch (err) {
       setAviso({ tipo: "error", texto: String((err as Error)?.message || err) })
     } finally {
@@ -128,6 +129,10 @@ export function ReceiptScanner({
 
   function guardar() {
     if (!listo) return
+    if (docTipo !== "factura" && docTipo !== "recibo") {
+      setAviso({ tipo: "error", texto: "Select document type: Bill (to pay) or Receipt (already paid)." })
+      return
+    }
     const monto = Number(importe)
     const nombre = comercio.trim() || (direccion === "gasto" ? "Unnamed expense" : "Unnamed income")
     if (direccion === "ingreso") {
@@ -135,8 +140,6 @@ export function ReceiptScanner({
       onClose()
       return
     }
-    // Receipt = already paid → posted actual + photo attached for View.
-    // Bill = to pay later → projected payable.
     const attached = foto || undefined
     const expense: Expense = {
       id: crypto.randomUUID(),
@@ -149,7 +152,7 @@ export function ReceiptScanner({
       isAiGenerated: docTipo === "recibo" || Boolean(foto),
       isEditedByUser: false,
       scheduled: docTipo === "factura",
-      docType: docTipo === "manual" ? "recibo" : docTipo,
+      docType: docTipo as ExpenseDocType,
       savedAt: new Date().toISOString(),
     }
     onSaveExpense(expense)
@@ -335,53 +338,32 @@ export function ReceiptScanner({
             />
           </label>
 
-          {/* Document type: Bill (payable) | Receipt (already paid / on statement) */}
+          {/* REQUIRED dropdown: Bill = payable | Receipt = match bank */}
           <div className="mt-3">
-            <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#6B7280" }}>Document type</p>
-            <div className="mt-1.5 grid grid-cols-2 gap-2">
-              {(
-                [
-                  {
-                    key: "factura" as const,
-                    label: "Bill",
-                    hint: "To pay later",
-                    detail: "Projected payable in the ledger",
-                  },
-                  {
-                    key: "recibo" as const,
-                    label: "Receipt",
-                    hint: "Already paid",
-                    detail: "Posted expense + photo attached",
-                  },
-                ] as const
-              ).map((opt) => (
-                <button
-                  key={opt.key}
-                  type="button"
-                  onClick={() => setDocTipo(opt.key)}
-                  className="min-h-[52px] rounded-xl px-2 py-2.5 text-left active:scale-[0.98]"
-                  style={{
-                    background: docTipo === opt.key ? (direccion === "gasto" ? ORANGE : BLUE) : "#fff",
-                    color: docTipo === opt.key ? "#fff" : "#1F2937",
-                    border: `2px solid ${docTipo === opt.key ? "transparent" : LINE}`,
-                  }}
-                >
-                  <span className="block text-[13px] font-extrabold leading-tight">{opt.label}</span>
-                  <span
-                    className="mt-0.5 block text-[10px] font-semibold leading-tight"
-                    style={{ color: docTipo === opt.key ? "rgba(255,255,255,0.9)" : "#6B7280" }}
-                  >
-                    {opt.hint}
-                  </span>
-                  <span
-                    className="mt-1 block text-[9px] leading-snug"
-                    style={{ color: docTipo === opt.key ? "rgba(255,255,255,0.75)" : "#9CA3AF" }}
-                  >
-                    {opt.detail}
-                  </span>
-                </button>
-              ))}
-            </div>
+            <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#6B7280" }}>
+              Document type <span style={{ color: ORANGE }}>*</span>
+            </p>
+            <select
+              value={docTipo}
+              onChange={(e) => setDocTipo(e.target.value as ExpenseDocType | "")}
+              className="mt-1.5 w-full rounded-xl px-3 py-3 text-[14px] font-bold outline-none"
+              style={{
+                background: docTipo ? "#fff" : "#FFF7ED",
+                border: `2px solid ${docTipo ? LINE : ORANGE}`,
+                color: "#1F2937",
+              }}
+            >
+              <option value="">— Select type —</option>
+              <option value="factura">Bill — to pay later (e.g. Easy Pass, Tower, invoice)</option>
+              <option value="recibo">Receipt — already paid (match to bank statement)</option>
+            </select>
+            <p className="mt-1.5 text-[10px] leading-snug" style={{ color: "#8A93A3" }}>
+              {docTipo === "factura"
+                ? "Saved as a projected payable in the ledger until you pay it."
+                : docTipo === "recibo"
+                  ? "Saved as a posted expense with photo attached to match the bank."
+                  : "Toll invoices (Easy Pass, SunPass, Tower) are usually Bills, not receipts."}
+            </p>
           </div>
 
           <label className="mt-3 block">
