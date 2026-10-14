@@ -14,12 +14,6 @@ import {
 } from "./types"
 import { expectedOf, receivedOf, reconStateOf } from "./reconciliation"
 
-// REPORTES: Financial Statement por rango de fechas.
-//
-// Se genera a partir de los datos reales (viajes + gastos) del periodo elegido,
-// con presets de semana/mes y rango personalizado. Sirve como estado financiero
-// para impuestos (milla/deducciones) y para revisar el periodo.
-
 type Preset = "week" | "lastWeek" | "month" | "lastMonth" | "last30" | "custom"
 
 const PRESETS: { id: Preset; label: string }[] = [
@@ -31,12 +25,10 @@ const PRESETS: { id: Preset; label: string }[] = [
   { id: "custom", label: "Personalizado" },
 ]
 
-// Fecha local del rango (antes era UTC: por la noche el rango se corría un día).
 function iso(d: Date): string {
   return localDateKey(d)
 }
 
-// Rango de fechas del preset, en fechas locales "YYYY-MM-DD".
 function rangeFor(preset: Preset, customFrom: string, customTo: string): { from: string; to: string } {
   const now = new Date()
   const today = iso(now)
@@ -66,7 +58,6 @@ function rangeFor(preset: Preset, customFrom: string, customTo: string): { from:
     const last = new Date(now.getFullYear(), now.getMonth(), 0)
     return { from: iso(first), to: iso(last) }
   }
-  // last30
   const start = new Date(now)
   start.setDate(start.getDate() - 29)
   return { from: iso(start), to: today }
@@ -152,7 +143,6 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
       if (state !== "pending") receivedTotal += receivedOf(x) ?? 0
     }
 
-    // Pendiente real de cobro: solo viajes reconciliados con diferencia negativa.
     for (const x of t) {
       const state = reconStateOf(x)
       if (state === "short") pendingTotal += Math.abs(expectedOf(x) - (receivedOf(x) ?? 0))
@@ -241,6 +231,105 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
     URL.revokeObjectURL(url)
   }
 
+  function exportPdf() {
+    const esc = (s: string | number) =>
+      String(s)
+        .replace(/&/g, "&")
+        .replace(/</g, "<")
+        .replace(/>/g, ">")
+    const moneyHtml = (n: number) => {
+      const v = Number(n) || 0
+      const t = Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+      return `${v < 0 ? "-" : ""}$${t}`
+    }
+    const platformRows = data.byPlatform
+      .map(
+        (p) =>
+          `<tr><td>${esc(p.platform)}</td><td class="r">${p.count}</td><td class="r">${moneyHtml(p.gross)}</td><td class="r">${moneyHtml(p.net)}</td></tr>`,
+      )
+      .join("")
+    const categoryRows =
+      data.byCategory.length === 0
+        ? `<tr><td colspan="2">Sin gastos</td></tr>`
+        : data.byCategory
+            .map((c) => `<tr><td>${esc(c.category)}</td><td class="r">-${moneyHtml(c.amount)}</td></tr>`)
+            .join("")
+    const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Financial Statement ${esc(from)} – ${esc(to)}</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 24px; color: #111; background: #fff; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { color: #666; font-size: 12px; margin-bottom: 20px; }
+  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #666; margin: 18px 0 8px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  td { padding: 5px 0; border-bottom: 1px solid #f0f0f0; }
+  td.r { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.total td { font-weight: 800; border-top: 2px solid #111; border-bottom: none; padding-top: 8px; }
+  .result { margin-top: 16px; padding: 12px; background: #f5f5f5; border-radius: 8px; display: flex; justify-content: space-between; font-weight: 800; font-size: 15px; }
+  .pos { color: #0a7a3e; } .neg { color: #b3123b; }
+  @media print { body { padding: 12px; } .no-print { display: none; } }
+</style>
+</head>
+<body>
+  <div class="no-print" style="margin-bottom:16px">
+    <button onclick="window.print()" style="padding:10px 16px;font-weight:700;border-radius:8px;border:none;background:#FBBF24;cursor:pointer">
+      Print / Save as PDF
+    </button>
+  </div>
+  <h1>Financial Statement</h1>
+  <p class="sub">Copiloto Dual Register · ${esc(from)} → ${esc(to)} · Generated ${esc(new Date().toLocaleString())}</p>
+  <h2>Income</h2>
+  <table>
+    <tr><td>Gross</td><td class="r">${moneyHtml(data.gross)}</td></tr>
+    <tr><td>Tips</td><td class="r">${moneyHtml(data.tips)}</td></tr>
+    <tr><td>Extra cash</td><td class="r">${moneyHtml(data.extra)}</td></tr>
+    <tr><td>Tolls collected</td><td class="r">${moneyHtml(data.tolls)}</td></tr>
+    <tr><td>Platform fees</td><td class="r">-${moneyHtml(data.fees)}</td></tr>
+    <tr class="total"><td>NET</td><td class="r">${moneyHtml(data.net)}</td></tr>
+  </table>
+  <h2>By platform</h2>
+  <table>
+    <tr><td><b>Platform</b></td><td class="r"><b>Trips</b></td><td class="r"><b>Gross</b></td><td class="r"><b>Net</b></td></tr>
+    ${platformRows || "<tr><td colspan=\"4\">No trips</td></tr>"}
+  </table>
+  <h2>Expenses</h2>
+  <table>
+    ${categoryRows}
+    <tr class="total"><td>TOTAL EXPENSES</td><td class="r">-${moneyHtml(data.expenseTotal)}</td></tr>
+  </table>
+  <h2>Tax classification</h2>
+  <table>
+    <tr><td>Business (deductible)</td><td class="r">${moneyHtml(data.business)}</td></tr>
+    <tr><td>Personal</td><td class="r">${moneyHtml(data.personal)}</td></tr>
+    <tr><td>Unclassified</td><td class="r">${moneyHtml(data.unclassified)}</td></tr>
+  </table>
+  <h2>Collections reconciliation</h2>
+  <table>
+    <tr><td>Expected</td><td class="r">${moneyHtml(data.expectedTotal)}</td></tr>
+    <tr><td>Received</td><td class="r">${moneyHtml(data.receivedTotal)}</td></tr>
+    <tr><td>Outstanding</td><td class="r">${moneyHtml(data.pendingTotal)}</td></tr>
+  </table>
+  <div class="result">
+    <span>PERIOD RESULT</span>
+    <span class="${data.result >= 0 ? "pos" : "neg"}">${moneyHtml(data.result)}</span>
+  </div>
+  <script>setTimeout(function(){ window.print(); }, 350);</script>
+</body>
+</html>`
+    const w = window.open("", "_blank")
+    if (!w) {
+      alert("Allow pop-ups to generate the PDF statement.")
+      return
+    }
+    w.document.write(html)
+    w.document.close()
+  }
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between px-4 pt-3">
@@ -251,7 +340,6 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
       </div>
 
       <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {/* Rango */}
         <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
           <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold tracking-wide text-neutral-400">
             <FileText className="size-3.5 text-sky-300" /> RANGO DEL REPORTE
@@ -297,7 +385,6 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
           )}
         </section>
 
-        {/* Estado financiero */}
         <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
           <p className="mb-1 text-[11px] font-bold tracking-wide text-white">FINANCIAL STATEMENT</p>
           <p className="mb-2 text-[10px] text-neutral-500">
@@ -337,8 +424,8 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
           />
 
           <p className="mt-3 text-[10px] font-bold uppercase tracking-wide text-neutral-400">Clasificación fiscal</p>
-          <Row label="💼 Business (deducible)" value={money(data.business)} tone="income" />
-          <Row label="🏠 Personal" value={money(data.personal)} tone="muted" />
+          <Row label="Business (deducible)" value={money(data.business)} tone="income" />
+          <Row label="Personal" value={money(data.personal)} tone="muted" />
           {data.unclassified > 0 && (
             <Row label="Sin clasificar" value={money(data.unclassified)} tone="muted" />
           )}
@@ -356,22 +443,33 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
           <Row label="Pendiente de cobro" value={money(data.pendingTotal)} tone={data.pendingTotal > 0 ? "expense" : "muted"} />
         </section>
 
-        {/* Acciones */}
-        <div className="flex gap-2 pb-2">
+        <div className="flex flex-col gap-2 pb-4">
           <button
             type="button"
-            onClick={exportCsv}
-            className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900/50 py-3 text-xs font-bold text-neutral-200"
+            onClick={exportPdf}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-yellow-400 py-3.5 text-sm font-extrabold text-black active:scale-[0.99]"
           >
-            <Download className="size-4" /> EXPORTAR CSV
+            <Printer className="size-4" /> PDF / Financial Statement
           </button>
-          <button
-            type="button"
-            onClick={() => window.print()}
-            className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900/50 py-3 text-xs font-bold text-neutral-200"
-          >
-            <Printer className="size-4" /> IMPRIMIR
-          </button>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={exportCsv}
+              className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900/50 py-3 text-xs font-bold text-neutral-200"
+            >
+              <Download className="size-4" /> CSV
+            </button>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900/50 py-3 text-xs font-bold text-neutral-200"
+            >
+              <Printer className="size-4" /> Print page
+            </button>
+          </div>
+          <p className="text-center text-[10px] text-neutral-500">
+            PDF opens a clean statement — use Share → Print → Save as PDF on your phone.
+          </p>
         </div>
       </div>
     </div>
