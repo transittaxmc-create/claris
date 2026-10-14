@@ -158,7 +158,7 @@ export function CashFlowRegister({
       date: today,
       description: "",
       source: defaultStatus === "projected" ? "projection" : "manual",
-      sourceLabel: defaultStatus === "projected" ? "Projection" : "Manual",
+      sourceLabel: defaultStatus === "projected" ? "Bill" : "Receipt",
       type: defaultType,
       status: defaultStatus,
       amount: 0,
@@ -191,20 +191,33 @@ export function CashFlowRegister({
     )
   }
 
-  const handleMatch = (id: string) => {
+  /** Correct type: Bill (projected payable) ↔ Receipt (posted / match bank). Fully reversible. */
+  const handleSetDocKind = (id: string, kind: "bill" | "receipt") => {
     saveEntries(
-      entries.map((e) =>
-        e.id === id
-          ? {
-              ...e,
-              status: "actual" as CashFlowStatus,
-              source: "bank" as CashFlowSource,
-              sourceLabel: e.sourceLabel || "Bank",
-              isManuallyEdited: true,
-            }
-          : e,
-      ),
+      entries.map((e) => {
+        if (e.id !== id) return e
+        if (kind === "bill") {
+          return {
+            ...e,
+            status: "projected" as CashFlowStatus,
+            source: "projection" as CashFlowSource,
+            sourceLabel: "Bill",
+            isManuallyEdited: true,
+          }
+        }
+        return {
+          ...e,
+          status: "actual" as CashFlowStatus,
+          source: "receipt" as CashFlowSource,
+          sourceLabel: "Receipt",
+          isManuallyEdited: true,
+        }
+      }),
     )
+  }
+
+  const handleMatch = (id: string) => {
+    handleSetDocKind(id, "receipt")
   }
 
   const handleSaveModal = (entryToSave: CashFlowEntry) => {
@@ -247,7 +260,7 @@ export function CashFlowRegister({
       case "projection":
         return (
           <span className={cn(base, "border-cyan-500/20 bg-cyan-500/10 text-cyan-400")}>
-            <TrendingUp className="size-2.5" /> {label || "Projected"}
+            <TrendingUp className="size-2.5" /> {label || "Bill"}
           </span>
         )
       default:
@@ -371,7 +384,7 @@ export function CashFlowRegister({
                       <div className="font-bold tabular-nums leading-tight text-emerald-400">
                         {isActual ? money(row.runningActual) : "—"}
                       </div>
-                      <div className="text-[9px] text-neutral-500">{isActual ? "Posted" : "Pending"}</div>
+                      <div className="text-[9px] text-neutral-500">{isActual ? "Posted" : "Bill"}</div>
                     </td>
                     <td className="p-1.5 text-right align-top">
                       <input
@@ -391,26 +404,40 @@ export function CashFlowRegister({
                       <div className="mt-0.5 inline-block whitespace-nowrap rounded border border-neutral-700 bg-neutral-800 px-1 py-0.5 text-[9px] font-bold leading-none text-neutral-300">
                         PROJ: {money(row.runningProjected)}
                       </div>
-                      {!isActual && (
-                        <div className="mt-1 flex justify-end gap-1">
-                          <button type="button" onClick={() => handleMatch(row.id)} className="min-h-[28px] min-w-[28px] rounded bg-emerald-600/30 p-1.5 text-emerald-400" title="Match to bank">
-                            <Link2 className="size-3" />
-                          </button>
-                          <button type="button" onClick={() => handleDeleteEntry(row.id)} className="min-h-[28px] min-w-[28px] rounded bg-rose-600/30 p-1.5 text-rose-400" title="Delete">
-                            <Trash2 className="size-3" />
-                          </button>
-                        </div>
-                      )}
-                      {isActual && (
-                        <div className="mt-1 flex justify-end gap-0.5">
-                          <button type="button" onClick={() => handleEditEntry(row)} className="p-1 text-neutral-500 hover:text-white">
-                            <Pencil className="size-3" />
-                          </button>
-                          <button type="button" onClick={() => handleDeleteEntry(row.id)} className="p-1 text-neutral-500 hover:text-rose-400">
-                            <Trash2 className="size-3" />
-                          </button>
-                        </div>
-                      )}
+                      <div className="mt-1 flex flex-wrap justify-end gap-1">
+                        {!isActual ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleSetDocKind(row.id, "receipt")}
+                              className="rounded bg-emerald-600/30 px-1.5 py-1 text-[8px] font-bold text-emerald-300"
+                              title="Mark as Receipt (already paid / match bank)"
+                            >
+                              → Receipt
+                            </button>
+                            <button type="button" onClick={() => handleDeleteEntry(row.id)} className="min-h-[28px] min-w-[28px] rounded bg-rose-600/30 p-1.5 text-rose-400" title="Delete">
+                              <Trash2 className="size-3" />
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleSetDocKind(row.id, "bill")}
+                              className="rounded bg-cyan-600/30 px-1.5 py-1 text-[8px] font-bold text-cyan-300"
+                              title="Mark as Bill (to pay later)"
+                            >
+                              → Bill
+                            </button>
+                            <button type="button" onClick={() => handleEditEntry(row)} className="p-1 text-neutral-500 hover:text-white" title="Edit">
+                              <Pencil className="size-3" />
+                            </button>
+                            <button type="button" onClick={() => handleDeleteEntry(row.id)} className="p-1 text-neutral-500 hover:text-rose-400" title="Delete">
+                              <Trash2 className="size-3" />
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                     <td className="p-1 text-center align-top">
                       <div className="flex flex-col items-center gap-0.5">
@@ -522,20 +549,23 @@ export function CashFlowRegister({
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold uppercase text-neutral-400">Status</label>
+                  <label className="text-[10px] font-bold uppercase text-neutral-400">Document type</label>
                   <select
                     value={editingEntry.status}
-                    onChange={(e) =>
+                    onChange={(e) => {
+                      const st = e.target.value as CashFlowStatus
+                      const isBill = st === "projected"
                       setEditingEntry({
                         ...editingEntry,
-                        status: e.target.value as CashFlowStatus,
-                        source: e.target.value === "projected" ? "projection" : editingEntry.source,
+                        status: st,
+                        source: isBill ? "projection" : "receipt",
+                        sourceLabel: isBill ? "Bill" : "Receipt",
                       })
-                    }
+                    }}
                     className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-white outline-none"
                   >
-                    <option value="actual">Posted (Bank)</option>
-                    <option value="projected">Projected</option>
+                    <option value="projected">Bill — to pay later</option>
+                    <option value="actual">Receipt — already paid (bank)</option>
                   </select>
                 </div>
               </div>
