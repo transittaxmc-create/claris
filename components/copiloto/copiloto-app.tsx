@@ -548,11 +548,11 @@ export function CopilotoApp() {
               expenses={expenses}
               onSave={saveExpense}
               onDelete={deleteExpense}
-              onOpenScanner={() => setScannerOpen(true)}
+              onScanReceipt={() => setScannerOpen(true)}
             />
           )}
           {tab === "FINANCE" && (
-            <FinanceScreen trips={trips} expenses={expenses} onSave={saveExpense} onDelete={deleteExpense} />
+            <FinanceScreen trips={trips} expenses={expenses} onSave={saveExpense} />
           )}
           {tab === "AI" && (
             <AIScreen
@@ -622,38 +622,112 @@ export function CopilotoApp() {
       )}
 
       {mas && (
-        <div className="fixed inset-0 z-40 flex flex-col justify-end bg-black/70" onClick={() => setMas(false)}>
+        <div className="fixed inset-0 z-40 flex flex-col justify-end bg-black/70 backdrop-blur-sm" onClick={() => setMas(false)}>
           <div
-            className="max-h-[70vh] overflow-y-auto rounded-t-2xl border border-neutral-800 bg-neutral-950 p-4"
+            className="max-h-[78vh] overflow-y-auto rounded-t-3xl border border-neutral-800 bg-neutral-950 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="text-[15px] font-bold text-white">Más secciones</p>
-            <div className="mt-3 flex flex-col gap-1.5">
-              {TABS_EN_MAS.map(({ key, label, hint, icon: Icon }) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => {
-                    setTab(key)
-                    setMas(false)
-                  }}
-                  className="flex items-center gap-3 rounded-xl border border-neutral-800 bg-neutral-900/50 px-3 py-3 text-left"
-                >
-                  <Icon className="size-5 text-yellow-400" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-bold text-white">{label}</span>
-                    <span className="block text-[11px] text-neutral-500">{hint}</span>
-                  </span>
-                </button>
-              ))}
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-neutral-700" />
+            <div className="px-4 pb-1">
+              <p className="text-[15px] font-extrabold text-white">Más</p>
+              <p className="text-[11px] text-neutral-500">Herramientas, datos y guía del sistema</p>
             </div>
-            <button
-              type="button"
-              onClick={() => setMas(false)}
-              className="mt-3 w-full rounded-xl border border-neutral-700 py-2.5 text-xs font-bold text-neutral-300"
-            >
-              Cerrar
-            </button>
+
+            <div className="mt-3 grid grid-cols-2 gap-2 px-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setTab("REPORTS")
+                  setMas(false)
+                }}
+                className="flex flex-col items-start gap-1 rounded-2xl border border-yellow-500/30 bg-yellow-400/10 px-3 py-3 text-left active:scale-[0.98]"
+              >
+                <span className="text-[10px] font-bold uppercase tracking-wide text-yellow-400">PDF</span>
+                <span className="text-[13px] font-extrabold text-white">Statement</span>
+                <span className="text-[10px] leading-snug text-neutral-400">Financial report · Print / Save PDF</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setTab("HELP")
+                  setMas(false)
+                }}
+                className="flex flex-col items-start gap-1 rounded-2xl border border-sky-500/30 bg-sky-500/10 px-3 py-3 text-left active:scale-[0.98]"
+              >
+                <span className="text-[10px] font-bold uppercase tracking-wide text-sky-400">Guía</span>
+                <span className="text-[13px] font-extrabold text-white">Cómo funciona</span>
+                <span className="text-[10px] leading-snug text-neutral-400">Dual register · Reconcile · Bill/Receipt</span>
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-4 px-4">
+              {(
+                [
+                  { title: "Operación", keys: ["EXPENSES", "DASH", "V1DASH"] as const },
+                  { title: "Inteligencia y datos", keys: ["AI", "DATA"] as const },
+                  { title: "Ayuda", keys: ["HELP"] as const },
+                ] as const
+              ).map((group) => {
+                const items = TABS_EN_MAS.filter((t) => (group.keys as readonly string[]).includes(t.key))
+                if (items.length === 0) return null
+                return (
+                  <div key={group.title}>
+                    <p className="mb-1.5 px-0.5 text-[10px] font-bold uppercase tracking-wider text-neutral-500">
+                      {group.title}
+                    </p>
+                    <div className="flex flex-col gap-1.5">
+                      {items.map(({ key, label, hint, icon: Icon }) => {
+                        const isActive = tab === key
+                        return (
+                          <button
+                            key={key}
+                            type="button"
+                            onClick={() => {
+                              setTab(key)
+                              setMas(false)
+                            }}
+                            className={
+                              "flex items-center gap-3 rounded-2xl border px-3 py-3 text-left transition-colors " +
+                              (isActive
+                                ? "border-yellow-500/40 bg-yellow-400/10"
+                                : "border-neutral-800 bg-neutral-900/60")
+                            }
+                          >
+                            <span
+                              className={
+                                "flex size-10 shrink-0 items-center justify-center rounded-xl " +
+                                (isActive ? "bg-yellow-400/20 text-yellow-400" : "bg-neutral-800 text-neutral-300")
+                              }
+                            >
+                              <Icon className="size-5" />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-sm font-bold text-white">{label}</span>
+                              <span className="block text-[11px] leading-snug text-neutral-500">{hint}</span>
+                            </span>
+                            {isActive && (
+                              <span className="shrink-0 rounded-full bg-yellow-400/20 px-2 py-0.5 text-[9px] font-bold text-yellow-400">
+                                AQUÍ
+                              </span>
+                            )}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            <div className="mt-4 px-4">
+              <button
+                type="button"
+                onClick={() => setMas(false)}
+                className="w-full rounded-2xl border border-neutral-700 py-3 text-xs font-bold text-neutral-300"
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       )}
