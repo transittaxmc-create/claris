@@ -36,7 +36,7 @@ function shortDate(iso: string): string {
   try {
     const d = new Date(`${iso.slice(0, 10)}T12:00:00`)
     if (Number.isNaN(d.getTime())) return iso.slice(5)
-    return d.toLocaleDateString("es-ES", { day: "numeric", month: "short" })
+    return d.toLocaleDateString("en-US", { day: "numeric", month: "short" })
   } catch {
     return iso.slice(5)
   }
@@ -47,25 +47,7 @@ function weekdayShort(iso: string): string {
   try {
     const d = new Date(`${iso.slice(0, 10)}T12:00:00`)
     if (Number.isNaN(d.getTime())) return ""
-    const w = d.toLocaleDateString("es-ES", { weekday: "short" })
-    return w.charAt(0).toUpperCase() + w.slice(1).replace(".", "")
-  } catch {
-    return ""
-  }
-}
-
-function relativeDate(iso: string): string {
-  if (!iso || iso.length < 10) return ""
-  try {
-    const target = new Date(`${iso.slice(0, 10)}T12:00:00`)
-    const today = new Date()
-    today.setHours(12, 0, 0, 0)
-    const diff = Math.round((target.getTime() - today.getTime()) / 86_400_000)
-    if (diff === 0) return "Hoy"
-    if (diff === 1) return "Mañana"
-    if (diff === -1) return "Ayer"
-    if (diff > 1) return `En ${diff} días`
-    return `Hace ${Math.abs(diff)} días`
+    return d.toLocaleDateString("en-US", { weekday: "short" }) // Mon, Tue, Wed…
   } catch {
     return ""
   }
@@ -175,11 +157,11 @@ export function CashFlowRegister({
       date: today,
       description: "",
       source: defaultStatus === "projected" ? "projection" : "manual",
-      sourceLabel: defaultStatus === "projected" ? "Proyección" : "Manual",
+      sourceLabel: defaultStatus === "projected" ? "Projection" : "Manual",
       type: defaultType,
       status: defaultStatus,
       amount: 0,
-      category: defaultType === "income" ? "Ingresos" : "Varios",
+      category: defaultType === "income" ? "Income" : "General",
       isManuallyEdited: false,
       notes: "",
       createdAt: new Date().toISOString(),
@@ -193,7 +175,7 @@ export function CashFlowRegister({
   }
 
   const handleDeleteEntry = (id: string) => {
-    if (confirm("¿Eliminar este registro del Libro Mayor?")) {
+    if (confirm("Delete this ledger entry?")) {
       saveEntries(entries.filter((e) => e.id !== id))
     }
   }
@@ -216,7 +198,7 @@ export function CashFlowRegister({
               ...e,
               status: "actual" as CashFlowStatus,
               source: "bank" as CashFlowSource,
-              sourceLabel: e.sourceLabel || "Banco",
+              sourceLabel: e.sourceLabel || "Bank",
               isManuallyEdited: true,
             }
           : e,
@@ -226,11 +208,11 @@ export function CashFlowRegister({
 
   const handleSaveModal = (entryToSave: CashFlowEntry) => {
     if (!entryToSave.description.trim()) {
-      alert("Por favor ingresa una descripción.")
+      alert("Please enter a description.")
       return
     }
     if (!(Number(entryToSave.amount) > 0)) {
-      alert("Por favor ingresa un monto válido mayor a 0.")
+      alert("Please enter an amount greater than 0.")
       return
     }
     const finalEntry: CashFlowEntry = { ...entryToSave, amount: Number(entryToSave.amount) }
@@ -246,25 +228,25 @@ export function CashFlowRegister({
       case "bank":
         return (
           <span className={cn(base, "border-blue-500/20 bg-blue-500/10 text-blue-400")}>
-            <Building2 className="size-2.5" /> {label || "Banco"}
+            <Building2 className="size-2.5" /> {label || "Bank"}
           </span>
         )
       case "receipt":
         return (
           <span className={cn(base, "border-purple-500/20 bg-purple-500/10 text-purple-400")}>
-            <Receipt className="size-2.5" /> {label || "Recibo"}
+            <Receipt className="size-2.5" /> {label || "Receipt"}
           </span>
         )
       case "trip":
         return (
           <span className={cn(base, "border-amber-500/20 bg-amber-500/10 text-amber-400")}>
-            <Car className="size-2.5" /> {label || "Viaje"}
+            <Car className="size-2.5" /> {label || "Trip"}
           </span>
         )
       case "projection":
         return (
           <span className={cn(base, "border-cyan-500/20 bg-cyan-500/10 text-cyan-400")}>
-            <TrendingUp className="size-2.5" /> {label || "Proyectado"}
+            <TrendingUp className="size-2.5" /> {label || "Projected"}
           </span>
         )
       default:
@@ -277,29 +259,29 @@ export function CashFlowRegister({
   }
 
   if (!isLoaded) {
-    return <div className="flex items-center justify-center py-12 text-sm text-neutral-500">Cargando libro mayor…</div>
+    return <div className="flex items-center justify-center py-12 text-sm text-neutral-500">Loading ledger…</div>
   }
 
   return (
     <div className="flex w-full flex-col overflow-x-hidden px-1">
       <div className="sticky top-0 z-20 border-b border-neutral-800 bg-black/95 px-3 py-2.5 backdrop-blur-md">
         <div className="mb-1.5 flex items-center justify-center gap-2 px-1 text-[10px] font-bold text-neutral-400">
-          <span className="tracking-wider text-emerald-400">COPILOTO · DINERO</span>
-          <span className="rounded border border-emerald-800 bg-emerald-950 px-2 py-0.5 text-[9px] text-emerald-300">EN RUTA</span>
+          <span className="tracking-wider text-emerald-400">DUAL REGISTER</span>
+          <span className="rounded border border-emerald-800 bg-emerald-950 px-2 py-0.5 text-[9px] text-emerald-300">LIVE</span>
         </div>
         <div className="grid grid-cols-3 gap-1.5 text-center">
           <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-2">
-            <div className="text-[8px] font-bold uppercase text-neutral-400">BANCO REAL</div>
+            <div className="text-[8px] font-bold uppercase text-neutral-400">BANK BALANCE</div>
             <div className="mt-0.5 text-xs font-black tabular-nums text-emerald-400">{money(balances.actualBalance)}</div>
           </div>
           <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-2">
-            <div className="text-[8px] font-bold uppercase text-neutral-400">PROYECTADO</div>
+            <div className="text-[8px] font-bold uppercase text-neutral-400">PROJECTED</div>
             <div className={cn("mt-0.5 text-xs font-black tabular-nums", balances.projectedBalance >= 0 ? "text-cyan-400" : "text-rose-400")}>
               {money(balances.projectedBalance)}
             </div>
           </div>
           <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-2">
-            <div className="text-[8px] font-bold uppercase text-neutral-400">CIERRE</div>
+            <div className="text-[8px] font-bold uppercase text-neutral-400">SETTLEMENT</div>
             <div className="mt-0.5 text-xs font-black tabular-nums text-emerald-400">$0.00</div>
           </div>
         </div>
@@ -308,7 +290,7 @@ export function CashFlowRegister({
             <Search className="absolute left-2 top-1/2 size-3 -translate-y-1/2 text-neutral-500" />
             <input
               type="text"
-              placeholder="Buscar…"
+              placeholder="Search…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full rounded-lg border border-neutral-800 bg-neutral-900/90 py-1.5 pl-7 pr-2 text-[11px] text-white placeholder-neutral-500 outline-none focus:border-yellow-400/50"
@@ -319,14 +301,14 @@ export function CashFlowRegister({
             onChange={(e) => setFilterType(e.target.value as "all" | "actual" | "projected")}
             className="rounded-lg border border-neutral-800 bg-neutral-900/90 px-1.5 py-1.5 text-[10px] text-neutral-300 outline-none"
           >
-            <option value="all">Todos</option>
-            <option value="actual">Reales</option>
-            <option value="projected">Proy.</option>
+            <option value="all">All</option>
+            <option value="actual">Posted</option>
+            <option value="projected">Projected</option>
           </select>
-          <button type="button" onClick={() => handleOpenAddModal("income", "projected")} className="shrink-0 rounded-lg border border-cyan-500/30 bg-cyan-950/20 p-1.5 text-cyan-300" title="Añadir proyección">
+          <button type="button" onClick={() => handleOpenAddModal("income", "projected")} className="shrink-0 rounded-lg border border-cyan-500/30 bg-cyan-950/20 p-1.5 text-cyan-300" title="Add projection">
             <Plus className="size-3.5" />
           </button>
-          <button type="button" onClick={() => handleOpenAddModal("expense", "actual")} className="mr-0.5 shrink-0 rounded-lg bg-yellow-400 p-1.5 text-black" title="Nueva transacción">
+          <button type="button" onClick={() => handleOpenAddModal("expense", "actual")} className="mr-0.5 shrink-0 rounded-lg bg-yellow-400 p-1.5 text-black" title="New transaction">
             <Plus className="size-3.5" />
           </button>
         </div>
@@ -336,18 +318,18 @@ export function CashFlowRegister({
         <table className="w-full table-fixed border-collapse text-left">
           <thead>
             <tr className="border-b border-neutral-800 bg-neutral-950/90 text-[10px] uppercase text-neutral-400">
-              <th className="w-[15%] p-1.5 font-bold">Fecha</th>
-              <th className="w-[32%] p-1.5 font-bold">Descripción</th>
-              <th className="w-[18%] p-1.5 text-right font-bold">Banco ($)</th>
-              <th className="w-[25%] p-1.5 text-right font-bold">Transac.</th>
-              <th className="w-[10%] p-1 text-center font-bold">Rec.</th>
+              <th className="w-[15%] p-1.5 font-bold">Date</th>
+              <th className="w-[32%] p-1.5 font-bold">Description</th>
+              <th className="w-[18%] p-1.5 text-right font-bold">Bank ($)</th>
+              <th className="w-[25%] p-1.5 text-right font-bold">Amount</th>
+              <th className="w-[10%] p-1 text-center font-bold">Doc</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-800/80">
             {displayRows.length === 0 ? (
               <tr>
                 <td colSpan={5} className="py-10 text-center text-xs text-neutral-500">
-                  Sin movimientos. Añade una transacción o proyección.
+                  No entries yet. Add a transaction or projection.
                 </td>
               </tr>
             ) : (
@@ -362,9 +344,6 @@ export function CashFlowRegister({
                     <td className="p-1.5 align-top">
                       <div className="font-bold leading-tight text-neutral-200">{shortDate(row.date)}</div>
                       <div className="text-[10px] font-semibold leading-tight text-amber-400/90">{weekdayShort(row.date)}</div>
-                      <div className="text-[9px] leading-tight text-neutral-500">
-                        {relativeDate(row.date) || (isActual ? "Banco" : "Pendiente")}
-                      </div>
                     </td>
                     <td className="overflow-hidden p-1.5 align-top">
                       <div className="truncate font-semibold leading-tight text-neutral-100">{row.description || "—"}</div>
@@ -377,7 +356,7 @@ export function CashFlowRegister({
                       <div className="font-bold tabular-nums leading-tight text-emerald-400">
                         {isActual ? money(row.runningActual) : "—"}
                       </div>
-                      <div className="text-[9px] text-neutral-500">{isActual ? "Chase" : "Pendiente"}</div>
+                      <div className="text-[9px] text-neutral-500">{isActual ? "Posted" : "Pending"}</div>
                     </td>
                     <td className="p-1.5 text-right align-top">
                       <input
@@ -395,14 +374,14 @@ export function CashFlowRegister({
                         )}
                       />
                       <div className="mt-0.5 inline-block whitespace-nowrap rounded border border-neutral-700 bg-neutral-800 px-1 py-0.5 text-[9px] font-bold leading-none text-neutral-300">
-                        PROY: {money(row.runningProjected)}
+                        PROJ: {money(row.runningProjected)}
                       </div>
                       {!isActual && (
                         <div className="mt-1 flex justify-end gap-1">
-                          <button type="button" onClick={() => handleMatch(row.id)} className="rounded bg-emerald-600/30 p-1 text-emerald-400" title="Match">
+                          <button type="button" onClick={() => handleMatch(row.id)} className="rounded bg-emerald-600/30 p-1 text-emerald-400" title="Match to bank">
                             <Link2 className="size-2.5" />
                           </button>
-                          <button type="button" onClick={() => handleDeleteEntry(row.id)} className="rounded bg-rose-600/30 p-1 text-rose-400" title="Borrar">
+                          <button type="button" onClick={() => handleDeleteEntry(row.id)} className="rounded bg-rose-600/30 p-1 text-rose-400" title="Delete">
                             <Trash2 className="size-2.5" />
                           </button>
                         </div>
@@ -435,7 +414,7 @@ export function CashFlowRegister({
 
       {onUpdateStartingBalance && (
         <div className="mt-3 flex items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900/60 px-3 py-2">
-          <span className="text-[10px] font-bold uppercase text-neutral-400">Balance inicial banco</span>
+          <span className="text-[10px] font-bold uppercase text-neutral-400">Opening bank balance</span>
           <input
             type="number"
             step="0.01"
@@ -453,11 +432,11 @@ export function CashFlowRegister({
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center">
           <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-neutral-700 bg-neutral-950 p-4 sm:rounded-2xl">
             <h3 className="mb-3 text-sm font-extrabold text-white">
-              {entries.some((e) => e.id === editingEntry.id) ? "Editar movimiento" : "Nuevo movimiento"}
+              {entries.some((e) => e.id === editingEntry.id) ? "Edit entry" : "New entry"}
             </h3>
             <div className="space-y-3">
               <div>
-                <label className="text-[10px] font-bold uppercase text-neutral-400">Descripción</label>
+                <label className="text-[10px] font-bold uppercase text-neutral-400">Description</label>
                 <input
                   type="text"
                   autoFocus
@@ -468,7 +447,7 @@ export function CashFlowRegister({
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] font-bold uppercase text-neutral-400">Monto</label>
+                  <label className="text-[10px] font-bold uppercase text-neutral-400">Amount</label>
                   <input
                     type="number"
                     step="0.01"
@@ -479,7 +458,7 @@ export function CashFlowRegister({
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold uppercase text-neutral-400">Fecha</label>
+                  <label className="text-[10px] font-bold uppercase text-neutral-400">Date</label>
                   <input
                     type="date"
                     value={editingEntry.date}
@@ -490,18 +469,18 @@ export function CashFlowRegister({
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] font-bold uppercase text-neutral-400">Tipo</label>
+                  <label className="text-[10px] font-bold uppercase text-neutral-400">Type</label>
                   <select
                     value={editingEntry.type}
                     onChange={(e) => setEditingEntry({ ...editingEntry, type: e.target.value as CashFlowType })}
                     className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-white outline-none"
                   >
-                    <option value="income">Ingreso (+)</option>
-                    <option value="expense">Gasto (−)</option>
+                    <option value="income">Income (+)</option>
+                    <option value="expense">Expense (−)</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold uppercase text-neutral-400">Estado</label>
+                  <label className="text-[10px] font-bold uppercase text-neutral-400">Status</label>
                   <select
                     value={editingEntry.status}
                     onChange={(e) =>
@@ -513,8 +492,8 @@ export function CashFlowRegister({
                     }
                     className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-white outline-none"
                   >
-                    <option value="actual">Real (Banco)</option>
-                    <option value="projected">Proyectado</option>
+                    <option value="actual">Posted (Bank)</option>
+                    <option value="projected">Projected</option>
                   </select>
                 </div>
               </div>
@@ -527,14 +506,14 @@ export function CashFlowRegister({
                   }}
                   className="flex-1 rounded-xl border border-neutral-700 py-2.5 text-xs font-bold text-neutral-300"
                 >
-                  Cancelar
+                  Cancel
                 </button>
                 <button
                   type="button"
                   onClick={() => handleSaveModal(editingEntry)}
                   className="flex-1 rounded-xl bg-yellow-400 py-2.5 text-xs font-black text-black"
                 >
-                  Guardar
+                  Save
                 </button>
               </div>
             </div>
