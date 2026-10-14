@@ -461,6 +461,9 @@ export async function saveTripsToIndexedDB(trips: Trip[]): Promise<void> {
   return new Promise((resolve, reject) => {
     const tx = db.transaction([IDB_STORE], "readwrite")
     const store = tx.objectStore(IDB_STORE)
+    // IndexedDB es una copia espejo, no un historial: limpiar primero evita
+    // que un viaje eliminado reaparezca al reabrir la aplicación.
+    store.clear()
     for (const trip of trips) {
       store.put({ ...tripToEntry(stampTrip(trip)), savedAt: trip.raw?.savedAt ?? now })
     }
@@ -530,6 +533,8 @@ export async function saveExpensesToIndexedDB(expenses: Expense[]): Promise<void
   return new Promise((resolve, reject) => {
     const tx = db.transaction([IDB_EXPENSES_STORE], "readwrite")
     const store = tx.objectStore(IDB_EXPENSES_STORE)
+    // Mantener el store como espejo evita que los gastos borrados regresen.
+    store.clear()
     for (const expense of expenses) {
       store.put(stampExpense(expense, expense.savedAt ?? new Date().toISOString()))
     }
