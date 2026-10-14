@@ -191,7 +191,7 @@ export function CashFlowRegister({
     )
   }
 
-  /** Correct type: Bill (projected payable) ↔ Receipt (posted / match bank). Fully reversible. */
+  /** Correct type: Bill ↔ Receipt. Fully reversible. */
   const handleSetDocKind = (id: string, kind: "bill" | "receipt") => {
     saveEntries(
       entries.map((e) => {
@@ -229,7 +229,11 @@ export function CashFlowRegister({
       alert("Please enter an amount greater than 0.")
       return
     }
-    const finalEntry: CashFlowEntry = { ...entryToSave, amount: Number(entryToSave.amount) }
+    const finalEntry: CashFlowEntry = {
+      ...entryToSave,
+      amount: Number(entryToSave.amount),
+      isManuallyEdited: true,
+    }
     const exists = entries.some((e) => e.id === finalEntry.id)
     saveEntries(exists ? entries.map((e) => (e.id === finalEntry.id ? finalEntry : e)) : [finalEntry, ...entries])
     setIsModalOpen(false)
@@ -373,12 +377,18 @@ export function CashFlowRegister({
                       <div className="font-bold leading-tight text-neutral-200">{shortDate(row.date)}</div>
                       <div className="text-[10px] font-semibold leading-tight text-amber-400/90">{weekdayShort(row.date)}</div>
                     </td>
-                    <td className="overflow-hidden p-1.5 align-top">
+                    <td
+                      className="overflow-hidden p-1.5 align-top active:bg-neutral-800/40"
+                      onClick={() => handleEditEntry(row)}
+                      role="button"
+                      title="Tap to edit all fields"
+                    >
                       <div className="truncate font-semibold leading-tight text-neutral-100">{row.description || "—"}</div>
                       <div className="mt-0.5 flex items-center gap-1 truncate text-[10px] text-neutral-400">
                         {getSourceBadge(row.source, row.sourceLabel)}
                         {row.category && <span className="truncate">{row.category}</span>}
                       </div>
+                      <div className="mt-0.5 text-[8px] font-medium text-neutral-600">Tap to edit</div>
                     </td>
                     <td className="p-1.5 text-right align-top">
                       <div className="font-bold tabular-nums leading-tight text-emerald-400">
@@ -411,9 +421,12 @@ export function CashFlowRegister({
                               type="button"
                               onClick={() => handleSetDocKind(row.id, "receipt")}
                               className="rounded bg-emerald-600/30 px-1.5 py-1 text-[8px] font-bold text-emerald-300"
-                              title="Mark as Receipt (already paid / match bank)"
+                              title="Mark as Receipt"
                             >
                               → Receipt
+                            </button>
+                            <button type="button" onClick={(e) => { e.stopPropagation(); handleEditEntry(row) }} className="p-1 text-neutral-500 hover:text-white" title="Edit all fields">
+                              <Pencil className="size-3" />
                             </button>
                             <button type="button" onClick={() => handleDeleteEntry(row.id)} className="min-h-[28px] min-w-[28px] rounded bg-rose-600/30 p-1.5 text-rose-400" title="Delete">
                               <Trash2 className="size-3" />
@@ -425,11 +438,11 @@ export function CashFlowRegister({
                               type="button"
                               onClick={() => handleSetDocKind(row.id, "bill")}
                               className="rounded bg-cyan-600/30 px-1.5 py-1 text-[8px] font-bold text-cyan-300"
-                              title="Mark as Bill (to pay later)"
+                              title="Mark as Bill"
                             >
                               → Bill
                             </button>
-                            <button type="button" onClick={() => handleEditEntry(row)} className="p-1 text-neutral-500 hover:text-white" title="Edit">
+                            <button type="button" onClick={() => handleEditEntry(row)} className="p-1 text-neutral-500 hover:text-white" title="Edit all fields">
                               <Pencil className="size-3" />
                             </button>
                             <button type="button" onClick={() => handleDeleteEntry(row.id)} className="p-1 text-neutral-500 hover:text-rose-400" title="Delete">
@@ -500,18 +513,21 @@ export function CashFlowRegister({
       {isModalOpen && editingEntry && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center">
           <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-neutral-700 bg-neutral-950 p-4 sm:rounded-2xl">
-            <h3 className="mb-3 text-sm font-extrabold text-white">
+            <h3 className="mb-1 text-sm font-extrabold text-white">
               {entries.some((e) => e.id === editingEntry.id) ? "Edit entry" : "New entry"}
             </h3>
+            <p className="mb-3 text-[10px] leading-snug text-neutral-500">
+              Fix anything the scanner got wrong. Every field is editable.
+            </p>
             <div className="space-y-3">
               <div>
-                <label className="text-[10px] font-bold uppercase text-neutral-400">Description</label>
+                <label className="text-[10px] font-bold uppercase text-neutral-400">Description / Vendor</label>
                 <input
                   type="text"
                   autoFocus
                   value={editingEntry.description}
                   onChange={(e) => setEditingEntry({ ...editingEntry, description: e.target.value })}
-                  className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-white outline-none focus:border-yellow-400"
+                  className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400"
                 />
               </div>
               <div className="grid grid-cols-2 gap-2">
@@ -523,7 +539,7 @@ export function CashFlowRegister({
                     min="0"
                     value={editingEntry.amount || ""}
                     onChange={(e) => setEditingEntry({ ...editingEntry, amount: parseFloat(e.target.value) || 0 })}
-                    className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-white outline-none focus:border-yellow-400"
+                    className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400"
                   />
                 </div>
                 <div>
@@ -532,24 +548,24 @@ export function CashFlowRegister({
                     type="date"
                     value={editingEntry.date}
                     onChange={(e) => setEditingEntry({ ...editingEntry, date: e.target.value })}
-                    className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-white outline-none focus:border-yellow-400"
+                    className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] font-bold uppercase text-neutral-400">Type</label>
+                  <label className="text-[10px] font-bold uppercase text-neutral-400">Income / Expense</label>
                   <select
                     value={editingEntry.type}
                     onChange={(e) => setEditingEntry({ ...editingEntry, type: e.target.value as CashFlowType })}
-                    className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-white outline-none"
+                    className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none"
                   >
                     <option value="income">Income (+)</option>
                     <option value="expense">Expense (−)</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold uppercase text-neutral-400">Document type</label>
+                  <label className="text-[10px] font-bold uppercase text-neutral-400">Bill or Receipt</label>
                   <select
                     value={editingEntry.status}
                     onChange={(e) => {
@@ -560,14 +576,46 @@ export function CashFlowRegister({
                         status: st,
                         source: isBill ? "projection" : "receipt",
                         sourceLabel: isBill ? "Bill" : "Receipt",
+                        isManuallyEdited: true,
                       })
                     }}
-                    className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2 text-sm text-white outline-none"
+                    className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none"
                   >
                     <option value="projected">Bill — to pay later</option>
-                    <option value="actual">Receipt — already paid (bank)</option>
+                    <option value="actual">Receipt — already paid</option>
                   </select>
                 </div>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase text-neutral-400">Category</label>
+                <input
+                  type="text"
+                  value={editingEntry.category || ""}
+                  onChange={(e) => setEditingEntry({ ...editingEntry, category: e.target.value })}
+                  placeholder="e.g. Tolls, Fuel, Insurance"
+                  className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-bold uppercase text-neutral-400">Notes</label>
+                <textarea
+                  value={
+                    editingEntry.notes && String(editingEntry.notes).startsWith("data:image")
+                      ? ""
+                      : editingEntry.notes || ""
+                  }
+                  onChange={(e) => {
+                    const prev = editingEntry.notes || ""
+                    const keepImg = prev.startsWith("data:image") ? prev : undefined
+                    setEditingEntry({
+                      ...editingEntry,
+                      notes: e.target.value.trim() ? e.target.value : keepImg || "",
+                    })
+                  }}
+                  rows={2}
+                  placeholder="Optional notes (photo attachment kept if present)"
+                  className="mt-1 w-full resize-none rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400"
+                />
               </div>
               <div className="flex gap-2 pt-2">
                 <button
