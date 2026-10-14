@@ -40,17 +40,17 @@ export function prefijoCobroDia(date: string): string {
   return `claris:cobro:${String(date || "").slice(0, 10)}:`
 }
 
-/** Convierte un gasto en movimiento del libro según docType. */
+/** Maps expense → ledger: Bill = projected payable; Receipt = posted actual. */
 export function movimientoDeGasto(e: Expense): CashFlowEntry {
   const doc = e.docType
   const esFactura = doc === "factura" || Boolean(e.scheduled)
   const esRecibo = doc === "recibo" || (!doc && Boolean(e.isAiGenerated))
   const source = esRecibo ? "receipt" : esFactura ? "projection" : "manual"
-  const sourceLabel = esFactura ? "Factura" : esRecibo ? "Recibo" : "Manual"
+  const sourceLabel = esFactura ? "Bill" : esRecibo ? "Receipt" : "Manual"
   return {
     id: idDeGasto(String(e.id)),
     date: String(e.date || "").slice(0, 10),
-    description: e.vendor || "Gasto",
+    description: e.vendor || "Expense",
     source: source as CashFlowEntry["source"],
     sourceLabel,
     type: "expense",
@@ -113,8 +113,8 @@ export function reconciliarCobrosAlLibro(
       type: "income",
       status: "projected",
       amount,
-      category: "Ingresos",
-      notes: `Reconciliado desde Cobros (${count} viajes)`,
+      category: "Income",
+      notes: `Reconciled from Cobros (${count} trips)`,
       createdAt: ahora,
       isManuallyEdited: false,
     }
