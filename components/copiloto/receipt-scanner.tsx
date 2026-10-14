@@ -41,16 +41,16 @@ function reducir(file: File, maxDim = 1600): Promise<{ image: string; mimeType: 
         c.height = height
         const ctx = c.getContext("2d")
         if (!ctx) {
-          reject(new Error("No se pudo preparar la imagen"))
+          reject(new Error("Could not prepare image"))
           return
         }
         ctx.drawImage(img, 0, 0, width, height)
         resolve({ image: c.toDataURL("image/jpeg", 0.82), mimeType: "image/jpeg" })
       }
-      img.onerror = () => reject(new Error("No se pudo leer la foto"))
+      img.onerror = () => reject(new Error("Could not read photo"))
       img.src = e.target?.result as string
     }
-    reader.onerror = () => reject(new Error("No se pudo abrir el archivo"))
+    reader.onerror = () => reject(new Error("Could not open file"))
     reader.readAsDataURL(file)
   })
 }
@@ -94,24 +94,23 @@ export function ReceiptScanner({
   const inputRef = useRef<HTMLInputElement>(null)
 
   const balance = totales.ingresos - totales.gastos
-  const pct = totales.presupuesto > 0 ? Math.min(100, Math.round((totales.gastos / totales.presupuesto) * 100)) : 0
   const listo = importe !== "" && Number(importe) > 0
 
   const escanear = useCallback(async (file: File) => {
     setLeyendo(true)
-    setAviso({ tipo: "info", texto: "Procesando la imagen…" })
+    setAviso({ tipo: "info", texto: "Processing image…" })
     try {
       const { image, mimeType } = await reducir(file)
       setFoto(image)
       setDocTipo("recibo")
-      setAviso({ tipo: "info", texto: "Leyendo el recibo con IA…" })
+      setAviso({ tipo: "info", texto: "Reading document with AI…" })
       const res = await fetch("/api/scan-receipt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image, mimeType }),
       })
       const json = await res.json()
-      if (!res.ok || !json?.success) throw new Error(json?.error || "No se pudo analizar el recibo")
+      if (!res.ok || !json?.success) throw new Error(json?.error || "Could not analyze document")
       const r = json.result || {}
       if (r.date) setFecha(String(r.date).slice(0, 10))
       if (r.vendor) setComercio(String(r.vendor))
@@ -119,7 +118,7 @@ export function ReceiptScanner({
       if (r.category && EXPENSE_CATEGORIES.includes(r.category as ExpenseCategory)) setCategoria(String(r.category))
       if (r.notes) setNotas(String(r.notes))
       if (typeof r.confidence === "number") setConfianza(r.confidence)
-      setAviso({ tipo: "ok", texto: "Recibo leído. Clasifica y guarda." })
+      setAviso({ tipo: "ok", texto: "Document read. Choose Bill or Receipt, then save." })
     } catch (err) {
       setAviso({ tipo: "error", texto: String((err as Error)?.message || err) })
     } finally {
@@ -130,24 +129,27 @@ export function ReceiptScanner({
   function guardar() {
     if (!listo) return
     const monto = Number(importe)
-    const nombre = comercio.trim() || (direccion === "gasto" ? "Gasto sin nombre" : "Ingreso sin nombre")
+    const nombre = comercio.trim() || (direccion === "gasto" ? "Unnamed expense" : "Unnamed income")
     if (direccion === "ingreso") {
       onSaveIncome({ description: nombre, category: categoria, amount: monto, date: fecha, notes: notas.trim() || undefined })
       onClose()
       return
     }
+    // Receipt = already paid → posted actual + photo attached for View.
+    // Bill = to pay later → projected payable.
+    const attached = foto || undefined
     const expense: Expense = {
       id: crypto.randomUUID(),
       date: fecha,
       vendor: nombre,
       category: categoria,
       amount: monto,
-      notes: notas.trim() || undefined,
+      notes: attached || notas.trim() || undefined,
       confidence: confianza ?? undefined,
       isAiGenerated: docTipo === "recibo" || Boolean(foto),
       isEditedByUser: false,
       scheduled: docTipo === "factura",
-      docType: docTipo,
+      docType: docTipo === "manual" ? "recibo" : docTipo,
       savedAt: new Date().toISOString(),
     }
     onSaveExpense(expense)
@@ -180,19 +182,19 @@ export function ReceiptScanner({
       />
       <header className="shrink-0 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]" style={{ background: NAVY }}>
         <div className="flex items-center gap-3">
-          <button type="button" onClick={onClose} aria-label="Cerrar" className="rounded-lg p-1.5 text-white/70 hover:bg-white/10 hover:text-white">
+          <button type="button" onClick={onClose} aria-label="Close" className="rounded-lg p-1.5 text-white/70 hover:bg-white/10 hover:text-white">
             <X className="size-5" />
           </button>
-          <h1 className="flex-1 text-base font-bold text-white">Escanear recibo</h1>
+          <h1 className="flex-1 text-base font-bold text-white">Scan document</h1>
           {leyendo && <Loader2 className="size-4 animate-spin text-white/60" />}
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-white/50">Ingresos</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-white/50">Income</p>
             <p className="text-sm font-extrabold" style={{ color: GREEN }}>{money(totales.ingresos)}</p>
           </div>
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-white/50">Gastos</p>
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-white/50">Expenses</p>
             <p className="text-sm font-extrabold text-white">{money(totales.gastos)}</p>
           </div>
           <div>
@@ -218,7 +220,7 @@ export function ReceiptScanner({
                     color: activo ? "#fff" : "#6B7280",
                   }}
                 >
-                  {d}
+                  {d === "gasto" ? "Expense" : "Income"}
                 </button>
               )
             })}
@@ -232,13 +234,13 @@ export function ReceiptScanner({
             style={{ background: foto ? NAVY : BLUE }}
           >
             {leyendo ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />}
-            {foto ? "REPETIR LA FOTO" : "TOMAR FOTO DEL RECIBO"}
+            {foto ? "RETAKE PHOTO" : "TAKE PHOTO"}
           </button>
 
           {foto && (
             <div className="mt-2.5 overflow-hidden rounded-xl border" style={{ borderColor: LINE }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={foto} alt="Recibo" className="max-h-40 w-full object-contain" style={{ background: BG }} />
+              <img src={foto} alt="Document" className="max-h-40 w-full object-contain" style={{ background: BG }} />
             </div>
           )}
 
@@ -255,7 +257,7 @@ export function ReceiptScanner({
           )}
 
           <div className="mt-3.5">
-            <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#6B7280" }}>Monto</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#6B7280" }}>Amount</p>
             <div className="mt-1 flex items-baseline gap-1 rounded-xl px-3 py-2" style={{ background: BG, border: `1px solid ${LINE}` }}>
               <span className="text-xl font-bold" style={{ color: "#6B7280" }}>$</span>
               <span className="flex-1 text-right text-3xl font-extrabold tabular-nums" style={{ color: importe ? (direccion === "gasto" ? ORANGE : BLUE) : "#C4C9D2" }}>
@@ -279,19 +281,19 @@ export function ReceiptScanner({
           </div>
 
           <label className="mt-3.5 block">
-            <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#6B7280" }}>Comercio</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#6B7280" }}>Vendor</span>
             <input
               type="text"
               value={comercio}
               onChange={(e) => setComercio(e.target.value)}
-              placeholder="Quién cobró"
+              placeholder="Who charged"
               className="mt-1 w-full rounded-xl px-3 py-2.5 text-sm font-semibold outline-none"
               style={{ background: "#fff", border: `1px solid ${LINE}`, color: "#1F2937" }}
             />
           </label>
 
           <div className="mt-3">
-            <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#6B7280" }}>Categoría</p>
+            <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#6B7280" }}>Category</p>
             <button
               type="button"
               onClick={() => setVerCategorias((v) => !v)}
@@ -323,7 +325,7 @@ export function ReceiptScanner({
           </div>
 
           <label className="mt-3 block">
-            <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#6B7280" }}>Fecha</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#6B7280" }}>Date</span>
             <input
               type="date"
               value={fecha}
@@ -333,54 +335,62 @@ export function ReceiptScanner({
             />
           </label>
 
-          {/* Clasificar: Factura | Recibo | Manual */}
+          {/* Document type: Bill (payable) | Receipt (already paid / on statement) */}
           <div className="mt-3">
-            <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#6B7280" }}>Clasificar como</p>
-            <div className="mt-1.5 grid grid-cols-3 gap-1.5">
+            <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#6B7280" }}>Document type</p>
+            <div className="mt-1.5 grid grid-cols-2 gap-2">
               {(
                 [
-                  { key: "factura" as const, label: "Factura", hint: "Por pagar" },
-                  { key: "recibo" as const, label: "Recibo", hint: "Ya pagado" },
-                  { key: "manual" as const, label: "Manual", hint: "A mano" },
+                  {
+                    key: "factura" as const,
+                    label: "Bill",
+                    hint: "To pay later",
+                    detail: "Projected payable in the ledger",
+                  },
+                  {
+                    key: "recibo" as const,
+                    label: "Receipt",
+                    hint: "Already paid",
+                    detail: "Posted expense + photo attached",
+                  },
                 ] as const
               ).map((opt) => (
                 <button
                   key={opt.key}
                   type="button"
                   onClick={() => setDocTipo(opt.key)}
-                  className="rounded-xl px-1.5 py-2 text-center"
+                  className="min-h-[52px] rounded-xl px-2 py-2.5 text-left active:scale-[0.98]"
                   style={{
                     background: docTipo === opt.key ? (direccion === "gasto" ? ORANGE : BLUE) : "#fff",
                     color: docTipo === opt.key ? "#fff" : "#1F2937",
-                    border: `1px solid ${docTipo === opt.key ? "transparent" : LINE}`,
+                    border: `2px solid ${docTipo === opt.key ? "transparent" : LINE}`,
                   }}
                 >
-                  <span className="block text-[12px] font-extrabold leading-tight">{opt.label}</span>
+                  <span className="block text-[13px] font-extrabold leading-tight">{opt.label}</span>
                   <span
-                    className="mt-0.5 block text-[9px] font-medium leading-tight"
-                    style={{ color: docTipo === opt.key ? "rgba(255,255,255,0.85)" : "#8A93A3" }}
+                    className="mt-0.5 block text-[10px] font-semibold leading-tight"
+                    style={{ color: docTipo === opt.key ? "rgba(255,255,255,0.9)" : "#6B7280" }}
                   >
                     {opt.hint}
+                  </span>
+                  <span
+                    className="mt-1 block text-[9px] leading-snug"
+                    style={{ color: docTipo === opt.key ? "rgba(255,255,255,0.75)" : "#9CA3AF" }}
+                  >
+                    {opt.detail}
                   </span>
                 </button>
               ))}
             </div>
-            <p className="mt-1.5 text-[10px] leading-snug" style={{ color: "#8A93A3" }}>
-              {docTipo === "factura"
-                ? "Va al libro como proyección (pendiente de pago)."
-                : docTipo === "recibo"
-                  ? "Va al libro como gasto real (recibo)."
-                  : "Va al libro como gasto manual."}
-            </p>
           </div>
 
           <label className="mt-3 block">
-            <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#6B7280" }}>Notas</span>
+            <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#6B7280" }}>Notes</span>
             <textarea
               value={notas}
               onChange={(e) => setNotas(e.target.value)}
               rows={2}
-              placeholder="Para qué fue"
+              placeholder="Optional notes"
               className="mt-1 w-full resize-none rounded-xl px-3 py-2.5 text-sm outline-none"
               style={{ background: "#fff", border: `1px solid ${LINE}`, color: "#1F2937" }}
             />
@@ -393,13 +403,13 @@ export function ReceiptScanner({
             className="mt-3.5 w-full rounded-xl py-3.5 text-[14px] font-extrabold uppercase tracking-wide text-white disabled:opacity-40"
             style={{ background: direccion === "gasto" ? ORANGE : BLUE }}
           >
-            Guardar {direccion}
+            Save {direccion === "gasto" ? "expense" : "income"}
           </button>
         </div>
 
         <p className="mt-2 px-1 pb-4 text-center text-[10.5px] leading-snug" style={{ color: "#8A93A3" }}>
-          La foto se manda al servidor para leerla con IA. Si falla, rellena a mano:
-          <strong style={{ color: "#5B6472" }}> nunca se inventan importes</strong>.
+          Photo is sent to the server for AI reading. If it fails, fill fields manually —
+          <strong style={{ color: "#5B6472" }}> amounts are never invented</strong>.
         </p>
       </div>
     </div>
