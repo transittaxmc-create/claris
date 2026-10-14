@@ -66,6 +66,8 @@ export type CashFlowEntry = {
   status: CashFlowStatus
   amount: number
   category?: string
+  /** business | personal — separate reporting buckets */
+  classification?: ExpenseClassification
   isManuallyEdited?: boolean
   notes?: string
   createdAt?: string
