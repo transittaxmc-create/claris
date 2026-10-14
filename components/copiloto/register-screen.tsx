@@ -400,7 +400,9 @@ export function RegisterScreen({
   const totals = useMemo(() => {
     const gross = visible.reduce((s, t) => s + grossOf(t), 0)
     const fee = visible.reduce((s, t) => s + t.platformFee, 0)
-    return { gross, fee, net: gross - fee, pending: visible.filter((t) => t.status === "pending").length }
+    // El neto debe sumar el neto de cada transacción, no reutilizar el gross.
+    const net = visible.reduce((s, t) => s + netOf(t), 0)
+    return { gross, fee, net, pending: visible.filter((t) => t.status === "pending").length }
   }, [visible])
 
   // Desglose por plataforma del TOTAL GROSS (misma caja).
@@ -473,30 +475,6 @@ export function RegisterScreen({
           <span className="shrink-0 text-[10px] font-bold tracking-wide text-neutral-500">
             NET <strong className="text-sm text-green-400">{money(totals.net)}</strong>
           </span>
-          <button
-            type="button"
-            onClick={() => setFilter("PENDING")}
-            className={cn(
-              "shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold transition-colors",
-              filter === "PENDING" ? "border-yellow-400/60 bg-yellow-400/10 text-yellow-400" : "border-orange-400/50 text-orange-400",
-            )}
-          >
-            {counts.pending} PENDIENTES
-          </button>
-          <button
-            type="button"
-            onClick={() => setFilter("DIFF")}
-            className={cn(
-              "shrink-0 rounded-full border px-2 py-0.5 text-[9px] font-bold transition-colors",
-              counts.diff === 0
-                ? "border-green-500/40 text-green-400"
-                : filter === "DIFF"
-                  ? "border-yellow-400/60 bg-yellow-400/10 text-yellow-400"
-                  : "border-rose-500/50 text-rose-400",
-            )}
-          >
-            {counts.diff === 0 ? "TODO CUADRA" : `${counts.diff} CON DIFERENCIA`}
-          </button>
           <button
             type="button"
             onClick={() => setShowDetail((v) => !v)}
