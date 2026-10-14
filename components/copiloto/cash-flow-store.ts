@@ -57,6 +57,8 @@ export function movimientoDeGasto(e: Expense): CashFlowEntry {
     status: esFactura ? "projected" : "actual",
     amount: Math.round((Number(e.amount) || 0) * 100) / 100,
     category: e.category,
+    classification:
+      e.classification === "personal" ? "personal" : e.classification === "business" ? "business" : undefined,
     notes: e.notes,
     createdAt: new Date().toISOString(),
   }
