@@ -47,7 +47,7 @@ function weekdayShort(iso: string): string {
   try {
     const d = new Date(`${iso.slice(0, 10)}T12:00:00`)
     if (Number.isNaN(d.getTime())) return ""
-    return d.toLocaleDateString("en-US", { weekday: "short" }) // Mon, Tue, Wed…
+    return d.toLocaleDateString("en-US", { weekday: "short" })
   } catch {
     return ""
   }
@@ -63,6 +63,7 @@ export function CashFlowRegister({
   const [filterType, setFilterType] = useState<"all" | "actual" | "projected">("all")
   const [editingEntry, setEditingEntry] = useState<CashFlowEntry | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [viewingReceipt, setViewingReceipt] = useState<string | null>(null)
 
   useEffect(() => {
     try {
@@ -285,31 +286,45 @@ export function CashFlowRegister({
             <div className="mt-0.5 text-xs font-black tabular-nums text-emerald-400">$0.00</div>
           </div>
         </div>
+
         <div className="mt-2 flex items-center gap-1.5 px-0.5">
           <div className="relative min-w-0 flex-1">
-            <Search className="absolute left-2 top-1/2 size-3 -translate-y-1/2 text-neutral-500" />
+            <Search className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-neutral-500" />
             <input
               type="text"
               placeholder="Search…"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-lg border border-neutral-800 bg-neutral-900/90 py-1.5 pl-7 pr-2 text-[11px] text-white placeholder-neutral-500 outline-none focus:border-yellow-400/50"
+              className="w-full rounded-lg border border-neutral-800 bg-neutral-900/90 py-2 pl-8 pr-2 text-[12px] text-white placeholder-neutral-500 outline-none focus:border-yellow-400/50"
             />
           </div>
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as "all" | "actual" | "projected")}
-            className="rounded-lg border border-neutral-800 bg-neutral-900/90 px-1.5 py-1.5 text-[10px] text-neutral-300 outline-none"
+            className="min-h-[40px] rounded-lg border border-neutral-800 bg-neutral-900/90 px-2 py-2 text-[11px] text-neutral-300 outline-none"
+            aria-label="Filter entries"
           >
             <option value="all">All</option>
             <option value="actual">Posted</option>
             <option value="projected">Projected</option>
           </select>
-          <button type="button" onClick={() => handleOpenAddModal("income", "projected")} className="shrink-0 rounded-lg border border-cyan-500/30 bg-cyan-950/20 p-1.5 text-cyan-300" title="Add projection">
-            <Plus className="size-3.5" />
+          <button
+            type="button"
+            onClick={() => handleOpenAddModal("expense", "projected")}
+            className="flex min-h-[40px] min-w-[40px] shrink-0 flex-col items-center justify-center rounded-lg border border-cyan-500/40 bg-cyan-950/30 px-2 py-1 text-cyan-300 active:scale-95"
+            title="Add projected payable (bill not yet paid)"
+          >
+            <Plus className="size-4" />
+            <span className="text-[8px] font-bold leading-none">Bill</span>
           </button>
-          <button type="button" onClick={() => handleOpenAddModal("expense", "actual")} className="mr-0.5 shrink-0 rounded-lg bg-yellow-400 p-1.5 text-black" title="New transaction">
-            <Plus className="size-3.5" />
+          <button
+            type="button"
+            onClick={() => handleOpenAddModal("expense", "actual")}
+            className="mr-0.5 flex min-h-[40px] min-w-[40px] shrink-0 flex-col items-center justify-center rounded-lg bg-yellow-400 px-2 py-1 text-black active:scale-95"
+            title="Add posted bank transaction"
+          >
+            <Plus className="size-4" />
+            <span className="text-[8px] font-extrabold leading-none">Post</span>
           </button>
         </div>
       </div>
@@ -378,31 +393,43 @@ export function CashFlowRegister({
                       </div>
                       {!isActual && (
                         <div className="mt-1 flex justify-end gap-1">
-                          <button type="button" onClick={() => handleMatch(row.id)} className="rounded bg-emerald-600/30 p-1 text-emerald-400" title="Match to bank">
-                            <Link2 className="size-2.5" />
+                          <button type="button" onClick={() => handleMatch(row.id)} className="min-h-[28px] min-w-[28px] rounded bg-emerald-600/30 p-1.5 text-emerald-400" title="Match to bank">
+                            <Link2 className="size-3" />
                           </button>
-                          <button type="button" onClick={() => handleDeleteEntry(row.id)} className="rounded bg-rose-600/30 p-1 text-rose-400" title="Delete">
-                            <Trash2 className="size-2.5" />
+                          <button type="button" onClick={() => handleDeleteEntry(row.id)} className="min-h-[28px] min-w-[28px] rounded bg-rose-600/30 p-1.5 text-rose-400" title="Delete">
+                            <Trash2 className="size-3" />
                           </button>
                         </div>
                       )}
                       {isActual && (
                         <div className="mt-1 flex justify-end gap-0.5">
-                          <button type="button" onClick={() => handleEditEntry(row)} className="p-0.5 text-neutral-500 hover:text-white">
-                            <Pencil className="size-2.5" />
+                          <button type="button" onClick={() => handleEditEntry(row)} className="p-1 text-neutral-500 hover:text-white">
+                            <Pencil className="size-3" />
                           </button>
-                          <button type="button" onClick={() => handleDeleteEntry(row.id)} className="p-0.5 text-neutral-500 hover:text-rose-400">
-                            <Trash2 className="size-2.5" />
+                          <button type="button" onClick={() => handleDeleteEntry(row.id)} className="p-1 text-neutral-500 hover:text-rose-400">
+                            <Trash2 className="size-3" />
                           </button>
                         </div>
                       )}
                     </td>
                     <td className="p-1 text-center align-top">
-                      {hasReceipt ? (
-                        <CheckCircle2 className="mx-auto size-3.5 text-emerald-400" />
-                      ) : (
-                        <AlertTriangle className="mx-auto size-3.5 text-amber-400" />
-                      )}
+                      <div className="flex flex-col items-center gap-0.5">
+                        {hasReceipt ? (
+                          <CheckCircle2 className="size-3.5 text-emerald-400" />
+                        ) : (
+                          <AlertTriangle className="size-3.5 text-amber-400" />
+                        )}
+                        {row.notes && String(row.notes).startsWith("data:image") && (
+                          <button
+                            type="button"
+                            onClick={() => setViewingReceipt(String(row.notes))}
+                            className="rounded bg-neutral-800 px-1.5 py-1 text-[8px] font-bold text-sky-300"
+                            title="View receipt"
+                          >
+                            View
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )
@@ -425,6 +452,21 @@ export function CashFlowRegister({
             }}
             className="w-28 border-b border-neutral-700 bg-transparent text-right text-xs font-bold tabular-nums text-emerald-400 outline-none focus:border-yellow-400"
           />
+        </div>
+      )}
+
+      {viewingReceipt && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4" onClick={() => setViewingReceipt(null)}>
+          <div className="max-h-[90vh] max-w-lg overflow-auto rounded-2xl border border-neutral-700 bg-neutral-950 p-2" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-2 flex items-center justify-between px-1">
+              <span className="text-xs font-bold text-neutral-300">Attached receipt</span>
+              <button type="button" onClick={() => setViewingReceipt(null)} className="rounded-lg px-2 py-1 text-xs font-bold text-neutral-400 hover:text-white">
+                Close
+              </button>
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={viewingReceipt} alt="Receipt" className="max-h-[80vh] w-full object-contain" />
+          </div>
         </div>
       )}
 
