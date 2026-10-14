@@ -16,7 +16,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { localDateKey } from "@/lib/dates"
-import { type Trip, type TollBill, grossOf, netOf, money } from "./types"
+import { type Trip, type TollBill, grossOf, netOf, money, tripDateOf } from "./types"
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
 import { isVoucherPlatform } from "./platform-meta"
 import {
@@ -340,6 +340,7 @@ export function RegisterScreen({
 }) {
   const [filter, setFilter] = useState<Filter>("ALL")
   const [sortKey, setSortKey] = useState<SortKey>("platform")
+  const [selectedDate, setSelectedDate] = useState(() => localDateKey(new Date()))
   const [showDetail, setShowDetail] = useState(false)
   const [showActions, setShowActions] = useState(false)
   // Las facturas de peaje se crean al cerrar el día; el seguimiento y el pago
@@ -370,29 +371,31 @@ export function RegisterScreen({
   // plataforma y el panel de reconciliación se recalculan todos desde aquí, así
   // que al filtrar por PENDIENTES todo lo que se ve son los pendientes.
   // DIFERENCIA es la cola real de la conciliación: lo recibido no cuadra.
+  const tripsForDay = useMemo(() => trips.filter((t) => tripDateOf(t) === selectedDate), [trips, selectedDate])
+
   const visible = useMemo(() => {
-    if (filter === "PENDING") return trips.filter((t) => t.status === "pending")
-    if (filter === "MATCHED") return trips.filter((t) => t.status === "matched")
+    if (filter === "PENDING") return tripsForDay.filter((t) => t.status === "pending")
+    if (filter === "MATCHED") return tripsForDay.filter((t) => t.status === "matched")
     if (filter === "DIFF") {
-      return trips.filter((t) => {
+      return tripsForDay.filter((t) => {
         const state = reconStateOf(t)
         return state === "short" || state === "over"
       })
     }
-    return trips
-  }, [trips, filter])
+    return tripsForDay
+  }, [tripsForDay, filter])
 
   // Conteo por filtro: los chips del encabezado dicen cuánto hay en cada cola
   // sin tener que entrar a mirarla.
   const counts = useMemo(() => {
     let pending = 0
     let matched = 0
-    for (const t of trips) {
+    for (const t of tripsForDay) {
       if (t.status === "pending") pending += 1
       else if (t.status === "matched") matched += 1
     }
-    return { all: trips.length, pending, matched, diff: reconSummary(trips).problemCount }
-  }, [trips])
+    return { all: tripsForDay.length, pending, matched, diff: reconSummary(tripsForDay).problemCount }
+  }, [tripsForDay])
 
   const totals = useMemo(() => {
     const gross = visible.reduce((s, t) => s + grossOf(t), 0)
@@ -451,6 +454,19 @@ export function RegisterScreen({
         </div>
 
         <div className="mt-2 flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <label className="flex shrink-0 items-center gap-1.5 rounded-lg border border-neutral-800 bg-neutral-900/60 px-2 py-1">
+            <span className="text-[9px] font-bold tracking-wide text-neutral-500">DÍA</span>
+            <input
+              type="date"
+              aria-label="Día del registro"
+              value={selectedDate}
+              onChange={(e) => {
+                setSelectedDate(e.target.value)
+                setFilter("ALL")
+              }}
+              className="w-[118px] bg-transparent text-[11px] font-semibold text-neutral-200 outline-none"
+            />
+          </label>
           <span className="shrink-0 text-[10px] font-bold tracking-wide text-neutral-500">
             GROSS <strong className="text-sm text-yellow-400">{money(totals.gross)}</strong>
           </span>

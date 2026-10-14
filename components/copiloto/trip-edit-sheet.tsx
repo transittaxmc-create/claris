@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { X, Trash2, Scale, CircleCheck, TrendingDown, TrendingUp, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { PLATFORMS, type Platform, type Reconciliation, type Trip, type TripStatus, money, netOf } from "./types"
+import { PLATFORMS, tripDateInputValue, type Platform, type Reconciliation, type Trip, type TripStatus, money, netOf } from "./types"
 import { MoneyInput } from "./money-input"
 import { PlatformAvatar } from "./platform-avatar"
 import { isVoucherPlatform } from "./platform-meta"
@@ -41,6 +41,13 @@ export function TripEditSheet({
 
   const set = <K extends keyof Trip>(key: K, val: Trip[K]) =>
     setDraft((d) => (d ? { ...d, [key]: val } : d))
+
+  const setDate = (date: string) =>
+    setDraft((d) => {
+      if (!d || !date) return d
+      const time = d.time || "12:00"
+      return { ...d, raw: { ...(d.raw ?? {}), datetime: `${date}T${time}:00` } }
+    })
 
   const setRecon = (patch: Partial<Reconciliation>) =>
     setDraft((d) => (d ? { ...d, reconciliation: { ...(d.reconciliation ?? {}), ...patch } } : d))
@@ -150,9 +157,22 @@ export function TripEditSheet({
               <span className="text-[10px] font-bold tracking-wide text-neutral-400">HORA</span>
               <input
                 value={draft.time}
-                onChange={(e) => set("time", e.target.value)}
+                onChange={(e) => {
+                  const time = e.target.value
+                  setDraft((d) => (d ? { ...d, time, raw: { ...(d.raw ?? {}), datetime: `${tripDateInputValue(d)}T${time || "12:00"}:00` } } : d))
+                }}
                 placeholder="14:46"
                 className="rounded-lg border border-neutral-700 bg-neutral-950 px-2.5 py-2 text-sm font-semibold text-white outline-none placeholder:text-neutral-600"
+              />
+            </label>
+            <label className="col-span-2 flex flex-col gap-1">
+              <span className="text-[10px] font-bold tracking-wide text-neutral-400">FECHA DE LA TRANSACCIÓN</span>
+              <input
+                type="date"
+                aria-label="Fecha de la transacción"
+                value={tripDateInputValue(draft)}
+                onChange={(e) => setDate(e.target.value)}
+                className="rounded-lg border border-neutral-700 bg-neutral-950 px-2.5 py-2 text-sm font-semibold text-white outline-none"
               />
             </label>
           </div>

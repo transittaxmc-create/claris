@@ -369,10 +369,19 @@ export function tripDateOf(t: Trip): string {
   const raw = t.raw as { datetime?: unknown } | undefined
   const value = raw?.datetime
   if (typeof value === "string" && value.length >= 10) {
+    // Cuando el usuario corrige la fecha, se guarda como fecha/hora local sin
+    // zona. Leer los primeros diez caracteres evita que el navegador la mueva
+    // al día anterior o siguiente por conversión UTC.
+    const directDate = value.slice(0, 10)
+    if (/^\\d{4}-\\d{2}-\\d{2}$/.test(directDate)) return directDate
     const parsed = new Date(value)
     if (!Number.isNaN(parsed.getTime())) return localDateKey(parsed)
   }
   return localDateKey(new Date())
+}
+
+export function tripDateInputValue(t: Trip): string {
+  return tripDateOf(t)
 }
 
 export function grossOf(t: Trip): number {
