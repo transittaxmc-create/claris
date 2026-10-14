@@ -9,7 +9,7 @@ import { DashScreen } from "./dash-screen"
 import { V1DashScreen } from "./v1-dash/v1-dash-screen"
 import { EntryScreen } from "./entry-screen"
 import { ExpensesScreen } from "./expenses-screen"
-import { FinanceScreen } from "./finance-screen"
+import { DineroScreen } from "./dinero-screen"
 import { RegisterScreen } from "./register-screen"
 import { ReportsScreen } from "./reports-screen"
 import { TripEditSheet } from "./trip-edit-sheet"
@@ -621,7 +621,7 @@ export function CopilotoApp() {
                 />
               )}
               {tab === "FINANCE" && (
-                <FinanceScreen trips={trips} expenses={expenses} onSave={saveExpense} onDelete={deleteExpense} />
+                <DineroScreen />
               )}
               {tab === "AI" && (
                 <AIScreen
