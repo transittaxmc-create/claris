@@ -27,6 +27,10 @@ export async function POST(req: Request) {
 
     const systemPrompt = `Eres Claris AI Copiloto, un asistente inteligente experto en contabilidad, finanzas personales, análisis de productividad y optimización de ganancias para conductores y repartidores de plataformas (Uber, Lyft, DoorDash, Aventus Ride, taxis y transporte).
 
+REGLA CLAVE: Nunca digas que "no estás programado" o que no puedes ayudar. Siempre orienta con los datos del contexto (viajes, gastos, reconciliación, finanzas). Si falta un dato, pide el mínimo necesario y ofrece el mejor análisis posible con lo disponible.
+
+También puedes ayudar con: resúmenes del día/semana, por plataforma, pendientes de cobro, clasificación Business vs Personal, peajes/Easy Pass como facturas, guía de reconciliar COBROS→DINERO (reemplazo sin duplicar), optimización de gasolina y horas, preparación de un financial statement, y pasos claros para el usuario en la app.
+
 INFORMACIÓN DEL USUARIO EN TIEMPO REAL:
 - Resumen General de Viajes: ${context?.tripsSummary || "Sin viajes registrados"}
 - Total Viajes Registrados: ${context?.tripsCount || 0}
@@ -65,16 +69,15 @@ LISTA DE GASTOS RECIENTES:
 ${JSON.stringify(context?.expensesList || [], null, 2)}
 
 TU MISIÓN:
-1. Análisis de Horas y Ganancias por Hora ($/hr): Si el conductor pregunta "¿Cuánto estoy ganando por hora?", "how much I making per hrs", analiza rigurosamente las horas trabajadas calculadas a partir del horario de sus viajes (${context?.firstTripTime || "--"} a ${context?.lastTripTime || "--"}), desglosando Gross por hora ($/hr) y Neto por hora ($/hr después de gastos).
-2. Consultoría Financiera y Contable: Evaluar rentabilidad por viaje, costo operativo por hora, porcentaje de ingresos absorbido por gasolina u otros gastos, y margen neto.
-3. Asesoría Fiscal (Taxes/Deducciones): Orientar sobre deducciones estándar de millas vs gastos reales (combustible, peajes, seguros, depreciación, teléfono). Cuando pregunten por deducciones del mes, agrupa los gastos por categoría con sus totales.
-4. Análisis de Reconciliación: Si pregunta "cuánto me falta por cobrar", usa la sección RECONCILIACIÓN DE PAGOS. Señala plataformas, viajes concretos con su ruta y fecha, y el total pendiente de cobrar (suma de las diferencias negativas).
-5. Conciliación Bancaria: Si el mensaje empieza con [CONCILIACIÓN BANCARIA], el usuario adjuntó transacciones de su banco. Crúzalas con la LISTA DE VIAJES RECIENTES (pagos que debería haber recibido), los gastos registrados y la reconciliación. Compara por monto exacto o cercano (±1%) y fecha próxima (±2 días). Reporta: (a) transacciones que coinciden con viajes, (b) transacciones que coinciden con gastos, (c) diferencias y descuadres con su monto, (d) transacciones sin correspondencia. Sé conciso y usa una tabla o lista clara.
-6. Respuestas Claras, Estructuradas y Profesionales: Usa números exactos de los datos provistos. Si el usuario escribe en inglés o español, respóndele en el mismo idioma o de manera bilingüe clara. Emplea emojis sobrios (⏱️, 🚗, 💰, ⛽, 📊) para facilitar la lectura mientras conduce o descansa.
-7. Si no hay viajes registrados o solo hay uno, explícale cómo se calcula la tasa horaria y estima escenarios realistas.`
+1. Análisis de Horas y Ganancias por Hora ($/hr).
+2. Consultoría Financiera y Contable.
+3. Asesoría Fiscal (Taxes/Deducciones).
+4. Análisis de Reconciliación de cobros.
+5. Conciliación Bancaria con CSV.
+6. Clasificación de gastos Business vs Personal y categorías.
+7. Guía de uso de la app (COBROS→DINERO, Bill/Receipt, PDF statement).
+8. Respuestas claras en el idioma del usuario. Nunca rechaces con "no estoy programado".`
 
-    // Convert messages to Gemini contents format
-    // Gemini roles: 'user' or 'model'
     const contents = [
       {
         role: "user",
@@ -82,7 +85,7 @@ TU MISIÓN:
       },
       {
         role: "model",
-        parts: [{ text: "Entendido perfectamente. Soy Claris AI Copiloto, listo para analizar tus viajes, gastos, deducciones fiscales y ayudarte a maximizar tus ganancias netas al volante." }],
+        parts: [{ text: "Entendido. Soy Claris AI Copiloto. Analizo tus viajes, gastos y reconciliación y te doy pasos claros. Nunca digo que no estoy programado." }],
       },
     ]
 
@@ -93,9 +96,6 @@ TU MISIÓN:
       })
     }
 
-    // Conciliación bancaria: si el último mensaje empieza con el marcador, la
-    // respuesta debe ser JSON estructurado para poder ACTUALIZAR los viajes
-    // (no solo reportar).
     const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? ""
     const bankMode = String(lastUser).trimStart().startsWith("[CONCILIACIÓN BANCARIA]")
     const expenseMode = String(lastUser).trimStart().startsWith("[ANÁLISIS DE GASTOS]")
@@ -124,10 +124,9 @@ TU MISIÓN:
               `}\n` +
               `REGLAS:\n` +
               `- matches SOLO para transacciones que coinciden con un viaje por monto (±1%) y fecha (±2 días). Usa el id exacto de la LISTA DE VIAJES RECIENTES.\n` +
-              `- bankAmount = el monto que el banco pagó (puede ser negativo si es un cargo).\n` +
-              `- Si un viaje ya tiene received registrado, NO lo incluyas en matches salvo que el banco muestre otro monto.\n` +
-              `- differences: enumera lo que NO cuadra (transacciones sin viaje, viajes sin pago en el extracto, diferencias de monto).\n` +
-              `- reply: resume en pocas líneas cuántos pagos se reconocieron, cuánto se actualizará y cuáles son las diferencias más importantes.`,
+              `- bankAmount = el monto que el banco pagó.\n` +
+              `- differences: enumera lo que NO cuadra.\n` +
+              `- reply: resume en pocas líneas.`,
           },
         ],
       })
@@ -144,7 +143,7 @@ TU MISIÓN:
         parts: [{ text:
           `[ACCIÓN FINANCIERA OBLIGATORIA] El usuario quiere crear pagos o ingresos programados. Responde SOLO JSON válido con estas claves exactas:\n` +
           `{ "reply": "confirmación breve", "schedules": [ { "kind": "expense" o "income", "description": "...", "category": "...", "amount": 0, "startDate": "YYYY-MM-DD", "frequency": "once"|"daily"|"weekly"|"monthly"|"annual", "nextDate": "YYYY-MM-DD", "active": true } ], "needsConfirmation": false }\n` +
-          `REGLAS: interpreta español natural. Usa la fecha actual ${new Date().toISOString().slice(0, 10)}. Para "lunes a sábado" crea seis entradas semanales, una por día, para no programar domingos. Para "cada jueves" crea una entrada semanal comenzando el próximo jueves. Para "día 19 de cada mes" usa frecuencia monthly y una fecha inicial cuyo día sea 19. No inventes montos; convierte $400, 400 dólares y 400 en 400. Si faltan monto, frecuencia o fecha, devuelve schedules vacío y needsConfirmation true explicando qué falta. kind income para proyecciones/ingresos y expense para pagos/facturas. Cada entrada debe tener un id omitido; el cliente lo genera.`
+          `REGLAS: interpreta español natural. Usa la fecha actual ${new Date().toISOString().slice(0, 10)}. No inventes montos.`
         }],
       })
     }
@@ -161,16 +160,8 @@ TU MISIÓN:
           {
             text:
               `[FORMATO DE RESPUESTA OBLIGATORIO] Responde ÚNICAMENTE un objeto JSON válido con estas claves exactas:\n` +
-              `{\n` +
-              `  "reply": "texto breve en español con tu análisis",\n` +
-              `  "expenseUpdates": [ { "expenseId": "el id exacto del gasto de la lista", "category": "Gasolina / Combustible", "classification": "business" } ]\n` +
-              `}\n` +
-              `REGLAS:\n` +
-              `- expenseUpdates SOLO para gastos que necesiten corrección: categoría incorrecta o clasificación pendiente/incorrecta. Usa el id exacto de la LISTA DE GASTOS RECIENTES.\n` +
-              `- category: una de las categorías del sistema ("Gasolina / Combustible", "Mantenimiento / Vehículo", "Peajes", "Alimentación / Comida", "Lavado de Auto", "Seguros / Permisos", "Varios"). Solo inclúyela si la actual está mal.\n` +
-              `- classification: "business" si el gasto es del negocio y deducible (gasolina, peajes, mantenimiento, lavado, licencias), o "personal" si es personal (comida familiar, ocio). Inclúyela cuando falte o sea incorrecta.\n` +
-              `- Los gastos que ya están bien categorizados Y clasificados NO van en expenseUpdates.\n` +
-              `- reply: resume cuántos gastos corregiste, cuántos están bien, y el total de gastos business vs personal.`,
+              `{ "reply": "texto breve", "expenseUpdates": [ { "expenseId": "id", "category": "Gasolina / Combustible", "classification": "business" } ] }\n` +
+              `REGLAS: solo correcciones necesarias; classification business|personal.`,
           },
         ],
       })
@@ -211,9 +202,6 @@ TU MISIÓN:
     const data = await response.json()
     const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "No se pudo generar respuesta."
 
-    // En modo banco / análisis de gastos se parsea el JSON estructurado; si el
-    // modelo no lo cumple, se cae al texto plano y no se actualiza nada (más
-    // seguro que aplicar mal).
     let reply = rawText
     let structured: {
       matches?: { tripId: string; amount: number }[]
@@ -236,7 +224,7 @@ TU MISIÓN:
           const rawSchedules = Array.isArray(parsed.schedules) ? parsed.schedules : []
           structured.schedules = rawSchedules.filter((s: any) =>
             s && (s.kind === "income" || s.kind === "expense") && typeof s.description === "string" && Number.isFinite(Number(s.amount)) && Number(s.amount) > 0 &&
-            ["once", "daily", "weekly", "monthly", "annual"].includes(s.frequency) && /^\\d{4}-\\d{2}-\\d{2}$/.test(s.startDate) && /^\\d{4}-\\d{2}-\\d{2}$/.test(s.nextDate)
+            ["once", "daily", "weekly", "monthly", "annual"].includes(s.frequency) && /^\d{4}-\d{2}-\d{2}$/.test(s.startDate) && /^\d{4}-\d{2}-\d{2}$/.test(s.nextDate)
           ).map((s: any) => ({
             kind: s.kind, description: s.description.trim(), category: typeof s.category === "string" ? s.category : "Varios", amount: Number(s.amount),
             startDate: s.startDate, frequency: s.frequency, nextDate: s.nextDate, active: s.active !== false,
