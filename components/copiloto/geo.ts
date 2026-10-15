@@ -81,65 +81,71 @@ function classify(data: any): { kind: PlaceKind; icon: string; categoryLabel: st
   const type = String(data?.type ?? "")
   const name = String(data?.name ?? "")
   const display = String(data?.display_name ?? "")
+  const road = String(data?.address?.road ?? data?.address?.pedestrian ?? data?.address?.footway ?? "")
 
-  // ✈️ Aeropuerto
+  // ✈️ Aeropuerto — muestra el nombre
   if (
     cls === "aeroway" ||
     /aerodrome|terminal/i.test(type) ||
     /airport|aeropuerto/i.test(name) ||
     /airport|aeropuerto/i.test(display)
   ) {
-    return { kind: "airport", icon: "✈️", categoryLabel: "Aeropuerto", banner: "blue", businessName: name || "Aeropuerto" }
+    return { kind: "airport", icon: "✈️", categoryLabel: name || "Aeropuerto", banner: "blue", businessName: "" }
   }
 
-  // 🚉 Estación
+  // 🚉 Estación — muestra el nombre
   if (
     cls === "railway" ||
     cls === "public_transport" ||
     /station|subway|metro|terminal/i.test(type + name)
   ) {
-    return { kind: "business", icon: "🚉", categoryLabel: "Estación / Terminal", banner: "blue", businessName: name || "Estación" }
+    return { kind: "business", icon: "🚉", categoryLabel: name || "Estación", banner: "blue", businessName: "" }
   }
 
-  // 🏥 Hospital / Clínica
+  // 🏥 Hospital / Clínica — muestra el nombre
   if (
     cls === "healthcare" ||
     /hospital|clinic|clinica|medical|urgent_care/i.test(type + name)
   ) {
-    return { kind: "business", icon: "🏥", categoryLabel: "Hospital / Clínica", banner: "blue", businessName: name || "Hospital" }
+    return { kind: "business", icon: "🏥", categoryLabel: name || "Hospital", banner: "blue", businessName: "" }
   }
 
-  // 🏨 Hotel
+  // 🏨 Hotel — muestra el nombre
   if (/hotel|motel|hostel|inn|resort/i.test(type + name)) {
-    return { kind: "business", icon: "🏨", categoryLabel: "Hotel / Alojamiento", banner: "blue", businessName: name || "Hotel" }
+    return { kind: "business", icon: "🏨", categoryLabel: name || "Hotel", banner: "blue", businessName: "" }
   }
 
-  // 🏫 Escuela / Universidad
+  // 🏫 Escuela / Universidad — muestra el nombre
   if (/school|university|college|academy|escuela/i.test(type + name)) {
-    return { kind: "business", icon: "🏫", categoryLabel: "Escuela / Universidad", banner: "blue", businessName: name || "Educación" }
+    return { kind: "business", icon: "🏫", categoryLabel: name || "Escuela", banner: "blue", businessName: "" }
   }
 
-  // ⛽ Gasolinera
+  // ⛽ Gasolinera — muestra el nombre
   if (/fuel|gas_station|petrol/i.test(type + name)) {
-    return { kind: "business", icon: "⛽", categoryLabel: "Gasolinera", banner: "blue", businessName: name || "Gasolinera" }
+    return { kind: "business", icon: "⛽", categoryLabel: name || "Gasolinera", banner: "blue", businessName: "" }
   }
 
-  // 🍽️ Restaurante / Café
+  // 🍽️ Restaurante / Café — muestra el nombre
   if (/restaurant|cafe|fast_food|food_court|diner|pizz/i.test(type + name)) {
-    return { kind: "business", icon: "🍽️", categoryLabel: "Restaurante / Café", banner: "blue", businessName: name || "Restaurante" }
+    return { kind: "business", icon: "🍽️", categoryLabel: name || "Restaurante", banner: "blue", businessName: "" }
   }
 
-  // 🛒 Comercio / Tienda
+  // 🛒 Comercio / Tienda — muestra el nombre
   if (cls === "shop" || /supermarket|mall|store|market|shop/i.test(type + name)) {
-    return { kind: "business", icon: "🛒", categoryLabel: "Comercio / Tienda", banner: "blue", businessName: name || "Tienda" }
+    return { kind: "business", icon: "🛒", categoryLabel: name || "Tienda", banner: "blue", businessName: "" }
   }
 
-  // 🏢 Negocio / Oficina general
+  // 🏢 Negocio / Oficina general — muestra el nombre (nunca "Negocio")
   if (name && BUSINESS_CLASSES.includes(cls) && type !== "residential" && type !== "house") {
-    return { kind: "business", icon: "🏢", categoryLabel: "Negocio / Oficina", banner: "blue", businessName: name }
+    return { kind: "business", icon: "🏢", categoryLabel: name, banner: "blue", businessName: "" }
   }
 
-  // 🏠 Residencia
+  // 🛣️ Highway / Parkway / Calle — muestra el nombre de la vía (no es residencia)
+  if (road) {
+    return { kind: "business", icon: "🛣️", categoryLabel: road, banner: "blue", businessName: "" }
+  }
+
+  // 🏠 Residencia (default — solo cuando es residencia de verdad)
   return { kind: "residence", icon: "🏠", categoryLabel: "Residencia", banner: "green", businessName: "" }
 }
 
