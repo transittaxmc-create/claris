@@ -63,26 +63,26 @@ const nom = (cls, type, name, extra = {}) => ({
 
 console.log("\n== RAMAS DE NEGOCIO (banner azul) ==")
 const negocios = [
-  ["restaurante", nom("amenity", "restaurant", "Joe's Pizza"), "🍽️", "Restaurante / Café"],
-  ["café", nom("amenity", "cafe", "Starbucks"), "🍽️", "Restaurante / Café"],
-  ["comida rápida", nom("amenity", "fast_food", "McDonalds"), "🍽️", "Restaurante / Café"],
-  ["hospital", nom("amenity", "hospital", "Mount Sinai"), "🏥", "Hospital / Clínica"],
-  ["clínica", nom("amenity", "clinic", "Urgent Care"), "🏥", "Hospital / Clínica"],
-  ["hotel", nom("tourism", "hotel", "The Plaza"), "🏨", "Hotel / Alojamiento"],
-  ["hostal", nom("tourism", "hostel", "HI Hostel"), "🏨", "Hotel / Alojamiento"],
-  ["escuela", nom("amenity", "school", "PS 41"), "🏫", "Escuela / Universidad"],
-  ["universidad", nom("amenity", "university", "NYU"), "🏫", "Escuela / Universidad"],
-  ["gasolinera", nom("amenity", "fuel", "Shell"), "⛽", "Gasolinera"],
-  ["supermercado", nom("shop", "supermarket", "Whole Foods"), "🛒", "Comercio / Tienda"],
-  ["centro comercial", nom("shop", "mall", "Queens Center"), "🛒", "Comercio / Tienda"],
-  ["estación", nom("railway", "station", "Grand Central"), "🚉", "Estación / Terminal"],
-  ["oficina", nom("office", "company", "Acme Corp"), "🏢", "Negocio / Oficina"],
+  ["restaurante", nom("amenity", "restaurant", "Joe's Pizza"), "🍽️", "Joe's Pizza"],
+  ["café", nom("amenity", "cafe", "Starbucks"), "🍽️", "Starbucks"],
+  ["comida rápida", nom("amenity", "fast_food", "McDonalds"), "🍽️", "McDonalds"],
+  ["hospital", nom("amenity", "hospital", "Mount Sinai"), "🏥", "Mount Sinai"],
+  ["clínica", nom("amenity", "clinic", "Urgent Care"), "🏥", "Urgent Care"],
+  ["hotel", nom("tourism", "hotel", "The Plaza"), "🏨", "The Plaza"],
+  ["hostal", nom("tourism", "hostel", "HI Hostel"), "🏨", "HI Hostel"],
+  ["escuela", nom("amenity", "school", "PS 41"), "🏫", "PS 41"],
+  ["universidad", nom("amenity", "university", "NYU"), "🏫", "NYU"],
+  ["gasolinera", nom("amenity", "fuel", "Shell"), "⛽", "Shell"],
+  ["supermercado", nom("shop", "supermarket", "Whole Foods"), "🛒", "Whole Foods"],
+  ["centro comercial", nom("shop", "mall", "Queens Center"), "🛒", "Queens Center"],
+  ["estación", nom("railway", "station", "Grand Central"), "🚉", "Grand Central"],
+  ["oficina", nom("office", "company", "Acme Corp"), "🏢", "Acme Corp"],
 ]
-for (const [etiqueta, data, icono, categoría] of negocios) {
+for (const [etiqueta, data, icono, nombreEsperado] of negocios) {
   const r = classify(data)
   check(`${etiqueta}: kind=business`, r.kind, "business")
   check(`${etiqueta}: icono ${icono}`, r.icon, icono)
-  check(`${etiqueta}: categoría`, r.categoryLabel, categoría)
+  check(`${etiqueta}: muestra el nombre`, r.categoryLabel, nombreEsperado)
   check(`${etiqueta}: banner azul`, r.banner, "blue")
 }
 
@@ -91,7 +91,7 @@ const aero = classify(nom("aeroway", "aerodrome", "John F. Kennedy International
 check("kind=airport", aero.kind, "airport")
 check("icono ✈️", aero.icon, "✈️")
 check("banner azul", aero.banner, "blue")
-check("conserva el nombre", aero.businessName, "John F. Kennedy International Airport")
+check("muestra el nombre en título", aero.categoryLabel, "John F. Kennedy International Airport")
 
 console.log("\n== RESIDENCIA (banner verde) ==")
 const casa = classify(nom("place", "house", ""))
@@ -100,7 +100,11 @@ check("icono 🏠", casa.icon, "🏠")
 check("banner verde", casa.banner, "green")
 check("sin nombre de negocio", casa.businessName, "")
 const calle = classify(nom("highway", "residential", ""))
-check("una calle sin nombre tambien es residencia", calle.kind, "residence")
+check("una calle sin nombre de vía tambien es residencia", calle.kind, "residence")
+const parkway = classify(nom("highway", "motorway", "", { address: { road: "Southern State Parkway" } }))
+check("parkway con nombre no es residencia", parkway.kind, "business")
+check("parkway muestra el nombre de la vía", parkway.categoryLabel, "Southern State Parkway")
+check("parkway icono 🛣️", parkway.icon, "🛣️")
 
 console.log("\n== CASO LIMITE: edificio SIN nombre ==")
 // Un building sin name cae a residencia: la rama de negocio exige `name`.
@@ -113,11 +117,11 @@ check("y usa el icono 🏢", edificioConNombre.icon, "🏢")
 console.log("\n== CASO LIMITE: negocio SIN nombre usa etiqueta por defecto ==")
 const sinNombre = classify(nom("amenity", "restaurant", ""))
 check("restaurante sin nombre sigue siendo business", sinNombre.kind, "business")
-check("con etiqueta de respaldo", sinNombre.businessName, "Restaurante")
+check("con etiqueta de respaldo en título", sinNombre.categoryLabel, "Restaurante")
 const sinNombreHospital = classify(nom("amenity", "hospital", ""))
-check("hospital sin nombre", sinNombreHospital.businessName, "Hospital")
+check("hospital sin nombre", sinNombreHospital.categoryLabel, "Hospital")
 const sinNombreTienda = classify(nom("shop", "supermarket", ""))
-check("tienda sin nombre", sinNombreTienda.businessName, "Tienda")
+check("tienda sin nombre", sinNombreTienda.categoryLabel, "Tienda")
 
 console.log("\n== PAYLOAD VACIO (fallo de geocodificacion) ==")
 const vacio = classify({})
