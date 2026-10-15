@@ -54,7 +54,7 @@ export function OpenBillsPanel() {
     setBills((prev) => [bill, ...prev])
     setDesc("")
     setAmount("")
-    setLastMsg(`Factura creada: ${bill.description} ${money(value)}`)
+    setLastMsg(`Factura creada (tú debes): ${bill.description} ${money(value)}`)
   }
 
   function recordPayment() {
@@ -77,7 +77,7 @@ export function OpenBillsPanel() {
       (a) => `• ${a.description}: ${money(a.amount)} (queda ${money(a.remainingAfter)})`,
     )
     const extra = leftover > 0.009 ? `\nSobrante no aplicado: ${money(leftover)}` : ""
-    setLastMsg(`Pago aplicado (FIFO / factura elegida):\n${lines.join("\n")}${extra}`)
+    setLastMsg(`Tu pago se aplicó así (más vieja → más nueva):\n${lines.join("\n")}${extra}`)
   }
 
   function removeBill(id: string) {
@@ -88,31 +88,32 @@ export function OpenBillsPanel() {
   return (
     <section
       className="rounded-2xl border border-violet-500/30 bg-violet-950/10 p-3.5"
-      aria-label="Facturas abiertas y pagos parciales"
+      aria-label="Facturas que yo debo y pagos parciales"
     >
       <div className="mb-2 flex items-start justify-between gap-2">
         <div>
           <p className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide text-violet-300">
             <CircleDollarSign className="size-3.5" />
-            FACTURAS ABIERTAS · PAGOS PARCIALES
+            LO QUE YO DEBO · PAGOS A FACTURAS
           </p>
           <p className="mt-0.5 text-[10px] leading-snug text-neutral-500">
-            Varios pagos en la misma semana se acumulan en la misma factura. Sin elegir factura, se
-            limpian de la más vieja a la más nueva.
+            Facturas que tú pagas (carro, EZPass, tickets). Cada pago que haces baja el saldo de la
+            factura. Si no eliges una, se aplica a la más vieja hasta dejarla en $0, y el sobrante a
+            la siguiente.
           </p>
         </div>
         <div className="shrink-0 rounded-xl border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-right">
-          <p className="text-[9px] font-bold text-violet-300">POR PAGAR</p>
+          <p className="text-[9px] font-bold text-violet-300">YO DEBO</p>
           <p className="font-mono text-sm font-extrabold text-white">{money(remainingTotal)}</p>
         </div>
       </div>
 
       <div className="mb-3 space-y-2 rounded-xl border border-neutral-800 bg-neutral-950/50 p-2.5">
-        <p className="text-[10px] font-bold uppercase tracking-wide text-neutral-400">Nueva factura</p>
+        <p className="text-[10px] font-bold uppercase tracking-wide text-neutral-400">Nueva factura (lo que debo)</p>
         <input
           value={desc}
           onChange={(e) => setDesc(e.target.value)}
-          placeholder="Ej. Pago del carro"
+          placeholder="Ej. Pago del carro, EZPass, tickets"
           className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white placeholder:text-neutral-600"
         />
         <div className="grid grid-cols-2 gap-2">
@@ -141,16 +142,14 @@ export function OpenBillsPanel() {
       </div>
 
       <div className="mb-3 space-y-2 rounded-xl border border-emerald-500/25 bg-emerald-950/20 p-2.5">
-        <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-400">
-          Registrar pago (parcial o total)
-        </p>
+        <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-400">Yo pagué (parcial o total)</p>
         <div className="grid grid-cols-2 gap-2">
           <input
             type="number"
             inputMode="decimal"
             value={payAmount}
             onChange={(e) => setPayAmount(e.target.value)}
-            placeholder="Monto pagado"
+            placeholder="Monto que pagué"
             className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white"
           />
           <input
@@ -165,7 +164,7 @@ export function OpenBillsPanel() {
           onChange={(e) => setPayBillId(e.target.value)}
           className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-xs text-white"
         >
-          <option value="">FIFO · más vieja primero</option>
+          <option value="">Automático · más vieja primero (hasta $0)</option>
           {openOnes.map((b) => (
             <option key={b.id} value={b.id}>
               {b.description} · queda {money(b.remainingAmount)}
@@ -175,7 +174,7 @@ export function OpenBillsPanel() {
         <input
           value={payNote}
           onChange={(e) => setPayNote(e.target.value)}
-          placeholder="Nota opcional (ej. pago adelantado)"
+          placeholder="Nota (ej. pago parcial carro / EZPass)"
           className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-xs text-white placeholder:text-neutral-600"
         />
         <button
@@ -183,7 +182,7 @@ export function OpenBillsPanel() {
           onClick={recordPayment}
           className="w-full rounded-xl bg-emerald-500 py-2.5 text-xs font-extrabold text-black"
         >
-          Aplicar pago
+          Aplicar mi pago a la(s) factura(s)
         </button>
       </div>
 
@@ -195,7 +194,7 @@ export function OpenBillsPanel() {
 
       <div className="space-y-1.5">
         {openOnes.length === 0 && (
-          <p className="text-[11px] text-neutral-500">No hay facturas abiertas.</p>
+          <p className="text-[11px] text-neutral-500">No debes facturas abiertas. Todo en $0.</p>
         )}
         {openOnes.map((b) => (
           <div key={b.id} className="rounded-xl border border-neutral-800 bg-neutral-950/40 px-2.5 py-2">
@@ -245,7 +244,7 @@ export function OpenBillsPanel() {
 
       {paidOnes.length > 0 && (
         <div className="mt-3 space-y-1 border-t border-neutral-800 pt-2">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-neutral-500">Pagadas (recientes)</p>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-neutral-500">Cerradas en $0</p>
           {paidOnes.map((b) => (
             <div key={b.id} className="flex items-center justify-between gap-2 text-[11px] text-neutral-500">
               <span className="flex min-w-0 items-center gap-1 truncate">
