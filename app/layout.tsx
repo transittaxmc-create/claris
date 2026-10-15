@@ -3,7 +3,7 @@ import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Copiloto v.1',
+  title: 'Copiloto V7',
   applicationName: 'Copiloto',
   description: 'Registro de viajes y ganancias',
   generator: 'v0.app',
