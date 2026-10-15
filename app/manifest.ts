@@ -5,7 +5,7 @@ import type { MetadataRoute } from "next"
 // distinto al abrir el link desde otro sitio.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Copiloto v.1 — Registro de viajes y ganancias",
+    name: "Copiloto V7 — Registro de viajes y ganancias",
     short_name: "Copiloto",
     description: "Registro de viajes, gastos y ganancias para conductores.",
     start_url: "/",
