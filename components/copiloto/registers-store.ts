@@ -1,4 +1,4 @@
-// Registers store — snapshot + manual. Main = account ending ···93.
+// Registers store — snapshot + manual. Main = exact "Citibank 6393" (Miguel).
 
 export type AccountKind = "bank" | "card"
 
@@ -12,6 +12,8 @@ export interface RegisterAccount {
   isMain: boolean
   source: "snapshot" | "manual"
   manualBalance: number | null
+  /** Cuentas manuales fijas (Venmo, Square Checking): siempre visibles. */
+  pinned?: boolean
 }
 
 interface SnapshotAccount {
@@ -55,6 +57,34 @@ function saveState(s: StoredState) {
   } catch {}
 }
 
+// Cuentas manuales fijas de Miguel: siempre existen y siempre visibles.
+const SEED_MANUAL: Array<{ id: string; name: string }> = [
+  { id: "manual:venmo", name: "Venmo" },
+  { id: "manual:square-checking", name: "Square Checking" },
+]
+
+function ensureSeeded(st: StoredState) {
+  let changed = false
+  for (const s of SEED_MANUAL) {
+    if (!st.manual.some((m) => m.id === s.id)) {
+      st.manual.push({
+        id: s.id,
+        name: s.name,
+        institution: null,
+        kind: "bank",
+        limit: null,
+        dueDay: null,
+        isMain: false,
+        source: "manual",
+        manualBalance: 0,
+        pinned: true,
+      })
+      changed = true
+    }
+  }
+  if (changed) saveState(st)
+}
+
 export function accountIdFor(name: string): string {
   return `snap:${String(name || "cuenta")
     .trim()
@@ -93,6 +123,7 @@ function looksLikeCard(name: string, institution: string | null): boolean {
 
 export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAccount[] {
   const st = loadState()
+  ensureSeeded(st)
   const regs: RegisterAccount[] = []
   const balById = new Map<string, number>()
   for (const a of snapshotAccounts || []) {
@@ -122,26 +153,15 @@ export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAcc
     regs.push({ ...m, dueDay: st.dueDays[m.id] ?? m.dueDay ?? null, isMain: false })
   }
 
+  // Principal: match exacto "Citibank 6393" (Miguel). Solo se elige
+  // automáticamente cuando no hay un mainId válido guardado.
   let mainId = st.mainId
-  const ends93 = regs.find((r) => r.kind === "bank" && /93\s*$/.test(String(r.name)))
-  const citi93 =
-    regs.find((r) => r.kind === "bank" && /citi/i.test(r.name) && /93\s*$/.test(r.name)) ||
-    regs.find((r) => r.kind === "bank" && /citi/i.test(r.name) && /6393/.test(r.name))
-  const citiAny =
-    regs.find((r) => r.kind === "bank" && /^citibank\b/i.test(r.name)) ||
-    regs.find((r) => r.kind === "bank" && /citi/i.test(r.name))
-  const preferredMain = ends93 || citi93 || citiAny
-
   if (!mainId || !regs.some((r) => r.id === mainId)) {
-    mainId = (preferredMain || regs.find((r) => r.kind === "bank") || regs[0])?.id ?? null
+    const exactCiti = regs.find(
+      (r) => r.kind === "bank" && String(r.name).trim().toLowerCase() === "citibank 6393",
+    )
+    mainId = (exactCiti || regs.find((r) => r.kind === "bank") || regs[0])?.id ?? null
     if (mainId) {
-      st.mainId = mainId
-      saveState(st)
-    }
-  } else if (preferredMain && mainId !== preferredMain.id) {
-    const current = regs.find((r) => r.id === mainId)
-    if (!current || !/93\s*$/.test(current.name)) {
-      mainId = preferredMain.id
       st.mainId = mainId
       saveState(st)
     }
@@ -150,6 +170,7 @@ export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAcc
 
   return regs.filter((r) => {
     if (r.isMain) return true
+    if (r.pinned) return true
     if (r.source === "manual") return Math.abs(Number(r.manualBalance) || 0) >= 0.005
     return Math.abs(balById.get(r.id) ?? 0) >= 0.005
   })
