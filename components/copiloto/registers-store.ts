@@ -20,6 +20,8 @@ interface SnapshotAccount {
   name?: string
   current_balance?: number
   institution?: string | null
+  /** Tipo Plaid cuando el feed lo trae ("depository" | "credit" | ...). */
+  type?: string | null
 }
 
 const KEY = "claris_registers_v1"
@@ -40,12 +42,23 @@ function loadState(): StoredState {
     const raw = localStorage.getItem(KEY)
     if (!raw) return emptyState()
     const p = JSON.parse(raw)
-    return {
-      manual: Array.isArray(p.manual) ? p.manual : [],
+    const manual = Array.isArray(p.manual) ? p.manual : []
+    // Limpieza única: sin cuentas manuales duplicadas por nombre (conservar la primera).
+    const seen = new Set<string>()
+    const deduped = manual.filter((m: any) => {
+      const n = normName(m?.name)
+      if (!n || seen.has(n)) return false
+      seen.add(n)
+      return true
+    })
+    const st: StoredState = {
+      manual: deduped,
       dueDays: p.dueDays && typeof p.dueDays === "object" ? p.dueDays : {},
       mainId: typeof p.mainId === "string" ? p.mainId : null,
       hidden: Array.isArray(p.hidden) ? p.hidden : [],
     }
+    if (deduped.length !== manual.length) saveState(st)
+    return st
   } catch {
     return emptyState()
   }
@@ -63,10 +76,15 @@ const SEED_MANUAL: Array<{ id: string; name: string }> = [
   { id: "manual:square-checking", name: "Square Checking" },
 ]
 
+function normName(n: string) {
+  return String(n || "").trim().toLowerCase()
+}
+
 function ensureSeeded(st: StoredState) {
   let changed = false
   for (const s of SEED_MANUAL) {
-    if (!st.manual.some((m) => m.id === s.id)) {
+    const dup = st.manual.find((m) => m.id === s.id || normName(m.name) === normName(s.name))
+    if (!dup) {
       st.manual.push({
         id: s.id,
         name: s.name,
@@ -79,6 +97,9 @@ function ensureSeeded(st: StoredState) {
         manualBalance: 0,
         pinned: true,
       })
+      changed = true
+    } else if (!dup.pinned) {
+      dup.pinned = true
       changed = true
     }
   }
@@ -116,9 +137,17 @@ export function accountDisplayName(name: string): { title: string; subtitle: str
   return { title: bank === "Account" ? raw.slice(0, 18) || "Account" : bank, subtitle: raw !== bank ? raw : null }
 }
 
-function looksLikeCard(name: string, institution: string | null): boolean {
-  const t = `${name} ${institution || ""}`.toLowerCase()
-  return /card|tarjeta|amex|visa|mastercard|discover|credit|crédito/.test(t)
+function looksLikeCard(name: string, institution: string | null, type?: string | null): boolean {
+  const pt = String(type || "").toLowerCase()
+  if (pt) {
+    if (/credit/.test(pt)) return true
+    return false // depository u otro: es cuenta de banco
+  }
+  // Sin tipo: heurística por nombre. "credit union" es un banco, no una tarjeta.
+  const t = `${name} ${institution || ""}`.toLowerCase().replace(/credit\s*union/g, " ")
+  // Palabras de cuenta bancaria siempre ganan.
+  if (/checking|savings|depository/.test(t)) return false
+  return /credit|card|tarjeta|amex|visa|mastercard|discover|crédito/.test(t)
 }
 
 export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAccount[] {
@@ -141,7 +170,7 @@ export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAcc
       id,
       name,
       institution: a?.institution ?? null,
-      kind: looksLikeCard(name, a?.institution ?? null) ? "card" : "bank",
+      kind: looksLikeCard(name, a?.institution ?? null, a?.type ?? null) ? "card" : "bank",
       limit: null,
       dueDay: st.dueDays[id] ?? null,
       isMain: false,
