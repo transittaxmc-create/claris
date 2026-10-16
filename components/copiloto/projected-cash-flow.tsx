@@ -1,9 +1,8 @@
 "use client"
 
 /**
- * Shared PROJECTED CASH FLOW timeline — one book for forecasts.
- * English UI · weekday labels · editable rows via onEdit.
- * Income projections are replaced by real external income (caller responsibility).
+ * Shared PROJECTED CASH FLOW — only days with data.
+ * English · weekday labels · tap row to edit.
  */
 
 import { useMemo } from "react"
@@ -19,21 +18,12 @@ function parseLocalDate(iso: string): Date {
   return Number.isNaN(d.getTime()) ? new Date() : d
 }
 
-function isoDate(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, "0")
-  const day = String(d.getDate()).padStart(2, "0")
-  return `${y}-${m}-${day}`
-}
-
 function weekdayLabel(iso: string): string {
-  const d = parseLocalDate(iso)
-  return WEEKDAY[d.getDay()]
+  return WEEKDAY[parseLocalDate(iso).getDay()]
 }
 
 function shortDate(iso: string): string {
-  const d = parseLocalDate(iso)
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+  return parseLocalDate(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 
 type FlowKind = "real" | "proj" | "due"
@@ -72,14 +62,12 @@ export function ProjectedCashFlow(props: {
       const amt = Math.abs(Number(e.amount) || 0)
       if (!amt) continue
       const isIncome = e.type === "income"
-      const signed = isIncome ? amt : -amt
-      const kind: FlowKind = e.status === "projected" ? "proj" : "real"
       lines.push({
         id: e.id,
         date: d.slice(0, 10),
-        kind,
+        kind: e.status === "projected" ? "proj" : "real",
         label: e.description || e.category || (isIncome ? "Income" : "Expense"),
-        amount: signed,
+        amount: isIncome ? amt : -amt,
         entry: e,
       })
     }
@@ -90,12 +78,13 @@ export function ProjectedCashFlow(props: {
       const dt = parseLocalDate(d)
       if (dt < today || dt > end) continue
       const amt = Math.abs(Number(due.amount) || 0)
+      if (!amt) continue
       lines.push({
         id: `due:${d}:${due.label}`,
         date: d.slice(0, 10),
         kind: "due",
         label: due.label || "Due",
-        amount: amt ? -amt : 0,
+        amount: -amt,
       })
     }
 
@@ -108,10 +97,7 @@ export function ProjectedCashFlow(props: {
       byDate.set(line.date, arr)
     }
 
-    const tIso = isoDate(today)
-    if (!byDate.has(tIso)) byDate.set(tIso, [])
-
-    const dates = [...byDate.keys()].sort()
+    const dates = [...byDate.keys()].filter((d) => (byDate.get(d) || []).length > 0).sort()
     let running = props.availableNow
     const groups = dates.map((date) => {
       const dayLines = byDate.get(date) || []
@@ -140,7 +126,7 @@ export function ProjectedCashFlow(props: {
           <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-400/90">
             Projected cash flow
           </p>
-          <p className="mt-0.5 text-[11px] text-neutral-500">Shared forecast · tap a row to edit</p>
+          <p className="mt-0.5 text-[11px] text-neutral-500">Forecast only · tap to edit</p>
         </div>
         <div className="text-right">
           <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Available now</p>
@@ -159,7 +145,7 @@ export function ProjectedCashFlow(props: {
       <div className="max-h-[min(52vh,420px)] space-y-2 overflow-y-auto overscroll-contain px-2.5 py-2.5">
         {groups.length === 0 && (
           <p className="px-2 py-6 text-center text-[12px] text-neutral-500">
-            No projections in this window. Add a bill, schedule income, or sync the bank.
+            No forecasts yet. Add a bill or schedule income.
           </p>
         )}
         {groups.map((g) => (
@@ -169,9 +155,6 @@ export function ProjectedCashFlow(props: {
               <span className="font-normal text-neutral-500"> · {shortDate(g.date)}</span>
             </p>
             <ul className="divide-y divide-neutral-800/50">
-              {g.lines.length === 0 && (
-                <li className="px-2.5 py-2 text-[11px] text-neutral-600">No movements</li>
-              )}
               {g.lines.map((line) => (
                 <li key={line.id}>
                   <button
