@@ -7,7 +7,13 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react"
 import { RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { LEDGER_KEY, sinSemillas } from "./cash-flow-store"
+import {
+  etiquetaCombinada,
+  LEDGER_KEY,
+  normalizarLibro,
+  origenDe,
+  sinSemillas,
+} from "./cash-flow-store"
 import {
   money,
   type CashFlowEntry,
@@ -120,9 +126,11 @@ export function CashFlowRegister({
       const saved = localStorage.getItem(LEDGER_KEY)
       const parsed = saved ? JSON.parse(saved) : []
       const lista: CashFlowEntry[] = Array.isArray(parsed) ? parsed : []
-      const limpio = sinSemillas(lista)
+      const sinSem = sinSemillas(lista)
+      // Etiquetas viejas ("Recibo escaneado") → origen + tipo por separado.
+      const { lista: limpio, cambio } = normalizarLibro(sinSem)
       setEntries(limpio)
-      if (limpio.length !== lista.length) localStorage.setItem(LEDGER_KEY, JSON.stringify(limpio))
+      if (cambio || sinSem.length !== lista.length) localStorage.setItem(LEDGER_KEY, JSON.stringify(limpio))
     } catch {
     } finally {
       setIsLoaded(true)
@@ -207,7 +215,8 @@ export function CashFlowRegister({
       date: today,
       description: "",
       source: defaultStatus === "projected" ? "projection" : "manual",
-      sourceLabel: defaultStatus === "projected" ? "Bill" : "Receipt",
+      origin: "manual",
+      sourceLabel: etiquetaCombinada("manual", defaultType === "expense" ? (defaultStatus === "projected" ? "factura" : "recibo") : null),
       type: defaultType,
       status: defaultStatus,
       amount: 0,
@@ -245,10 +254,25 @@ export function CashFlowRegister({
     saveEntries(
       entries.map((e) => {
         if (e.id !== id) return e
+        const origin = origenDe(e)
         if (kind === "bill") {
-          return { ...e, status: "projected" as CashFlowStatus, source: "projection" as CashFlowSource, sourceLabel: "Bill", isManuallyEdited: true }
+          return {
+            ...e,
+            status: "projected" as CashFlowStatus,
+            source: "projection" as CashFlowSource,
+            origin,
+            sourceLabel: etiquetaCombinada(origin, "factura"),
+            isManuallyEdited: true,
+          }
         }
-        return { ...e, status: "actual" as CashFlowStatus, source: "receipt" as CashFlowSource, sourceLabel: "Receipt", isManuallyEdited: true }
+        return {
+          ...e,
+          status: "actual" as CashFlowStatus,
+          source: "receipt" as CashFlowSource,
+          origin,
+          sourceLabel: etiquetaCombinada(origin, "recibo"),
+          isManuallyEdited: true,
+        }
       }),
     )
   }
@@ -491,24 +515,29 @@ export function EntryModal(props: {
               </select>
             </div>
             <div>
-              <label className="text-[10px] font-bold uppercase text-neutral-400">Bill or Receipt</label>
+              <label className="text-[10px] font-bold uppercase text-neutral-400">Factura o Recibo</label>
               <select
                 value={editingEntry.status}
                 onChange={(e) => {
                   const st = e.target.value as CashFlowStatus
                   const isBill = st === "projected"
+                  const origin = origenDe(editingEntry)
                   setEditingEntry({
                     ...editingEntry,
                     status: st,
                     source: isBill ? "projection" : "receipt",
-                    sourceLabel: isBill ? "Bill" : "Receipt",
+                    origin,
+                    sourceLabel: etiquetaCombinada(
+                      origin,
+                      editingEntry.type === "expense" ? (isBill ? "factura" : "recibo") : null,
+                    ),
                     isManuallyEdited: true,
                   })
                 }}
                 className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none"
               >
-                <option value="projected">Bill — to pay later</option>
-                <option value="actual">Receipt — already paid</option>
+                <option value="projected">Factura (Bill) — por pagar</option>
+                <option value="actual">Recibo (Receipt) — ya pagado</option>
               </select>
             </div>
           </div>
