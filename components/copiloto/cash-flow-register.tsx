@@ -13,6 +13,7 @@ import {
   Link2,
   CheckCircle2,
   AlertTriangle,
+  RefreshCw,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { sinSemillas } from "./cash-flow-store"
@@ -53,6 +54,15 @@ function weekdayShort(iso: string): string {
   }
 }
 
+interface BankTx {
+  date: string
+  bank_account: string
+  detail: string
+  category: string | null
+  amount: number
+  daily_balance: number | null
+}
+
 export function CashFlowRegister({
   startingActualBalance,
   onUpdateStartingBalance,
@@ -64,6 +74,36 @@ export function CashFlowRegister({
   const [editingEntry, setEditingEntry] = useState<CashFlowEntry | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [viewingReceipt, setViewingReceipt] = useState<string | null>(null)
+
+  // ---- Real bank feed (islandcity-register1, shared Supabase) ----
+  // Auto-reads on panel open + manual SYNC button. Read-only: never touches
+  // the local ledger entries (bills/posts keep working from localStorage).
+  const [bankTotal, setBankTotal] = useState<number | null>(null)
+  const [bankTxs, setBankTxs] = useState<BankTx[]>([])
+  const [bankLoading, setBankLoading] = useState(false)
+  const [bankError, setBankError] = useState(false)
+  const [bankUpdatedAt, setBankUpdatedAt] = useState<string | null>(null)
+
+  const fetchBank = useCallback(async () => {
+    setBankLoading(true)
+    setBankError(false)
+    try {
+      const r = await fetch("/api/bank/snapshot", { cache: "no-store" })
+      if (!r.ok) throw new Error(`HTTP ${r.status}`)
+      const j = await r.json()
+      setBankTotal(typeof j.total_balance === "number" ? j.total_balance : null)
+      setBankTxs(Array.isArray(j.transactions) ? j.transactions : [])
+      setBankUpdatedAt(typeof j.as_of === "string" ? j.as_of : null)
+    } catch {
+      setBankError(true)
+    } finally {
+      setBankLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchBank()
+  }, [fetchBank])
 
   useEffect(() => {
     try {
@@ -143,6 +183,18 @@ export function CashFlowRegister({
       })
       .reverse()
   }, [calculatedRows, filterType, searchTerm])
+
+  const visibleBankTxs = useMemo(() => {
+    if (filterType === "projected") return [] as BankTx[]
+    const term = searchTerm.trim().toLowerCase()
+    if (!term) return bankTxs
+    return bankTxs.filter(
+      (t) =>
+        (t.detail || "").toLowerCase().includes(term) ||
+        (t.bank_account || "").toLowerCase().includes(term) ||
+        t.date.includes(term),
+    )
+  }, [bankTxs, filterType, searchTerm])
 
   const saveEntries = useCallback((updated: CashFlowEntry[]) => {
     setEntries(updated)
@@ -286,11 +338,23 @@ export function CashFlowRegister({
         <div className="mb-1.5 flex items-center justify-center gap-2 px-1 text-[10px] font-bold text-neutral-400">
           <span className="tracking-wider text-emerald-400">DUAL REGISTER</span>
           <span className="rounded border border-emerald-800 bg-emerald-950 px-2 py-0.5 text-[9px] text-emerald-300">LIVE</span>
+          <button
+            type="button"
+            onClick={fetchBank}
+            disabled={bankLoading}
+            title={bankUpdatedAt ? `Bank synced ${bankUpdatedAt}` : "Sync bank now"}
+            className="rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-[9px] font-bold text-neutral-300 active:scale-95 disabled:opacity-50"
+          >
+            <span className="inline-flex items-center gap-1">
+              <RefreshCw className={cn("size-2.5", bankLoading && "animate-spin")} />
+              {bankLoading ? "SYNCING" : bankError ? "RETRY" : "SYNC"}
+            </span>
+          </button>
         </div>
         <div className="grid grid-cols-3 gap-1.5 text-center">
           <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-2">
             <div className="text-[8px] font-bold uppercase text-neutral-400">BANK BALANCE</div>
-            <div className="mt-0.5 text-xs font-black tabular-nums text-emerald-400">{money(balances.actualBalance)}</div>
+            <div className="mt-0.5 text-xs font-black tabular-nums text-emerald-400">{bankTotal !== null ? money(bankTotal) : money(balances.actualBalance)}</div>
           </div>
           <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-2">
             <div className="text-[8px] font-bold uppercase text-neutral-400">PROJECTED</div>
@@ -358,7 +422,36 @@ export function CashFlowRegister({
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-800/80">
-            {displayRows.length === 0 ? (
+            {visibleBankTxs.map((t, i) => (
+              <tr key={`bank-${i}-${t.date}-${t.detail}`} className="bg-blue-950/10 text-[12px]">
+                <td className="p-1.5 align-top">
+                  <div className="font-bold leading-tight text-neutral-200">{shortDate(t.date)}</div>
+                  <div className="text-[10px] font-semibold leading-tight text-amber-400/90">{weekdayShort(t.date)}</div>
+                </td>
+                <td className="overflow-hidden p-1.5 align-top">
+                  <div className="truncate font-semibold leading-tight text-neutral-100">{t.detail || "—"}</div>
+                  <div className="mt-0.5 flex items-center gap-1 truncate text-[10px] text-neutral-400">
+                    {getSourceBadge("bank", "Bank")}
+                    {t.bank_account && <span className="truncate">{t.bank_account}</span>}
+                  </div>
+                </td>
+                <td className="p-1.5 text-right align-top">
+                  <div className="font-bold tabular-nums leading-tight text-emerald-400">
+                    {t.daily_balance !== null && t.daily_balance !== undefined ? money(t.daily_balance) : "—"}
+                  </div>
+                  <div className="text-[9px] text-neutral-500">Bank</div>
+                </td>
+                <td className="p-1.5 text-right align-top">
+                  <div className={cn("text-[13px] font-black tabular-nums", t.amount >= 0 ? "text-emerald-400" : "text-rose-400")}>
+                    {money(t.amount)}
+                  </div>
+                </td>
+                <td className="p-1 text-center align-top">
+                  <CheckCircle2 className="mx-auto size-3.5 text-blue-400" />
+                </td>
+              </tr>
+            ))}
+            {displayRows.length === 0 && visibleBankTxs.length === 0 ? (
               <tr>
                 <td colSpan={5} className="py-10 text-center text-xs text-neutral-500">
                   No entries yet. Add a transaction or projection.
