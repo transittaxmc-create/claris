@@ -17,6 +17,7 @@ import {
   money,
 } from "./types"
 import { MoneyInput } from "./money-input"
+import { sugerirTipoDoc } from "./cash-flow-store"
 
 // Pantalla de gastos (pestaña EXPENSES). Mismo estilo que REGISTER y el mismo
 // esquema de guardado que los viajes: el padre (copiloto-app) se encarga de
@@ -35,6 +36,8 @@ type Draft = {
   amount: number
   notes: string
   isAiGenerated?: boolean
+  // Factura (por pagar) o Recibo (ya pagado). Se elige siempre; "" = sin elegir.
+  docType?: "factura" | "recibo" | ""
   // Programación opcional: "once" = gasto único; el resto crea una entrada en
   // el ledger programado con su próxima fecha.
   frequency: ScheduleFrequency
@@ -90,9 +93,19 @@ function ExpenseRow({
         <span className="rounded-full border border-neutral-700 bg-neutral-950 px-2 py-0.5 text-[10px] font-bold text-neutral-300">
           {expense.category}
         </span>
-        {expense.isAiGenerated && (
+        {(expense.isAiGenerated || expense.scanned) && (
           <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 text-[9px] font-bold text-sky-400">
             <Sparkles className="size-2.5" /> ESCANEADO
+          </span>
+        )}
+        {expense.docType === "factura" && (
+          <span className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-bold text-cyan-300">
+            FACTURA
+          </span>
+        )}
+        {expense.docType === "recibo" && (
+          <span className="rounded-full border border-purple-500/40 bg-purple-500/10 px-2 py-0.5 text-[9px] font-bold text-purple-300">
+            RECIBO
           </span>
         )}
         {expense.isEditedByUser && (
@@ -269,6 +282,7 @@ export function ExpensesScreen({
         amount: Number(result.amount) || 0,
         notes: result.notes || "",
         isAiGenerated: true,
+        docType: "",
         frequency: "once",
         nextDate: scanDate,
       })
@@ -294,6 +308,10 @@ export function ExpensesScreen({
     // Antes de guardar: ¿este recibo ya está registrado? Mismo vendedor, misma
     // fecha y mismo monto = el mismo ticket. Se avisa, y el usuario decide si
     // es un gasto legítimo distinto o un escaneo repetido.
+    if (draft.docType !== "factura" && draft.docType !== "recibo") {
+      window.alert("Elige el tipo: Factura (por pagar) o Recibo (ya pagado).")
+      return
+    }
     const dup = findDuplicateExpense(draft, expenses)
     if (dup) {
       const msg =
@@ -313,8 +331,10 @@ export function ExpensesScreen({
       amount: Number(draft.amount) || 0,
       notes: draft.notes.trim() || undefined,
       isAiGenerated: Boolean(draft.isAiGenerated),
+      scanned: Boolean(draft.isAiGenerated) || undefined,
+      docType: draft.docType,
       isEditedByUser: draft.id !== null,
-      scheduled: ["daily", "weekly", "monthly", "annual"].includes(draft.frequency),
+      scheduled: draft.docType === "factura" || ["daily", "weekly", "monthly", "annual"].includes(draft.frequency),
       classification: draft.classification,
       savedAt: new Date().toISOString(),
     }
@@ -374,6 +394,7 @@ export function ExpensesScreen({
       amount: ex.amount,
       notes: ex.notes ?? "",
       isAiGenerated: ex.isAiGenerated,
+      docType: ex.docType === "factura" || ex.docType === "recibo" ? ex.docType : ex.scheduled ? "factura" : "recibo",
       frequency: "once",
       nextDate: ex.date,
       classification: ex.classification,
@@ -498,6 +519,39 @@ export function ExpensesScreen({
                   <option value="__new__">＋ Nueva categoría…</option>
                 </select>
               </label>
+            </div>
+
+            {/* Factura o Recibo: decide dónde suma o resta en el libro mayor */}
+            <div className="mt-2">
+              <span className="text-[10px] font-bold text-neutral-400">
+                TIPO <span className="text-amber-400">*</span>
+              </span>
+              <div className="mt-1 grid grid-cols-2 gap-2">
+                {(
+                  [
+                    ["factura", "FACTURA", "por pagar"],
+                    ["recibo", "RECIBO", "ya pagado"],
+                  ] as const
+                ).map(([key, titulo, sub]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setDraft({ ...draft, docType: key })}
+                    className={cn(
+                      "rounded-xl border px-3 py-2 text-left",
+                      draft.docType === key
+                        ? "border-yellow-400 bg-yellow-400/15 text-yellow-300"
+                        : "border-neutral-700 bg-neutral-950 text-neutral-300",
+                    )}
+                  >
+                    <span className="block text-xs font-extrabold">{titulo}</span>
+                    <span className="block text-[10px] text-neutral-500">{sub}</span>
+                  </button>
+                ))}
+              </div>
+              {!draft.docType && sugerirTipoDoc(draft.vendor, draft.notes) === "factura" && (
+                <p className="mt-1 text-[10px] text-amber-400">Sugerido: Factura (parece peaje o cuenta por pagar).</p>
+              )}
             </div>
 
             {/* Categoría personalizada: si la IA no tiene la correcta, se añade */}
