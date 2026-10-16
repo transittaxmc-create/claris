@@ -140,8 +140,10 @@ function classify(data: any): { kind: PlaceKind; icon: string; categoryLabel: st
     return { kind: "business", icon: "🏢", categoryLabel: name, banner: "blue", businessName: "" }
   }
 
-  // 🛣️ Highway / Parkway / Calle — muestra el nombre de la vía (no es residencia)
-  if (road) {
+  // 🛣️ Highway / Parkway — solo cuando estás EN la vía (sin número de casa).
+  // Si hay número de casa, es una dirección específica → residencia o negocio.
+  const houseNumber = String(data?.address?.house_number ?? "")
+  if (road && !houseNumber && (cls === "highway" || /motorway|trunk|primary|secondary/i.test(type))) {
     return { kind: "business", icon: "🛣️", categoryLabel: road, banner: "blue", businessName: "" }
   }
 
