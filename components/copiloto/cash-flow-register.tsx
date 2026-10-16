@@ -257,7 +257,7 @@ export function CashFlowRegister({
         <div className="flex items-center justify-center gap-2 px-1 text-[10px] font-bold text-neutral-400">
           <span className="tracking-wider text-emerald-400">DUAL REGISTER</span>
           <span className="rounded border border-emerald-800 bg-emerald-950 px-2 py-0.5 text-[9px] text-emerald-300">
-            LIVE
+            EN VIVO
           </span>
           <button
             type="button"
@@ -272,19 +272,6 @@ export function CashFlowRegister({
             </span>
           </button>
         </div>
-        {bankTotal !== null && (
-          <p className="mt-1 text-center text-[10px] text-neutral-500">
-            Bank total:{" "}
-            <span
-              className={cn(
-                "font-bold tabular-nums",
-                bankTotal < 0 ? "text-rose-400" : "text-emerald-400",
-              )}
-            >
-              {money(bankTotal)}
-            </span>
-          </p>
-        )}
       </div>
 
       <div className="mt-2.5">
