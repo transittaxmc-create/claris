@@ -1,26 +1,17 @@
-// ============================================================================
-// REGISTERS POR CUENTA — un register por cada banco/tarjeta.
-// Cada cuenta (banco o tarjeta) tiene su propio libro con su propio balance.
-// Los registers se generan automáticamente desde el feed del banco; las
-// cuentas manuales (ej. tarjetas) se agregan en la portada y nacen solas.
-// ============================================================================
+// Registers store — real bank snapshot + manual accounts only.
+// No auto-seed empty Venmo/Square cards (clutter).
 
 export type AccountKind = "bank" | "card"
 
 export interface RegisterAccount {
-  /** id estable derivado del nombre (snapshot) o uuid (manual) */
   id: string
   name: string
   institution: string | null
   kind: AccountKind
-  /** Solo tarjetas: límite de crédito */
   limit: number | null
-  /** Día del mes de pago (1-31). Solo informativo para vencimientos. */
   dueDay: number | null
-  /** La cuenta principal: ahí corren las proyecciones y los pagos */
   isMain: boolean
   source: "snapshot" | "manual"
-  /** Solo cuentas manuales: balance/deuda llevado a mano */
   manualBalance: number | null
 }
 
@@ -73,44 +64,16 @@ export function accountIdFor(name: string): string {
     .replace(/^-+|-+$/g, "")}`
 }
 
-/** Heurística: ¿parece tarjeta de crédito? */
 function looksLikeCard(name: string, institution: string | null): boolean {
   const t = `${name} ${institution || ""}`.toLowerCase()
   return /card|tarjeta|amex|visa|mastercard|discover|credit|crédito/.test(t)
 }
 
-/** Cuentas que Miguel pidió fijar como Reyes (2026-10-16): nacen solas si no existen. */
-const SEEDED_MANUAL: Array<{ name: string; kind: AccountKind }> = [
-  { name: "Venmo", kind: "bank" },
-  { name: "Square", kind: "bank" },
-]
-
-function ensureSeeded(st: StoredState) {
-  let changed = false
-  for (const s of SEEDED_MANUAL) {
-    const exists = st.manual.some((m) => m.name.trim().toLowerCase() === s.name.toLowerCase())
-    if (!exists) {
-      st.manual.push({
-        id: `manual:seed-${s.name.toLowerCase()}`,
-        name: s.name,
-        institution: null,
-        kind: s.kind,
-        limit: null,
-        dueDay: null,
-        isMain: false,
-        source: "manual",
-        manualBalance: 0,
-      })
-      changed = true
-    }
-  }
-  if (changed) saveState(st)
+/** No auto-seed empty accounts — only real snapshot + user-added. */
+function ensureSeeded(_st: StoredState) {
+  /* intentionally empty */
 }
 
-/**
- * Construye la lista de registers: snapshot (banco real) + manuales.
- * Llama esto con las cuentas del feed; los manuales persisten en localStorage.
- */
 export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAccount[] {
   const st = loadState()
   ensureSeeded(st)
@@ -150,7 +113,6 @@ export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAcc
     })
   }
 
-  // Cuenta principal: la guardada, o la que se llame "Citibank…" exacto, o /citi/i, o la primera.
   let mainId = st.mainId
   if (!mainId || !regs.some((r) => r.id === mainId)) {
     const exact = regs.find((r) => r.kind === "bank" && /^citibank\b/i.test(r.name))
@@ -159,19 +121,16 @@ export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAcc
   }
   for (const r of regs) r.isMain = r.id === mainId
 
-  // Reyes visibles: la principal siempre + cuentas con balance distinto de $0.
-  // (Miguel 2026-10-16: ocultar el ruido de $0 para que no se vea crowded.)
+  // Only real money: main + non-zero. No $0 filler cards.
   return regs.filter((r) => {
     if (r.isMain) return true
     if (r.source === "manual") {
-      if (/^(venmo|square)$/i.test(r.name)) return true
       return Math.abs(Number(r.manualBalance) || 0) >= 0.005
     }
     return Math.abs(balById.get(r.id) ?? 0) >= 0.005
   })
 }
 
-/** Balance real de la cuenta según el snapshot (o manual si es manual). */
 export function accountBalance(
   reg: RegisterAccount,
   snapshotAccounts: SnapshotAccount[],
@@ -195,7 +154,7 @@ export function addManualAccount(input: {
     name: input.name.trim(),
     institution: null,
     kind: input.kind,
-    limit: input.kind === "card" ? (Number(input.limit) || null) : null,
+    limit: input.kind === "card" ? Number(input.limit) || null : null,
     dueDay: input.dueDay ?? null,
     isMain: false,
     source: "manual",
@@ -250,12 +209,10 @@ export interface DueItem {
   accountName: string
   kind: AccountKind
   dueDay: number
-  /** Fecha ISO del próximo vencimiento */
   nextDate: string
   daysUntil: number
 }
 
-/** Próximos vencimientos ordenados por cercanía. */
 export function upcomingDues(registers: RegisterAccount[], todayIso?: string): DueItem[] {
   const today = todayIso || new Date().toISOString().slice(0, 10)
   const [ty, tm, td] = today.split("-").map(Number)
