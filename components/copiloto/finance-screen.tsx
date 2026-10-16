@@ -23,9 +23,9 @@ export function FinanceScreen(_props: {
 }) {
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-neutral-800 px-4 pb-2 pt-3">
-        <h1 className="text-xl font-extrabold tracking-tight text-white">Money</h1>
-        <p className="text-[11px] text-neutral-400">Ledger · tap an account for its register</p>
+      <div className="border-b border-neutral-800 px-4 pb-3 pt-3">
+        <h1 className="text-xl font-extrabold tracking-tight text-white">Dinero</h1>
+        <p className="text-[11px] text-neutral-400">Libro mayor · toca una cuenta para ver su registro</p>
       </div>
       <div className="flex-1 overflow-y-auto px-2 py-2">
         <CashFlowRegister startingActualBalance={0} />
