@@ -55,6 +55,8 @@ export type TollBill = {
 export type CashFlowStatus = "actual" | "projected"
 export type CashFlowType = "income" | "expense"
 export type CashFlowSource = "bank" | "receipt" | "trip" | "projection" | "manual"
+/** CÓMO entró el movimiento (no confundir con su tipo Factura/Recibo). */
+export type CashFlowOrigin = "scan" | "manual" | "bank" | "trip"
 
 export type CashFlowEntry = {
   id: string
@@ -62,6 +64,8 @@ export type CashFlowEntry = {
   description: string
   source: CashFlowSource
   sourceLabel?: string
+  /** Escaneado | Manual | Banco | Cobros. Se conserva aunque cambie el tipo. */
+  origin?: CashFlowOrigin
   type: CashFlowType
   status: CashFlowStatus
   amount: number
@@ -89,6 +93,8 @@ export type Expense = {
   classification?: ExpenseClassification
   /** factura | recibo | manual — define a dónde va en el libro */
   docType?: ExpenseDocType
+  /** true si entró por el escáner (siempre se muestra como "Escaneado"). */
+  scanned?: boolean
   savedAt?: string
 }
 
