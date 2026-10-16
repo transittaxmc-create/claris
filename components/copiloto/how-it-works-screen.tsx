@@ -13,7 +13,8 @@ export function HowItWorksScreen() {
         <h1 className="text-xl font-extrabold text-white">Cómo funciona Copiloto</h1>
         <p className="mt-1 text-[12px] leading-snug text-neutral-400">
           Dual Register, reconciliación COBROS → DINERO, Bill vs Receipt, Business vs Personal.
-          Para ti y para cualquier agente de IA.
+          Registers por cuenta, transferencias, vencimientos, proyecciones.
+          Para ti, para Amani y para cualquier agente de IA: que nunca se pierda el contexto.
         </p>
       </header>
 
@@ -106,6 +107,104 @@ export function HowItWorksScreen() {
           Aquí puede enlazarse un video corto de captura de pantalla (escanear → clasificar →
           reconciliar → editar ledger). Mientras tanto esta guía es la referencia canónica en la
           app.
+        </P>
+      </Section>
+
+
+      <Section title="8. Registers por cuenta (uno por banco/tarjeta)">
+        <P>
+          Cada cuenta de banco y cada tarjeta de crédito tiene <B>su propio register</B> con su
+          propio balance. Nunca se mezclan bancos en una sola cifra: así cada register cuadra con
+          su banco al centavo.
+        </P>
+        <ul className="mt-2 list-disc space-y-1 pl-4 text-[12px] text-neutral-300">
+          <li>
+            <B>Portada</B> (DINERO → Libro Mayor): una tarjeta por cuenta con nombre + balance
+            grande. Se deslizan de lado; sin scroll largo.
+          </li>
+          <li>
+            <B>Tocar una tarjeta</B> abre el register de ESA cuenta: balance grande arriba,
+            movimientos debajo.
+          </li>
+          <li>
+            <B>Tarjeta de crédito</B>: muestra límite, deuda actual y disponible (límite − deuda).
+            La tarjeta es un <B>pasivo</B> (lo que debes), no un activo.
+          </li>
+          <li>
+            <B>Agregar cuenta</B>: botón ＋ en la portada. Su register nace automáticamente. La
+            tarjeta pide límite + día de pago.
+          </li>
+          <li>
+            <B>★ Principal</B>: la cuenta principal (CitiBank) es donde corren las proyecciones y
+            desde donde se pagan los bills.
+          </li>
+        </ul>
+      </Section>
+
+      <Section title="9. De dónde viene cada dato (una sola puerta)">
+        <ul className="mt-2 list-disc space-y-1 pl-4 text-[12px] text-neutral-300">
+          <li>
+            <B>Banco (feed)</B>: balances y movimientos reales llegan solos del banco (auto al
+            abrir + botón SYNC). <B>No se digitan</B> — lo real no se escribe a mano.
+          </li>
+          <li>
+            <B>Bills escaneados</B> (statements de tarjetas, celulares, carro, TD): entran{" "}
+            <B>una sola vez</B> y van a <B>Proyecciones</B> como &quot;por pagar&quot;.
+          </li>
+          <li>
+            <B>Gastos manuales</B>: un solo formulario (Libro Mayor o Mis Gastos) — ambos caen al{" "}
+            <B>mismo Libro Mayor</B>. Nada se entra dos veces.
+          </li>
+        </ul>
+        <P>Cada dato vive en un solo lugar. Si ya entró por una puerta, no se repite.</P>
+      </Section>
+
+      <Section title="10. Transferencias entre cuentas (sin duplicar ingreso)">
+        <P>
+          Cuando el dinero sale de una cuenta y entra a otra (mismo monto, fechas cercanas), el
+          sistema lo marca como <B>TRANSFERENCIA</B> — nunca como ingreso. Ejemplo: Uber Pro →
+          CitiBank. Lo que llega a CitiBank <B>no es un ingreso nuevo</B>: es el mismo dólar
+          movido. El ingreso fue lo de Uber.
+        </P>
+        <ul className="mt-2 list-disc space-y-1 pl-4 text-[12px] text-neutral-300">
+          <li>
+            Cada transferencia lleva su <B>origen trazado</B> (&quot;viene de Uber Pro&quot;).
+          </li>
+          <li>
+            <B>Reporte de transferencias</B> (botón en la portada): emparejadas para verificar +
+            &quot;sueltas&quot; (salida sin llegada o viceversa) para revisar. Sin cabos sueltos.
+          </li>
+          <li>Regla de oro: los transfers jamás inflan ingresos.</li>
+        </ul>
+      </Section>
+
+      <Section title="11. Reconciliación automática">
+        <P>
+          Cuando un pago aparece en el checking (feed del banco), el sistema lo empareja solo con
+          su bill o tarjeta y <B>actualiza ambos lados</B>: baja el checking y liquida el bill (o
+          baja la deuda de la tarjeta). Los bills liquidados solos aparecen en el reporte de
+          transferencias como &quot;Auto-conciliados&quot;.
+        </P>
+        <P>
+          Un pago desde checking a la tarjeta <B>no es un gasto</B>: es una transferencia de
+          activo a pasivo (baja el banco, baja la deuda).
+        </P>
+      </Section>
+
+      <Section title="12. Due days (vencimientos)">
+        <P>
+          Cada tarjeta/cuenta puede tener su <B>día de pago</B> (se configura en el detalle de la
+          cuenta). La portada muestra <B>Próximos vencimientos</B> ordenados por cercanía (¡HOY! /
+          en X días) para pagar a tiempo e ir liquidando balances.
+        </P>
+      </Section>
+
+      <Section title="13. Proyecciones (cuenta principal + otros fondos)">
+        <P>
+          La proyección corre sobre la <B>cuenta principal</B> (★): balance real + bills por pagar
+          = cierre proyectado. Las demás cuentas <B>no mezclan sus movimientos</B>: aportan solo
+          su balance como <B>&quot;otros fondos&quot;</B> (checkmark en el detalle de la cuenta
+          principal) que suma al proyectado.
         </P>
       </Section>
 
