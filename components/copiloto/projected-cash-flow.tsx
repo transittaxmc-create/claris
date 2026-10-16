@@ -1,8 +1,9 @@
 "use client"
 
 /**
- * Shared PROJECTED CASH FLOW — only days with data.
- * English · weekday labels · tap row to edit.
+ * Shared PROJECTED REGISTER — forecast book (not per-account statement).
+ * Bank available → recurring/proj income & expense → projected balance.
+ * Newest days first in list order by date ascending within horizon.
  */
 
 import { useMemo } from "react"
@@ -119,17 +120,19 @@ export function ProjectedCashFlow(props: {
   return (
     <section
       className="overflow-hidden rounded-2xl border border-emerald-500/25 bg-gradient-to-b from-emerald-950/30 to-neutral-950/80"
-      aria-label="Projected cash flow"
+      aria-label="Projected register"
     >
       <div className="flex items-end justify-between gap-2 border-b border-emerald-500/15 px-3.5 py-3">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-400/90">
-            Projected cash flow
+            Projected register
           </p>
-          <p className="mt-0.5 text-[11px] text-neutral-500">Forecast only · tap to edit</p>
+          <p className="mt-0.5 text-[11px] text-neutral-500">
+            Bank start · recurring · income/expense · projected balance
+          </p>
         </div>
         <div className="text-right">
-          <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Available now</p>
+          <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Bank start</p>
           <p className="font-mono text-lg font-black tabular-nums text-white">{money(props.availableNow)}</p>
         </div>
       </div>
