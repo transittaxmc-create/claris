@@ -61,7 +61,7 @@ export type TollBill = {
 export type CashFlowStatus = "actual" | "projected"
 export type CashFlowType = "income" | "expense"
 export type CashFlowSource = "bank" | "receipt" | "trip" | "projection" | "manual"
-export type CashFlowOrigin = "scan" | "manual" | "bank" | "trip"
+export type CashFlowOrigin = "scan" | "manual" | "bank" | "trip" | "square"
 export type ExpenseClassification = "business" | "personal"
 export type ExpenseDocType = "factura" | "recibo" | "manual"
 
