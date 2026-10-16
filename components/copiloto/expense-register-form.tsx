@@ -1,11 +1,18 @@
 // Formulario de registro rápido de gastos operativos (estilo Claris).
-// Descuenta del saldo disponible y separa 10% a la Reserva de Imprevistos.
+// PUERTA ÚNICA: el gasto manual cae al Libro Mayor (un solo libro).
+// El plan semanal (finance-store) conserva sus ajustes internos.
 
 "use client"
 
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { FINANCE_EXPENSE_CATEGORIES, useFinance, type FinanceExpenseCategory } from "./finance-store"
+import { LEDGER_KEY, upsertMovimiento } from "./cash-flow-store"
+import type { CashFlowEntry } from "./types"
+
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10)
+}
 
 export function ExpenseRegisterForm() {
   const { addExpense, loggedExpenses } = useFinance()
@@ -16,6 +23,26 @@ export function ExpenseRegisterForm() {
   const submit = () => {
     const value = parseFloat(amount)
     if (!value || value <= 0) return
+    // 1) Libro único: el gasto nace en el Libro Mayor (no se digita dos veces).
+    const entry: CashFlowEntry = {
+      id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `g-${Date.now()}`,
+      date: todayIso(),
+      description: note?.trim() || category,
+      source: "manual",
+      sourceLabel: "Manual",
+      type: "expense",
+      status: "actual",
+      amount: Math.round(value * 100) / 100,
+      category,
+      notes: note || undefined,
+      createdAt: new Date().toISOString(),
+    }
+    try {
+      const raw = localStorage.getItem(LEDGER_KEY)
+      const list: CashFlowEntry[] = raw ? JSON.parse(raw) : []
+      localStorage.setItem(LEDGER_KEY, JSON.stringify(upsertMovimiento(Array.isArray(list) ? list : [], entry)))
+    } catch {}
+    // 2) Plan semanal: mantiene sus ajustes internos (saldo operativo y reserva).
     addExpense({ category, amount: value, note: note || undefined })
     setAmount("")
     setNote("")
@@ -66,7 +93,7 @@ export function ExpenseRegisterForm() {
       </button>
 
       <p className="text-[10px] text-neutral-500">
-        Se descuenta del saldo disponible y separa 10% para la Reserva de Imprevistos.
+        Cae directo al Libro Mayor (un solo libro). Se descuenta del saldo operativo y separa 10% para la Reserva de Imprevistos.
       </p>
 
       {loggedExpenses.length > 0 && (
