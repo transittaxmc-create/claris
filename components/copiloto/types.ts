@@ -96,6 +96,8 @@ export type Expense = {
   scheduled?: boolean
   classification?: ExpenseClassification
   docType?: ExpenseDocType
+  /** Register/cuenta de donde salió el gasto (id de registers-store). */
+  accountId?: string
   createdAt?: string
   updatedAt?: string
 }
