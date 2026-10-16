@@ -220,7 +220,15 @@ export function accountBalance(
   snapshotAccounts: SnapshotAccount[],
 ): number | null {
   if (reg.source === "manual") return reg.manualBalance
-  const found = (snapshotAccounts || []).find((a) => accountIdFor(String(a?.name || "")) === reg.id)
+  // 1. Match exacto por ID (rápido, para la mayoría de cuentas)
+  let found = (snapshotAccounts || []).find((a) => accountIdFor(String(a?.name || "")) === reg.id)
+  // 2. Fallback por últimos 4 dígitos (Plaid a veces cambia el nombre, ej: "Access Account …6393")
+  if (!found) {
+    const want4 = last4Of(reg.name)
+    if (want4) {
+      found = (snapshotAccounts || []).find((a) => last4Of(String(a?.name || "")) === want4)
+    }
+  }
   const v = Number(found?.current_balance)
   return Number.isFinite(v) ? Math.round(v * 100) / 100 : null
 }
