@@ -456,6 +456,7 @@ export function CashFlowRegister({
             balances={balances}
             bankTxs={bankTxs}
             bankOk={!bankError && bankAccounts.length > 0}
+            onSyncBank={fetchBank}
             dues={dues}
             pairCount={transferReport.pairs.length}
             looseCount={transferReport.unmatchedOut.length + transferReport.unmatchedIn.length}
