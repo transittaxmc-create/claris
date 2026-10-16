@@ -18,7 +18,15 @@ import { ReceiptScanner } from "./receipt-scanner"
 import { useShift } from "./shift"
 import { guardarMovimiento, movimientoDeGasto } from "./cash-flow-store"
 import { applyDifferenceToTrip, applyBankMatchesToTrips, normalizeTripStatus } from "./reconciliation"
-import { SEED_TRIPS, newTrip, stampExpense, applyExpenseUpdatesToExpenses, grossOf, netOf, tripDateOf, type Expense, type Trip, type ScheduledEntry } from "./types"
+import { SEED_TRIPS, newTrip, stampExpense, applyExpenseUpdatesToExpenses, grossOf, netOf, tripDateOf, money, type Expense, type Trip, type ScheduledEntry } from "./types"
+import {
+  addBillPayment,
+  billRemaining,
+  learnConfirm,
+  offerReceiptBillMatch,
+  ruleKeyFor,
+  syncBillToProjections,
+} from "./bill-payments"
 import { buildBackupBundle, buildBackupHtml, collectAppKeys } from "@/lib/backup"
 import {
   addExpenseTombstone,
@@ -611,7 +619,26 @@ export function CopilotoApp() {
       {scannerOpen && (
         <ReceiptScanner
           onClose={() => setScannerOpen(false)}
-          onSaveExpense={saveExpense}
+          onSaveExpense={(e) => {
+            saveExpense(e)
+            // ¿Este recibo escaneado es pago de una factura abierta? Se ofrece
+            // una sola vez; si Miguel acepta, el pago se amarra a la factura.
+            if (e.docType === "recibo") {
+              const hit = offerReceiptBillMatch(expensesRef.current, {
+                vendor: e.vendor,
+                amount: e.amount,
+                date: e.date,
+                accountId: e.accountId,
+                id: e.id,
+              })
+              if (hit) {
+                const withPay = addBillPayment(hit.bill, hit.payment)
+                saveExpense(withPay)
+                syncBillToProjections(withPay)
+                learnConfirm(ruleKeyFor(e.vendor), hit.bill, e.accountId)
+              }
+            }
+          }}
           onSaveIncome={saveScannedIncome}
           totales={escanerTotales}
         />
