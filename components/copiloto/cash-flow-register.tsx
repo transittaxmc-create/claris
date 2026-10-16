@@ -1,22 +1,13 @@
 "use client"
 
-import { useState, useMemo, useEffect, useCallback } from "react"
-import {
-  TrendingUp,
-  Plus,
-  Pencil,
-  Trash2,
-  Search,
-  Building2,
-  Receipt,
-  Car,
-  Link2,
-  CheckCircle2,
-  AlertTriangle,
-  RefreshCw,
-} from "lucide-react"
+// DUAL REGISTER por cuenta — un register por cada banco/tarjeta.
+// Portada: una tarjeta por cuenta (swipe horizontal) + vencimientos.
+// Detalle: el register de ESA cuenta. Sin scroll largo, sin expandibles.
+
+import { useState, useMemo, useEffect, useCallback, useRef } from "react"
+import { RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { sinSemillas } from "./cash-flow-store"
+import { LEDGER_KEY, sinSemillas } from "./cash-flow-store"
 import {
   money,
   type CashFlowEntry,
@@ -24,43 +15,54 @@ import {
   type CashFlowStatus,
   type CashFlowType,
 } from "./types"
-
-const STORAGE_KEY = "claris_cash_flow_entries"
+import {
+  buildRegisters,
+  accountBalance,
+  accountIdFor,
+  addManualAccount,
+  deleteManualAccount,
+  setManualBalance,
+  setMainAccount,
+  upcomingDues,
+  type RegisterAccount,
+} from "./registers-store"
+import { matchTransfers, type TransferReport } from "./transfer-matcher"
+import {
+  RegistersHome,
+  RegisterDetail,
+  AddAccountModal,
+  TransfersReport,
+  type BankTx,
+} from "./account-registers"
 
 interface CashFlowRegisterProps {
   startingActualBalance: number
   onUpdateStartingBalance?: (newBal: number) => void
 }
 
-function shortDate(iso: string): string {
-  if (!iso || iso.length < 10) return iso || "—"
-  try {
-    const d = new Date(`${iso.slice(0, 10)}T12:00:00`)
-    if (Number.isNaN(d.getTime())) return iso.slice(5)
-    return d.toLocaleDateString("en-US", { day: "numeric", month: "short" })
-  } catch {
-    return iso.slice(5)
-  }
+interface SnapshotAccount {
+  name?: string
+  current_balance?: number
+  institution?: string | null
 }
 
-function weekdayShort(iso: string): string {
-  if (!iso || iso.length < 10) return ""
-  try {
-    const d = new Date(`${iso.slice(0, 10)}T12:00:00`)
-    if (Number.isNaN(d.getTime())) return ""
-    return d.toLocaleDateString("en-US", { weekday: "short" })
-  } catch {
-    return ""
-  }
-}
-
-interface BankTx {
-  date: string
-  bank_account: string
+interface AutoRecon {
+  billId: string
   detail: string
-  category: string | null
   amount: number
-  daily_balance: number | null
+  date: string
+}
+
+const RECON_KEY = "claris_autorecon_v1"
+const OTHER_FUNDS_KEY = "claris_other_funds_v1"
+
+function loadJson<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? (JSON.parse(raw) as T) : fallback
+  } catch {
+    return fallback
+  }
 }
 
 export function CashFlowRegister({
@@ -69,16 +71,23 @@ export function CashFlowRegister({
 }: CashFlowRegisterProps) {
   const [entries, setEntries] = useState<CashFlowEntry[]>([])
   const [isLoaded, setIsLoaded] = useState(false)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [filterType, setFilterType] = useState<"all" | "actual" | "projected">("all")
   const [editingEntry, setEditingEntry] = useState<CashFlowEntry | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [viewingReceipt, setViewingReceipt] = useState<string | null>(null)
 
+  // Vista: portada | detalle de cuenta | reporte de transferencias
+  const [view, setView] = useState<{ kind: "home" } | { kind: "account"; id: string } | { kind: "transfers" }>({ kind: "home" })
+  const [showAddAccount, setShowAddAccount] = useState(false)
+  const [otherFunds, setOtherFunds] = useState<string[]>(() =>
+    typeof window === "undefined" ? [] : loadJson<string[]>(OTHER_FUNDS_KEY, []),
+  )
+  const [autoRecon, setAutoRecon] = useState<AutoRecon[]>(() =>
+    typeof window === "undefined" ? [] : loadJson<AutoRecon[]>(RECON_KEY, []),
+  )
+
   // ---- Real bank feed (islandcity-register1, shared Supabase) ----
-  // Auto-reads on panel open + manual SYNC button. Read-only: never touches
-  // the local ledger entries (bills/posts keep working from localStorage).
   const [bankTotal, setBankTotal] = useState<number | null>(null)
+  const [bankAccounts, setBankAccounts] = useState<SnapshotAccount[]>([])
   const [bankTxs, setBankTxs] = useState<BankTx[]>([])
   const [bankLoading, setBankLoading] = useState(false)
   const [bankError, setBankError] = useState(false)
@@ -92,6 +101,7 @@ export function CashFlowRegister({
       if (!r.ok) throw new Error(`HTTP ${r.status}`)
       const j = await r.json()
       setBankTotal(typeof j.total_balance === "number" ? j.total_balance : null)
+      setBankAccounts(Array.isArray(j.accounts) ? j.accounts : [])
       setBankTxs(Array.isArray(j.transactions) ? j.transactions : [])
       setBankUpdatedAt(typeof j.as_of === "string" ? j.as_of : null)
     } catch {
@@ -107,101 +117,88 @@ export function CashFlowRegister({
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY)
+      const saved = localStorage.getItem(LEDGER_KEY)
       const parsed = saved ? JSON.parse(saved) : []
       const lista: CashFlowEntry[] = Array.isArray(parsed) ? parsed : []
       const limpio = sinSemillas(lista)
       setEntries(limpio)
-      if (limpio.length !== lista.length) localStorage.setItem(STORAGE_KEY, JSON.stringify(limpio))
+      if (limpio.length !== lista.length) localStorage.setItem(LEDGER_KEY, JSON.stringify(limpio))
     } catch {
     } finally {
       setIsLoaded(true)
     }
   }, [])
 
+  // ---- Registers por cuenta ----
+  const registers: RegisterAccount[] = useMemo(
+    () => (isLoaded ? buildRegisters(bankAccounts) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isLoaded, bankAccounts],
+  )
+
   const balances = useMemo(() => {
-    let actualNet = 0
-    let projectedNet = 0
-    for (const e of entries) {
-      const amt = Number(e.amount) || 0
-      if (e.status === "actual") {
-        if (e.type === "income") actualNet += amt
-        else actualNet -= amt
-      } else {
-        if (e.type === "income") projectedNet += amt
-        else projectedNet -= amt
-      }
-    }
-    const actualBalance = Math.round((startingActualBalance + actualNet) * 100) / 100
-    const projectedBalance = Math.round((actualBalance + projectedNet) * 100) / 100
-    return { actualBalance, projectedBalance }
-  }, [entries, startingActualBalance])
+    const m: Record<string, number | null> = {}
+    for (const r of registers) m[r.id] = accountBalance(r, bankAccounts)
+    return m
+  }, [registers, bankAccounts])
 
-  const calculatedRows = useMemo(() => {
-    const sorted = [...entries].sort((a, b) => {
-      const cmp = a.date.localeCompare(b.date)
-      if (cmp !== 0) return cmp
-      return (a.createdAt || "").localeCompare(b.createdAt || "")
-    })
-    let currentActualRun = startingActualBalance
-    let currentProjectedRun = startingActualBalance
-    return sorted.map((entry) => {
-      const amt = Number(entry.amount) || 0
-      if (entry.status === "actual") {
-        if (entry.type === "income") {
-          currentActualRun += amt
-          currentProjectedRun += amt
-        } else {
-          currentActualRun -= amt
-          currentProjectedRun -= amt
-        }
-      } else {
-        if (entry.type === "income") currentProjectedRun += amt
-        else currentProjectedRun -= amt
-      }
-      return {
-        ...entry,
-        runningActual: Math.round(currentActualRun * 100) / 100,
-        runningProjected: Math.round(currentProjectedRun * 100) / 100,
-      }
-    })
-  }, [entries, startingActualBalance])
+  const mainReg = registers.find((r) => r.isMain) || registers[0] || null
 
-  const displayRows = useMemo(() => {
-    return calculatedRows
-      .filter((row) => {
-        if (filterType === "actual" && row.status !== "actual") return false
-        if (filterType === "projected" && row.status !== "projected") return false
-        if (!searchTerm.trim()) return true
-        const term = searchTerm.toLowerCase()
-        return (
-          row.description.toLowerCase().includes(term) ||
-          (row.category || "").toLowerCase().includes(term) ||
-          (row.sourceLabel || "").toLowerCase().includes(term) ||
-          row.date.includes(term)
-        )
+  const transferReport: TransferReport = useMemo(() => matchTransfers(bankTxs), [bankTxs])
+
+  const dues = useMemo(() => upcomingDues(registers), [registers])
+
+  // ---- Auto-reconciliación: bill proyectado + salida real del banco = pagado ----
+  const reconKey = useRef("")
+  useEffect(() => {
+    if (!isLoaded || bankTxs.length === 0) return
+    const projectedBills = entries.filter((e) => e.status === "projected" && e.type === "expense")
+    const key = `${bankTxs.length}|${projectedBills.length}`
+    if (reconKey.current === key) return
+    reconKey.current = key
+
+    const matched: AutoRecon[] = []
+    const updated = entries.map((e) => {
+      if (e.status !== "projected" || e.type !== "expense") return e
+      const amt = Math.abs(Number(e.amount) || 0)
+      if (amt <= 0) return e
+      const hit = bankTxs.find(
+        (t) =>
+          Number(t.amount) < -0.011 &&
+          Math.abs(Math.abs(Number(t.amount)) - amt) < 0.011 &&
+          String(t.date).slice(0, 10) >= String(e.date).slice(0, 10),
+      )
+      if (hit) {
+        matched.push({ billId: String(e.id), detail: e.description || "Bill", amount: amt, date: String(hit.date).slice(0, 10) })
+        return { ...e, status: "actual" as CashFlowStatus, source: "receipt" as CashFlowSource, sourceLabel: "Receipt", isManuallyEdited: true }
+      }
+      return e
+    })
+
+    if (matched.length > 0) {
+      try {
+        localStorage.setItem(LEDGER_KEY, JSON.stringify(updated))
+      } catch {}
+      setEntries(updated)
+      setAutoRecon((prev) => {
+        const next = [...matched, ...prev].slice(0, 30)
+        try {
+          localStorage.setItem(RECON_KEY, JSON.stringify(next))
+        } catch {}
+        return next
       })
-      .reverse()
-  }, [calculatedRows, filterType, searchTerm])
+    }
+  }, [isLoaded, bankTxs, entries])
 
-  const visibleBankTxs = useMemo(() => {
-    if (filterType === "projected") return [] as BankTx[]
-    const term = searchTerm.trim().toLowerCase()
-    if (!term) return bankTxs
-    return bankTxs.filter(
-      (t) =>
-        (t.detail || "").toLowerCase().includes(term) ||
-        (t.bank_account || "").toLowerCase().includes(term) ||
-        t.date.includes(term),
-    )
-  }, [bankTxs, filterType, searchTerm])
-
+  // ---- Helpers de entries ----
   const saveEntries = useCallback((updated: CashFlowEntry[]) => {
     setEntries(updated)
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated))
+      localStorage.setItem(LEDGER_KEY, JSON.stringify(updated))
     } catch {}
   }, [])
+
+  const currentAccountId = view.kind === "account" ? view.id : mainReg?.id || null
 
   const handleOpenAddModal = (defaultType: CashFlowType = "income", defaultStatus: CashFlowStatus = "actual") => {
     const today = new Date().toISOString().slice(0, 10)
@@ -218,7 +215,8 @@ export function CashFlowRegister({
       isManuallyEdited: false,
       notes: "",
       createdAt: new Date().toISOString(),
-    })
+      accountId: currentAccountId || undefined,
+    } as CashFlowEntry)
     setIsModalOpen(true)
   }
 
@@ -243,33 +241,16 @@ export function CashFlowRegister({
     )
   }
 
-  /** Correct type: Bill ↔ Receipt. Fully reversible. */
   const handleSetDocKind = (id: string, kind: "bill" | "receipt") => {
     saveEntries(
       entries.map((e) => {
         if (e.id !== id) return e
         if (kind === "bill") {
-          return {
-            ...e,
-            status: "projected" as CashFlowStatus,
-            source: "projection" as CashFlowSource,
-            sourceLabel: "Bill",
-            isManuallyEdited: true,
-          }
+          return { ...e, status: "projected" as CashFlowStatus, source: "projection" as CashFlowSource, sourceLabel: "Bill", isManuallyEdited: true }
         }
-        return {
-          ...e,
-          status: "actual" as CashFlowStatus,
-          source: "receipt" as CashFlowSource,
-          sourceLabel: "Receipt",
-          isManuallyEdited: true,
-        }
+        return { ...e, status: "actual" as CashFlowStatus, source: "receipt" as CashFlowSource, sourceLabel: "Receipt", isManuallyEdited: true }
       }),
     )
-  }
-
-  const handleMatch = (id: string) => {
-    handleSetDocKind(id, "receipt")
   }
 
   const handleSaveModal = (entryToSave: CashFlowEntry) => {
@@ -285,6 +266,7 @@ export function CashFlowRegister({
       ...entryToSave,
       amount: Number(entryToSave.amount),
       isManuallyEdited: true,
+      accountId: (entryToSave as CashFlowEntry).accountId || currentAccountId || undefined,
     }
     const exists = entries.some((e) => e.id === finalEntry.id)
     saveEntries(exists ? entries.map((e) => (e.id === finalEntry.id ? finalEntry : e)) : [finalEntry, ...entries])
@@ -292,50 +274,55 @@ export function CashFlowRegister({
     setEditingEntry(null)
   }
 
-  const getSourceBadge = (source: CashFlowSource, label?: string) => {
-    const base = "inline-flex items-center gap-0.5 rounded border px-1 py-0.5 text-[10px] font-semibold"
-    switch (source) {
-      case "bank":
-        return (
-          <span className={cn(base, "border-blue-500/20 bg-blue-500/10 text-blue-400")}>
-            <Building2 className="size-2.5" /> {label || "Bank"}
-          </span>
-        )
-      case "receipt":
-        return (
-          <span className={cn(base, "border-purple-500/20 bg-purple-500/10 text-purple-400")}>
-            <Receipt className="size-2.5" /> {label || "Receipt"}
-          </span>
-        )
-      case "trip":
-        return (
-          <span className={cn(base, "border-amber-500/20 bg-amber-500/10 text-amber-400")}>
-            <Car className="size-2.5" /> {label || "Trip"}
-          </span>
-        )
-      case "projection":
-        return (
-          <span className={cn(base, "border-cyan-500/20 bg-cyan-500/10 text-cyan-400")}>
-            <TrendingUp className="size-2.5" /> {label || "Bill"}
-          </span>
-        )
-      default:
-        return (
-          <span className={cn(base, "border-neutral-700 bg-neutral-800 text-neutral-400")}>
-            {label || "Manual"}
-          </span>
-        )
-    }
+  // ---- Handlers de cuentas ----
+  const handleAddAccount = (input: { name: string; kind: "bank" | "card"; limit?: number | null; dueDay?: number | null; balance?: number | null }) => {
+    addManualAccount(input)
+    setShowAddAccount(false)
+    // fuerza reconstrucción de registers
+    setBankAccounts((prev) => [...prev])
   }
+
+  const refreshRegisters = useCallback(() => {
+    setBankAccounts((prev) => [...prev])
+  }, [])
+
+  const handleToggleOtherFund = (id: string) => {
+    setOtherFunds((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+      try {
+        localStorage.setItem(OTHER_FUNDS_KEY, JSON.stringify(next))
+      } catch {}
+      return next
+    })
+  }
+
+  const txsForAccount = useCallback(
+    (reg: RegisterAccount): BankTx[] =>
+      bankTxs.filter((t) => accountIdFor(String(t.bank_account || "")) === reg.id),
+    [bankTxs],
+  )
+
+  const entriesForAccount = useCallback(
+    (reg: RegisterAccount): CashFlowEntry[] =>
+      entries.filter((e) => {
+        const aid = (e as CashFlowEntry).accountId
+        if (aid) return aid === reg.id
+        return reg.isMain // sin asignar → cuenta principal
+      }),
+    [entries],
+  )
 
   if (!isLoaded) {
     return <div className="flex items-center justify-center py-12 text-sm text-neutral-500">Loading ledger…</div>
   }
 
+  const activeAccount = view.kind === "account" ? registers.find((r) => r.id === view.id) || null : null
+
   return (
     <div className="flex w-full flex-col overflow-x-hidden px-1">
+      {/* Header fijo: DUAL REGISTER + LIVE + SYNC */}
       <div className="sticky top-0 z-20 border-b border-neutral-800 bg-black/95 px-3 py-2.5 backdrop-blur-md">
-        <div className="mb-1.5 flex items-center justify-center gap-2 px-1 text-[10px] font-bold text-neutral-400">
+        <div className="flex items-center justify-center gap-2 px-1 text-[10px] font-bold text-neutral-400">
           <span className="tracking-wider text-emerald-400">DUAL REGISTER</span>
           <span className="rounded border border-emerald-800 bg-emerald-950 px-2 py-0.5 text-[9px] text-emerald-300">LIVE</span>
           <button
@@ -351,241 +338,60 @@ export function CashFlowRegister({
             </span>
           </button>
         </div>
-        <div className="grid grid-cols-3 gap-1.5 text-center">
-          <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-2">
-            <div className="text-[8px] font-bold uppercase text-neutral-400">BANK BALANCE</div>
-            <div className="mt-0.5 text-xs font-black tabular-nums text-emerald-400">{bankTotal !== null ? money(bankTotal) : money(balances.actualBalance)}</div>
-          </div>
-          <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-2">
-            <div className="text-[8px] font-bold uppercase text-neutral-400">PROJECTED</div>
-            <div className={cn("mt-0.5 text-xs font-black tabular-nums", balances.projectedBalance >= 0 ? "text-cyan-400" : "text-rose-400")}>
-              {money(balances.projectedBalance)}
-            </div>
-          </div>
-          <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-2">
-            <div className="text-[8px] font-bold uppercase text-neutral-400">SETTLEMENT</div>
-            <div className="mt-0.5 text-xs font-black tabular-nums text-emerald-400">$0.00</div>
-          </div>
-        </div>
-
-        <div className="mt-2 flex items-center gap-1.5 px-0.5">
-          <div className="relative min-w-0 flex-1">
-            <Search className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-neutral-500" />
-            <input
-              type="text"
-              placeholder="Search…"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full rounded-lg border border-neutral-800 bg-neutral-900/90 py-2 pl-8 pr-2 text-[12px] text-white placeholder-neutral-500 outline-none focus:border-yellow-400/50"
-            />
-          </div>
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value as "all" | "actual" | "projected")}
-            className="min-h-[40px] rounded-lg border border-neutral-800 bg-neutral-900/90 px-2 py-2 text-[11px] text-neutral-300 outline-none"
-            aria-label="Filter entries"
-          >
-            <option value="all">All</option>
-            <option value="actual">Posted</option>
-            <option value="projected">Projected</option>
-          </select>
-          <button
-            type="button"
-            onClick={() => handleOpenAddModal("expense", "projected")}
-            className="flex min-h-[40px] min-w-[40px] shrink-0 flex-col items-center justify-center rounded-lg border border-cyan-500/40 bg-cyan-950/30 px-2 py-1 text-cyan-300 active:scale-95"
-            title="Add projected payable (bill not yet paid)"
-          >
-            <Plus className="size-4" />
-            <span className="text-[8px] font-bold leading-none">Bill</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleOpenAddModal("expense", "actual")}
-            className="mr-0.5 flex min-h-[40px] min-w-[40px] shrink-0 flex-col items-center justify-center rounded-lg bg-yellow-400 px-2 py-1 text-black active:scale-95"
-            title="Add posted bank transaction"
-          >
-            <Plus className="size-4" />
-            <span className="text-[8px] font-extrabold leading-none">Post</span>
-          </button>
-        </div>
+        {bankTotal !== null && (
+          <p className="mt-1 text-center text-[10px] text-neutral-500">
+            Total bancos: <span className={cn("font-bold tabular-nums", bankTotal < 0 ? "text-rose-400" : "text-emerald-400")}>{money(bankTotal)}</span>
+          </p>
+        )}
       </div>
 
-      <div className="mt-2 w-full overflow-x-hidden">
-        <table className="w-full table-fixed border-collapse text-left">
-          <thead>
-            <tr className="border-b border-neutral-800 bg-neutral-950/90 text-[10px] uppercase text-neutral-400">
-              <th className="w-[15%] p-1.5 font-bold">Date</th>
-              <th className="w-[32%] p-1.5 font-bold">Description</th>
-              <th className="w-[18%] p-1.5 text-right font-bold">Bank ($)</th>
-              <th className="w-[25%] p-1.5 text-right font-bold">Amount</th>
-              <th className="w-[10%] p-1 text-center font-bold">Doc</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-neutral-800/80">
-            {visibleBankTxs.map((t, i) => (
-              <tr key={`bank-${i}-${t.date}-${t.detail}`} className="bg-blue-950/10 text-[12px]">
-                <td className="p-1.5 align-top">
-                  <div className="font-bold leading-tight text-neutral-200">{shortDate(t.date)}</div>
-                  <div className="text-[10px] font-semibold leading-tight text-amber-400/90">{weekdayShort(t.date)}</div>
-                </td>
-                <td className="overflow-hidden p-1.5 align-top">
-                  <div className="truncate font-semibold leading-tight text-neutral-100">{t.detail || "—"}</div>
-                  <div className="mt-0.5 flex items-center gap-1 truncate text-[10px] text-neutral-400">
-                    {getSourceBadge("bank", "Bank")}
-                    {t.bank_account && <span className="truncate">{t.bank_account}</span>}
-                  </div>
-                </td>
-                <td className="p-1.5 text-right align-top">
-                  <div className="font-bold tabular-nums leading-tight text-emerald-400">
-                    {t.daily_balance !== null && t.daily_balance !== undefined ? money(t.daily_balance) : "—"}
-                  </div>
-                  <div className="text-[9px] text-neutral-500">Bank</div>
-                </td>
-                <td className="p-1.5 text-right align-top">
-                  <div className={cn("text-[13px] font-black tabular-nums", t.amount >= 0 ? "text-emerald-400" : "text-rose-400")}>
-                    {money(t.amount)}
-                  </div>
-                </td>
-                <td className="p-1 text-center align-top">
-                  <CheckCircle2 className="mx-auto size-3.5 text-blue-400" />
-                </td>
-              </tr>
-            ))}
-            {displayRows.length === 0 && visibleBankTxs.length === 0 ? (
-              <tr>
-                <td colSpan={5} className="py-10 text-center text-xs text-neutral-500">
-                  No entries yet. Add a transaction or projection.
-                </td>
-              </tr>
-            ) : (
-              displayRows.map((row) => {
-                const isActual = row.status === "actual"
-                const isIncome = row.type === "income"
-                const signedAmt = isIncome ? row.amount : -row.amount
-                const hasReceipt =
-                  row.source === "receipt" || row.source === "bank" || row.source === "trip" || Boolean(row.notes)
-                return (
-                  <tr key={row.id} className={cn("text-[12px]", isActual ? "bg-neutral-900/30" : "bg-emerald-950/15")}>
-                    <td className="p-1.5 align-top">
-                      <div className="font-bold leading-tight text-neutral-200">{shortDate(row.date)}</div>
-                      <div className="text-[10px] font-semibold leading-tight text-amber-400/90">{weekdayShort(row.date)}</div>
-                    </td>
-                    <td
-                      className="overflow-hidden p-1.5 align-top active:bg-neutral-800/40"
-                      onClick={() => handleEditEntry(row)}
-                      role="button"
-                      title="Tap to edit all fields"
-                    >
-                      <div className="truncate font-semibold leading-tight text-neutral-100">{row.description || "—"}</div>
-                      <div className="mt-0.5 flex items-center gap-1 truncate text-[10px] text-neutral-400">
-                        {getSourceBadge(row.source, row.sourceLabel)}
-                        {row.category && <span className="truncate">{row.category}</span>}
-                      </div>
-                      <div className="mt-0.5 text-[8px] font-medium text-neutral-600">Tap to edit</div>
-                    </td>
-                    <td className="p-1.5 text-right align-top">
-                      <div className="font-bold tabular-nums leading-tight text-emerald-400">
-                        {isActual ? money(row.runningActual) : "—"}
-                      </div>
-                      <div className="text-[9px] text-neutral-500">{isActual ? "Posted" : "Bill"}</div>
-                    </td>
-                    <td className="p-1.5 text-right align-top">
-                      <input
-                        type="number"
-                        step="0.01"
-                        defaultValue={signedAmt}
-                        key={`${row.id}-${row.amount}`}
-                        onBlur={(e) => {
-                          const v = e.target.value
-                          if (v !== "" && v !== String(signedAmt)) handleInlineAmount(row.id, v)
-                        }}
-                        className={cn(
-                          "w-full border-b border-transparent bg-transparent text-right text-[13px] font-black tabular-nums outline-none focus:border-yellow-400/50",
-                          signedAmt >= 0 ? "text-emerald-400" : "text-rose-400",
-                        )}
-                      />
-                      <div className="mt-0.5 inline-block whitespace-nowrap rounded border border-neutral-700 bg-neutral-800 px-1 py-0.5 text-[9px] font-bold leading-none text-neutral-300">
-                        PROJ: {money(row.runningProjected)}
-                      </div>
-                      <div className="mt-1 flex flex-wrap justify-end gap-1">
-                        {!isActual ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleSetDocKind(row.id, "receipt")}
-                              className="rounded bg-emerald-600/30 px-1.5 py-1 text-[8px] font-bold text-emerald-300"
-                              title="Mark as Receipt"
-                            >
-                              → Receipt
-                            </button>
-                            <button type="button" onClick={(e) => { e.stopPropagation(); handleEditEntry(row) }} className="p-1 text-neutral-500 hover:text-white" title="Edit all fields">
-                              <Pencil className="size-3" />
-                            </button>
-                            <button type="button" onClick={() => handleDeleteEntry(row.id)} className="min-h-[28px] min-w-[28px] rounded bg-rose-600/30 p-1.5 text-rose-400" title="Delete">
-                              <Trash2 className="size-3" />
-                            </button>
-                          </>
-                        ) : (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleSetDocKind(row.id, "bill")}
-                              className="rounded bg-cyan-600/30 px-1.5 py-1 text-[8px] font-bold text-cyan-300"
-                              title="Mark as Bill"
-                            >
-                              → Bill
-                            </button>
-                            <button type="button" onClick={() => handleEditEntry(row)} className="p-1 text-neutral-500 hover:text-white" title="Edit all fields">
-                              <Pencil className="size-3" />
-                            </button>
-                            <button type="button" onClick={() => handleDeleteEntry(row.id)} className="p-1 text-neutral-500 hover:text-rose-400" title="Delete">
-                              <Trash2 className="size-3" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-1 text-center align-top">
-                      <div className="flex flex-col items-center gap-0.5">
-                        {hasReceipt ? (
-                          <CheckCircle2 className="size-3.5 text-emerald-400" />
-                        ) : (
-                          <AlertTriangle className="size-3.5 text-amber-400" />
-                        )}
-                        {row.notes && String(row.notes).startsWith("data:image") && (
-                          <button
-                            type="button"
-                            onClick={() => setViewingReceipt(String(row.notes))}
-                            className="rounded bg-neutral-800 px-1.5 py-1 text-[8px] font-bold text-sky-300"
-                            title="View receipt"
-                          >
-                            View
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {onUpdateStartingBalance && (
-        <div className="mt-3 flex items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900/60 px-3 py-2">
-          <span className="text-[10px] font-bold uppercase text-neutral-400">Opening bank balance</span>
-          <input
-            type="number"
-            step="0.01"
-            defaultValue={startingActualBalance}
-            onBlur={(e) => {
-              const v = parseFloat(e.target.value)
-              if (Number.isFinite(v)) onUpdateStartingBalance(Math.round(v * 100) / 100)
-            }}
-            className="w-28 border-b border-neutral-700 bg-transparent text-right text-xs font-bold tabular-nums text-emerald-400 outline-none focus:border-yellow-400"
+      <div className="mt-2.5">
+        {view.kind === "home" && (
+          <RegistersHome
+            registers={registers}
+            balances={balances}
+            dues={dues}
+            pairCount={transferReport.pairs.length}
+            looseCount={transferReport.unmatchedOut.length + transferReport.unmatchedIn.length}
+            onOpenAccount={(id) => setView({ kind: "account", id })}
+            onAddAccount={() => setShowAddAccount(true)}
+            onOpenTransfers={() => setView({ kind: "transfers" })}
           />
-        </div>
+        )}
+
+        {view.kind === "account" && activeAccount && (
+          <RegisterDetail
+            account={activeAccount}
+            balance={balances[activeAccount.id] ?? null}
+            bankTxs={txsForAccount(activeAccount)}
+            entries={entriesForAccount(activeAccount)}
+            otherFunds={
+              activeAccount.isMain
+                ? registers.filter((r) => r.id !== activeAccount.id && r.kind === "bank").map((r) => ({ reg: r, balance: balances[r.id] ?? null, checked: otherFunds.includes(r.id) }))
+                : []
+            }
+            onToggleOtherFund={handleToggleOtherFund}
+            onBack={() => setView({ kind: "home" })}
+            onAddBill={() => handleOpenAddModal("expense", "projected")}
+            onAddPost={() => handleOpenAddModal("expense", "actual")}
+            onEditEntry={handleEditEntry}
+            onDeleteEntry={handleDeleteEntry}
+            onSetDocKind={handleSetDocKind}
+            onInlineAmount={handleInlineAmount}
+            onSetMain={(id) => { setMainAccount(id); refreshRegisters() }}
+            onSaveDueDay={() => refreshRegisters()}
+            onSaveManualBalance={() => refreshRegisters()}
+            onDeleteManual={(id) => { deleteManualAccount(id); setView({ kind: "home" }); refreshRegisters() }}
+          />
+        )}
+
+        {view.kind === "transfers" && (
+          <TransfersReport report={transferReport} autoReconciled={autoRecon} onBack={() => setView({ kind: "home" })} />
+        )}
+      </div>
+
+      {showAddAccount && (
+        <AddAccountModal onClose={() => setShowAddAccount(false)} onSave={handleAddAccount} />
       )}
 
       {viewingReceipt && (
@@ -604,135 +410,151 @@ export function CashFlowRegister({
       )}
 
       {isModalOpen && editingEntry && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center">
-          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-neutral-700 bg-neutral-950 p-4 sm:rounded-2xl">
-            <h3 className="mb-1 text-sm font-extrabold text-white">
-              {entries.some((e) => e.id === editingEntry.id) ? "Edit entry" : "New entry"}
-            </h3>
-            <p className="mb-3 text-[10px] leading-snug text-neutral-500">
-              Fix anything the scanner got wrong. Every field is editable.
-            </p>
-            <div className="space-y-3">
-              <div>
-                <label className="text-[10px] font-bold uppercase text-neutral-400">Description / Vendor</label>
-                <input
-                  type="text"
-                  autoFocus
-                  value={editingEntry.description}
-                  onChange={(e) => setEditingEntry({ ...editingEntry, description: e.target.value })}
-                  className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] font-bold uppercase text-neutral-400">Amount</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={editingEntry.amount || ""}
-                    onChange={(e) => setEditingEntry({ ...editingEntry, amount: parseFloat(e.target.value) || 0 })}
-                    className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold uppercase text-neutral-400">Date</label>
-                  <input
-                    type="date"
-                    value={editingEntry.date}
-                    onChange={(e) => setEditingEntry({ ...editingEntry, date: e.target.value })}
-                    className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] font-bold uppercase text-neutral-400">Income / Expense</label>
-                  <select
-                    value={editingEntry.type}
-                    onChange={(e) => setEditingEntry({ ...editingEntry, type: e.target.value as CashFlowType })}
-                    className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none"
-                  >
-                    <option value="income">Income (+)</option>
-                    <option value="expense">Expense (−)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-[10px] font-bold uppercase text-neutral-400">Bill or Receipt</label>
-                  <select
-                    value={editingEntry.status}
-                    onChange={(e) => {
-                      const st = e.target.value as CashFlowStatus
-                      const isBill = st === "projected"
-                      setEditingEntry({
-                        ...editingEntry,
-                        status: st,
-                        source: isBill ? "projection" : "receipt",
-                        sourceLabel: isBill ? "Bill" : "Receipt",
-                        isManuallyEdited: true,
-                      })
-                    }}
-                    className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none"
-                  >
-                    <option value="projected">Bill — to pay later</option>
-                    <option value="actual">Receipt — already paid</option>
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="text-[10px] font-bold uppercase text-neutral-400">Category</label>
-                <input
-                  type="text"
-                  value={editingEntry.category || ""}
-                  onChange={(e) => setEditingEntry({ ...editingEntry, category: e.target.value })}
-                  placeholder="e.g. Tolls, Fuel, Insurance"
-                  className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] font-bold uppercase text-neutral-400">Notes</label>
-                <textarea
-                  value={
-                    editingEntry.notes && String(editingEntry.notes).startsWith("data:image")
-                      ? ""
-                      : editingEntry.notes || ""
-                  }
-                  onChange={(e) => {
-                    const prev = editingEntry.notes || ""
-                    const keepImg = prev.startsWith("data:image") ? prev : undefined
-                    setEditingEntry({
-                      ...editingEntry,
-                      notes: e.target.value.trim() ? e.target.value : keepImg || "",
-                    })
-                  }}
-                  rows={2}
-                  placeholder="Optional notes (photo attachment kept if present)"
-                  className="mt-1 w-full resize-none rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400"
-                />
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsModalOpen(false)
-                    setEditingEntry(null)
-                  }}
-                  className="flex-1 rounded-xl border border-neutral-700 py-2.5 text-xs font-bold text-neutral-300"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSaveModal(editingEntry)}
-                  className="flex-1 rounded-xl bg-yellow-400 py-2.5 text-xs font-black text-black"
-                >
-                  Save
-                </button>
-              </div>
+        <EntryModal
+          editingEntry={editingEntry}
+          setEditingEntry={setEditingEntry}
+          entries={entries}
+          onSave={handleSaveModal}
+          onClose={() => { setIsModalOpen(false); setEditingEntry(null) }}
+        />
+      )}
+    </div>
+  )
+}
+
+export function EntryModal(props: {
+  editingEntry: CashFlowEntry
+  setEditingEntry: (e: CashFlowEntry) => void
+  entries: CashFlowEntry[]
+  onSave: (e: CashFlowEntry) => void
+  onClose: () => void
+}) {
+  const { editingEntry, setEditingEntry, entries, onSave, onClose } = props
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center">
+      <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-neutral-700 bg-neutral-950 p-4 sm:rounded-2xl">
+        <h3 className="mb-1 text-sm font-extrabold text-white">
+          {entries.some((e) => e.id === editingEntry.id) ? "Edit entry" : "New entry"}
+        </h3>
+        <p className="mb-3 text-[10px] leading-snug text-neutral-500">
+          Fix anything the scanner got wrong. Every field is editable.
+        </p>
+        <div className="space-y-3">
+          <div>
+            <label className="text-[10px] font-bold uppercase text-neutral-400">Description / Vendor</label>
+            <input
+              type="text"
+              autoFocus
+              value={editingEntry.description}
+              onChange={(e) => setEditingEntry({ ...editingEntry, description: e.target.value })}
+              className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] font-bold uppercase text-neutral-400">Amount</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={editingEntry.amount || ""}
+                onChange={(e) => setEditingEntry({ ...editingEntry, amount: parseFloat(e.target.value) || 0 })}
+                className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400"
+              />
+            </div>
+            <div>
+              <label className="text-[10px] font-bold uppercase text-neutral-400">Date</label>
+              <input
+                type="date"
+                value={editingEntry.date}
+                onChange={(e) => setEditingEntry({ ...editingEntry, date: e.target.value })}
+                className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400"
+              />
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="text-[10px] font-bold uppercase text-neutral-400">Income / Expense</label>
+              <select
+                value={editingEntry.type}
+                onChange={(e) => setEditingEntry({ ...editingEntry, type: e.target.value as CashFlowType })}
+                className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none"
+              >
+                <option value="income">Income (+)</option>
+                <option value="expense">Expense (−)</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-[10px] font-bold uppercase text-neutral-400">Bill or Receipt</label>
+              <select
+                value={editingEntry.status}
+                onChange={(e) => {
+                  const st = e.target.value as CashFlowStatus
+                  const isBill = st === "projected"
+                  setEditingEntry({
+                    ...editingEntry,
+                    status: st,
+                    source: isBill ? "projection" : "receipt",
+                    sourceLabel: isBill ? "Bill" : "Receipt",
+                    isManuallyEdited: true,
+                  })
+                }}
+                className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none"
+              >
+                <option value="projected">Bill — to pay later</option>
+                <option value="actual">Receipt — already paid</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] font-bold uppercase text-neutral-400">Category</label>
+            <input
+              type="text"
+              value={editingEntry.category || ""}
+              onChange={(e) => setEditingEntry({ ...editingEntry, category: e.target.value })}
+              placeholder="e.g. Tolls, Fuel, Insurance"
+              className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold uppercase text-neutral-400">Notes</label>
+            <textarea
+              value={
+                editingEntry.notes && String(editingEntry.notes).startsWith("data:image")
+                  ? ""
+                  : editingEntry.notes || ""
+              }
+              onChange={(e) => {
+                const prev = editingEntry.notes || ""
+                const keepImg = prev.startsWith("data:image") ? prev : undefined
+                setEditingEntry({
+                  ...editingEntry,
+                  notes: e.target.value.trim() ? e.target.value : keepImg || "",
+                })
+              }}
+              rows={2}
+              placeholder="Optional notes (photo attachment kept if present)"
+              className="mt-1 w-full resize-none rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400"
+            />
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 rounded-xl border border-neutral-700 py-2.5 text-xs font-bold text-neutral-300"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={() => onSave(editingEntry)}
+              className="flex-1 rounded-xl bg-yellow-400 py-2.5 text-xs font-black text-black"
+            >
+              Save
+            </button>
+          </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }
