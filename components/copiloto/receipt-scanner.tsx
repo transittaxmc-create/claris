@@ -4,6 +4,7 @@ import { useCallback, useMemo, useRef, useState } from "react"
 import { Camera, Check, Loader2, X } from "lucide-react"
 import { EXPENSE_CATEGORIES, type Expense, type ExpenseCategory, type ExpenseDocType } from "./types"
 import { localDateKey } from "@/lib/dates"
+import { sugerirTipoDoc } from "./cash-flow-store"
 
 const NAVY = "#082A4F"
 const ORANGE = "#F86810"
@@ -119,7 +120,7 @@ export function ReceiptScanner({
       if (r.category && EXPENSE_CATEGORIES.includes(r.category as ExpenseCategory)) setCategoria(String(r.category))
       if (r.notes) setNotas(String(r.notes))
       if (typeof r.confidence === "number") setConfianza(r.confidence)
-      setAviso({ tipo: "ok", texto: "Document read. Select Bill or Receipt, then save." })
+      setAviso({ tipo: "ok", texto: "Documento leído. Elige Factura o Recibo y guarda." })
     } catch (err) {
       setAviso({ tipo: "error", texto: String((err as Error)?.message || err) })
     } finally {
@@ -130,7 +131,7 @@ export function ReceiptScanner({
   function guardar() {
     if (!listo) return
     if (docTipo !== "factura" && docTipo !== "recibo") {
-      setAviso({ tipo: "error", texto: "Select document type: Bill (to pay) or Receipt (already paid)." })
+      setAviso({ tipo: "error", texto: "Elige el tipo: Factura (por pagar) o Recibo (ya pagado)." })
       return
     }
     const monto = Number(importe)
@@ -153,6 +154,7 @@ export function ReceiptScanner({
       isEditedByUser: false,
       scheduled: docTipo === "factura",
       docType: docTipo as ExpenseDocType,
+      scanned: true,
       savedAt: new Date().toISOString(),
     }
     onSaveExpense(expense)
@@ -338,10 +340,10 @@ export function ReceiptScanner({
             />
           </label>
 
-          {/* REQUIRED dropdown: Bill = payable | Receipt = match bank */}
+          {/* REQUIRED dropdown: Factura = por pagar | Recibo = ya pagado */}
           <div className="mt-3">
             <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#6B7280" }}>
-              Document type <span style={{ color: ORANGE }}>*</span>
+              Tipo de documento <span style={{ color: ORANGE }}>*</span>
             </p>
             <select
               value={docTipo}
@@ -353,16 +355,18 @@ export function ReceiptScanner({
                 color: "#1F2937",
               }}
             >
-              <option value="">— Select type —</option>
-              <option value="factura">Bill — to pay later (e.g. Easy Pass, Tower, invoice)</option>
-              <option value="recibo">Receipt — already paid (match to bank statement)</option>
+              <option value="">— Elige el tipo —</option>
+              <option value="factura">Factura (Bill) — por pagar (Easy Pass, Tower, invoice)</option>
+              <option value="recibo">Recibo (Receipt) — ya pagado</option>
             </select>
             <p className="mt-1.5 text-[10px] leading-snug" style={{ color: "#8A93A3" }}>
               {docTipo === "factura"
-                ? "Saved as a projected payable in the ledger until you pay it."
+                ? "Se guarda como Escaneado · Factura: va a Projected (por pagar) y no toca el banco todavía."
                 : docTipo === "recibo"
-                  ? "Saved as a posted expense with photo attached to match the bank."
-                  : "Toll invoices (Easy Pass, SunPass, Tower) are usually Bills, not receipts."}
+                  ? "Se guarda como Escaneado · Recibo: va a Bank como Posted (ya pagado)."
+                  : sugerirTipoDoc(comercio, notas) === "factura"
+                    ? "Sugerido: Factura (parece un peaje o cuenta por pagar). Tú decides."
+                    : "Los peajes (Easy Pass, SunPass, Tower) casi siempre son Facturas, no recibos."}
             </p>
           </div>
 
