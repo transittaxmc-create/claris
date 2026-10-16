@@ -27,7 +27,6 @@ import {
   type RegisterAccount,
   type DueItem,
   accountDisplayName,
-  last4Of,
 } from "./registers-store"
 import type { TransferReport } from "./transfer-matcher"
 import { ProjectedCashFlow } from "./projected-cash-flow"
@@ -128,33 +127,32 @@ export function RegistersHome(props: {
     .sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")))
 
   return (
-    <div className="flex flex-col gap-2.5 overflow-x-hidden">
+    <div className="flex flex-col gap-3 overflow-x-hidden">
       <div className="grid grid-cols-3 gap-1.5 rounded-2xl border border-neutral-800 bg-neutral-950/80 p-2.5">
         <div className="text-center">
-          <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Available</p>
+          <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Disponible</p>
           <p className={cn("font-mono text-base font-black tabular-nums", available < 0 ? "text-rose-400" : "text-emerald-400")}>
             {money(available)}
           </p>
         </div>
         <div className="border-x border-neutral-800 text-center">
-          <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Owe</p>
+          <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Debo</p>
           <p className="font-mono text-base font-black tabular-nums text-rose-400">{money(owe)}</p>
         </div>
         <div className="text-center">
-          <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Net</p>
+          <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Neto</p>
           <p className={cn("font-mono text-base font-black tabular-nums", net < 0 ? "text-rose-400" : "text-white")}>{money(net)}</p>
         </div>
       </div>
 
       <div>
-        <p className="mb-1 px-1 text-[10px] font-bold uppercase tracking-widest text-neutral-500">Accounts · {registers.length}</p>
-        <p className="mb-1.5 px-1 text-[11px] text-neutral-500">Tap account → statement with Balance · newest on top</p>
+        <p className="mb-1 px-1 text-[10px] font-bold uppercase tracking-widest text-neutral-500">Cuentas · {registers.length}</p>
+        <p className="mb-1.5 px-1 text-[11px] text-neutral-500">Toca una cuenta → estado con Balance · lo nuevo arriba</p>
         <div className="grid grid-cols-3 gap-1.5">
           {registers.map((r) => {
             const bal = balances[r.id]
             const isCard = r.kind === "card"
             const d = accountDisplayName(r.name)
-            const tail = last4Of(r.name)
             return (
               <button
                 key={r.id}
@@ -178,7 +176,6 @@ export function RegistersHome(props: {
                   {r.isMain && <Star className="size-2.5 fill-yellow-400 text-yellow-400" />}
                 </div>
                 <p className="mt-1 truncate text-[10px] font-bold leading-tight text-white">{d.title}</p>
-                {tail && <p className="font-mono text-[9px] font-semibold tabular-nums text-neutral-500">···{tail}</p>}
                 <p
                   className={cn(
                     "mt-0.5 text-base font-black tabular-nums leading-tight",
@@ -192,7 +189,7 @@ export function RegistersHome(props: {
           })}
           <button type="button" onClick={props.onAddAccount} className="flex min-h-[76px] flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-neutral-700 p-2 text-neutral-400">
             <Plus className="size-4" />
-            <span className="text-[9px] font-bold">Add</span>
+            <span className="text-[9px] font-bold">Agregar</span>
           </button>
         </div>
       </div>
@@ -200,9 +197,9 @@ export function RegistersHome(props: {
       {(pairCount > 0 || looseCount > 0) && (
         <button type="button" onClick={props.onOpenTransfers} className="flex items-center justify-between rounded-2xl border border-neutral-800 bg-neutral-900/60 px-3 py-2.5 text-left">
           <span className="flex items-center gap-2 text-[12px] font-bold text-neutral-200">
-            <ArrowLeftRight className="size-4 text-cyan-300" /> Transfers
+            <ArrowLeftRight className="size-4 text-cyan-300" /> Transferencias
           </span>
-          <span className="text-[10px] font-bold text-neutral-400">{pairCount} matched · {looseCount} open</span>
+          <span className="text-[10px] font-bold text-neutral-400">{pairCount} emparejadas · {looseCount} abiertas</span>
         </button>
       )}
 
@@ -295,19 +292,19 @@ export function AddAccountModal(props: {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 sm:items-center" onClick={props.onClose}>
       <div className="w-full max-w-md rounded-t-2xl border border-neutral-700 bg-neutral-950 p-4" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-sm font-extrabold text-white">Add account</h3>
-        <input className="mt-3 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white" value={name} onChange={(e) => setName(e.target.value)} placeholder="Account name" />
+        <h3 className="text-sm font-extrabold text-white">Agregar cuenta</h3>
+        <input className="mt-3 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre de la cuenta" />
         <div className="mt-2 grid grid-cols-2 gap-2">
           {(["bank", "card"] as const).map((k) => (
             <button key={k} type="button" onClick={() => setKind(k)} className={cn("rounded-xl border py-2.5 text-xs font-bold", kind === k ? "border-yellow-400/60 text-yellow-300" : "border-neutral-700 text-neutral-300")}>
-              {k === "bank" ? "Bank" : "Card"}
+              {k === "bank" ? "Banco" : "Tarjeta"}
             </button>
           ))}
         </div>
         <input className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white" type="number" value={balance} onChange={(e) => setBalance(e.target.value)} placeholder="Balance" />
         <div className="mt-3 flex gap-2">
-          <button type="button" onClick={props.onClose} className="flex-1 rounded-xl border border-neutral-700 py-2.5 text-xs font-bold text-neutral-300">Cancel</button>
-          <button type="button" disabled={!name.trim()} onClick={() => props.onSave({ name: name.trim(), kind, balance: balance ? parseFloat(balance) : 0 })} className="flex-1 rounded-xl bg-yellow-400 py-2.5 text-xs font-black text-black disabled:opacity-40">Create</button>
+          <button type="button" onClick={props.onClose} className="flex-1 rounded-xl border border-neutral-700 py-2.5 text-xs font-bold text-neutral-300">Cancelar</button>
+          <button type="button" disabled={!name.trim()} onClick={() => props.onSave({ name: name.trim(), kind, balance: balance ? parseFloat(balance) : 0 })} className="flex-1 rounded-xl bg-yellow-400 py-2.5 text-xs font-black text-black disabled:opacity-40">Crear</button>
         </div>
       </div>
     </div>
@@ -412,7 +409,7 @@ export function RegisterDetail(props: {
     <div className="flex min-h-0 flex-col gap-3 px-1">
       <div className="flex shrink-0 items-center gap-2">
         <button type="button" onClick={props.onBack} className="inline-flex items-center gap-1 rounded-lg border border-yellow-400/50 bg-yellow-400/10 px-3 py-2 text-[12px] font-bold text-yellow-300">
-          <ArrowLeft className="size-4" /> Accounts
+          <ArrowLeft className="size-4" /> Cuentas
         </button>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[14px] font-extrabold text-white">
@@ -441,13 +438,13 @@ export function RegisterDetail(props: {
       {/* Statement: Date | Amount | Balance — ALL accounts */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-emerald-500/20 bg-neutral-950/80">
         <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_4.5rem_4.75rem] gap-1 border-b border-neutral-800 bg-neutral-900/90 px-2.5 py-2.5 text-[10px] font-black uppercase tracking-wide">
-          <span className="text-neutral-400">Date · Detail</span>
-          <span className="text-right text-neutral-400">Amount</span>
+          <span className="text-neutral-400">Fecha · Detalle</span>
+          <span className="text-right text-neutral-400">Monto</span>
           <span className="text-right text-emerald-400">Balance</span>
         </div>
         <div className="max-h-[min(58vh,480px)] min-h-[220px] overflow-y-auto overscroll-contain">
           {statementLines.length === 0 && (
-            <p className="px-3 py-8 text-center text-[12px] text-neutral-500">No movements · Sync bank</p>
+            <p className="px-3 py-8 text-center text-[12px] text-neutral-500">Sin movimientos · Sincroniza el banco</p>
           )}
           {statementLines.map((line) => {
             const body = (
@@ -486,12 +483,12 @@ export function TransfersReport(props: { report: TransferReport; onBack: () => v
     <div className="flex flex-col gap-3 px-1">
       <div className="flex items-center gap-2">
         <button type="button" onClick={props.onBack} className="inline-flex items-center gap-1 rounded-lg border border-yellow-400/50 bg-yellow-400/10 px-3 py-2 text-[12px] font-bold text-yellow-300">
-          <ArrowLeft className="size-4" /> Accounts
+          <ArrowLeft className="size-4" /> Cuentas
         </button>
-        <p className="text-[14px] font-extrabold text-white">Transfers</p>
+        <p className="text-[14px] font-extrabold text-white">Transferencias</p>
       </div>
       <p className="text-[11px] text-neutral-400">
-        {props.report.pairs.length} matched · {props.report.unmatchedOut.length + props.report.unmatchedIn.length} unmatched
+        {props.report.pairs.length} emparejadas · {props.report.unmatchedOut.length + props.report.unmatchedIn.length} sin emparejar
       </p>
     </div>
   )
