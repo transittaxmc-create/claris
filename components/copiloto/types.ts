@@ -71,6 +71,8 @@ export type CashFlowEntry = {
   isManuallyEdited?: boolean
   notes?: string
   createdAt?: string
+  /** register de la cuenta (registers-store). Sin asignar → cuenta principal. */
+  accountId?: string
 }
 
 export type Expense = {
