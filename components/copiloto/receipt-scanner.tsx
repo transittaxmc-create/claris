@@ -1,10 +1,11 @@
 "use client"
 
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Camera, Check, Loader2, X } from "lucide-react"
 import { EXPENSE_CATEGORIES, type Expense, type ExpenseCategory, type ExpenseDocType } from "./types"
 import { localDateKey } from "@/lib/dates"
 import { sugerirTipoDoc } from "./cash-flow-store"
+import { accountBalance, accountDisplayName, buildRegisters } from "./registers-store"
 
 const NAVY = "#082A4F"
 const ORANGE = "#F86810"
@@ -106,6 +107,48 @@ export function ReceiptScanner({
   const [newCategory, setNewCategory] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Cuentas/registers para "¿De qué cuenta salió?" (mismos que DINERO).
+  const [snapshotAccounts, setSnapshotAccounts] = useState<any[]>([])
+  const [cuentaId, setCuentaId] = useState("")
+  useEffect(() => {
+    let alive = true
+    fetch("/api/bank/snapshot", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (alive && j && Array.isArray(j.accounts)) setSnapshotAccounts(j.accounts)
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [])
+  const registers = useMemo(() => {
+    try {
+      return buildRegisters(snapshotAccounts)
+    } catch {
+      return []
+    }
+  }, [snapshotAccounts])
+  const balances = useMemo(() => {
+    const out: Record<string, number | null> = {}
+    for (const r of registers) {
+      try {
+        out[r.id] = accountBalance(r, snapshotAccounts)
+      } catch {
+        out[r.id] = null
+      }
+    }
+    return out
+  }, [registers, snapshotAccounts])
+  const orderedRegisters = useMemo(
+    () => [...registers].sort((a, b) => Number(b.isMain) - Number(a.isMain)),
+    [registers],
+  )
+  // Pre-seleccionar la principal ★ (editable): el recibo indica la cuenta.
+  useEffect(() => {
+    if (!cuentaId && orderedRegisters.length > 0) setCuentaId(orderedRegisters[0].id)
+  }, [orderedRegisters, cuentaId])
+
   function addCustomCategory() {
     const name = newCategory.trim()
     if (!name || name === "__new__") return
@@ -185,6 +228,8 @@ export function ReceiptScanner({
       scheduled: docTipo === "factura",
       docType: docTipo || undefined,
       scanned: true,
+      // Register/cuenta de donde salió (la indica Miguel; va directo a ese register).
+      accountId: cuentaId || undefined,
       savedAt: new Date().toISOString(),
     }
     onSaveExpense(expense)
@@ -431,9 +476,34 @@ export function ReceiptScanner({
             </p>
           </div>
 
+          {/* ¿De qué cuenta salió? Dropdown compacto: el recibo no dice la
+              cuenta, Miguel la indica y el gasto va directo a ese register. */}
+          {direccion === "gasto" && orderedRegisters.length > 0 && (
+            <div className="mt-3">
+              <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#6B7280" }}>
+                ¿De qué cuenta salió? <span style={{ color: ORANGE }}>*</span>
+              </p>
+              <select
+                value={cuentaId}
+                onChange={(e) => setCuentaId(e.target.value)}
+                className="mt-1.5 w-full rounded-xl px-3 py-3 text-[14px] font-bold outline-none"
+                style={{ background: "#fff", border: `1px solid ${LINE}`, color: "#1F2937" }}
+              >
+                {orderedRegisters.map((r) => {
+                  const b = balances[r.id]
+                  return (
+                    <option key={r.id} value={r.id}>
+                      {accountDisplayName(r.name).title}
+                      {r.isMain ? " ★" : ""} · {typeof b === "number" ? money(b) : "—"}
+                    </option>
+                  )
+                })}
+              </select>
+            </div>
+          )}
+
           <label className="mt-3 block">
-            <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#6B7280" }}>Notes</span>
-            <textarea
+            <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#6B7280" }}>Notes</span>            <textarea
               value={notas}
               onChange={(e) => setNotas(e.target.value)}
               rows={2}
