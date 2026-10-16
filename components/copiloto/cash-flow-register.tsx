@@ -27,6 +27,7 @@ import {
   buildRegisters,
   accountBalance,
   accountIdFor,
+  last4Of,
   addManualAccount,
   deleteManualAccount,
   setManualBalance,
@@ -400,8 +401,17 @@ export function CashFlowRegister({
   )
 
   const txsForAccount = useCallback(
-    (reg: RegisterAccount): BankTx[] =>
-      bankTxs.filter((t) => accountIdFor(String(t.bank_account || "")) === reg.id),
+    (reg: RegisterAccount): BankTx[] => {
+      // 1. Match exacto por ID
+      const exact = bankTxs.filter((t) => accountIdFor(String(t.bank_account || "")) === reg.id)
+      if (exact.length > 0) return exact
+      // 2. Fallback por últimos 4 dígitos (Plaid cambia nombres)
+      const want4 = last4Of(reg.name)
+      if (want4) {
+        return bankTxs.filter((t) => last4Of(String(t.bank_account || "")) === want4)
+      }
+      return exact
+    },
     [bankTxs],
   )
 
