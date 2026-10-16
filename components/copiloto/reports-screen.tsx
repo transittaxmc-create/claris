@@ -13,6 +13,7 @@ import {
   type Trip,
 } from "./types"
 import { expectedOf, receivedOf, reconStateOf } from "./reconciliation"
+import { BankTxReport } from "./bank-tx-report"
 
 type Preset = "week" | "lastWeek" | "month" | "lastMonth" | "last30" | "custom"
 
@@ -442,6 +443,8 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
           <Row label="Recibido" value={money(data.receivedTotal)} tone="income" />
           <Row label="Pendiente de cobro" value={money(data.pendingTotal)} tone={data.pendingTotal > 0 ? "expense" : "muted"} />
         </section>
+
+        <BankTxReport />
 
         <div className="flex flex-col gap-2 pb-4">
           <button
