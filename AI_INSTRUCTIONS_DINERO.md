@@ -19,7 +19,7 @@ It must **not permanently apply** ledger changes until the **owner approves**.
 | Highlight unmatched / uncategorized | Delete or merge entries |
 | Answer "what is missing?" | Any bulk update to `claris_cash_flow_entries` |
 
-**Pattern:** AI shows a short proposal → user taps **Approve** / **Approve all** / **Edit first** → only then persist.
+**Pattern:** AI shows a short **summary of what it proposed** → user corrects some lines and **Approves** the rest → only then persist.
 
 Exception: pure UI navigation and non-destructive display do not need approval.
 
@@ -29,164 +29,109 @@ Exception: pure UI navigation and non-destructive display do not need approval.
 
 | Item | Detail |
 |------|--------|
-| App | Copiloto / Dual Register (transport cash-flow copiloto) |
-| Stack | Next.js App Router, TypeScript, Tailwind CSS, SPA tab navigation |
+| App | Copiloto / Dual Register |
 | Production | `https://claris-lime.vercel.app/` |
 | Repo | `transittaxmc-create/claris` |
-| Tabs | HOY · COBROS · DINERO (Money / Ledger) · REPORTES · MÁS |
+| Tabs | HOY · COBROS · DINERO · REPORTES · MÁS |
 
-**Do not** rewrite HOY, COBROS, or REPORTES unless the task is an explicit bridge (e.g. Cobros → ledger). Prefer additive, minimal diffs.
+Prefer additive, minimal diffs. Do not rewrite HOY/COBROS/REPORTES unless bridging.
 
 ---
 
 ## 2. Quicken-style register (source of truth)
 
-- Each **bank / card account** has its own **register**.
-- The register shows **all bank movements** for that account (not only "unmatched transfers").
-- User must **always** see: date, bank detail, amount, running balance, classification.
-- AI helps classify and reconcile; **AI never hides** bank lines.
-- Everything remains **editable** after AI acts (tap row → correct).
-
-**UI:** Account detail = fixed header (balance + actions) + **scrollable box** for the register list (list scrolls inside the box; page chrome stays fixed).
-
-**Home (Ledger):** Available / Owe / Net → Projected cash flow (shared) → Account chips → open one register.
+- Each account has a full **register** of bank movements (visible, editable).
+- AI never hides bank lines. User verifies and corrects.
+- UI: fixed header + scrollable register box.
 
 ---
 
 ## 3. Dual money layers
 
-| Layer | Meaning | Affects cash available? |
-|-------|---------|-------------------------|
-| **Real / Posted** | On bank statement or already spent | Yes |
-| **Projected / Due** | Expected income or still to pay (Bill / AP) | Forecast only until posted |
-
-### Document kinds
-
-| Kind | Meaning | Ledger |
-|------|---------|--------|
-| **Bill** | To pay later (EZPass invoice, Tower, open AP) | `projected` |
-| **Receipt** | Already paid / matches statement | `actual` |
-
-Toll docs that look like receipts are often **Bills**. Never invent OCR amounts.
+**Real/Posted** vs **Projected/Due**. Bill = to pay later. Receipt = already paid.
 
 ---
 
-## 4. Classification rules (required for reports)
+## 4. Classification (required for reports)
 
-Every **income** and **expense** line should eventually have:
+Every income/expense needs: direction (income|expense|transfer), **category**, **Business/Personal**, account.
 
-1. **Direction:** income | expense | **transfer** (internal)
-2. **Category:** Fuel, EZPass, Fee, Food, Insurance, Platform, …
-3. **Business / Personal**
-4. **Account** (which register)
-
-**Reports and AI analysis are invalid** until the day's lines are classified. Prefer stating "N uncategorized" over inventing totals.
-
-Transfers **never** count as income or as a category expense (e.g. paying the card from checking is not "Fuel" again).
+Reports are invalid on uncategorized lines — say how many are missing instead of inventing totals.
 
 ---
 
-## 5. Transfers vs income (no double count)
+## 5. Transfers ≠ income
 
-- **Income** = money from **outside** (Uber, client, external PayPal payment, etc.), counted **once** where it first landed.
-- **Transfer** = money between **owner's** accounts (PayPal → Citi, Checking → Card). Same dollar; not new income.
-- Example: +$10 Citi + +$10 PayPal = **$20 income**. Later PayPal → Citi $10 = transfer only; income stays **$20**.
-
-Matcher may **suggest** pairs (same amount, different accounts, ±4 days). Apply only after approval (or explicit user match).
-
-Do **not** dump every retail purchase into "Unmatched transfer." Candidates should look like transfers (payment to card, transfer, venmo move), not 7-Eleven.
+External money = income once. Owner-to-owner moves = transfer only.
 
 ---
 
-## 6. Daily reconciliation method (AI must know this)
+## 6. Daily reconciliation
 
-**Goal:** all accounts up to date, classified, balanced for the day.
-
-1. **Sync bank** — pull snapshot into each account register.
-2. **Classify each new line** (propose): income / expense / transfer + category + Business/Personal.
-3. **Match transfers** between accounts (propose pairs).
-4. **Replace** that day's **projected income** with **sum of external income** posted that day (never stack projection + real).
-5. **Close projected expenses** when the real charge posts (no double subtract).
-6. **AP / Bills:** apply payments FIFO to oldest open bill when user pays.
-7. **Report gaps:** uncategorized count, unmatched true-transfer candidates, open projections.
-8. **Wait for approval** before writing bulk changes; user can edit any single row anytime.
-
-Cobros reconcile → **replace** same-day income projection placeholders with stable IDs (no duplicates).
+Sync → propose classify → propose transfer matches → replace day income projection (never stack) → report gaps → **wait for approval** before bulk write.
 
 ---
 
-## 7. Projected cash flow (shared book)
+## 7. Projected cash flow
 
-- One **timeline** for forecasts (not one projection register per bank).
-- Labels: **Monday, Tuesday, …** + short date (no relative "Hoy" as primary label).
-- Lines: Real / Proj / Due; running **Projected balance** on available cash.
-- Income projection for a day is **replaced** by real external income when reconciled.
+Shared timeline; weekdays Monday…; replace projection with real external income when reconciled.
 
 ---
 
 ## 8. Scanner
 
-On verify form, require:
-
-- Document type: Statement | Receipt | Bill
-- Business | Personal
-- Optional: schedule recurring (frequency + until when)
-
-Statement → reconcile/import bank lines.
-Receipt → posted expense (match bank if possible).
-Bill → projected / AP.
+Require Bill|Receipt and Business|Personal. Optional recurring schedule.
 
 ---
 
 ## 9. Persistence
 
-| Data | Storage |
-|------|---------|
-| Ledger entries | `localStorage` **`claris_cash_flow_entries`** |
-| Registers meta | `claris_registers_v1` |
-| Schedules / tolls | `claris_scheduled_entries`, `claris_toll_bills` |
-
-- Additive schema only if DB is used later.
-- **Forbidden:** DROP / TRUNCATE / wipe of user history.
+`claris_cash_flow_entries`, `claris_registers_v1`, `claris_custom_categories`. No DROP/TRUNCATE of history.
 
 ---
 
-## 10. What the AI must do automatically (propose)
+## 10–11. AI must / must not
 
-- Detect new bank lines after sync.
-- Propose income vs expense vs transfer.
-- Propose category + Business/Personal.
-- Propose transfer pairs.
-- Propose replace of day's income projection.
-- List what is still uncategorized / unreconciled.
-- Answer report questions **only** using classified data; otherwise say what is missing.
+**Must (propose):** categorize all new bank lines; Biz/Personal; transfer pairs; day projection replace; summary of work; gap list.
 
-## 11. What the AI must not do
-
-- Hide bank transactions from the register.
-- Apply bulk classification or matches without approval.
-- Count internal transfers as income.
-- Stack projection + real income for the same day.
-- Count card payment from checking as a second category expense.
-- Drop or truncate historical data.
-- Invent OCR amounts.
-- Rewrite HOY / COBROS / REPORTES for cosmetics.
+**Must not:** hide bank lines; bulk-write without approval; count transfers as income; stack projection+real; invent OCR; wipe data.
 
 ---
 
 ## 12. One-line summary
 
-**Register = full bank truth, always visible and editable; AI proposes match + classification + daily reconcile; owner approves before bulk writes; transfers never inflate income; projections replace, never stack; reports require Business/Personal and category.**
+**Register = full bank truth; AI proposes categories + matches + daily reconcile and shows a summary; owner corrects and approves; transfers never inflate income; reports need full classification.**
 
 ---
 
-## 13. Checklist before finishing a code or reconcile task
+## 14. Categories (list + custom + summary / approve)
 
-- [ ] Register still shows full bank lines + edit path
-- [ ] Approval gate respected for bulk writes
-- [ ] Transfer ≠ income
-- [ ] Cobros / day income uses **replace** semantics
-- [ ] Bill vs Receipt preserved on scan
-- [ ] Business/Personal available for reporting
-- [ ] No destructive data ops
-- [ ] Mobile: fixed chrome + internal scroll for long registers
+### Base list
+
+From `EXPENSE_CATEGORIES` in `types.ts` (Fuel, Maintenance, Tolls/EZPass, Food, Car wash, Insurance, Bank fees, Phone, Parking, Supplies, Other). Income may use Platform / Other.
+
+### Custom categories
+
+- Add in **Settings / Ajustes**.
+- Store in `claris_custom_categories` (string array).
+- Dropdown = built-in + custom.
+- If no match, propose closest built-in or "create custom" — do not leave silent blank.
+
+### Auto-categorize + human approve
+
+1. After sync/scan, AI proposes category + Business/Personal for every new line.
+2. AI presents a **summary** (e.g. 12 categorized, 2 transfers, 1 needs review).
+3. User **corrects** mistakes and **Approves** what is right (or Approve all).
+4. Only then bulk-save.
+5. Uncategorized lines stay visible; reports warn if any remain.
+
+### Heuristics (propose only)
+
+| Memo contains | Suggest |
+|---------------|---------|
+| SHELL, EXXON, GAS, FUEL | Fuel |
+| EZPASS, SUNPASS, TOLL | Tolls |
+| 7-ELEVEN, MCDONALD, RESTAURANT | Food |
+| UBER/LYFT payout | Platform income |
+| FEE, SERVICE CHARGE | Bank fees |
+| PAYMENT TO CARD, TRANSFER | Transfer |
