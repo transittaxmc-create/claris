@@ -7,10 +7,18 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react"
 import { RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { LEDGER_KEY, sinSemillas } from "./cash-flow-store"
+import {
+  LEDGER_KEY,
+  ETIQUETA_ORIGEN,
+  etiquetaCombinada,
+  normalizarLibro,
+  origenDe,
+  sinSemillas,
+} from "./cash-flow-store"
 import {
   money,
   type CashFlowEntry,
+  type CashFlowOrigin,
   type CashFlowSource,
   type CashFlowStatus,
   type CashFlowType,
@@ -119,7 +127,16 @@ export function CashFlowRegister({
     try {
       const raw = localStorage.getItem(LEDGER_KEY)
       const parsed = raw ? JSON.parse(raw) : []
-      setEntries(sinSemillas(Array.isArray(parsed) ? parsed : []))
+      const lista: CashFlowEntry[] = Array.isArray(parsed) ? parsed : []
+      const sinSem = sinSemillas(lista)
+      // Etiquetas viejas ("Recibo escaneado") → origen + tipo por separado.
+      const { lista: limpio, cambio } = normalizarLibro(sinSem)
+      setEntries(limpio)
+      if (cambio || sinSem.length !== lista.length) {
+        try {
+          localStorage.setItem(LEDGER_KEY, JSON.stringify(limpio))
+        } catch {}
+      }
     } catch {
       setEntries([])
     }
@@ -169,7 +186,11 @@ export function CashFlowRegister({
       type,
       status,
       source: status === "projected" ? "projection" : "manual",
-      sourceLabel: status === "projected" ? "Bill" : "Receipt",
+      origin: "manual",
+      sourceLabel: etiquetaCombinada(
+        "manual",
+        type === "expense" ? (status === "projected" ? "factura" : "recibo") : null,
+      ),
       category: "",
       notes: "",
     } as CashFlowEntry)
@@ -323,12 +344,14 @@ export function CashFlowRegister({
               saveEntries(
                 entries.map((e) => {
                   if (e.id !== id) return e
+                  const origin = origenDe(e)
                   if (kind === "bill") {
                     return {
                       ...e,
                       status: "projected" as CashFlowStatus,
                       source: "projection" as CashFlowSource,
-                      sourceLabel: "Bill",
+                      origin,
+                      sourceLabel: etiquetaCombinada(origin, "factura"),
                       isManuallyEdited: true,
                     }
                   }
@@ -336,7 +359,8 @@ export function CashFlowRegister({
                     ...e,
                     status: "actual" as CashFlowStatus,
                     source: "receipt" as CashFlowSource,
-                    sourceLabel: "Receipt",
+                    origin,
+                    sourceLabel: etiquetaCombinada(origin, "recibo"),
                     isManuallyEdited: true,
                   }
                 }),
@@ -470,26 +494,55 @@ export function EntryModal(props: {
               </select>
             </div>
             <div>
-              <label className="text-[10px] font-bold uppercase text-neutral-400">Bill or Receipt</label>
+              <label className="text-[10px] font-bold uppercase text-neutral-400">Factura o Recibo</label>
               <select
                 value={editingEntry.status}
                 onChange={(e) => {
                   const st = e.target.value as CashFlowStatus
                   const isBill = st === "projected"
+                  const origin = origenDe(editingEntry)
                   setEditingEntry({
                     ...editingEntry,
                     status: st,
                     source: isBill ? "projection" : "receipt",
-                    sourceLabel: isBill ? "Bill" : "Receipt",
+                    origin,
+                    sourceLabel: etiquetaCombinada(
+                      origin,
+                      editingEntry.type === "expense" ? (isBill ? "factura" : "recibo") : null,
+                    ),
+                    isManuallyEdited: true,
                   })
                 }}
                 className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none"
               >
-                <option value="projected">Bill — to pay later</option>
-                <option value="actual">Receipt — already paid</option>
+                <option value="projected">Factura (Bill) — por pagar</option>
+                <option value="actual">Recibo (Receipt) — ya pagado</option>
               </select>
             </div>
           </div>
+          {editingEntry.type === "income" && (
+            <div>
+              <label className="text-[10px] font-bold uppercase text-neutral-400">Origen del ingreso</label>
+              <select
+                value={origenDe(editingEntry)}
+                onChange={(e) => {
+                  const o = e.target.value as CashFlowOrigin
+                  setEditingEntry({
+                    ...editingEntry,
+                    origin: o,
+                    sourceLabel: etiquetaCombinada(o, null),
+                  })
+                }}
+                className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none"
+              >
+                {(Object.keys(ETIQUETA_ORIGEN) as CashFlowOrigin[]).map((o) => (
+                  <option key={o} value={o}>
+                    {ETIQUETA_ORIGEN[o]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label className="text-[10px] font-bold uppercase text-neutral-400">Category</label>
             <input
