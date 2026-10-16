@@ -500,7 +500,10 @@ export function CopilotoApp() {
   }
 
   return (
-    <div className="flex h-[100dvh] flex-col bg-black text-white">
+    <div
+      className="flex h-[100dvh] flex-col bg-black text-white"
+      style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+    >
       {copiaVieja && !avisoCerrado && (
         <div className="flex items-center gap-2 border-b border-amber-500/40 bg-amber-950/80 px-3 py-2 text-[11px] text-amber-200">
           <AlertTriangle className="size-3.5 shrink-0" />
