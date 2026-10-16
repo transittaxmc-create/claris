@@ -190,17 +190,16 @@ export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAcc
     (r) => r.kind === "bank" && String(r.name).trim().toLowerCase() === "citibank 6393",
   )
   let mainId = st.mainId
-  // Autocorrección única: si el mainId guardado apunta a otra cuenta (bug
-  // anterior dejaba la ★ en Venmo) pero existe "Citibank 6393", corregirla.
-  // No toca nada si ya apunta a Citibank 6393 o si no existe.
-  if (exactCiti && !st.starHealed && mainId !== exactCiti.id) {
-    mainId = exactCiti.id
-    st.mainId = mainId
-    st.starHealed = true
-    saveState(st)
-  }
-  if (!mainId || !regs.some((r) => r.id === mainId)) {
-    mainId = (exactCiti || regs.find((r) => r.kind === "bank") || regs[0])?.id ?? null
+  // CitiBank 6393 es siempre la Principal (Miguel). Se corrige en cada carga:
+  // si existe en los datos, la ★ va ahí, sin importar lo que haya guardado.
+  if (exactCiti) {
+    if (mainId !== exactCiti.id) {
+      mainId = exactCiti.id
+      st.mainId = mainId
+      saveState(st)
+    }
+  } else if (!mainId || !regs.some((r) => r.id === mainId)) {
+    mainId = (regs.find((r) => r.kind === "bank") || regs[0])?.id ?? null
     if (mainId) {
       st.mainId = mainId
       saveState(st)
