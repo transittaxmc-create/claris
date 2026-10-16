@@ -93,10 +93,39 @@ export function ReceiptScanner({
   const [verCategorias, setVerCategorias] = useState(false)
   // Empty until user chooses — Easy Pass / Tower look like receipts but are Bills
   const [docTipo, setDocTipo] = useState<ExpenseDocType | "">("")
+  // Categorías personalizadas (igual que en GASTOS): si la IA no tiene la
+  // correcta, Miguel escribe una y queda guardada.
+  const [customCategories, setCustomCategories] = useState<string[]>(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem("claris_custom_categories") || "[]")
+      return Array.isArray(raw) ? raw.filter((c) => typeof c === "string" && c.trim()) : []
+    } catch {
+      return []
+    }
+  })
+  const [newCategory, setNewCategory] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
 
+  function addCustomCategory() {
+    const name = newCategory.trim()
+    if (!name || name === "__new__") return
+    if ([...EXPENSE_CATEGORIES, ...customCategories].some((c) => c.toLowerCase() === name.toLowerCase())) {
+      setCategoria(name)
+      setNewCategory("")
+      return
+    }
+    const next = [...customCategories, name]
+    setCustomCategories(next)
+    try {
+      localStorage.setItem("claris_custom_categories", JSON.stringify(next))
+    } catch {}
+    setCategoria(name)
+    setNewCategory("")
+  }
+
   const balance = totales.ingresos - totales.gastos
-  const listo = importe !== "" && Number(importe) > 0 && (docTipo === "factura" || docTipo === "recibo")
+  // El tipo se sugiere solo; si no hay sugerencia Miguel lo elige — nunca bloquea guardar.
+  const listo = importe !== "" && Number(importe) > 0
 
   const escanear = useCallback(async (file: File) => {
     setLeyendo(true)
@@ -120,7 +149,10 @@ export function ReceiptScanner({
       if (r.category && EXPENSE_CATEGORIES.includes(r.category as ExpenseCategory)) setCategoria(String(r.category))
       if (r.notes) setNotas(String(r.notes))
       if (typeof r.confidence === "number") setConfianza(r.confidence)
-      setAviso({ tipo: "ok", texto: "Documento leído. Elige Factura o Recibo y guarda." })
+      // Auto-seleccionar Factura/Recibo según sugerencia; Miguel revisa y puede cambiarlo.
+      const sug = sugerirTipoDoc(r.vendor ? String(r.vendor) : "", r.notes ? String(r.notes) : "")
+      if (sug) setDocTipo(sug)
+      setAviso({ tipo: "ok", texto: "Documento leído. Revisa los datos y guarda." })
     } catch (err) {
       setAviso({ tipo: "error", texto: String((err as Error)?.message || err) })
     } finally {
@@ -130,30 +162,28 @@ export function ReceiptScanner({
 
   function guardar() {
     if (!listo) return
-    if (docTipo !== "factura" && docTipo !== "recibo") {
-      setAviso({ tipo: "error", texto: "Elige el tipo: Factura (por pagar) o Recibo (ya pagado)." })
-      return
-    }
     const monto = Number(importe)
     const nombre = comercio.trim() || (direccion === "gasto" ? "Unnamed expense" : "Unnamed income")
+    // Categoría: si quedó en "__new__" sin completar, usar la primera.
+    const categoriaFinal = categoria === "__new__" ? EXPENSE_CATEGORIES[0] : categoria
     if (direccion === "ingreso") {
-      onSaveIncome({ description: nombre, category: categoria, amount: monto, date: fecha, notes: notas.trim() || undefined })
+      onSaveIncome({ description: nombre, category: categoriaFinal, amount: monto, date: fecha, notes: notas.trim() || undefined })
       onClose()
       return
     }
-    const attached = foto || undefined
     const expense: Expense = {
       id: crypto.randomUUID(),
       date: fecha,
       vendor: nombre,
-      category: categoria,
+      category: categoriaFinal,
       amount: monto,
-      notes: attached || notas.trim() || undefined,
+      // Nunca guardar la foto en notas (era la "basura": un data URL base64 gigante).
+      notes: notas.trim() || undefined,
       confidence: confianza ?? undefined,
       isAiGenerated: docTipo === "recibo" || Boolean(foto),
       isEditedByUser: false,
       scheduled: docTipo === "factura",
-      docType: docTipo as ExpenseDocType,
+      docType: docTipo || undefined,
       scanned: true,
       savedAt: new Date().toISOString(),
     }
@@ -305,12 +335,12 @@ export function ReceiptScanner({
               className="mt-1 flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold"
               style={{ background: "#fff", border: `1px solid ${LINE}`, color: "#1F2937" }}
             >
-              {categoria}
+              {categoria === "__new__" ? "＋ Nueva categoría…" : categoria}
               <span style={{ color: "#9CA3AF" }}>{verCategorias ? "▲" : "▼"}</span>
             </button>
             {verCategorias && (
               <div className="mt-1 overflow-hidden rounded-xl" style={{ border: `1px solid ${LINE}` }}>
-                {EXPENSE_CATEGORIES.map((c) => (
+                {[...EXPENSE_CATEGORIES, ...customCategories].map((c) => (
                   <button
                     key={c}
                     type="button"
@@ -325,6 +355,37 @@ export function ReceiptScanner({
                     {c === categoria && <Check className="size-3.5" style={{ color: BLUE }} />}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCategoria("__new__")
+                    setVerCategorias(false)
+                  }}
+                  className="flex w-full items-center px-3 py-2.5 text-left text-[13px] font-bold"
+                  style={{ background: "#fff", color: BLUE, borderTop: `1px solid ${LINE}` }}
+                >
+                  ＋ Nueva categoría…
+                </button>
+              </div>
+            )}
+            {categoria === "__new__" && (
+              <div className="mt-1.5 flex gap-2">
+                <input
+                  autoFocus
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  placeholder="Nombre de la categoría nueva"
+                  className="min-w-0 flex-1 rounded-xl px-3 py-2.5 text-sm font-semibold outline-none"
+                  style={{ background: "#fff", border: `1px solid ${LINE}`, color: "#1F2937" }}
+                />
+                <button
+                  type="button"
+                  onClick={addCustomCategory}
+                  className="shrink-0 rounded-xl px-4 py-2.5 text-[13px] font-extrabold text-white"
+                  style={{ background: BLUE }}
+                >
+                  Añadir
+                </button>
               </div>
             )}
           </div>
@@ -343,7 +404,7 @@ export function ReceiptScanner({
           {/* REQUIRED dropdown: Factura = por pagar | Recibo = ya pagado */}
           <div className="mt-3">
             <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#6B7280" }}>
-              Tipo de documento <span style={{ color: ORANGE }}>*</span>
+              Tipo de documento
             </p>
             <select
               value={docTipo}
