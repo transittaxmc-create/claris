@@ -10,18 +10,29 @@ import { useState } from "react"
 import {
   ArrowLeft,
   ArrowLeftRight,
+  Building2,
   CalendarClock,
+  Camera,
+  Car,
   CheckCircle2,
   CreditCard,
   Landmark,
   Pencil,
   Plus,
+  Receipt,
   Star,
   Trash2,
+  TrendingUp,
   AlertTriangle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { money, type CashFlowEntry } from "./types"
+import { money, type CashFlowEntry, type CashFlowOrigin } from "./types"
+import {
+  ETIQUETA_ORIGEN,
+  ETIQUETA_TIPO,
+  origenDe,
+  tipoDocDe,
+} from "./cash-flow-store"
 import {
   type RegisterAccount,
   type DueItem,
@@ -36,6 +47,41 @@ export interface BankTx {
   category: string | null
   amount: number
   daily_balance: number | null
+}
+
+// Dos etiquetas: ORIGEN (Escaneado / Manual / Banco / Cobros) y TIPO
+// (Factura = por pagar, Recibo = ya pagado). El origen no cambia nunca.
+function renderBadges(row: CashFlowEntry) {
+  const base =
+    "inline-flex items-center gap-0.5 whitespace-nowrap rounded border px-1 py-0.5 text-[10px] font-semibold"
+  const origin: CashFlowOrigin = origenDe(row)
+  const tipo = tipoDocDe(row)
+  const originStyle: Record<CashFlowOrigin, string> = {
+    scan: "border-sky-500/30 bg-sky-500/10 text-sky-300",
+    manual: "border-neutral-700 bg-neutral-800 text-neutral-400",
+    bank: "border-blue-500/20 bg-blue-500/10 text-blue-400",
+    trip: "border-amber-500/20 bg-amber-500/10 text-amber-400",
+  }
+  return (
+    <>
+      <span className={cn(base, originStyle[origin])}>
+        {origin === "scan" && <Camera className="size-2.5" />}
+        {origin === "bank" && <Building2 className="size-2.5" />}
+        {origin === "trip" && <Car className="size-2.5" />}
+        {row.origin === "trip" && row.sourceLabel ? row.sourceLabel : ETIQUETA_ORIGEN[origin]}
+      </span>
+      {tipo === "factura" && (
+        <span className={cn(base, "border-cyan-500/30 bg-cyan-500/10 text-cyan-300")}>
+          <TrendingUp className="size-2.5" /> {ETIQUETA_TIPO.factura}
+        </span>
+      )}
+      {tipo === "recibo" && (
+        <span className={cn(base, "border-purple-500/30 bg-purple-500/10 text-purple-300")}>
+          <Receipt className="size-2.5" /> {ETIQUETA_TIPO.recibo}
+        </span>
+      )}
+    </>
+  )
 }
 
 function shortDate(iso: string): string {
@@ -368,8 +414,8 @@ export function RegisterDetail(props: {
         <div className="mb-1.5 flex items-center justify-between px-1">
           <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">Movimientos</p>
           <div className="flex gap-1.5">
-            <button type="button" onClick={props.onAddBill} className="rounded-lg border border-cyan-500/40 bg-cyan-950/30 px-2 py-1.5 text-[10px] font-bold text-cyan-300 active:scale-95">+ Bill</button>
-            <button type="button" onClick={props.onAddPost} className="rounded-lg bg-yellow-400 px-2 py-1.5 text-[10px] font-extrabold text-black active:scale-95">+ Post</button>
+            <button type="button" onClick={props.onAddBill} className="rounded-lg border border-cyan-500/40 bg-cyan-950/30 px-2 py-1.5 text-[10px] font-bold text-cyan-300 active:scale-95">+ Factura</button>
+            <button type="button" onClick={props.onAddPost} className="rounded-lg bg-yellow-400 px-2 py-1.5 text-[10px] font-extrabold text-black active:scale-95">+ Recibo</button>
           </div>
         </div>
         {props.bankTxs.length === 0 && props.entries.length === 0 ? (
@@ -402,7 +448,7 @@ export function RegisterDetail(props: {
                       </td>
                       <td className="overflow-hidden p-1.5 align-top" onClick={() => props.onEditEntry(row)} role="button">
                         <div className="truncate font-semibold leading-tight text-neutral-100">{row.description || "—"}</div>
-                        <div className="mt-0.5 text-[10px] text-neutral-400">{row.sourceLabel || (isActual ? "Receipt" : "Bill")}</div>
+                        <div className="mt-0.5 flex flex-wrap items-center gap-1">{renderBadges(row)}</div>
                       </td>
                       <td className="p-1.5 text-right align-top">
                         <div className={cn("text-[13px] font-black tabular-nums", signedAmt >= 0 ? "text-emerald-400" : "text-rose-400")}>{money(signedAmt)}</div>
