@@ -416,12 +416,9 @@ export function CashFlowRegister({
   return (
     <div
       className="flex w-full flex-col overflow-x-hidden px-1"
-      style={{
-        paddingTop: "env(safe-area-inset-top, 0px)",
-        paddingBottom: "env(safe-area-inset-bottom, 0px)",
-      }}
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <div className="sticky top-0 z-20 border-b border-neutral-800 bg-black/95 px-3 py-2.5 backdrop-blur-md">
+      <div className="sticky top-0 z-20 border-b border-neutral-800 bg-black/95 px-3 py-1.5 backdrop-blur-md">
         <div className="flex items-center justify-center gap-2 px-1 text-[10px] font-bold text-neutral-400">
           <span className="tracking-wider text-emerald-400">DUAL REGISTER</span>
           <span className="rounded border border-emerald-800 bg-emerald-950 px-2 py-0.5 text-[9px] text-emerald-300">
@@ -442,11 +439,13 @@ export function CashFlowRegister({
         </div>
       </div>
 
-      <div className="mt-2.5">
+      <div className="mt-2">
         {view.kind === "home" && (
           <RegistersHome
             registers={registers}
             balances={balances}
+            bankTxs={bankTxs}
+            bankOk={!bankError && bankAccounts.length > 0}
             dues={dues}
             pairCount={transferReport.pairs.length}
             looseCount={transferReport.unmatchedOut.length + transferReport.unmatchedIn.length}
