@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import {
   ArrowLeft,
   ArrowLeftRight,
@@ -108,8 +108,30 @@ export function RegistersHome(props: {
   onApproveAllFindings?: () => void
   bankTxs?: BankTx[]
   bankOk?: boolean
+  onSyncBank?: () => void
 }) {
   const { registers, balances, dues, pairCount, looseCount } = props
+  // Vista: 0 = Real (Reyes + balances DAILY), 1 = Proyectado. Swipe izq/der.
+  const [vista, setVista] = useState(0)
+  // Al abrir Proyectado, sincronizar el banco primero para que el balance
+  // real esté fresco (la fórmula lo exige).
+  useEffect(() => {
+    if (vista === 1) props.onSyncBank?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vista])
+  // Swipe detection
+  const touchX = useRef<number | null>(null)
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchX.current = e.touches[0].clientX
+  }
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchX.current === null) return
+    const dx = e.changedTouches[0].clientX - touchX.current
+    touchX.current = null
+    if (Math.abs(dx) < 48) return
+    if (dx < 0 && vista === 0) setVista(1)
+    else if (dx > 0 && vista === 1) setVista(0)
+  }
   let available = 0
   let owe = 0
   for (const r of registers) {
@@ -155,6 +177,8 @@ export function RegistersHome(props: {
     return out
   })()
   const balanceProy = Math.round((available + proyList.reduce((s, p) => s + p.amount, 0)) * 100) / 100
+  const ingresosProy = Math.round(proyList.filter((p) => p.amount > 0).reduce((s, p) => s + p.amount, 0) * 100) / 100
+  const gastosProy = Math.round(proyList.filter((p) => p.amount < 0).reduce((s, p) => s + Math.abs(p.amount), 0) * 100) / 100
   const MESES_ES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
   const fechaCortaEs = (iso: string): string => {
     const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/)
@@ -246,8 +270,40 @@ export function RegistersHome(props: {
       </div>
     )
 
+  const indicadorVista = (
+    <div className="flex items-center justify-center gap-2 py-0.5">
+      <button
+        type="button"
+        onClick={() => setVista(0)}
+        className={cn(
+          "rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest",
+          vista === 0 ? "bg-white text-black" : "bg-neutral-800 text-neutral-400",
+        )}
+      >
+        Real
+      </button>
+      <span className="flex gap-1">
+        <span className={cn("size-1.5 rounded-full", vista === 0 ? "bg-white" : "bg-neutral-700")} />
+        <span className={cn("size-1.5 rounded-full", vista === 1 ? "bg-cyan-300" : "bg-neutral-700")} />
+      </span>
+      <button
+        type="button"
+        onClick={() => setVista(1)}
+        className={cn(
+          "rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest",
+          vista === 1 ? "bg-cyan-300 text-black" : "bg-neutral-800 text-neutral-400",
+        )}
+      >
+        Proyectado
+      </button>
+    </div>
+  )
+
   return (
-    <div className="flex flex-col gap-3 overflow-x-hidden">
+    <div className="flex flex-col gap-3 overflow-x-hidden" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      {indicadorVista}
+      {vista === 0 && (
+        <>
       <div className="grid grid-cols-3 gap-1.5 rounded-2xl border border-neutral-800 bg-neutral-950/80 p-2.5">
         <div className="text-center">
           <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Disponible</p>
@@ -321,82 +377,7 @@ export function RegistersHome(props: {
         </button>
       )}
 
-      {/* PROYECCIÓN COMPACTA — balance real → transacciones → balance proyectado. */}
-      <div className="border-t-2 border-dashed border-neutral-800 pt-3">
-        <p className="mb-2 px-1 text-[10px] font-bold uppercase tracking-widest text-cyan-300/80">
-          🔮 Proyección
-        </p>
-
-        {/* 1. Balance del banco (real) */}
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-400">
-              Balance del banco
-            </span>
-            <span
-              className={cn(
-                "font-mono text-lg font-black tabular-nums",
-                available < 0 ? "text-rose-400" : "text-white",
-              )}
-            >
-              {money(available)}
-            </span>
-          </div>
-          <p className="mt-0.5 text-[10px] text-neutral-500">Real · todas las cuentas</p>
-        </div>
-
-        {/* 2. Transacciones proyectadas */}
-        <div className="mt-2 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">
-          <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-neutral-400">
-            Transacciones proyectadas
-          </p>
-          {proyList.length === 0 ? (
-            <p className="text-[11px] text-neutral-500">Sin movimientos proyectados.</p>
-          ) : (
-            <div className="space-y-1">
-              {proyList.slice(0, 6).map((p) => (
-                <div key={p.id} className="flex items-center justify-between gap-2 text-[12px]">
-                  <span className="min-w-0">
-                    <span className="block truncate font-semibold text-neutral-200">{p.label}</span>
-                    <span className="block text-[10px] text-neutral-500">{fechaCortaEs(p.fecha)}</span>
-                  </span>
-                  <span
-                    className={cn(
-                      "shrink-0 font-mono font-bold tabular-nums",
-                      p.amount >= 0 ? "text-emerald-400" : "text-rose-400",
-                    )}
-                  >
-                    {p.amount >= 0 ? "+" : "\u2212"}
-                    {money(Math.abs(p.amount)).replace(/^\$/, "")}
-                  </span>
-                </div>
-              ))}
-              {proyList.length > 6 && (
-                <p className="pt-1 text-[10px] text-neutral-500">+{proyList.length - 6} más</p>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* 3. Balance proyectado */}
-        <div className="mt-2 rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-3">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-wide text-cyan-300">
-              Balance proyectado
-            </span>
-            <span
-              className={cn(
-                "font-mono text-lg font-black tabular-nums",
-                balanceProy < 0 ? "text-rose-400" : "text-cyan-300",
-              )}
-            >
-              {money(balanceProy)}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* RECONCILIACIÓN — sección separada, nunca mezclada con lo real. */}
+      {/* RECONCILIACIÓN — sección separada, solo en vista Real. */}
       <ReconciliationSection
         report={props.reconReport ?? null}
         loading={props.reconLoading ?? false}
@@ -406,6 +387,112 @@ export function RegistersHome(props: {
         onEdit={props.onEditFinding ?? (() => {})}
         onApproveAll={props.onApproveAllFindings ?? (() => {})}
       />
+      {/* Cierre vista Real */}
+        </>
+      )}
+      {/* ============ VISTA PROYECTADO ============ */}
+      {vista === 1 && (
+        <>
+          <p className="px-1 text-[10px] font-bold uppercase tracking-widest text-cyan-300/80">
+            🔮 Proyectado · desde balance real
+          </p>
+
+          {/* Columna de balances reales por cuenta (punto de partida) */}
+          <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">
+            <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-neutral-400">
+              Balances reales del banco
+            </p>
+            <div className="space-y-1">
+              {ordenadas.map((r) => {
+                const bal = balances[r.id]
+                const d = accountDisplayName(r.name)
+                return (
+                  <div key={r.id} className="flex items-center justify-between gap-2 text-[12px]">
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      {r.isMain && <Star className="size-3 shrink-0 fill-yellow-400 text-yellow-400" />}
+                      <span className="truncate font-semibold text-neutral-200">{d.title}</span>
+                    </span>
+                    <span
+                      className={cn(
+                        "shrink-0 font-mono font-bold tabular-nums",
+                        bal === null || bal === undefined
+                          ? "text-neutral-500"
+                          : bal < 0
+                            ? "text-rose-400"
+                            : "text-emerald-400",
+                      )}
+                    >
+                      {bal === null || bal === undefined ? "—" : money(bal)}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Fórmula: real + ingresos − gastos = proyectado */}
+          <div className="rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-3">
+            <div className="space-y-1 text-[12px]">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-neutral-300">Balance real del banco</span>
+                <span className={cn("font-mono font-bold tabular-nums", available < 0 ? "text-rose-400" : "text-white")}>
+                  {money(available)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-neutral-300">+ Ingresos proyectados</span>
+                <span className="font-mono font-bold tabular-nums text-emerald-400">{money(ingresosProy)}</span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-neutral-300">− Gastos proyectados</span>
+                <span className="font-mono font-bold tabular-nums text-rose-400">{money(gastosProy)}</span>
+              </div>
+              <div className="flex items-center justify-between gap-2 border-t border-cyan-500/20 pt-1.5">
+                <span className="font-bold text-cyan-300">= Balance proyectado</span>
+                <span
+                  className={cn(
+                    "font-mono text-lg font-black tabular-nums",
+                    balanceProy < 0 ? "text-rose-400" : "text-cyan-300",
+                  )}
+                >
+                  {money(balanceProy)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Transacciones proyectadas */}
+          <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">
+            <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-neutral-400">
+              Transacciones proyectadas
+            </p>
+            {proyList.length === 0 ? (
+              <p className="text-[11px] text-neutral-500">Sin movimientos proyectados.</p>
+            ) : (
+              <div className="space-y-1">
+                {proyList.map((p) => (
+                  <div key={p.id} className="flex items-center justify-between gap-2 text-[12px]">
+                    <span className="min-w-0">
+                      <span className="block truncate font-semibold text-neutral-200">{p.label}</span>
+                      <span className="block text-[10px] text-neutral-500">{fechaCortaEs(p.fecha)}</span>
+                    </span>
+                    <span
+                      className={cn(
+                        "shrink-0 font-mono font-bold tabular-nums",
+                        p.amount >= 0 ? "text-emerald-400" : "text-rose-400",
+                      )}
+                    >
+                      {p.amount >= 0 ? "+" : "\u2212"}
+                      {money(Math.abs(p.amount)).replace(/^\$/, "")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
     </div>
   )
 }
