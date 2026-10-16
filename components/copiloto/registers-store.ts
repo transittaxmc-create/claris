@@ -79,13 +79,50 @@ function looksLikeCard(name: string, institution: string | null): boolean {
   return /card|tarjeta|amex|visa|mastercard|discover|credit|crédito/.test(t)
 }
 
+/** Cuentas que Miguel pidió fijar como Reyes (2026-10-16): nacen solas si no existen. */
+const SEEDED_MANUAL: Array<{ name: string; kind: AccountKind }> = [
+  { name: "Venmo", kind: "bank" },
+  { name: "Square", kind: "bank" },
+]
+
+function ensureSeeded(st: StoredState) {
+  let changed = false
+  for (const s of SEEDED_MANUAL) {
+    const exists = st.manual.some((m) => m.name.trim().toLowerCase() === s.name.toLowerCase())
+    if (!exists) {
+      st.manual.push({
+        id: `manual:seed-${s.name.toLowerCase()}`,
+        name: s.name,
+        institution: null,
+        kind: s.kind,
+        limit: null,
+        dueDay: null,
+        isMain: false,
+        source: "manual",
+        manualBalance: 0,
+      })
+      changed = true
+    }
+  }
+  if (changed) saveState(st)
+}
+
 /**
  * Construye la lista de registers: snapshot (banco real) + manuales.
  * Llama esto con las cuentas del feed; los manuales persisten en localStorage.
  */
 export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAccount[] {
   const st = loadState()
+  ensureSeeded(st)
   const regs: RegisterAccount[] = []
+
+  const balById = new Map<string, number>()
+  for (const a of snapshotAccounts || []) {
+    const nm = String(a?.name || "").trim()
+    if (!nm) continue
+    const v = Number(a?.current_balance)
+    balById.set(accountIdFor(nm), Number.isFinite(v) ? v : 0)
+  }
 
   for (const a of snapshotAccounts || []) {
     const name = String(a?.name || "").trim()
@@ -113,14 +150,25 @@ export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAcc
     })
   }
 
-  // Cuenta principal: la guardada, o la primera que parezca CitiBank, o la primera.
+  // Cuenta principal: la guardada, o la que se llame "Citibank…" exacto, o /citi/i, o la primera.
   let mainId = st.mainId
   if (!mainId || !regs.some((r) => r.id === mainId)) {
-    const citi = regs.find((r) => r.kind === "bank" && /citi/i.test(r.name))
+    const exact = regs.find((r) => r.kind === "bank" && /^citibank\b/i.test(r.name))
+    const citi = exact || regs.find((r) => r.kind === "bank" && /citi/i.test(r.name))
     mainId = (citi || regs.find((r) => r.kind === "bank") || regs[0])?.id ?? null
   }
   for (const r of regs) r.isMain = r.id === mainId
-  return regs
+
+  // Reyes visibles: la principal siempre + cuentas con balance distinto de $0.
+  // (Miguel 2026-10-16: ocultar el ruido de $0 para que no se vea crowded.)
+  return regs.filter((r) => {
+    if (r.isMain) return true
+    if (r.source === "manual") {
+      if (/^(venmo|square)$/i.test(r.name)) return true
+      return Math.abs(Number(r.manualBalance) || 0) >= 0.005
+    }
+    return Math.abs(balById.get(r.id) ?? 0) >= 0.005
+  })
 }
 
 /** Balance real de la cuenta según el snapshot (o manual si es manual). */
