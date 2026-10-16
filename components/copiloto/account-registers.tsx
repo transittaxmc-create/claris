@@ -112,6 +112,10 @@ export function RegistersHome(props: {
   available = Math.round(available * 100) / 100
   owe = Math.round(owe * 100) / 100
   const net = Math.round((available - owe) * 100) / 100
+  // La proyección parte de la cuenta principal (CitiBank ★), no del total.
+  const mainReg = registers.find((r) => r.isMain) || null
+  const mainBal = mainReg ? balances[mainReg.id] : null
+  const mainAvailable = mainBal === null || mainBal === undefined ? available : Math.round(mainBal * 100) / 100
   const dueLines = dues.slice(0, 8).map((d) => {
     const bal = balances[d.accountId]
     const amt = bal !== null && bal !== undefined ? Math.abs(bal) : 0
@@ -270,7 +274,7 @@ export function RegistersHome(props: {
 
         <div className="mt-2">
           <ProjectedCashFlow
-            availableNow={available}
+            availableNow={mainAvailable}
             entries={(props.entries || []).filter((e) => Math.abs(Number(e.amount) || 0) > 0)}
             dues={dueLines.filter((d) => d.amount > 0.009)}
             onEditEntry={props.onEditEntry}
