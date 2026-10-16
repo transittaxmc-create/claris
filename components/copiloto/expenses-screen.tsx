@@ -18,6 +18,7 @@ import {
 } from "./types"
 import { MoneyInput } from "./money-input"
 import { sugerirTipoDoc } from "./cash-flow-store"
+import { accountBalance, accountDisplayName, accountIdFor, buildRegisters } from "./registers-store"
 
 // ---------------------------------------------------------------------------
 // Emparejar recibos con el statement del banco.
@@ -40,16 +41,20 @@ function daysBetween(a: string, b: string): number {
   return Number.isFinite(ms) ? Math.abs(Math.round(ms / 86400000)) : 999
 }
 
-/** Busca el cargo bancario que corresponde a un recibo (mismo monto, fecha cercana). */
+/** Busca el cargo bancario que corresponde a un recibo (mismo monto, fecha cercana).
+ * Si el gasto tiene cuenta indicada, solo se busca en ESA cuenta; si no,
+ * se busca en todas (comportamiento anterior para entradas viejas). */
 function bankMatchFor(expense: Expense, bankTxs: BankTxLite[]): BankTxLite | null {
   if (!bankTxs || bankTxs.length === 0) return null
   const esRecibo = expense.scanned || expense.isAiGenerated || expense.docType === "recibo"
   if (!esRecibo) return null
   const need = Math.abs(Number(expense.amount) || 0)
   if (need <= 0) return null
+  const scopeId = expense.accountId || ""
   let best: BankTxLite | null = null
   let bestDays = 999
   for (const tx of bankTxs) {
+    if (scopeId && accountIdFor(String(tx.bank_account || "")) !== scopeId) continue
     const amt = Number(tx.amount)
     if (!Number.isFinite(amt) || amt >= -MATCH_AMOUNT_TOL) continue // solo salidas
     if (Math.abs(Math.abs(amt) - need) > MATCH_AMOUNT_TOL) continue
@@ -88,6 +93,8 @@ type Draft = {
   nextDate: string
   // Clasificación fiscal: business / personal / sin clasificar.
   classification?: ExpenseClassification
+  // Cuenta/register de donde salió (editable; "" = sin indicar).
+  accountId?: string
 }
 
 function emptyDraft(): Draft {
@@ -119,11 +126,13 @@ function ExpenseRow({
   onEdit,
   onDelete,
   bankMatch,
+  accountName,
 }: {
   expense: Expense
   onEdit: (e: Expense) => void
   onDelete: (id: string) => void
   bankMatch?: BankTxLite | null
+  accountName?: string | null
 }) {
   return (
     <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3.5">
@@ -182,6 +191,14 @@ function ExpenseRow({
             🏦 EN BANCO
           </span>
         )}
+        {accountName && (
+          <span
+            className="rounded-full border border-neutral-700 bg-neutral-950 px-2 py-0.5 text-[9px] font-bold text-neutral-300"
+            title="Cuenta de donde salió"
+          >
+            {accountName}
+          </span>
+        )}
         <span className="flex-1" />
         <button
           type="button"
@@ -238,18 +255,52 @@ export function ExpensesScreen({
   // Snapshot del banco (para emparejar recibos con el statement).
   // Se trae una vez al abrir la pantalla; si falla, simplemente no hay matches.
   const [bankTxs, setBankTxs] = useState<BankTxLite[]>([])
+  const [bankAccounts, setBankAccounts] = useState<any[]>([])
   useEffect(() => {
     let alive = true
     fetch("/api/bank/snapshot", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
-        if (alive && j && Array.isArray(j.transactions)) setBankTxs(j.transactions)
+        if (alive && j) {
+          if (Array.isArray(j.transactions)) setBankTxs(j.transactions)
+          if (Array.isArray(j.accounts)) setBankAccounts(j.accounts)
+        }
       })
       .catch(() => {})
     return () => {
       alive = false
     }
   }, [])
+
+  // Registers/cuentas para "¿De qué cuenta salió?" (mismos que DINERO).
+  const registers = useMemo(() => {
+    try {
+      return buildRegisters(bankAccounts)
+    } catch {
+      return []
+    }
+  }, [bankAccounts])
+  const balances = useMemo(() => {
+    const out: Record<string, number | null> = {}
+    for (const r of registers) {
+      try {
+        out[r.id] = accountBalance(r, bankAccounts)
+      } catch {
+        out[r.id] = null
+      }
+    }
+    return out
+  }, [registers, bankAccounts])
+  const orderedRegisters = useMemo(
+    () => [...registers].sort((a, b) => Number(b.isMain) - Number(a.isMain)),
+    [registers],
+  )
+  const defaultAccountId = (registers.find((r) => r.isMain) || registers[0])?.id || ""
+  const accountNameById = useMemo(() => {
+    const m = new Map<string, string>()
+    for (const r of registers) m.set(r.id, `${accountDisplayName(r.name).title}${r.isMain ? " ★" : ""}`)
+    return m
+  }, [registers])
 
   // Mapa gasto.id -> cargo bancario coincidente (solo recibos).
   const bankMatches = useMemo(() => {
@@ -366,6 +417,7 @@ export function ExpensesScreen({
         docType: "",
         frequency: "once",
         nextDate: scanDate,
+        accountId: defaultAccountId || undefined,
       })
       setScanStatus("¡Recibo detectado! Revisa y guarda.")
       setTimeout(() => setScanStatus(null), 3500)
@@ -417,6 +469,8 @@ export function ExpensesScreen({
       isEditedByUser: draft.id !== null,
       scheduled: draft.docType === "factura" || ["daily", "weekly", "monthly", "annual"].includes(draft.frequency),
       classification: draft.classification,
+      // Cuenta/register de donde salió (editable; el match 🏦 se limita a ella).
+      accountId: draft.accountId || undefined,
       savedAt: new Date().toISOString(),
     }
     onSave(expense)
@@ -479,6 +533,8 @@ export function ExpensesScreen({
       frequency: "once",
       nextDate: ex.date,
       classification: ex.classification,
+      // La cuenta se puede cambiar al editar (todo editable).
+      accountId: ex.accountId || defaultAccountId || undefined,
     })
   }
 
@@ -533,7 +589,7 @@ export function ExpensesScreen({
               </button>
               <button
                 type="button"
-                onClick={() => setDraft(emptyDraft())}
+                onClick={() => setDraft({ ...emptyDraft(), accountId: defaultAccountId || undefined })}
                 className="flex items-center gap-1 rounded-full bg-gradient-to-r from-yellow-500 to-amber-500 px-3 py-1.5 text-[11px] font-extrabold text-black active:scale-95"
               >
                 <Plus className="size-3.5" /> MANUAL
@@ -634,6 +690,38 @@ export function ExpensesScreen({
                 <p className="mt-1 text-[10px] text-amber-400">Sugerido: Factura (parece peaje o cuenta por pagar).</p>
               )}
             </div>
+
+            {/* ¿De qué cuenta salió? Dropdown compacto (mismo que el escáner). */}
+            {orderedRegisters.length > 0 && (
+              <div className="mt-2">
+                <span className="text-[10px] font-bold text-neutral-400">
+                  ¿DE QUÉ CUENTA SALIÓ? <span className="text-amber-400">*</span>
+                </span>
+                <select
+                  value={draft.accountId || ""}
+                  onChange={(e) => setDraft({ ...draft, accountId: e.target.value || undefined })}
+                  className="mt-1 w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white outline-none"
+                >
+                  {orderedRegisters.map((r) => {
+                    const b = balances[r.id]
+                    return (
+                      <option key={r.id} value={r.id}>
+                        {accountDisplayName(r.name).title}
+                        {r.isMain ? " ★" : ""} ·{" "}
+                        {typeof b === "number"
+                          ? (b < 0 ? "-" : "") +
+                            "$" +
+                            Math.abs(b).toLocaleString("en-US", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })
+                          : "—"}
+                      </option>
+                    )
+                  })}
+                </select>
+              </div>
+            )}
 
             {/* Categoría personalizada: si la IA no tiene la correcta, se añade */}
             {draft.category === "__new__" && (
@@ -810,7 +898,7 @@ export function ExpensesScreen({
             {expenses.length === 0 && !draft && (
               <button
                 type="button"
-                onClick={() => setDraft(emptyDraft())}
+                onClick={() => setDraft({ ...emptyDraft(), accountId: defaultAccountId || undefined })}
                 className="flex items-center gap-1.5 rounded-xl border border-neutral-700 px-3 py-2 text-xs font-bold text-neutral-300"
               >
                 <Plus className="size-3.5" /> AÑADIR PRIMER GASTO
@@ -825,6 +913,7 @@ export function ExpensesScreen({
               onEdit={editFromRow}
               onDelete={deleteWithConfirm}
               bankMatch={bankMatches.get(e.id) ?? null}
+              accountName={e.accountId ? accountNameById.get(e.accountId) ?? null : null}
             />
           ))
         )}
