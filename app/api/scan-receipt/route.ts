@@ -130,6 +130,12 @@ Responde ÚNICAMENTE un objeto JSON válido con esas claves exactas.`
 
     parsed.category = matchedCat || "Varios"
 
+    // Sanear notas: nunca guardar un blob — recortar, colapsar espacios, 200 máx.
+    if (typeof parsed.notes === "string") {
+      const limpio = parsed.notes.replace(/\s+/g, " ").trim().slice(0, 200)
+      parsed.notes = limpio || undefined
+    }
+
     console.log(`[scan-receipt] Éxito en ${Date.now() - start}ms:`, parsed.vendor, parsed.category, parsed.amount)
 
     return NextResponse.json({
