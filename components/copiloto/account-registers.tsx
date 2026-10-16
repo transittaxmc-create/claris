@@ -12,7 +12,12 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { money, type CashFlowEntry } from "./types"
-import { type RegisterAccount, type DueItem } from "./registers-store"
+import {
+  type RegisterAccount,
+  type DueItem,
+  accountDisplayName,
+  last4Of,
+} from "./registers-store"
 import type { TransferReport } from "./transfer-matcher"
 import { ProjectedCashFlow } from "./projected-cash-flow"
 
@@ -100,11 +105,15 @@ export function RegistersHome(props: {
         <p className="mb-1 px-1 text-[10px] font-bold uppercase tracking-widest text-neutral-500">
           Accounts · {registers.length}
         </p>
-        <p className="mb-1.5 px-1 text-[11px] text-neutral-500">Tap a card to open its statement register</p>
+        <p className="mb-1.5 px-1 text-[11px] text-neutral-500">
+          Name + last 4 · ★ = main (Citi ···93) · tap for statement
+        </p>
         <div className="grid grid-cols-3 gap-1.5">
           {registers.map((r) => {
             const bal = balances[r.id]
             const isCard = r.kind === "card"
+            const d = accountDisplayName(r.name)
+            const tail = last4Of(r.name)
             return (
               <button
                 key={r.id}
@@ -127,7 +136,10 @@ export function RegistersHome(props: {
                   </span>
                   {r.isMain && <Star className="size-2.5 fill-yellow-400 text-yellow-400" />}
                 </div>
-                <p className="mt-1 truncate text-[10px] font-bold leading-tight text-white">{r.name}</p>
+                <p className="mt-1 truncate text-[10px] font-bold leading-tight text-white">{d.title}</p>
+                {tail && (
+                  <p className="font-mono text-[9px] font-semibold tabular-nums text-neutral-500">···{tail}</p>
+                )}
                 <p
                   className={cn(
                     "mt-0.5 text-base font-black tabular-nums leading-tight",
@@ -157,7 +169,7 @@ export function RegistersHome(props: {
           </p>
           {dues.slice(0, 5).map((d) => (
             <div key={d.accountId} className="flex items-center justify-between text-[12px]">
-              <span className="truncate font-semibold text-neutral-200">{d.accountName}</span>
+              <span className="truncate font-semibold text-neutral-200">{accountDisplayName(d.accountName).title}</span>
               <span className="text-neutral-400">{d.nextDate.slice(5)}</span>
             </div>
           ))}
@@ -203,7 +215,7 @@ export function AddAccountModal(props: {
           className="mt-3 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Account name"
+          placeholder="e.g. CitiBank ···6393"
         />
         <div className="mt-2 grid grid-cols-2 gap-2">
           {(["bank", "card"] as const).map((k) => (
@@ -234,13 +246,7 @@ export function AddAccountModal(props: {
           <button
             type="button"
             disabled={!name.trim()}
-            onClick={() =>
-              props.onSave({
-                name: name.trim(),
-                kind,
-                balance: balance ? parseFloat(balance) : 0,
-              })
-            }
+            onClick={() => props.onSave({ name: name.trim(), kind, balance: balance ? parseFloat(balance) : 0 })}
             className="flex-1 rounded-xl bg-yellow-400 py-2.5 text-xs font-black text-black disabled:opacity-40"
           >
             Create
@@ -272,6 +278,7 @@ export function RegisterDetail(props: {
 }) {
   const { account: r } = props
   const isCard = r.kind === "card"
+  const d = accountDisplayName(r.name)
 
   type Line = {
     key: string
@@ -310,10 +317,7 @@ export function RegisterDetail(props: {
         entry: e,
       })
     }
-    // Newest first (statement style)
     lines.sort((a, b) => b.date.localeCompare(a.date) || Math.abs(b.amount) - Math.abs(a.amount))
-
-    // Daily balance: prefer bank feed; else walk from current balance
     const hasAnyBal = lines.some((l) => l.dailyBalance !== null)
     if (!hasAnyBal && props.balance !== null && Number.isFinite(props.balance)) {
       let run = Number(props.balance)
@@ -336,9 +340,12 @@ export function RegisterDetail(props: {
           <ArrowLeft className="size-4" /> Accounts
         </button>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[14px] font-extrabold text-white">{r.name}</p>
-          <p className="text-[10px] text-neutral-500">
-            {isCard ? "Card" : "Bank"} statement · newest on top
+          <p className="truncate text-[14px] font-extrabold text-white">
+            {d.title}
+            {r.isMain ? " ★" : ""}
+          </p>
+          <p className="truncate text-[10px] text-neutral-500">
+            {r.name} · {isCard ? "Card" : "Bank"} statement · newest on top
           </p>
         </div>
       </div>
@@ -346,6 +353,7 @@ export function RegisterDetail(props: {
       <div className="shrink-0 rounded-2xl border border-neutral-800 bg-neutral-900/70 p-3.5 text-center">
         <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">
           {isCard ? "Debt" : "Current balance"}
+          {r.isMain ? " · MAIN" : ""}
         </p>
         <p
           className={cn(
@@ -402,12 +410,7 @@ export function RegisterDetail(props: {
             )
             if (line.entry) {
               return (
-                <button
-                  key={line.key}
-                  type="button"
-                  onClick={() => props.onEditEntry(line.entry!)}
-                  className="w-full text-left active:bg-neutral-900/60"
-                >
+                <button key={line.key} type="button" onClick={() => props.onEditEntry(line.entry!)} className="w-full text-left active:bg-neutral-900/60">
                   {body}
                 </button>
               )
