@@ -65,13 +65,13 @@ export function RegistersHome(props: {
 }) {
   const { registers, balances, dues, pairCount, looseCount } = props
   return (
-    <div className="flex flex-col gap-3 px-1">
-      {/* Tarjetas por cuenta — swipe horizontal, nunca scroll vertical */}
+    <div className="flex flex-col gap-2">
+      {/* Tarjetas por cuenta — grid compacto, todo cabe en pantalla sin deslizar */}
       <div>
-        <p className="mb-1.5 px-1 text-[10px] font-bold uppercase tracking-widest text-neutral-500">
+        <p className="mb-1 px-1 text-[10px] font-bold uppercase tracking-widest text-neutral-500">
           Cuentas · {registers.length}
         </p>
-        <div className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1">
+        <div className="grid grid-cols-3 gap-1.5">
           {registers.map((r) => {
             const bal = balances[r.id]
             const isCard = r.kind === "card"
@@ -81,7 +81,7 @@ export function RegistersHome(props: {
                 type="button"
                 onClick={() => props.onOpenAccount(r.id)}
                 className={cn(
-                  "min-w-[188px] max-w-[188px] snap-start rounded-2xl border p-3 text-left active:scale-[0.98]",
+                  "rounded-xl border p-2 text-left active:scale-[0.98]",
                   r.isMain
                     ? "border-yellow-400/50 bg-yellow-400/[0.06]"
                     : "border-neutral-800 bg-neutral-900/70",
@@ -90,48 +90,40 @@ export function RegistersHome(props: {
                 <div className="flex items-center justify-between gap-1">
                   <span
                     className={cn(
-                      "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[8px] font-black",
+                      "inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[7px] font-black",
                       isCard ? "bg-purple-500/15 text-purple-300" : "bg-blue-500/15 text-blue-300",
                     )}
                   >
-                    {isCard ? <CreditCard className="size-2.5" /> : <Landmark className="size-2.5" />}
+                    {isCard ? <CreditCard className="size-2" /> : <Landmark className="size-2" />}
                     {isCard ? "CARD" : "BANK"}
                   </span>
-                  {r.isMain && <Star className="size-3 fill-yellow-400 text-yellow-400" />}
+                  {r.isMain && <Star className="size-2.5 fill-yellow-400 text-yellow-400" />}
                 </div>
-                <p className="mt-1.5 truncate text-[12px] font-bold text-white">{r.name}</p>
+                <p className="mt-1 truncate text-[10px] font-bold leading-tight text-white">{r.name}</p>
                 <p
                   className={cn(
-                    "mt-0.5 text-xl font-black tabular-nums",
+                    "mt-0.5 text-base font-black tabular-nums leading-tight",
                     bal === null ? "text-neutral-500" : bal < 0 ? "text-rose-400" : "text-emerald-400",
                   )}
                 >
                   {bal === null ? "—" : money(bal)}
                 </p>
-                {isCard && r.limit ? (
-                  <p className="mt-0.5 text-[10px] text-neutral-400">
-                    Disp: <span className="font-bold text-neutral-200">{money(Math.max(0, r.limit - (bal || 0)))}</span>
-                    {" · "}Lim: {money(r.limit)}
-                  </p>
-                ) : (
-                  <p className="mt-0.5 truncate text-[10px] text-neutral-500">{r.institution || " "}</p>
-                )}
               </button>
             )
           })}
           <button
             type="button"
             onClick={props.onAddAccount}
-            className="flex min-w-[110px] snap-start flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-neutral-700 bg-transparent p-3 text-neutral-400 active:scale-[0.98]"
+            className="flex min-h-[76px] flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-neutral-700 bg-transparent p-2 text-neutral-400 active:scale-[0.98]"
           >
-            <Plus className="size-5" />
-            <span className="text-[10px] font-bold">Agregar cuenta</span>
+            <Plus className="size-4" />
+            <span className="text-[9px] font-bold">Agregar cuenta</span>
           </button>
         </div>
       </div>
 
       {/* Vencimientos — follow-up para pagar a tiempo */}
-      <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">
+      <div className="rounded-xl border border-neutral-800 bg-neutral-950/60 p-2">
         <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-neutral-500">
           <CalendarClock className="size-3.5 text-amber-300" /> Próximos vencimientos
         </p>
