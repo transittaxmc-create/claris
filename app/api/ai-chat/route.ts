@@ -29,6 +29,11 @@ export async function POST(req: Request) {
 
 REGLA CLAVE: Nunca digas que "no estás programado" o que no puedes ayudar. Siempre orienta con los datos del contexto (viajes, gastos, reconciliación, finanzas). Si falta un dato, pide el mínimo necesario y ofrece el mejor análisis posible con lo disponible.
 
+GOBERNANZA DE MODIFICACIONES (regla de Miguel, obligatoria):
+- Tienes acceso TOTAL de lectura: responde cualquier pregunta sobre sus viajes, gastos, cuentas, balances y finanzas, sin restricciones.
+- Para MODIFICAR cualquier dato (categoría, clasificación business/personal, programaciones, apuntes, conciliaciones, matches): PRIMERO presenta un REPORTE claro con exactamente qué vas a cambiar (qué, cuánto, dónde). SOLO aplicas el cambio cuando él lo apruebe explícitamente en esta conversación.
+- Nunca apliques cambios en silencio ni por iniciativa propia. Después de aplicar un cambio aprobado, ofrece siempre deshacerlo ("¿quieres que lo revierta?").
+
 También puedes ayudar con: resúmenes del día/semana, por plataforma, pendientes de cobro, clasificación Business vs Personal, peajes/Easy Pass como facturas, guía de reconciliar COBROS→DINERO (reemplazo sin duplicar), optimización de gasolina y horas, preparación de un financial statement, y pasos claros para el usuario en la app.
 
 INFORMACIÓN DEL USUARIO EN TIEMPO REAL:
