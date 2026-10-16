@@ -5,7 +5,6 @@ import {
   ArrowLeft,
   ArrowLeftRight,
   Building2,
-  CalendarClock,
   Camera,
   Car,
   CreditCard,
@@ -30,7 +29,6 @@ import {
   accountIdFor,
 } from "./registers-store"
 import type { TransferReport } from "./transfer-matcher"
-import { ProjectedCashFlow } from "./projected-cash-flow"
 import { ReconciliationSection } from "./reconciliation-view"
 import type { ReconReport, ReconFinding } from "./reconciliation-check"
 
@@ -137,6 +135,32 @@ export function RegistersHome(props: {
   const facturas = (props.entries || [])
     .filter((e) => e.type === "expense" && e.status === "projected" && Math.abs(Number(e.amount) || 0) > 0.009)
     .sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")))
+
+  // PROYECCIÓN COMPACTA — transacciones proyectadas (ingresos + gastos), ordenadas por fecha.
+  const proyList = (() => {
+    const out: { id: string; label: string; fecha: string; amount: number }[] = []
+    for (const e of props.entries || []) {
+      if (e.status !== "projected") continue
+      const amt = Math.abs(Number(e.amount) || 0)
+      if (amt < 0.01) continue
+      const isIncome = e.type === "income"
+      out.push({
+        id: String((e as any).id || `${e.date}-${e.description}`),
+        label: (e as any).description || (e as any).category || (isIncome ? "Ingreso" : "Gasto"),
+        fecha: String((e as any).date || "").slice(0, 10),
+        amount: isIncome ? amt : -amt,
+      })
+    }
+    out.sort((a, b) => a.fecha.localeCompare(b.fecha))
+    return out
+  })()
+  const balanceProy = Math.round((available + proyList.reduce((s, p) => s + p.amount, 0)) * 100) / 100
+  const MESES_ES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+  const fechaCortaEs = (iso: string): string => {
+    const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/)
+    if (!m) return "—"
+    return `${Number(m[3])} ${MESES_ES[Number(m[2]) - 1] || ""}`
+  }
 
   // Dashboard: principal primero, luego por movimiento reciente. Sin
   // movimiento en 30 días → se oculta del grid (el balance sigue contando
@@ -297,79 +321,78 @@ export function RegistersHome(props: {
         </button>
       )}
 
-      {/* PROYECCIONES — separado de lo real del banco. Nada repetido. */}
+      {/* PROYECCIÓN COMPACTA — balance real → transacciones → balance proyectado. */}
       <div className="border-t-2 border-dashed border-neutral-800 pt-3">
         <p className="mb-2 px-1 text-[10px] font-bold uppercase tracking-widest text-cyan-300/80">
-          🔮 Proyecciones
+          🔮 Proyección
         </p>
 
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-2.5">
-          <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-neutral-500">
-            <CalendarClock className="size-3.5 text-amber-300" /> Próximos vencimientos
+        {/* 1. Balance del banco (real) */}
+        <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-wide text-neutral-400">
+              Balance del banco
+            </span>
+            <span
+              className={cn(
+                "font-mono text-lg font-black tabular-nums",
+                available < 0 ? "text-rose-400" : "text-white",
+              )}
+            >
+              {money(available)}
+            </span>
+          </div>
+          <p className="mt-0.5 text-[10px] text-neutral-500">Real · todas las cuentas</p>
+        </div>
+
+        {/* 2. Transacciones proyectadas */}
+        <div className="mt-2 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">
+          <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-neutral-400">
+            Transacciones proyectadas
           </p>
-          {dues.length === 0 ? (
-            <p className="text-[11px] text-neutral-500">Sin vencimientos programados.</p>
+          {proyList.length === 0 ? (
+            <p className="text-[11px] text-neutral-500">Sin movimientos proyectados.</p>
           ) : (
-            <div className="space-y-1.5">
-              {dues.slice(0, 8).map((d) => (
-                <div key={d.accountId} className="flex items-center justify-between gap-2 text-[12px]">
-                  <span className="truncate font-semibold text-neutral-200">{d.accountName}</span>
-                  <span className="flex shrink-0 items-center gap-1.5">
-                    <span className="text-neutral-400">{d.nextDate.slice(5)}</span>
-                    <span
-                      className={cn(
-                        "rounded px-1.5 py-0.5 text-[10px] font-black",
-                        d.daysUntil <= 0
-                          ? "bg-rose-500/20 text-rose-300"
-                          : d.daysUntil <= 3
-                            ? "bg-amber-500/20 text-amber-300"
-                            : "bg-neutral-800 text-neutral-400",
-                      )}
-                    >
-                      {d.daysUntil <= 0 ? "hoy" : `${d.daysUntil}d`}
-                    </span>
+            <div className="space-y-1">
+              {proyList.slice(0, 6).map((p) => (
+                <div key={p.id} className="flex items-center justify-between gap-2 text-[12px]">
+                  <span className="min-w-0">
+                    <span className="block truncate font-semibold text-neutral-200">{p.label}</span>
+                    <span className="block text-[10px] text-neutral-500">{fechaCortaEs(p.fecha)}</span>
+                  </span>
+                  <span
+                    className={cn(
+                      "shrink-0 font-mono font-bold tabular-nums",
+                      p.amount >= 0 ? "text-emerald-400" : "text-rose-400",
+                    )}
+                  >
+                    {p.amount >= 0 ? "+" : "\u2212"}
+                    {money(Math.abs(p.amount)).replace(/^\$/, "")}
                   </span>
                 </div>
               ))}
+              {proyList.length > 6 && (
+                <p className="pt-1 text-[10px] text-neutral-500">+{proyList.length - 6} más</p>
+              )}
             </div>
           )}
         </div>
 
-        {facturas.length > 0 && (
-          <div className="mt-2 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-2.5">
-            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-neutral-500">
-              Facturas por pagar
-            </p>
-            <div className="space-y-0.5">
-              {facturas.map((f) => (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => props.onEditEntry?.(f)}
-                  className="flex w-full items-center justify-between gap-2 rounded-lg py-1.5 text-left active:bg-neutral-900/60"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate text-[12px] font-semibold text-neutral-200">
-                      {f.description || "—"}
-                    </span>
-                    <span className="block text-[10px] text-neutral-500">{shortDate(f.date)}</span>
-                  </span>
-                  <span className="shrink-0 font-mono text-[12px] font-bold tabular-nums text-cyan-300">
-                    {money(Math.abs(Number(f.amount) || 0))}
-                  </span>
-                </button>
-              ))}
-            </div>
+        {/* 3. Balance proyectado */}
+        <div className="mt-2 rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-[11px] font-bold uppercase tracking-wide text-cyan-300">
+              Balance proyectado
+            </span>
+            <span
+              className={cn(
+                "font-mono text-lg font-black tabular-nums",
+                balanceProy < 0 ? "text-rose-400" : "text-cyan-300",
+              )}
+            >
+              {money(balanceProy)}
+            </span>
           </div>
-        )}
-
-        <div className="mt-2">
-          <ProjectedCashFlow
-            availableNow={mainAvailable}
-            entries={(props.entries || []).filter((e) => Math.abs(Number(e.amount) || 0) > 0)}
-            dues={dueLines.filter((d) => d.amount > 0.009)}
-            onEditEntry={props.onEditEntry}
-          />
         </div>
       </div>
 
