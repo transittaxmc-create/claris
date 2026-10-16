@@ -13,16 +13,12 @@ import {
   CalendarClock,
   Camera,
   Car,
-  CheckCircle2,
   CreditCard,
   Landmark,
-  Pencil,
   Plus,
   Receipt,
   Star,
-  Trash2,
   TrendingUp,
-  AlertTriangle,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { money, type CashFlowEntry, type CashFlowOrigin } from "./types"
@@ -35,7 +31,6 @@ import {
 import {
   type RegisterAccount,
   type DueItem,
-  setDueDay as saveDueDay,
 } from "./registers-store"
 import type { TransferReport } from "./transfer-matcher"
 import { ProjectedCashFlow } from "./projected-cash-flow"
@@ -389,9 +384,6 @@ export function AddAccountModal(props: {
   )
 }
 
-// NOTE: RegisterDetail + TransfersReport kept in companion chunk via re-export pattern.
-// Full detail views remain below for account drill-in.
-
 export function RegisterDetail(props: {
   account: RegisterAccount
   balance: number | null
@@ -413,11 +405,6 @@ export function RegisterDetail(props: {
 }) {
   const { account: r } = props
   const isCard = r.kind === "card"
-  const [dueDraft, setDueDraft] = useState(r.dueDay ? String(r.dueDay) : "")
-  const [balDraft, setBalDraft] = useState(
-    r.manualBalance !== null && r.manualBalance !== undefined ? String(r.manualBalance) : "",
-  )
-
   const projectedBills = props.entries.filter((e) => e.status === "projected" && e.type === "expense")
   const projectedTotal = projectedBills.reduce((s, e) => s + (Number(e.amount) || 0), 0)
   const otherFundsSum = props.otherFunds.filter((o) => o.checked).reduce((s, o) => s + (o.balance || 0), 0)
@@ -515,6 +502,7 @@ export function RegisterDetail(props: {
             className="flex w-full items-center gap-2 rounded-xl border border-neutral-800 bg-neutral-950/50 px-2.5 py-2 text-left active:bg-neutral-900"
           >
             <div className="min-w-0 flex-1">
+              <div className="mb-0.5 flex flex-wrap gap-1">{renderBadges(e)}</div>
               <p className="truncate text-[12px] font-semibold text-white">{e.description || e.category || "Entry"}</p>
               <p className="text-[10px] text-neutral-500">
                 {shortDate(e.date)} · {e.status === "projected" ? "Bill" : "Receipt"}
@@ -582,15 +570,27 @@ export function TransfersReport(props: {
           {report.unmatchedOut.length + report.unmatchedIn.length} unmatched
         </span>
       </div>
-      {report.pairs.slice(0, 12).map((p, i) => (
-        <div key={i} className="rounded-xl border border-emerald-500/20 bg-emerald-950/20 px-3 py-2 text-[12px]">
-          <p className="font-semibold text-emerald-200">Matched transfer</p>
-          <p className="text-neutral-400">{JSON.stringify(p).slice(0, 120)}…</p>
-        </div>
-      ))}
       {report.pairs.length === 0 && (
         <p className="text-[12px] text-neutral-500">No matched transfers yet.</p>
       )}
+      {report.pairs.slice(0, 15).map((p) => (
+        <div key={p.id} className="rounded-xl border border-emerald-500/20 bg-emerald-950/20 px-3 py-2 text-[12px]">
+          <p className="font-semibold text-emerald-200">{p.originLabel || "Matched transfer"}</p>
+          <p className="text-neutral-400">
+            {p.outTx.bank_account} → {p.inTx.bank_account} · ${p.amount.toFixed(2)}
+          </p>
+          <p className="text-[10px] text-neutral-500">
+            {p.outDate} → {p.inDate}
+          </p>
+        </div>
+      ))}
+      {report.unmatchedOut.slice(0, 8).map((t, i) => (
+        <div key={`out-${i}`} className="rounded-xl border border-amber-500/20 bg-amber-950/10 px-3 py-2 text-[12px]">
+          <p className="font-semibold text-amber-200">Unmatched out · {t.bank_account}</p>
+          <p className="truncate text-neutral-400">{t.detail}</p>
+          <p className="font-mono text-rose-400">{t.amount.toFixed(2)}</p>
+        </div>
+      ))}
     </div>
   )
 }
