@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { CalendarClock, Camera, Loader2, Pencil, Plus, Search, Sparkles, Trash2, Upload } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { localDateKey } from "@/lib/dates"
@@ -18,6 +18,50 @@ import {
 } from "./types"
 import { MoneyInput } from "./money-input"
 import { sugerirTipoDoc } from "./cash-flow-store"
+
+// ---------------------------------------------------------------------------
+// Emparejar recibos con el statement del banco.
+// Mismas convenciones que transfer-matcher.ts: ±$0.01 y ventana de 4 días.
+// Solo se MUESTRA la coincidencia; nunca se borra ni fusiona nada solo.
+// ---------------------------------------------------------------------------
+interface BankTxLite {
+  date: string
+  bank_account: string
+  detail: string
+  amount: number
+}
+
+const MATCH_AMOUNT_TOL = 0.011
+const MATCH_DAY_WINDOW = 4
+
+function daysBetween(a: string, b: string): number {
+  const t = (s: string) => new Date(`${String(s).slice(0, 10)}T12:00:00`).getTime()
+  const ms = t(a) - t(b)
+  return Number.isFinite(ms) ? Math.abs(Math.round(ms / 86400000)) : 999
+}
+
+/** Busca el cargo bancario que corresponde a un recibo (mismo monto, fecha cercana). */
+function bankMatchFor(expense: Expense, bankTxs: BankTxLite[]): BankTxLite | null {
+  if (!bankTxs || bankTxs.length === 0) return null
+  const esRecibo = expense.scanned || expense.isAiGenerated || expense.docType === "recibo"
+  if (!esRecibo) return null
+  const need = Math.abs(Number(expense.amount) || 0)
+  if (need <= 0) return null
+  let best: BankTxLite | null = null
+  let bestDays = 999
+  for (const tx of bankTxs) {
+    const amt = Number(tx.amount)
+    if (!Number.isFinite(amt) || amt >= -MATCH_AMOUNT_TOL) continue // solo salidas
+    if (Math.abs(Math.abs(amt) - need) > MATCH_AMOUNT_TOL) continue
+    const d = daysBetween(tx.date, expense.date)
+    if (d > MATCH_DAY_WINDOW) continue
+    if (d < bestDays) {
+      bestDays = d
+      best = tx
+    }
+  }
+  return best
+}
 
 // Pantalla de gastos (pestaña EXPENSES). Mismo estilo que REGISTER y el mismo
 // esquema de guardado que los viajes: el padre (copiloto-app) se encarga de
@@ -74,10 +118,12 @@ function ExpenseRow({
   expense,
   onEdit,
   onDelete,
+  bankMatch,
 }: {
   expense: Expense
   onEdit: (e: Expense) => void
   onDelete: (id: string) => void
+  bankMatch?: BankTxLite | null
 }) {
   return (
     <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3.5">
@@ -128,6 +174,14 @@ function ExpenseRow({
             🏠 PERSONAL
           </span>
         )}
+        {bankMatch && (
+          <span
+            className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold text-emerald-300"
+            title={`${bankMatch.detail || "Banco"} · ${String(bankMatch.date).slice(0, 10)} · ${bankMatch.bank_account || ""}`}
+          >
+            🏦 EN BANCO
+          </span>
+        )}
         <span className="flex-1" />
         <button
           type="button"
@@ -146,7 +200,7 @@ function ExpenseRow({
         </button>
       </div>
 
-      {expense.notes && <p className="mt-2 text-[11px] leading-tight text-neutral-500">{expense.notes}</p>}
+      {expense.notes && <p className="mt-2 line-clamp-2 text-[11px] leading-tight text-neutral-500">{expense.notes}</p>}
     </div>
   )
 }
@@ -180,6 +234,33 @@ export function ExpensesScreen({
     }
   })
   const [newCategory, setNewCategory] = useState("")
+
+  // Snapshot del banco (para emparejar recibos con el statement).
+  // Se trae una vez al abrir la pantalla; si falla, simplemente no hay matches.
+  const [bankTxs, setBankTxs] = useState<BankTxLite[]>([])
+  useEffect(() => {
+    let alive = true
+    fetch("/api/bank/snapshot", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (alive && j && Array.isArray(j.transactions)) setBankTxs(j.transactions)
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  // Mapa gasto.id -> cargo bancario coincidente (solo recibos).
+  const bankMatches = useMemo(() => {
+    const m = new Map<string, BankTxLite>()
+    if (bankTxs.length === 0) return m
+    for (const e of expenses) {
+      const b = bankMatchFor(e, bankTxs)
+      if (b) m.set(e.id, b)
+    }
+    return m
+  }, [expenses, bankTxs])
 
   function addCustomCategory() {
     const name = newCategory.trim()
@@ -738,7 +819,13 @@ export function ExpensesScreen({
           </div>
         ) : (
           filtered.map((e) => (
-            <ExpenseRow key={e.id} expense={e} onEdit={editFromRow} onDelete={deleteWithConfirm} />
+            <ExpenseRow
+              key={e.id}
+              expense={e}
+              onEdit={editFromRow}
+              onDelete={deleteWithConfirm}
+              bankMatch={bankMatches.get(e.id) ?? null}
+            />
           ))
         )}
       </div>
