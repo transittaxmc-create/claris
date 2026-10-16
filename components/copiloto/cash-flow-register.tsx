@@ -36,6 +36,14 @@ import {
 } from "./registers-store"
 import { matchTransfers, type TransferReport } from "./transfer-matcher"
 import {
+  runReconciliationCheck,
+  loadDecisions,
+  saveDecision,
+  RECON_LAST_AUTO_KEY,
+  type ReconReport,
+  type ReconFinding,
+} from "./reconciliation-check"
+import {
   RegistersHome,
   RegisterDetail,
   AddAccountModal,
@@ -100,6 +108,11 @@ export function CashFlowRegister({
   const [bankLoading, setBankLoading] = useState(false)
   const [bankError, setBankError] = useState(false)
   const [bankUpdatedAt, setBankUpdatedAt] = useState<string | null>(null)
+
+  // Reconciliación diaria: reporte + aprobación de Miguel. Nada se aplica solo.
+  const [reconReport, setReconReport] = useState<ReconReport | null>(null)
+  const [reconLoading, setReconLoading] = useState(false)
+  const reconAutoRan = useRef(false)
 
   const fetchBank = useCallback(async () => {
     setBankLoading(true)
@@ -174,6 +187,161 @@ export function CashFlowRegister({
     }))
     return matchTransfers(txs)
   }, [bankTxs])
+
+  // Chequeo de reconciliación: por cuenta, en orden. Solo genera el reporte;
+  // cada hallazgo se aplica únicamente cuando Miguel lo aprueba.
+  const runRecon = useCallback(() => {
+    setReconLoading(true)
+    try {
+      const report = runReconciliationCheck({
+        registers: registers.map((r) => ({
+          id: r.id,
+          name: r.name,
+          kind: r.kind,
+          source: r.source,
+          isMain: r.isMain,
+        })),
+        balances,
+        entries: entries.map((e) => ({
+          id: e.id,
+          date: String(e.date || "").slice(0, 10),
+          description: e.description || e.category || "",
+          amount: Number(e.amount) || 0,
+          type: e.type,
+          status: e.status,
+          accountId: (e as CashFlowEntry & { accountId?: string }).accountId,
+        })),
+        bankTxs: bankTxs.map((t) => ({
+          date: String(t.date || "").slice(0, 10),
+          bank_account: String(t.bank_account || ""),
+          detail: String(t.detail || ""),
+          amount: Number(t.amount) || 0,
+          daily_balance:
+            t.daily_balance !== null && t.daily_balance !== undefined && Number.isFinite(Number(t.daily_balance))
+              ? Number(t.daily_balance)
+              : null,
+        })),
+        transfers: transferReport,
+        bankOk: !bankError && bankAccounts.length > 0,
+        decisions: loadDecisions(),
+      })
+      setReconReport(report)
+      try {
+        localStorage.setItem(RECON_LAST_AUTO_KEY, new Date().toISOString().slice(0, 10))
+      } catch {}
+    } finally {
+      setReconLoading(false)
+    }
+  }, [registers, balances, bankTxs, bankError, bankAccounts.length, entries, transferReport])
+
+  // Automático una vez al día, después del sync del banco. Si no hay datos
+  // del banco, el reporte lo dice en voz alta (nunca un falso "todo bien").
+  useEffect(() => {
+    if (reconAutoRan.current || bankLoading || !isLoaded) return
+    reconAutoRan.current = true
+    runRecon()
+  }, [bankLoading, isLoaded, runRecon])
+
+  const dropFinding = useCallback((key: string) => {
+    setReconReport((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        accounts: prev.accounts.map((a) => ({
+          ...a,
+          findings: a.findings.filter((f) => f.key !== key),
+        })),
+      }
+    })
+  }, [])
+
+  // Aprobaciones con updates funcionales: seguro en "Aprobar todo" y clics rápidos.
+  const handleApproveFinding = useCallback(
+    (f: ReconFinding) => {
+      saveDecision(f.key, "a")
+      const act = f.proposedAction
+      if (act.kind === "eliminar-duplicado" && act.entryId) {
+        const delId = act.entryId
+        setEntries((prev) => {
+          const next = prev.filter((e) => e.id !== delId)
+          try {
+            localStorage.setItem(LEDGER_KEY, JSON.stringify(next))
+          } catch {}
+          return next
+        })
+      } else if (act.kind === "crear-apunte" && f.bankTx) {
+        const amt = Number(f.bankTx.amount) || 0
+        const nuevo = {
+          id: `bank-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+          date: f.bankTx.date,
+          description: f.bankTx.detail,
+          amount: Math.abs(amt),
+          type: amt < 0 ? "expense" : "income",
+          status: "actual",
+          source: "bank",
+          origin: "bank",
+          sourceLabel: "Banco",
+          category: "",
+          notes: "",
+          accountId: f.accountId,
+        } as CashFlowEntry
+        setEntries((prev) => {
+          const next = [nuevo, ...prev]
+          try {
+            localStorage.setItem(LEDGER_KEY, JSON.stringify(next))
+          } catch {}
+          return next
+        })
+      }
+      dropFinding(f.key)
+    },
+    [dropFinding],
+  )
+
+  const handleRejectFinding = useCallback(
+    (f: ReconFinding) => {
+      saveDecision(f.key, "r")
+      dropFinding(f.key)
+    },
+    [dropFinding],
+  )
+
+  const handleEditFinding = useCallback(
+    (f: ReconFinding) => {
+      if (f.entryId) {
+        const e = entries.find((x) => x.id === f.entryId)
+        if (e) {
+          setEditingEntry(e)
+          setIsModalOpen(true)
+          return
+        }
+      }
+      if (f.bankTx) {
+        const amt = Number(f.bankTx.amount) || 0
+        setEditingEntry({
+          id: `tmp-${Date.now()}`,
+          date: f.bankTx.date,
+          description: f.bankTx.detail,
+          amount: Math.abs(amt),
+          type: amt < 0 ? "expense" : "income",
+          status: "actual",
+          source: "bank",
+          origin: "bank",
+          sourceLabel: "Banco",
+          category: "",
+          notes: "",
+          accountId: f.accountId,
+        } as CashFlowEntry)
+        setIsModalOpen(true)
+      }
+    },
+    [entries],
+  )
+
+  const handleApproveAllFindings = useCallback(() => {
+    const all = (reconReport?.accounts || []).flatMap((a) => a.findings)
+    for (const f of all) handleApproveFinding(f)
+  }, [reconReport, handleApproveFinding])
 
   const handleOpenAddModal = (type: CashFlowType, status: CashFlowStatus) => {
     const today = new Date()
@@ -253,7 +421,7 @@ export function CashFlowRegister({
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
       }}
     >
-      <div className="sticky top-0 z-20 border-b border-neutral-800 bg-black/95 px-3 py-1.5 backdrop-blur-md">
+      <div className="sticky top-0 z-20 border-b border-neutral-800 bg-black/95 px-3 py-2.5 backdrop-blur-md">
         <div className="flex items-center justify-center gap-2 px-1 text-[10px] font-bold text-neutral-400">
           <span className="tracking-wider text-emerald-400">DUAL REGISTER</span>
           <span className="rounded border border-emerald-800 bg-emerald-950 px-2 py-0.5 text-[9px] text-emerald-300">
@@ -274,7 +442,7 @@ export function CashFlowRegister({
         </div>
       </div>
 
-      <div className="mt-2">
+      <div className="mt-2.5">
         {view.kind === "home" && (
           <RegistersHome
             registers={registers}
@@ -283,6 +451,13 @@ export function CashFlowRegister({
             pairCount={transferReport.pairs.length}
             looseCount={transferReport.unmatchedOut.length + transferReport.unmatchedIn.length}
             entries={entries}
+            reconReport={reconReport}
+            reconLoading={reconLoading}
+            onRunRecon={runRecon}
+            onApproveFinding={handleApproveFinding}
+            onRejectFinding={handleRejectFinding}
+            onEditFinding={handleEditFinding}
+            onApproveAllFindings={handleApproveAllFindings}
             onEditEntry={(e) => {
               setEditingEntry(e)
               setIsModalOpen(true)
