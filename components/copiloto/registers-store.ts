@@ -31,6 +31,8 @@ interface StoredState {
   dueDays: Record<string, number>
   mainId: string | null
   hidden: string[]
+  /** Autocorrección única de la ★ ya aplicada. */
+  starHealed?: boolean
 }
 
 function emptyState(): StoredState {
@@ -56,6 +58,7 @@ function loadState(): StoredState {
       dueDays: p.dueDays && typeof p.dueDays === "object" ? p.dueDays : {},
       mainId: typeof p.mainId === "string" ? p.mainId : null,
       hidden: Array.isArray(p.hidden) ? p.hidden : [],
+      starHealed: p.starHealed === true,
     }
     if (deduped.length !== manual.length) saveState(st)
     return st
@@ -182,13 +185,21 @@ export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAcc
     regs.push({ ...m, dueDay: st.dueDays[m.id] ?? m.dueDay ?? null, isMain: false })
   }
 
-  // Principal: match exacto "Citibank 6393" (Miguel). Solo se elige
-  // automáticamente cuando no hay un mainId válido guardado.
+  // Principal: match exacto "Citibank 6393" (Miguel).
+  const exactCiti = regs.find(
+    (r) => r.kind === "bank" && String(r.name).trim().toLowerCase() === "citibank 6393",
+  )
   let mainId = st.mainId
+  // Autocorrección única: si el mainId guardado apunta a otra cuenta (bug
+  // anterior dejaba la ★ en Venmo) pero existe "Citibank 6393", corregirla.
+  // No toca nada si ya apunta a Citibank 6393 o si no existe.
+  if (exactCiti && !st.starHealed && mainId !== exactCiti.id) {
+    mainId = exactCiti.id
+    st.mainId = mainId
+    st.starHealed = true
+    saveState(st)
+  }
   if (!mainId || !regs.some((r) => r.id === mainId)) {
-    const exactCiti = regs.find(
-      (r) => r.kind === "bank" && String(r.name).trim().toLowerCase() === "citibank 6393",
-    )
     mainId = (exactCiti || regs.find((r) => r.kind === "bank") || regs[0])?.id ?? null
     if (mainId) {
       st.mainId = mainId
