@@ -285,7 +285,10 @@ export function TripEditSheet({
         </div>
 
         {/* Footer actions */}
-        <div className="flex gap-3 border-t border-neutral-800 px-4 py-3">
+        <div
+          className="flex gap-3 border-t border-neutral-800 px-4 py-3"
+          style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))" }}
+        >
           <button
             type="button"
             onClick={() => {
