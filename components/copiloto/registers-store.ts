@@ -1,5 +1,4 @@
-// Registers store — real bank snapshot + manual accounts only.
-// Main operating account: CitiBank ending in 93 (projections base).
+// Registers store — snapshot + manual. Main = account ending ···93.
 
 export type AccountKind = "bank" | "card"
 
@@ -64,13 +63,11 @@ export function accountIdFor(name: string): string {
     .replace(/^-+|-+$/g, "")}`
 }
 
-/** Last 4 digits from account name if present (e.g. "...6393" → "6393"). */
 export function last4Of(name: string): string | null {
   const m = String(name || "").match(/(\d{4})\s*$/)
   return m ? m[1] : null
 }
 
-/** Short label for UI: bank keyword + last4. */
 export function accountDisplayName(name: string): { title: string; subtitle: string | null } {
   const raw = String(name || "").trim()
   const last4 = last4Of(raw)
@@ -78,13 +75,11 @@ export function accountDisplayName(name: string): { title: string; subtitle: str
   if (/citi/i.test(raw)) bank = "CitiBank"
   else if (/access/i.test(raw)) bank = "Access"
   else if (/paypal/i.test(raw)) bank = "PayPal"
+  else if (/checking/i.test(raw)) bank = "Checking"
   else if (/chase/i.test(raw)) bank = "Chase"
   else if (/amex|american express/i.test(raw)) bank = "Amex"
-  else if (/capital one/i.test(raw)) bank = "Capital One"
-  else if (/venmo/i.test(raw)) bank = "Venmo"
-  else if (/square/i.test(raw)) bank = "Square"
   else {
-    const w = raw.replace(/\.{2,}/g, " ").split(/\s+/)[0]
+    const w = raw.replace(/[…\.]/g, " ").split(/\s+/)[0]
     if (w && w.length > 1) bank = w.slice(0, 14)
   }
   if (last4) return { title: `${bank} ···${last4}`, subtitle: raw }
@@ -96,15 +91,9 @@ function looksLikeCard(name: string, institution: string | null): boolean {
   return /card|tarjeta|amex|visa|mastercard|discover|credit|crédito/.test(t)
 }
 
-function ensureSeeded(_st: StoredState) {
-  /* no auto-seed empty accounts */
-}
-
 export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAccount[] {
   const st = loadState()
-  ensureSeeded(st)
   const regs: RegisterAccount[] = []
-
   const balById = new Map<string, number>()
   for (const a of snapshotAccounts || []) {
     const nm = String(a?.name || "").trim()
@@ -112,7 +101,6 @@ export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAcc
     const v = Number(a?.current_balance)
     balById.set(accountIdFor(nm), Number.isFinite(v) ? v : 0)
   }
-
   for (const a of snapshotAccounts || []) {
     const name = String(a?.name || "").trim()
     if (!name) continue
@@ -130,24 +118,19 @@ export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAcc
       manualBalance: null,
     })
   }
-
   for (const m of st.manual) {
-    regs.push({
-      ...m,
-      dueDay: st.dueDays[m.id] ?? m.dueDay ?? null,
-      isMain: false,
-    })
+    regs.push({ ...m, dueDay: st.dueDays[m.id] ?? m.dueDay ?? null, isMain: false })
   }
 
   let mainId = st.mainId
-  // Prefer CitiBank ending in 93 (e.g. ...6393) as the operating / projection account
+  const ends93 = regs.find((r) => r.kind === "bank" && /93\s*$/.test(String(r.name)))
   const citi93 =
     regs.find((r) => r.kind === "bank" && /citi/i.test(r.name) && /93\s*$/.test(r.name)) ||
     regs.find((r) => r.kind === "bank" && /citi/i.test(r.name) && /6393/.test(r.name))
   const citiAny =
     regs.find((r) => r.kind === "bank" && /^citibank\b/i.test(r.name)) ||
     regs.find((r) => r.kind === "bank" && /citi/i.test(r.name))
-  const preferredMain = citi93 || citiAny
+  const preferredMain = ends93 || citi93 || citiAny
 
   if (!mainId || !regs.some((r) => r.id === mainId)) {
     mainId = (preferredMain || regs.find((r) => r.kind === "bank") || regs[0])?.id ?? null
@@ -157,7 +140,7 @@ export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAcc
     }
   } else if (preferredMain && mainId !== preferredMain.id) {
     const current = regs.find((r) => r.id === mainId)
-    if (!current || !/citi/i.test(current.name)) {
+    if (!current || !/93\s*$/.test(current.name)) {
       mainId = preferredMain.id
       st.mainId = mainId
       saveState(st)
@@ -165,12 +148,9 @@ export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAcc
   }
   for (const r of regs) r.isMain = r.id === mainId
 
-  // Only real money: main + non-zero. No $0 filler cards.
   return regs.filter((r) => {
     if (r.isMain) return true
-    if (r.source === "manual") {
-      return Math.abs(Number(r.manualBalance) || 0) >= 0.005
-    }
+    if (r.source === "manual") return Math.abs(Number(r.manualBalance) || 0) >= 0.005
     return Math.abs(balById.get(r.id) ?? 0) >= 0.005
   })
 }
