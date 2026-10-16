@@ -2,7 +2,7 @@
 // LIBRO MAYOR (Cash Flow Register)
 // ============================================================================
 
-import type { CashFlowEntry, Expense, Trip } from "./types"
+import type { CashFlowEntry, CashFlowOrigin, Expense, Trip } from "./types"
 import { netOf, tripDateOf } from "./types"
 
 export const LEDGER_KEY = "claris_cash_flow_entries"
@@ -40,19 +40,99 @@ export function prefijoCobroDia(date: string): string {
   return `claris:cobro:${String(date || "").slice(0, 10)}:`
 }
 
-/** Maps expense → ledger: Bill = projected payable; Receipt = posted actual. */
+// ---------------------------------------------------------------------------
+// ORIGEN vs TIPO
+//  - ORIGEN: cómo entró (Escaneado / Manual / Banco / Cobros). No cambia.
+//  - TIPO:   Factura (Bill, por pagar → Projected) o Recibo (ya pagado → Bank).
+// Son dos etiquetas separadas: antes una sola ("Recibo escaneado") las mezclaba.
+// ---------------------------------------------------------------------------
+export type TipoDoc = "factura" | "recibo"
+
+export const ETIQUETA_ORIGEN: Record<CashFlowOrigin, string> = {
+  scan: "Escaneado",
+  manual: "Manual",
+  bank: "Banco",
+  trip: "Cobros",
+}
+
+export const ETIQUETA_TIPO: Record<TipoDoc, string> = {
+  factura: "Factura",
+  recibo: "Recibo",
+}
+
+export function etiquetaCombinada(origin: CashFlowOrigin, tipo: TipoDoc | null): string {
+  return tipo ? `${ETIQUETA_ORIGEN[origin]} · ${ETIQUETA_TIPO[tipo]}` : ETIQUETA_ORIGEN[origin]
+}
+
+/** Origen de un movimiento; entiende los guardados con etiquetas viejas. */
+export function origenDe(e: CashFlowEntry): CashFlowOrigin {
+  if (e.origin) return e.origin
+  if (/escane|scan/i.test(String(e.sourceLabel || ""))) return "scan"
+  if (e.source === "bank") return "bank"
+  if (e.source === "trip") return "trip"
+  return "manual"
+}
+
+/**
+ * Tipo Factura/Recibo. Sale del ESTADO, que es lo que decide dónde suma o resta:
+ * proyectado = Factura (por pagar), posteado = Recibo (ya pagado).
+ * Solo aplica a gastos que no vienen del banco ni de Cobros.
+ */
+export function tipoDocDe(e: CashFlowEntry): TipoDoc | null {
+  if (e.type !== "expense") return null
+  const o = origenDe(e)
+  if (o === "bank" || o === "trip") return null
+  return e.status === "projected" ? "factura" : "recibo"
+}
+
+/** Sugerencia al clasificar un documento nuevo (se puede cambiar). */
+export function sugerirTipoDoc(vendor?: string, notes?: string): TipoDoc | null {
+  const txt = `${vendor || ""} ${notes || ""}`.toLowerCase()
+  if (!txt.trim()) return null
+  if (/(e-?z-?pass|easy ?pass|sun ?pass|toll|peaje|invoice|factura|amount due|balance due|statement|lease|violation|due date|pay by|vencimiento|tower)/.test(txt)) {
+    return "factura"
+  }
+  return null
+}
+
+/**
+ * Arregla lo ya guardado sin perder nada: asigna el origen que faltaba y
+ * reemplaza etiquetas viejas ("Recibo escaneado", "Bill", "Receipt"...) por
+ * "Origen · Tipo". Devuelve si cambió algo para guardar solo cuando hace falta.
+ */
+export function normalizarLibro(entries: CashFlowEntry[]): { lista: CashFlowEntry[]; cambio: boolean } {
+  let cambio = false
+  const lista = entries.map((e) => {
+    if (!e) return e
+    const origin = origenDe(e)
+    const label = etiquetaCombinada(origin, tipoDocDe({ ...e, origin }))
+    // Solo se tocan las que usan etiquetas del sistema; un texto propio se respeta.
+    const esDelSistema =
+      !e.sourceLabel || /escane|scan|^(bill|receipt|manual|gasto manual|factura|recibo|bank|banco)$/i.test(String(e.sourceLabel).trim())
+    if (e.origin === origin && (!esDelSistema || e.sourceLabel === label)) return e
+    cambio = true
+    return { ...e, origin, ...(esDelSistema ? { sourceLabel: label } : {}) }
+  })
+  return { lista, cambio }
+}
+
+/** Maps expense → ledger: Factura = proyectado por pagar; Recibo = posteado pagado. */
 export function movimientoDeGasto(e: Expense): CashFlowEntry {
   const doc = e.docType
-  const esFactura = doc === "factura" || Boolean(e.scheduled)
-  const esRecibo = doc === "recibo" || (!doc && Boolean(e.isAiGenerated))
+  // Lo que el usuario eligió manda; "scheduled" solo decide si no hay elección.
+  const esFactura = doc === "factura" || (doc !== "recibo" && Boolean(e.scheduled))
+  const esRecibo = !esFactura && (doc === "recibo" || (!doc && Boolean(e.isAiGenerated)))
+  const escaneado = Boolean(e.scanned) || Boolean(e.isAiGenerated) || e.confidence != null
+  const origin: CashFlowOrigin = escaneado ? "scan" : "manual"
   const source = esRecibo ? "receipt" : esFactura ? "projection" : "manual"
-  const sourceLabel = esFactura ? "Bill" : esRecibo ? "Receipt" : "Manual"
+  const tipo: TipoDoc = esFactura ? "factura" : "recibo"
   return {
     id: idDeGasto(String(e.id)),
     date: String(e.date || "").slice(0, 10),
     description: e.vendor || "Expense",
     source: source as CashFlowEntry["source"],
-    sourceLabel,
+    sourceLabel: etiquetaCombinada(origin, tipo),
+    origin,
     type: "expense",
     status: esFactura ? "projected" : "actual",
     amount: Math.round((Number(e.amount) || 0) * 100) / 100,
