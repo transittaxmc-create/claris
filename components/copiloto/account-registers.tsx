@@ -1,36 +1,18 @@
-// ============================================================================
-// ACCOUNT REGISTERS — clean home: real balances only, no $0 noise.
-// ============================================================================
-
 "use client"
 
 import { useState } from "react"
 import {
   ArrowLeft,
   ArrowLeftRight,
-  Building2,
   CalendarClock,
-  Camera,
-  Car,
   CreditCard,
   Landmark,
   Plus,
-  Receipt,
   Star,
-  TrendingUp,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { money, type CashFlowEntry, type CashFlowOrigin } from "./types"
-import {
-  ETIQUETA_ORIGEN,
-  ETIQUETA_TIPO,
-  origenDe,
-  tipoDocDe,
-} from "./cash-flow-store"
-import {
-  type RegisterAccount,
-  type DueItem,
-} from "./registers-store"
+import { money, type CashFlowEntry } from "./types"
+import { type RegisterAccount, type DueItem } from "./registers-store"
 import type { TransferReport } from "./transfer-matcher"
 import { ProjectedCashFlow } from "./projected-cash-flow"
 
@@ -41,39 +23,6 @@ export interface BankTx {
   category: string | null
   amount: number
   daily_balance: number | null
-}
-
-function renderBadges(row: CashFlowEntry) {
-  const base =
-    "inline-flex items-center gap-0.5 whitespace-nowrap rounded border px-1 py-0.5 text-[10px] font-semibold"
-  const origin: CashFlowOrigin = origenDe(row)
-  const tipo = tipoDocDe(row)
-  const originStyle: Record<CashFlowOrigin, string> = {
-    scan: "border-sky-500/30 bg-sky-500/10 text-sky-300",
-    manual: "border-neutral-700 bg-neutral-800 text-neutral-400",
-    bank: "border-blue-500/20 bg-blue-500/10 text-blue-400",
-    trip: "border-amber-500/20 bg-amber-500/10 text-amber-400",
-  }
-  return (
-    <>
-      <span className={cn(base, originStyle[origin])}>
-        {origin === "scan" && <Camera className="size-2.5" />}
-        {origin === "bank" && <Building2 className="size-2.5" />}
-        {origin === "trip" && <Car className="size-2.5" />}
-        {row.origin === "trip" && row.sourceLabel ? row.sourceLabel : ETIQUETA_ORIGEN[origin]}
-      </span>
-      {tipo === "factura" && (
-        <span className={cn(base, "border-cyan-500/30 bg-cyan-500/10 text-cyan-300")}>
-          <TrendingUp className="size-2.5" /> {ETIQUETA_TIPO.factura}
-        </span>
-      )}
-      {tipo === "recibo" && (
-        <span className={cn(base, "border-purple-500/30 bg-purple-500/10 text-purple-300")}>
-          <Receipt className="size-2.5" /> {ETIQUETA_TIPO.recibo}
-        </span>
-      )}
-    </>
-  )
 }
 
 function shortDate(iso: string): string {
@@ -151,7 +100,7 @@ export function RegistersHome(props: {
         <p className="mb-1 px-1 text-[10px] font-bold uppercase tracking-widest text-neutral-500">
           Accounts · {registers.length}
         </p>
-        <p className="mb-1.5 px-1 text-[11px] text-neutral-500">Tap a card to open its register</p>
+        <p className="mb-1.5 px-1 text-[11px] text-neutral-500">Tap a card to open its statement register</p>
         <div className="grid grid-cols-3 gap-1.5">
           {registers.map((r) => {
             const bal = balances[r.id]
@@ -163,9 +112,7 @@ export function RegistersHome(props: {
                 onClick={() => props.onOpenAccount(r.id)}
                 className={cn(
                   "rounded-xl border p-2 text-left active:scale-[0.98]",
-                  r.isMain
-                    ? "border-yellow-400/50 bg-yellow-400/[0.06]"
-                    : "border-neutral-800 bg-neutral-900/70",
+                  r.isMain ? "border-yellow-400/50 bg-yellow-400/[0.06]" : "border-neutral-800 bg-neutral-900/70",
                 )}
               >
                 <div className="flex items-center justify-between gap-1">
@@ -195,7 +142,7 @@ export function RegistersHome(props: {
           <button
             type="button"
             onClick={props.onAddAccount}
-            className="flex min-h-[76px] flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-neutral-700 bg-transparent p-2 text-neutral-400 active:scale-[0.98]"
+            className="flex min-h-[76px] flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-neutral-700 p-2 text-neutral-400"
           >
             <Plus className="size-4" />
             <span className="text-[9px] font-bold">Add</span>
@@ -208,28 +155,12 @@ export function RegistersHome(props: {
           <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-neutral-500">
             <CalendarClock className="size-3.5 text-amber-300" /> Upcoming dues
           </p>
-          <div className="space-y-1.5">
-            {dues.slice(0, 5).map((d) => (
-              <div key={d.accountId} className="flex items-center justify-between text-[12px]">
-                <span className="truncate font-semibold text-neutral-200">{d.accountName}</span>
-                <span className="flex shrink-0 items-center gap-1.5">
-                  <span className="text-neutral-400">{d.nextDate.slice(5)}</span>
-                  <span
-                    className={cn(
-                      "rounded px-1.5 py-0.5 text-[10px] font-black",
-                      d.daysUntil <= 0
-                        ? "bg-rose-500/20 text-rose-300"
-                        : d.daysUntil <= 5
-                          ? "bg-amber-500/20 text-amber-300"
-                          : "bg-neutral-800 text-neutral-300",
-                    )}
-                  >
-                    {d.daysUntil <= 0 ? "DUE" : `${d.daysUntil}d`}
-                  </span>
-                </span>
-              </div>
-            ))}
-          </div>
+          {dues.slice(0, 5).map((d) => (
+            <div key={d.accountId} className="flex items-center justify-between text-[12px]">
+              <span className="truncate font-semibold text-neutral-200">{d.accountName}</span>
+              <span className="text-neutral-400">{d.nextDate.slice(5)}</span>
+            </div>
+          ))}
         </div>
       )}
 
@@ -237,18 +168,13 @@ export function RegistersHome(props: {
         <button
           type="button"
           onClick={props.onOpenTransfers}
-          className="flex items-center justify-between rounded-2xl border border-neutral-800 bg-neutral-900/60 px-3 py-2.5 text-left active:scale-[0.99]"
+          className="flex items-center justify-between rounded-2xl border border-neutral-800 bg-neutral-900/60 px-3 py-2.5 text-left"
         >
           <span className="flex items-center gap-2 text-[12px] font-bold text-neutral-200">
             <ArrowLeftRight className="size-4 text-cyan-300" /> Transfers
           </span>
-          <span className="flex items-center gap-1.5 text-[10px] font-bold">
-            {pairCount > 0 && (
-              <span className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-emerald-300">{pairCount} ok</span>
-            )}
-            {looseCount > 0 && (
-              <span className="rounded bg-amber-500/15 px-1.5 py-0.5 text-amber-300">{looseCount} unmatched</span>
-            )}
+          <span className="text-[10px] font-bold text-neutral-400">
+            {pairCount} matched · {looseCount} open
           </span>
         </button>
       )}
@@ -268,29 +194,57 @@ export function AddAccountModal(props: {
 }) {
   const [name, setName] = useState("")
   const [kind, setKind] = useState<"bank" | "card">("bank")
-  const [limit, setLimit] = useState("")
-  const [dueDay, setDueDay] = useState("")
   const [balance, setBalance] = useState("")
-  const canSave = name.trim().length > 0
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center" onClick={props.onClose}>
-      <div className="w-full max-w-md rounded-t-2xl border border-neutral-700 bg-neutral-950 p-4 sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 sm:items-center" onClick={props.onClose}>
+      <div className="w-full max-w-md rounded-t-2xl border border-neutral-700 bg-neutral-950 p-4" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-sm font-extrabold text-white">Add account</h3>
-        <div className="mt-3 space-y-3">
-          <input type="text" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Account name" className="w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400" />
-          <div className="grid grid-cols-2 gap-2">
-            {(["bank", "card"] as const).map((k) => (
-              <button key={k} type="button" onClick={() => setKind(k)} className={cn("rounded-xl border py-2.5 text-xs font-bold", kind === k ? "border-yellow-400/60 bg-yellow-400/10 text-yellow-300" : "border-neutral-700 text-neutral-300")}>
-                {k === "bank" ? "Bank" : "Card"}
-              </button>
-            ))}
-          </div>
-          <input type="number" inputMode="decimal" value={balance} onChange={(e) => setBalance(e.target.value)} placeholder="Balance / debt" className="w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400" />
-          <div className="flex gap-2">
-            <button type="button" onClick={props.onClose} className="flex-1 rounded-xl border border-neutral-700 py-2.5 text-xs font-bold text-neutral-300">Cancel</button>
-            <button type="button" disabled={!canSave} onClick={() => props.onSave({ name: name.trim(), kind, limit: limit ? parseFloat(limit) : null, dueDay: dueDay ? parseInt(dueDay) || null : null, balance: balance ? parseFloat(balance) : 0 })} className="flex-1 rounded-xl bg-yellow-400 py-2.5 text-xs font-black text-black disabled:opacity-40">Create</button>
-          </div>
+        <input
+          className="mt-3 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Account name"
+        />
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          {(["bank", "card"] as const).map((k) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setKind(k)}
+              className={cn(
+                "rounded-xl border py-2.5 text-xs font-bold",
+                kind === k ? "border-yellow-400/60 text-yellow-300" : "border-neutral-700 text-neutral-300",
+              )}
+            >
+              {k === "bank" ? "Bank" : "Card"}
+            </button>
+          ))}
+        </div>
+        <input
+          className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white"
+          type="number"
+          value={balance}
+          onChange={(e) => setBalance(e.target.value)}
+          placeholder="Balance"
+        />
+        <div className="mt-3 flex gap-2">
+          <button type="button" onClick={props.onClose} className="flex-1 rounded-xl border border-neutral-700 py-2.5 text-xs font-bold text-neutral-300">
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={!name.trim()}
+            onClick={() =>
+              props.onSave({
+                name: name.trim(),
+                kind,
+                balance: balance ? parseFloat(balance) : 0,
+              })
+            }
+            className="flex-1 rounded-xl bg-yellow-400 py-2.5 text-xs font-black text-black disabled:opacity-40"
+          >
+            Create
+          </button>
         </div>
       </div>
     </div>
@@ -318,52 +272,149 @@ export function RegisterDetail(props: {
 }) {
   const { account: r } = props
   const isCard = r.kind === "card"
+
+  type Line = {
+    key: string
+    date: string
+    detail: string
+    amount: number
+    dailyBalance: number | null
+    kind: "bank" | "entry"
+    entry?: CashFlowEntry
+  }
+
+  const statementLines: Line[] = (() => {
+    const lines: Line[] = []
+    for (const t of props.bankTxs) {
+      lines.push({
+        key: `bank:${t.date}:${t.detail}:${t.amount}`,
+        date: String(t.date || "").slice(0, 10),
+        detail: t.detail || "Bank",
+        amount: Number(t.amount) || 0,
+        dailyBalance:
+          t.daily_balance !== null && t.daily_balance !== undefined && Number.isFinite(Number(t.daily_balance))
+            ? Number(t.daily_balance)
+            : null,
+        kind: "bank",
+      })
+    }
+    for (const e of props.entries) {
+      const amt = Math.abs(Number(e.amount) || 0)
+      lines.push({
+        key: `entry:${e.id}`,
+        date: String(e.date || "").slice(0, 10),
+        detail: e.description || e.category || "Entry",
+        amount: e.type === "income" ? amt : -amt,
+        dailyBalance: null,
+        kind: "entry",
+        entry: e,
+      })
+    }
+    // Newest first (statement style)
+    lines.sort((a, b) => b.date.localeCompare(a.date) || Math.abs(b.amount) - Math.abs(a.amount))
+
+    // Daily balance: prefer bank feed; else walk from current balance
+    const hasAnyBal = lines.some((l) => l.dailyBalance !== null)
+    if (!hasAnyBal && props.balance !== null && Number.isFinite(props.balance)) {
+      let run = Number(props.balance)
+      for (const line of lines) {
+        line.dailyBalance = Math.round(run * 100) / 100
+        run = run - line.amount
+      }
+    }
+    return lines
+  })()
+
   return (
-    <div className="flex flex-col gap-3 px-1">
-      <div className="flex items-center gap-2">
-        <button type="button" onClick={props.onBack} className="inline-flex items-center gap-1 rounded-lg border border-yellow-400/50 bg-yellow-400/10 px-3 py-2 text-[12px] font-bold text-yellow-300">
+    <div className="flex min-h-0 flex-col gap-3 px-1">
+      <div className="flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          onClick={props.onBack}
+          className="inline-flex items-center gap-1 rounded-lg border border-yellow-400/50 bg-yellow-400/10 px-3 py-2 text-[12px] font-bold text-yellow-300"
+        >
           <ArrowLeft className="size-4" /> Accounts
         </button>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[14px] font-extrabold text-white">{r.name}</p>
-          <p className="text-[10px] text-neutral-500">{isCard ? "Card register" : "Bank register"}</p>
+          <p className="text-[10px] text-neutral-500">
+            {isCard ? "Card" : "Bank"} statement · newest on top
+          </p>
         </div>
       </div>
-      <div className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-3.5 text-center">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">{isCard ? "Debt" : "Balance"}</p>
-        <p className={cn("mt-1 text-3xl font-black tabular-nums", (props.balance || 0) < 0 && !isCard ? "text-rose-400" : "text-emerald-400")}>
+
+      <div className="shrink-0 rounded-2xl border border-neutral-800 bg-neutral-900/70 p-3.5 text-center">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">
+          {isCard ? "Debt" : "Current balance"}
+        </p>
+        <p
+          className={cn(
+            "mt-1 text-3xl font-black tabular-nums",
+            (props.balance || 0) < 0 && !isCard ? "text-rose-400" : "text-emerald-400",
+          )}
+        >
           {props.balance === null ? "—" : money(props.balance)}
         </p>
       </div>
-      <div className="flex gap-2">
-        <button type="button" onClick={props.onAddBill} className="flex-1 rounded-xl border border-cyan-500/40 bg-cyan-500/10 py-2.5 text-xs font-bold text-cyan-200">+ Bill</button>
-        <button type="button" onClick={props.onAddPost} className="flex-1 rounded-xl border border-purple-500/40 bg-purple-500/10 py-2.5 text-xs font-bold text-purple-200">+ Receipt</button>
+
+      <div className="flex shrink-0 gap-2">
+        <button type="button" onClick={props.onAddBill} className="flex-1 rounded-xl border border-cyan-500/40 bg-cyan-500/10 py-2.5 text-xs font-bold text-cyan-200">
+          + Bill
+        </button>
+        <button type="button" onClick={props.onAddPost} className="flex-1 rounded-xl border border-purple-500/40 bg-purple-500/10 py-2.5 text-xs font-bold text-purple-200">
+          + Receipt
+        </button>
       </div>
-      <div className="space-y-1.5">
-        <p className="px-1 text-[10px] font-bold uppercase tracking-widest text-neutral-500">This account register</p>
-        {props.entries.length === 0 && props.bankTxs.length === 0 && (
-          <p className="rounded-xl border border-neutral-800 px-3 py-4 text-center text-[12px] text-neutral-500">No movements yet</p>
-        )}
-        {props.entries.map((e) => (
-          <button key={e.id} type="button" onClick={() => props.onEditEntry(e)} className="flex w-full items-center gap-2 rounded-xl border border-neutral-800 px-2.5 py-2 text-left">
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[12px] font-semibold text-white">{e.description || e.category || "Entry"}</p>
-              <p className="text-[10px] text-neutral-500">{shortDate(e.date)}</p>
-            </div>
-            <span className={cn("font-mono text-[12px] font-bold", e.type === "income" ? "text-emerald-400" : "text-rose-400")}>
-              {money(Math.abs(Number(e.amount) || 0))}
-            </span>
-          </button>
-        ))}
-        {props.bankTxs.slice(0, 30).map((t, i) => (
-          <div key={`${t.date}-${i}`} className="flex items-center gap-2 rounded-xl border border-neutral-800/80 px-2.5 py-2">
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-[12px] text-neutral-200">{t.detail}</p>
-              <p className="text-[10px] text-neutral-500">{shortDate(t.date)} · Bank</p>
-            </div>
-            <span className={cn("font-mono text-[12px] font-bold", t.amount >= 0 ? "text-emerald-400" : "text-rose-400")}>{money(t.amount)}</span>
-          </div>
-        ))}
+
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-950/80">
+        <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_72px_78px] gap-1 border-b border-neutral-800 px-2.5 py-2 text-[9px] font-bold uppercase tracking-wide text-neutral-500">
+          <span>Date · Detail</span>
+          <span className="text-right">Amount</span>
+          <span className="text-right">Balance</span>
+        </div>
+        <div className="max-h-[min(58vh,480px)] min-h-[200px] overflow-y-auto overscroll-contain">
+          {statementLines.length === 0 && (
+            <p className="px-3 py-8 text-center text-[12px] text-neutral-500">No movements · Sync bank</p>
+          )}
+          {statementLines.map((line) => {
+            const body = (
+              <div className="grid grid-cols-[minmax(0,1fr)_72px_78px] items-start gap-1 border-b border-neutral-900/80 px-2.5 py-2">
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold text-neutral-500">{shortDate(line.date)}</p>
+                  <p className="truncate text-[12px] font-medium leading-snug text-neutral-100">{line.detail}</p>
+                  {line.kind === "bank" && (
+                    <span className="text-[9px] font-bold uppercase tracking-wide text-blue-400/80">Bank</span>
+                  )}
+                </div>
+                <p
+                  className={cn(
+                    "text-right font-mono text-[12px] font-bold tabular-nums",
+                    line.amount >= 0 ? "text-emerald-400" : "text-rose-400",
+                  )}
+                >
+                  {line.amount >= 0 ? "+" : "−"}
+                  {money(Math.abs(line.amount)).replace(/^\$/, "")}
+                </p>
+                <p className="text-right font-mono text-[11px] font-semibold tabular-nums text-neutral-300">
+                  {line.dailyBalance === null ? "—" : money(line.dailyBalance)}
+                </p>
+              </div>
+            )
+            if (line.entry) {
+              return (
+                <button
+                  key={line.key}
+                  type="button"
+                  onClick={() => props.onEditEntry(line.entry!)}
+                  className="w-full text-left active:bg-neutral-900/60"
+                >
+                  {body}
+                </button>
+              )
+            }
+            return <div key={line.key}>{body}</div>
+          })}
+        </div>
       </div>
     </div>
   )
@@ -373,29 +424,28 @@ export function TransfersReport(props: { report: TransferReport; onBack: () => v
   const { report } = props
   return (
     <div className="flex flex-col gap-3 px-1">
-      <div className="sticky top-0 z-10 flex items-center gap-2 rounded-xl border border-neutral-700 bg-neutral-950/95 p-2 backdrop-blur">
-        <button type="button" onClick={props.onBack} className="inline-flex items-center gap-1.5 rounded-lg border border-yellow-400/50 bg-yellow-400/10 px-3 py-2 text-[12px] font-bold text-yellow-300">
+      <div className="sticky top-0 z-10 flex items-center gap-2 rounded-xl border border-neutral-700 bg-neutral-950/95 p-2">
+        <button
+          type="button"
+          onClick={props.onBack}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-yellow-400/50 bg-yellow-400/10 px-3 py-2 text-[12px] font-bold text-yellow-300"
+        >
           <ArrowLeft className="size-4" /> Accounts
         </button>
-        <div className="min-w-0">
+        <div>
           <p className="text-[14px] font-extrabold text-white">Transfers</p>
-          <p className="text-[10px] text-neutral-500">Not the register · tap Accounts</p>
+          <p className="text-[10px] text-neutral-500">Not the statement register</p>
         </div>
       </div>
-      <div className="flex gap-2 text-[11px] font-bold">
-        <span className="rounded-lg bg-emerald-500/15 px-2 py-1 text-emerald-300">{report.pairs.length} matched</span>
-        <span className="rounded-lg bg-amber-500/15 px-2 py-1 text-amber-300">{report.unmatchedOut.length + report.unmatchedIn.length} unmatched</span>
-      </div>
-      {report.pairs.slice(0, 15).map((p) => (
-        <div key={p.id} className="rounded-xl border border-emerald-500/20 bg-emerald-950/20 px-3 py-2 text-[12px]">
+      <p className="text-[11px] text-neutral-400">
+        {report.pairs.length} matched · {report.unmatchedOut.length + report.unmatchedIn.length} unmatched
+      </p>
+      {report.pairs.slice(0, 12).map((p) => (
+        <div key={p.id} className="rounded-xl border border-emerald-500/20 px-3 py-2 text-[12px]">
           <p className="font-semibold text-emerald-200">{p.originLabel || "Transfer"}</p>
-          <p className="text-neutral-400">{p.outTx.bank_account} → {p.inTx.bank_account} · ${p.amount.toFixed(2)}</p>
-        </div>
-      ))}
-      {report.unmatchedOut.slice(0, 8).map((t, i) => (
-        <div key={`out-${i}`} className="rounded-xl border border-amber-500/20 px-3 py-2 text-[12px]">
-          <p className="font-semibold text-amber-200">Unmatched · {t.bank_account}</p>
-          <p className="truncate text-neutral-400">{t.detail}</p>
+          <p className="text-neutral-400">
+            {p.outTx.bank_account} → {p.inTx.bank_account} · ${p.amount.toFixed(2)}
+          </p>
         </div>
       ))}
     </div>
