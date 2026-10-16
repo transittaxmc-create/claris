@@ -319,7 +319,13 @@ export function CashFlowRegister({
   const activeAccount = view.kind === "account" ? registers.find((r) => r.id === view.id) || null : null
 
   return (
-    <div className="flex w-full flex-col overflow-x-hidden px-1">
+    <div
+      className="flex w-full flex-col overflow-x-hidden px-1"
+      style={{
+        paddingTop: "env(safe-area-inset-top, 0px)",
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
+      }}
+    >
       {/* Header fijo: DUAL REGISTER + LIVE + SYNC */}
       <div className="sticky top-0 z-20 border-b border-neutral-800 bg-black/95 px-3 py-2.5 backdrop-blur-md">
         <div className="flex items-center justify-center gap-2 px-1 text-[10px] font-bold text-neutral-400">
