@@ -19,6 +19,28 @@ import {
 import { MoneyInput } from "./money-input"
 import { sugerirTipoDoc } from "./cash-flow-store"
 import { accountBalance, accountDisplayName, accountIdFor, buildRegisters } from "./registers-store"
+import {
+  addBillPayment,
+  billForLearnedRule,
+  billPaidTotal,
+  billRemaining,
+  billStatus,
+  detectBillPayments,
+  isBill,
+  isBillOpen,
+  learnedRuleFor,
+  learnConfirm,
+  learnDismiss,
+  newBillPayment,
+  offerReceiptBillMatch,
+  removeBillPayment,
+  ruleKeyFor,
+  syncBillToProjections,
+  bankTxIdOf,
+  vendorFuzzyMatch,
+  type BankTxIn,
+  type DetectedPayment,
+} from "./bill-payments"
 
 // ---------------------------------------------------------------------------
 // Emparejar recibos con el statement del banco.
@@ -127,13 +149,24 @@ function ExpenseRow({
   onDelete,
   bankMatch,
   accountName,
+  onAddPayment,
+  onDeletePayment,
+  accountNameById,
 }: {
   expense: Expense
   onEdit: (e: Expense) => void
   onDelete: (id: string) => void
   bankMatch?: BankTxLite | null
   accountName?: string | null
+  onAddPayment?: (billId: string) => void
+  onDeletePayment?: (billId: string, paymentId: string) => void
+  accountNameById?: Map<string, string>
 }) {
+  const esFactura = isBill(expense)
+  const pagado = esFactura ? billPaidTotal(expense) : 0
+  const resta = esFactura ? billRemaining(expense) : 0
+  const estado = esFactura ? billStatus(expense) : "abierta"
+  const pagos = esFactura ? (Array.isArray(expense.payments) ? expense.payments : []) : []
   return (
     <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3.5">
       <div className="flex items-start justify-between gap-2">
@@ -216,6 +249,67 @@ function ExpenseRow({
           <Trash2 className="size-3" />
         </button>
       </div>
+
+      {esFactura && (
+        <div className="mt-2 rounded-xl border border-cyan-500/25 bg-cyan-500/5 px-2.5 py-2">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] font-bold text-neutral-300">
+              Total {money(expense.amount)} <span className="text-neutral-600">·</span>{" "}
+              <span className="text-emerald-400">Pagado {money(pagado)}</span>{" "}
+              <span className="text-neutral-600">·</span>{" "}
+              <span className={resta > 0.009 ? "text-amber-300" : "text-neutral-400"}>
+                Restan {money(resta)}
+              </span>
+            </p>
+            {estado === "pagada" ? (
+              <span className="shrink-0 rounded-full border border-emerald-500/50 bg-emerald-500/15 px-2 py-0.5 text-[9px] font-black text-emerald-300">
+                PAGADA
+              </span>
+            ) : (
+              <span className="inline-flex shrink-0 animate-pulse items-center gap-1 rounded-full border border-amber-500/50 bg-amber-500/15 px-2 py-0.5 text-[9px] font-black text-amber-300">
+                ⏳ Pending Balance
+              </span>
+            )}
+          </div>
+          {pagos.length > 0 && (
+            <div className="mt-1.5 space-y-1">
+              {pagos.map((p) => (
+                <div key={p.id} className="flex items-center justify-between gap-2 text-[10px]">
+                  <span className="min-w-0 truncate text-neutral-400">
+                    {String(p.date).slice(0, 10)} · {money(p.amount)}
+                    {p.accountId && accountNameById?.get(p.accountId)
+                      ? ` · ${accountNameById.get(p.accountId)}`
+                      : ""}
+                    {p.source === "banco" ? " · 🏦" : p.source === "recibo" ? " · 🧾" : ""}
+                    {p.auto ? (
+                      <span className="ml-1 rounded bg-sky-500/20 px-1 py-px text-[8px] font-black text-sky-300">
+                        auto
+                      </span>
+                    ) : null}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onDeletePayment?.(expense.id, p.id)}
+                    className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold text-rose-400 hover:bg-rose-950/40"
+                    title="Quitar pago (deshacer)"
+                  >
+                    quitar
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {estado === "abierta" && onAddPayment && (
+            <button
+              type="button"
+              onClick={() => onAddPayment(expense.id)}
+              className="mt-1.5 w-full rounded-lg border border-cyan-500/40 bg-cyan-500/10 py-1.5 text-[10px] font-extrabold text-cyan-200 active:scale-[0.99]"
+            >
+              ＋ REGISTRAR PAGO
+            </button>
+          )}
+        </div>
+      )}
 
       {expense.notes && <p className="mt-2 line-clamp-2 text-[11px] leading-tight text-neutral-500">{expense.notes}</p>}
     </div>
@@ -312,6 +406,135 @@ export function ExpensesScreen({
     }
     return m
   }, [expenses, bankTxs])
+
+  // ---- Sistema de pago de facturas por partes ----
+  // Formulario compacto "Registrar pago" (monto + cuenta + fecha).
+  const [payDraft, setPayDraft] = useState<{ billId: string; amount: string; accountId: string; date: string } | null>(null)
+  // Sugerencias descartadas por Miguel (no vuelven a salir en esta sesión).
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+  // Cargos ya procesados por auto-clasificación (no repetir).
+  const autoDoneRef = useRef<Set<string>>(new Set())
+
+  // Detección: cargos bancarios que parecen pagos de facturas abiertas.
+  // Incluye pago dividido (varios cargos que suman el resto).
+  const detected: DetectedPayment[] = useMemo(() => {
+    if (bankTxs.length === 0) return []
+    const txs: BankTxIn[] = bankTxs.map((t) => ({
+      date: String(t.date || ""),
+      bank_account: String(t.bank_account || ""),
+      detail: String(t.detail || ""),
+      amount: Number(t.amount) || 0,
+    }))
+    return detectBillPayments(expenses, txs).filter((d) => !dismissed.has(d.id))
+  }, [expenses, bankTxs, dismissed])
+
+  // Auto-clasificación por aprendizaje: si el vendedor ya tiene 2+
+  // confirmaciones hacia una factura, se adjunta solo (etiqueta "auto",
+  // se puede quitar). Nunca pide permiso, pero siempre se puede deshacer.
+  useEffect(() => {
+    if (detected.length === 0) return
+    for (const d of detected) {
+      if (autoDoneRef.current.has(d.id)) continue
+      const rule = learnedRuleFor(ruleKeyFor(d.txs[0]?.detail))
+      if (!rule) continue
+      const bill = billForLearnedRule(expenses, rule)
+      if (!bill || bill.id !== d.billId) continue
+      autoDoneRef.current.add(d.id)
+      let updated = bill
+      for (const tx of d.txs) {
+        updated = addBillPayment(updated, {
+          amount: Math.abs(Number(tx.amount) || 0),
+          accountId: accountIdFor(String(tx.bank_account || "")) || undefined,
+          date: String(tx.date).slice(0, 10),
+          source: "banco",
+          bankTxId: bankTxIdOf(tx),
+          auto: true,
+        })
+      }
+      onSave(updated)
+      syncBillToProjections(updated)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detected])
+
+  // Sugerencias visibles (las auto-clasificadas no se muestran: ya se adjuntaron).
+  const visibleDetected = useMemo(
+    () => detected.filter((d) => !autoDoneRef.current.has(d.id)),
+    [detected],
+  )
+
+  function attachDetected(d: DetectedPayment) {
+    const bill = expenses.find((e) => e.id === d.billId)
+    if (!bill || !isBillOpen(bill)) return
+    let updated = bill
+    for (const tx of d.txs) {
+      updated = addBillPayment(updated, {
+        amount: Math.abs(Number(tx.amount) || 0),
+        accountId: accountIdFor(String(tx.bank_account || "")) || undefined,
+        date: String(tx.date).slice(0, 10),
+        source: "banco",
+        bankTxId: bankTxIdOf(tx),
+      })
+    }
+    onSave(updated)
+    syncBillToProjections(updated)
+    // Aprende: este vendedor paga esta factura (con 2+, se auto-clasifica).
+    learnConfirm(ruleKeyFor(d.txs[0]?.detail), bill, updated.payments?.[updated.payments.length - 1]?.accountId)
+    autoDoneRef.current.add(d.id)
+  }
+
+  function dismissDetected(d: DetectedPayment) {
+    setDismissed((prev) => new Set(prev).add(d.id))
+    autoDoneRef.current.add(d.id)
+    learnDismiss(ruleKeyFor(d.txs[0]?.detail))
+  }
+
+  function openPayDraft(billId: string) {
+    const bill = expenses.find((e) => e.id === billId)
+    if (!bill) return
+    setPayDraft({
+      billId,
+      amount: String(billRemaining(bill) > 0 ? billRemaining(bill) : ""),
+      accountId: bill.accountId || defaultAccountId || "",
+      date: localDateKey(new Date()),
+    })
+  }
+
+  function savePayDraft() {
+    if (!payDraft) return
+    const bill = expenses.find((e) => e.id === payDraft.billId)
+    if (!bill || !isBillOpen(bill)) {
+      setPayDraft(null)
+      return
+    }
+    const monto = Number(payDraft.amount)
+    if (!Number.isFinite(monto) || monto <= 0) {
+      window.alert("Indica el monto del pago.")
+      return
+    }
+    if (monto > billRemaining(bill) + 0.011) {
+      if (!window.confirm(`El pago (${money(monto)}) supera lo que resta (${money(billRemaining(bill))}). ¿Guardarlo igual?`)) return
+    }
+    const updated = addBillPayment(bill, {
+      amount: monto,
+      accountId: payDraft.accountId || undefined,
+      date: payDraft.date || localDateKey(new Date()),
+      source: "manual",
+    })
+    onSave(updated)
+    syncBillToProjections(updated)
+    learnConfirm(ruleKeyFor(bill.vendor), bill, payDraft.accountId || undefined)
+    setPayDraft(null)
+  }
+
+  function deletePayment(billId: string, paymentId: string) {
+    const bill = expenses.find((e) => e.id === billId)
+    if (!bill) return
+    if (!window.confirm("¿Quitar este pago de la factura?")) return
+    const updated = removeBillPayment(bill, paymentId)
+    onSave(updated)
+    syncBillToProjections(updated)
+  }
 
   function addCustomCategory() {
     const name = newCategory.trim()
@@ -474,6 +697,24 @@ export function ExpensesScreen({
       savedAt: new Date().toISOString(),
     }
     onSave(expense)
+
+    // ¿Este recibo es pago de una factura abierta? Se ofrece una sola vez;
+    // si Miguel acepta, el pago se amarra a la factura (y se aprende).
+    if (expense.docType === "recibo") {
+      const hit = offerReceiptBillMatch(expenses, {
+        vendor: expense.vendor,
+        amount: expense.amount,
+        date: expense.date,
+        accountId: expense.accountId,
+        id: expense.id,
+      })
+      if (hit) {
+        const withPay = addBillPayment(hit.bill, hit.payment)
+        onSave(withPay)
+        syncBillToProjections(withPay)
+        learnConfirm(ruleKeyFor(expense.vendor), hit.bill, expense.accountId)
+      }
+    }
 
     // Auto-push to Dual Register projections with pending due date
     try {
@@ -888,6 +1129,118 @@ export function ExpensesScreen({
         </div>
       </div>
 
+      {/* Pagos detectados en el banco: Miguel aprueba (✓) o descarta (✕).
+          Nunca se aplica solo (salvo regla aprendida con 2+ confirmaciones). */}
+      {visibleDetected.length > 0 && (
+        <div className="mx-4 mt-2 rounded-2xl border border-sky-500/40 bg-sky-950/40 p-3">
+          <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-sky-300">
+            🔎 Pagos detectados ({visibleDetected.length})
+          </p>
+          <div className="space-y-2">
+            {visibleDetected.map((d) => (
+              <div key={d.id} className="rounded-xl border border-neutral-800 bg-neutral-950/70 p-2.5">
+                <p className="text-[11px] font-bold text-white">
+                  {d.isSplit ? "Pago dividido de " : "Posible pago de "}
+                  <span className="text-cyan-300">{d.billVendor}</span>
+                  <span className="text-neutral-500"> · restan {money(d.billRemaining)}</span>
+                </p>
+                <div className="mt-1 space-y-0.5">
+                  {d.txs.map((tx) => (
+                    <p key={bankTxIdOf(tx)} className="text-[10px] text-neutral-400">
+                      {money(Math.abs(Number(tx.amount) || 0))} ·{" "}
+                      {accountNameById.get(accountIdFor(String(tx.bank_account || ""))) ||
+                        String(tx.bank_account || "banco")}{" "}
+                      · {String(tx.date).slice(0, 10)}
+                    </p>
+                  ))}
+                </div>
+                {d.isSplit && (
+                  <p className="mt-1 text-[10px] font-bold text-emerald-300">
+                    = {money(d.total)} entre {d.txs.length} cuentas
+                  </p>
+                )}
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => attachDetected(d)}
+                    className="flex-1 rounded-lg bg-emerald-500/20 border border-emerald-500/50 py-1.5 text-[11px] font-extrabold text-emerald-300 active:scale-[0.99]"
+                  >
+                    ✓ ES PAGO
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => dismissDetected(d)}
+                    className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 py-1.5 text-[11px] font-extrabold text-neutral-400 active:scale-[0.99]"
+                  >
+                    ✕ NO ES
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Formulario compacto: registrar un pago a una factura */}
+      {payDraft && (
+        <div className="mx-4 mt-2 rounded-2xl border border-cyan-500/40 bg-neutral-900/80 p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-[11px] font-black uppercase tracking-widest text-cyan-300">Registrar pago</p>
+            <button type="button" onClick={() => setPayDraft(null)} className="text-[11px] font-bold text-rose-400">
+              CANCELAR
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="flex flex-col gap-1">
+              <span className="text-[10px] font-bold text-neutral-400">MONTO</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                min="0"
+                step="0.01"
+                value={payDraft.amount}
+                onChange={(e) => setPayDraft({ ...payDraft, amount: e.target.value })}
+                className="rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white outline-none"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[10px] font-bold text-neutral-400">FECHA</span>
+              <input
+                type="date"
+                value={payDraft.date}
+                onChange={(e) => setPayDraft({ ...payDraft, date: e.target.value })}
+                className="rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white outline-none [color-scheme:dark]"
+              />
+            </label>
+          </div>
+          {orderedRegisters.length > 0 && (
+            <label className="mt-2 flex flex-col gap-1">
+              <span className="text-[10px] font-bold text-neutral-400">¿DE QUÉ CUENTA SALIÓ?</span>
+              <select
+                value={payDraft.accountId}
+                onChange={(e) => setPayDraft({ ...payDraft, accountId: e.target.value })}
+                className="rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white outline-none"
+              >
+                <option value="">Sin indicar</option>
+                {orderedRegisters.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {accountDisplayName(r.name).title}
+                    {r.isMain ? " ★" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <button
+            type="button"
+            onClick={savePayDraft}
+            className="mt-3 w-full rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 py-2.5 text-sm font-extrabold text-black active:scale-[0.99]"
+          >
+            GUARDAR PAGO
+          </button>
+        </div>
+      )}
+
       {/* Lista */}
       <div className="flex-1 space-y-2.5 overflow-y-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {filtered.length === 0 ? (
@@ -914,6 +1267,9 @@ export function ExpensesScreen({
               onDelete={deleteWithConfirm}
               bankMatch={bankMatches.get(e.id) ?? null}
               accountName={e.accountId ? accountNameById.get(e.accountId) ?? null : null}
+              onAddPayment={openPayDraft}
+              onDeletePayment={deletePayment}
+              accountNameById={accountNameById}
             />
           ))
         )}
