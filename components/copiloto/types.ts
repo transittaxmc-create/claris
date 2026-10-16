@@ -65,6 +65,40 @@ export type CashFlowOrigin = "scan" | "manual" | "bank" | "trip" | "square"
 export type ExpenseClassification = "business" | "personal"
 export type ExpenseDocType = "factura" | "recibo" | "manual"
 
+/** Origen de un pago aplicado a una factura. */
+export type BillPaymentSource = "recibo" | "banco" | "manual"
+
+/** Un pago (total o parcial) aplicado a una factura. Cada pago cae en el
+ *  register de su cuenta; la factura lleva la cuenta Total | Pagado | Resta. */
+export type BillPayment = {
+  id: string
+  amount: number
+  /** Register/cuenta de donde salió el pago. */
+  accountId?: string
+  /** Fecha del pago (yyyy-mm-dd). */
+  date: string
+  source: BillPaymentSource
+  /** Id estable del cargo bancario (para no sugerirlo dos veces). */
+  bankTxId?: string
+  /** Id del gasto-recibo que originó el pago, si aplica. */
+  receiptId?: string
+  note?: string
+  /** true = clasificado solo por aprendizaje (lleva etiqueta "auto" y se puede deshacer). */
+  auto?: boolean
+  createdAt: string
+}
+
+export function newBillPayment(p: Omit<BillPayment, "id" | "createdAt">): BillPayment {
+  return {
+    ...p,
+    id:
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `pay-${Date.now()}-${Math.floor(Math.random() * 1e6)}`,
+    createdAt: new Date().toISOString(),
+  }
+}
+
 export type CashFlowEntry = {
   id: string
   date: string
@@ -98,6 +132,8 @@ export type Expense = {
   docType?: ExpenseDocType
   /** Register/cuenta de donde salió el gasto (id de registers-store). */
   accountId?: string
+  /** Pagos aplicados (solo facturas). La factura se cancela sola al completarse. */
+  payments?: BillPayment[]
   createdAt?: string
   updatedAt?: string
 }
