@@ -4,14 +4,25 @@ import { useState } from "react"
 import {
   ArrowLeft,
   ArrowLeftRight,
+  Building2,
   CalendarClock,
+  Camera,
+  Car,
   CreditCard,
   Landmark,
   Plus,
+  Receipt,
   Star,
+  TrendingUp,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { money, type CashFlowEntry } from "./types"
+import { money, type CashFlowEntry, type CashFlowOrigin } from "./types"
+import {
+  ETIQUETA_ORIGEN,
+  ETIQUETA_TIPO,
+  origenDe,
+  tipoDocDe,
+} from "./cash-flow-store"
 import {
   type RegisterAccount,
   type DueItem,
@@ -39,6 +50,42 @@ function shortDate(iso: string): string {
   } catch {
     return iso.slice(5)
   }
+}
+
+// Dos etiquetas por movimiento: ORIGEN (Escaneado / Manual / Banco / Cobros /
+// Square) y TIPO (Factura = por pagar, Recibo = ya pagado).
+function EntryBadges({ entry }: { entry: CashFlowEntry }) {
+  const base =
+    "inline-flex items-center gap-0.5 whitespace-nowrap rounded border px-1 py-0.5 text-[9px] font-semibold"
+  const origin: CashFlowOrigin = origenDe(entry)
+  const tipo = tipoDocDe(entry)
+  const originStyle: Record<CashFlowOrigin, string> = {
+    scan: "border-sky-500/30 bg-sky-500/10 text-sky-300",
+    manual: "border-neutral-700 bg-neutral-800 text-neutral-400",
+    bank: "border-blue-500/20 bg-blue-500/10 text-blue-400",
+    trip: "border-amber-500/20 bg-amber-500/10 text-amber-400",
+    square: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+  }
+  return (
+    <span className="mt-0.5 flex flex-wrap items-center gap-1">
+      <span className={cn(base, originStyle[origin])}>
+        {origin === "scan" && <Camera className="size-2.5" />}
+        {origin === "bank" && <Building2 className="size-2.5" />}
+        {origin === "trip" && <Car className="size-2.5" />}
+        {entry.origin === "trip" && entry.sourceLabel ? entry.sourceLabel : ETIQUETA_ORIGEN[origin]}
+      </span>
+      {tipo === "factura" && (
+        <span className={cn(base, "border-cyan-500/30 bg-cyan-500/10 text-cyan-300")}>
+          <TrendingUp className="size-2.5" /> {ETIQUETA_TIPO.factura}
+        </span>
+      )}
+      {tipo === "recibo" && (
+        <span className={cn(base, "border-purple-500/30 bg-purple-500/10 text-purple-300")}>
+          <Receipt className="size-2.5" /> {ETIQUETA_TIPO.recibo}
+        </span>
+      )}
+    </span>
+  )
 }
 
 export function RegistersHome(props: {
@@ -71,6 +118,11 @@ export function RegistersHome(props: {
     return { date: d.nextDate, label: `${d.accountName} due`, amount: amt }
   })
 
+  // Facturas por pagar (proyectadas): lista individual, sin duplicar el pronóstico.
+  const facturas = (props.entries || [])
+    .filter((e) => e.type === "expense" && e.status === "projected" && Math.abs(Number(e.amount) || 0) > 0.009)
+    .sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")))
+
   return (
     <div className="flex flex-col gap-2.5 overflow-x-hidden">
       <div className="grid grid-cols-3 gap-1.5 rounded-2xl border border-neutral-800 bg-neutral-950/80 p-2.5">
@@ -89,13 +141,6 @@ export function RegistersHome(props: {
           <p className={cn("font-mono text-base font-black tabular-nums", net < 0 ? "text-rose-400" : "text-white")}>{money(net)}</p>
         </div>
       </div>
-
-      <ProjectedCashFlow
-        availableNow={available}
-        entries={(props.entries || []).filter((e) => Math.abs(Number(e.amount) || 0) > 0)}
-        dues={dueLines.filter((d) => d.amount > 0.009)}
-        onEditEntry={props.onEditEntry}
-      />
 
       <div>
         <p className="mb-1 px-1 text-[10px] font-bold uppercase tracking-widest text-neutral-500">Accounts · {registers.length}</p>
@@ -156,6 +201,82 @@ export function RegistersHome(props: {
           <span className="text-[10px] font-bold text-neutral-400">{pairCount} matched · {looseCount} open</span>
         </button>
       )}
+
+      {/* PROYECCIONES — separado de lo real del banco. Nada repetido. */}
+      <div className="border-t-2 border-dashed border-neutral-800 pt-3">
+        <p className="mb-2 px-1 text-[10px] font-bold uppercase tracking-widest text-cyan-300/80">
+          🔮 Proyecciones
+        </p>
+
+        <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-2.5">
+          <p className="mb-1.5 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-neutral-500">
+            <CalendarClock className="size-3.5 text-amber-300" /> Próximos vencimientos
+          </p>
+          {dues.length === 0 ? (
+            <p className="text-[11px] text-neutral-500">Sin vencimientos programados.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {dues.slice(0, 8).map((d) => (
+                <div key={d.accountId} className="flex items-center justify-between gap-2 text-[12px]">
+                  <span className="truncate font-semibold text-neutral-200">{d.accountName}</span>
+                  <span className="flex shrink-0 items-center gap-1.5">
+                    <span className="text-neutral-400">{d.nextDate.slice(5)}</span>
+                    <span
+                      className={cn(
+                        "rounded px-1.5 py-0.5 text-[10px] font-black",
+                        d.daysUntil <= 0
+                          ? "bg-rose-500/20 text-rose-300"
+                          : d.daysUntil <= 3
+                            ? "bg-amber-500/20 text-amber-300"
+                            : "bg-neutral-800 text-neutral-400",
+                      )}
+                    >
+                      {d.daysUntil <= 0 ? "hoy" : `${d.daysUntil}d`}
+                    </span>
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {facturas.length > 0 && (
+          <div className="mt-2 rounded-2xl border border-neutral-800 bg-neutral-950/60 p-2.5">
+            <p className="mb-1.5 text-[10px] font-bold uppercase tracking-widest text-neutral-500">
+              Facturas por pagar
+            </p>
+            <div className="space-y-0.5">
+              {facturas.map((f) => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => props.onEditEntry?.(f)}
+                  className="flex w-full items-center justify-between gap-2 rounded-lg py-1.5 text-left active:bg-neutral-900/60"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-[12px] font-semibold text-neutral-200">
+                      {f.description || "—"}
+                    </span>
+                    <span className="block text-[10px] text-neutral-500">{shortDate(f.date)}</span>
+                  </span>
+                  <span className="shrink-0 font-mono text-[12px] font-bold tabular-nums text-cyan-300">
+                    {money(Math.abs(Number(f.amount) || 0))}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-2">
+          <ProjectedCashFlow
+            availableNow={available}
+            entries={(props.entries || []).filter((e) => Math.abs(Number(e.amount) || 0) > 0)}
+            dues={dueLines.filter((d) => d.amount > 0.009)}
+            onEditEntry={props.onEditEntry}
+          />
+        </div>
+      </div>
     </div>
   )
 }
@@ -309,8 +430,8 @@ export function RegisterDetail(props: {
       </div>
 
       <div className="flex shrink-0 gap-2">
-        <button type="button" onClick={props.onAddBill} className="flex-1 rounded-xl border border-cyan-500/40 bg-cyan-500/10 py-2.5 text-xs font-bold text-cyan-200">+ Bill</button>
-        <button type="button" onClick={props.onAddPost} className="flex-1 rounded-xl border border-purple-500/40 bg-purple-500/10 py-2.5 text-xs font-bold text-purple-200">+ Receipt</button>
+        <button type="button" onClick={props.onAddBill} className="flex-1 rounded-xl border border-cyan-500/40 bg-cyan-500/10 py-2.5 text-xs font-bold text-cyan-200">+ Factura</button>
+        <button type="button" onClick={props.onAddPost} className="flex-1 rounded-xl border border-purple-500/40 bg-purple-500/10 py-2.5 text-xs font-bold text-purple-200">+ Recibo</button>
       </div>
 
       {/* Statement: Date | Amount | Balance — ALL accounts */}
@@ -330,6 +451,7 @@ export function RegisterDetail(props: {
                 <div className="min-w-0">
                   <p className="text-[10px] font-semibold text-neutral-500">{shortDate(line.date)}</p>
                   <p className="truncate text-[12px] font-medium leading-snug text-neutral-100">{line.detail}</p>
+                  {line.entry && <EntryBadges entry={line.entry} />}
                 </div>
                 <p className={cn("text-right font-mono text-[12px] font-bold tabular-nums", line.amount >= 0 ? "text-emerald-400" : "text-rose-400")}>
                   {line.amount >= 0 ? "+" : "−"}
