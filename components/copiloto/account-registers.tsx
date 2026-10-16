@@ -126,6 +126,55 @@ export function RegistersHome(props: {
     .filter((e) => e.type === "expense" && e.status === "projected" && Math.abs(Number(e.amount) || 0) > 0.009)
     .sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")))
 
+  // Grupos por tipo de cuenta: bancos juntos, tarjetas juntas, manuales juntas.
+  const bancos = registers.filter((r) => r.kind === "bank" && r.source !== "manual")
+  const tarjetas = registers.filter((r) => r.kind === "card")
+  const otras = registers.filter((r) => r.source === "manual" && r.kind !== "card")
+  const grupos: Array<{ titulo: string; items: RegisterAccount[] }> = [
+    { titulo: "Bancos", items: bancos },
+    { titulo: "Tarjetas", items: tarjetas },
+    { titulo: "Otras", items: otras },
+  ].filter((g) => g.items.length > 0)
+
+  const tarjetaCuenta = (r: RegisterAccount) => {
+    const bal = balances[r.id]
+    const isCard = r.kind === "card"
+    const d = accountDisplayName(r.name)
+    return (
+      <button
+        key={r.id}
+        type="button"
+        onClick={() => props.onOpenAccount(r.id)}
+        className={cn(
+          "rounded-xl border p-2 text-left active:scale-[0.98]",
+          r.isMain ? "border-yellow-400/50 bg-yellow-400/[0.06]" : "border-neutral-800 bg-neutral-900/70",
+        )}
+      >
+        <div className="flex items-center justify-between gap-1">
+          <span
+            className={cn(
+              "inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[7px] font-black",
+              isCard ? "bg-purple-500/15 text-purple-300" : "bg-blue-500/15 text-blue-300",
+            )}
+          >
+            {isCard ? <CreditCard className="size-2" /> : <Landmark className="size-2" />}
+            {isCard ? "CARD" : "BANK"}
+          </span>
+          {r.isMain && <Star className="size-2.5 fill-yellow-400 text-yellow-400" />}
+        </div>
+        <p className="mt-1 truncate text-[10px] font-bold leading-tight text-white">{d.title}</p>
+        <p
+          className={cn(
+            "mt-0.5 text-base font-black tabular-nums leading-tight",
+            bal === null ? "text-neutral-500" : bal < 0 ? "text-rose-400" : "text-emerald-400",
+          )}
+        >
+          {bal === null ? "—" : money(bal)}
+        </p>
+      </button>
+    )
+  }
+
   return (
     <div className="flex flex-col gap-3 overflow-x-hidden">
       <div className="grid grid-cols-3 gap-1.5 rounded-2xl border border-neutral-800 bg-neutral-950/80 p-2.5">
@@ -148,50 +197,22 @@ export function RegistersHome(props: {
       <div>
         <p className="mb-1 px-1 text-[10px] font-bold uppercase tracking-widest text-neutral-500">Cuentas · {registers.length}</p>
         <p className="mb-1.5 px-1 text-[11px] text-neutral-500">Toca una cuenta → estado con Balance · lo nuevo arriba</p>
-        <div className="grid grid-cols-3 gap-1.5">
-          {registers.map((r) => {
-            const bal = balances[r.id]
-            const isCard = r.kind === "card"
-            const d = accountDisplayName(r.name)
-            return (
-              <button
-                key={r.id}
-                type="button"
-                onClick={() => props.onOpenAccount(r.id)}
-                className={cn(
-                  "rounded-xl border p-2 text-left active:scale-[0.98]",
-                  r.isMain ? "border-yellow-400/50 bg-yellow-400/[0.06]" : "border-neutral-800 bg-neutral-900/70",
-                )}
-              >
-                <div className="flex items-center justify-between gap-1">
-                  <span
-                    className={cn(
-                      "inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[7px] font-black",
-                      isCard ? "bg-purple-500/15 text-purple-300" : "bg-blue-500/15 text-blue-300",
-                    )}
-                  >
-                    {isCard ? <CreditCard className="size-2" /> : <Landmark className="size-2" />}
-                    {isCard ? "CARD" : "BANK"}
-                  </span>
-                  {r.isMain && <Star className="size-2.5 fill-yellow-400 text-yellow-400" />}
-                </div>
-                <p className="mt-1 truncate text-[10px] font-bold leading-tight text-white">{d.title}</p>
-                <p
-                  className={cn(
-                    "mt-0.5 text-base font-black tabular-nums leading-tight",
-                    bal === null ? "text-neutral-500" : bal < 0 ? "text-rose-400" : "text-emerald-400",
-                  )}
-                >
-                  {bal === null ? "—" : money(bal)}
-                </p>
-              </button>
-            )
-          })}
-          <button type="button" onClick={props.onAddAccount} className="flex min-h-[76px] flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-neutral-700 p-2 text-neutral-400">
-            <Plus className="size-4" />
-            <span className="text-[9px] font-bold">Agregar</span>
-          </button>
-        </div>
+        {grupos.map((g, gi) => (
+          <div key={g.titulo} className={gi > 0 ? "mt-2.5" : ""}>
+            <p className="mb-1 px-1 text-[9px] font-bold uppercase tracking-widest text-neutral-500">
+              {g.titulo} · {g.items.length}
+            </p>
+            <div className="grid grid-cols-3 gap-1.5">
+              {g.items.map(tarjetaCuenta)}
+              {gi === grupos.length - 1 && (
+                <button type="button" onClick={props.onAddAccount} className="flex min-h-[76px] flex-col items-center justify-center gap-0.5 rounded-xl border border-dashed border-neutral-700 p-2 text-neutral-400">
+                  <Plus className="size-4" />
+                  <span className="text-[9px] font-bold">Agregar</span>
+                </button>
+              )}
+            </div>
+          </div>
+        ))}
       </div>
 
       {(pairCount > 0 || looseCount > 0) && (
