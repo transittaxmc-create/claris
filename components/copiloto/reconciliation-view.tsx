@@ -28,18 +28,36 @@ export function ReconciliationSection(props: {
 }) {
   const { report, loading } = props
   const findings = (report?.accounts || []).flatMap((a) => a.findings)
+  // Diseño MONEY: "CIERRE DEL DÍA · mm-dd" + insignia de pendientes.
+  const hoy = (report?.date || new Date().toISOString().slice(0, 10)).slice(5)
+  const hora = report?.ranAt
+    ? new Date(report.ranAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+    : null
 
   return (
-    <div className="border-t-2 border-dashed border-neutral-800 pt-3">
-      <div className="mb-2 flex items-center justify-between px-1">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-300/90">
-          ✓ Reconciliación
+    <div className="pt-1">
+      <div className="mb-1 flex items-center justify-between gap-2 px-1">
+        <p className="text-[13px] font-extrabold tracking-[.08em] text-[#2fbf71]">CIERRE DEL DÍA · {hoy}</p>
+        {report && report.ok && (
+          <span
+            className={cn(
+              "rounded-lg px-2.5 py-0.5 text-[11px] font-extrabold",
+              findings.length > 0 ? "bg-[#f5b84c] text-[#3a2a00]" : "bg-[#2fbf71] text-[#06281a]",
+            )}
+          >
+            {findings.length > 0 ? `${findings.length} por revisar` : "TODO CUADRA"}
+          </span>
+        )}
+      </div>
+      <div className="mb-2 flex items-center justify-between gap-2 px-1">
+        <p className="text-[11px] text-[#66687c]">
+          {hora ? `Verificado a las ${hora}` : "Sin verificar hoy"} · Tú revisas al final del día
         </p>
         <button
           type="button"
           onClick={props.onRun}
           disabled={loading}
-          className="inline-flex items-center gap-1 rounded-lg border border-neutral-700 bg-neutral-900 px-2.5 py-1.5 text-[10px] font-bold text-neutral-200 active:scale-95 disabled:opacity-50"
+          className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#262633] bg-[#16161f] px-2.5 py-1.5 text-[10px] font-bold text-[#f2f3f7] active:scale-95 disabled:opacity-50"
         >
           <RefreshCw className={cn("size-3", loading && "animate-spin")} />
           {loading ? "Verificando…" : "Verificar ahora"}
@@ -47,7 +65,7 @@ export function ReconciliationSection(props: {
       </div>
 
       {!report && !loading && (
-        <p className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3 text-[11px] text-neutral-500">
+        <p className="rounded-[14px] border border-[#262633] bg-[#16161f] p-3 text-[11px] text-[#9a9cb0]">
           Aún no se verifica hoy. Toca «Verificar ahora».
         </p>
       )}
@@ -65,8 +83,8 @@ export function ReconciliationSection(props: {
 
       {report && report.ok && (
         <div>
-          <div className="mb-2 flex items-center justify-between rounded-2xl border border-neutral-800 bg-neutral-950/60 px-3 py-2">
-            <span className="flex items-center gap-1.5 text-[11px] font-bold text-neutral-300">
+          <div className="mb-2 flex items-center justify-between rounded-[14px] border border-[#262633] bg-[#16161f] px-3 py-2">
+            <span className="flex items-center gap-1.5 text-[11px] font-bold text-[#f2f3f7]">
               <ShieldCheck className="size-3.5 text-emerald-400" />
               {report.summary.cuadradas}/{report.summary.total} cuentas cuadradas
               {report.summary.diferenciaTotal > 0.009 && (
@@ -77,18 +95,18 @@ export function ReconciliationSection(props: {
               <button
                 type="button"
                 onClick={props.onApproveAll}
-                className="rounded-lg bg-emerald-500 px-2.5 py-1 text-[10px] font-black text-black active:scale-95"
+                className="rounded-lg bg-[#2fbf71] px-2.5 py-1 text-[10px] font-black text-[#06281a] active:scale-95"
               >
                 Aprobar todo
               </button>
             )}
           </div>
-          <p className="mb-2 px-1 text-[10px] text-neutral-500">
+          <p className="mb-2 px-1 text-[10px] text-[#66687c]">
             Verificado {report.date} · nada se aplica sin tu aprobación
           </p>
 
           {findings.length === 0 ? (
-            <p className="rounded-2xl border border-emerald-900/60 bg-emerald-950/30 p-3 text-[12px] font-bold text-emerald-300">
+            <p className="rounded-[14px] border border-[rgba(47,191,113,.5)] bg-[#16161f] p-3 text-[12px] font-bold text-[#2fbf71]">
               ✅ Todo cuadra. Sin hallazgos hoy.
             </p>
           ) : (
@@ -96,7 +114,7 @@ export function ReconciliationSection(props: {
               {report.accounts
                 .filter((a) => a.findings.length > 0)
                 .map((a) => (
-                  <div key={a.accountId} className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-2.5">
+                  <div key={a.accountId} className="rounded-[14px] border border-[#262633] bg-[#111119] p-2.5">
                     <p className="mb-1.5 flex items-center gap-1.5 px-0.5 text-[11px] font-extrabold text-white">
                       <span
                         className={cn(
@@ -113,11 +131,11 @@ export function ReconciliationSection(props: {
                       {a.findings.map((f) => (
                         <div
                           key={f.key}
-                          className="rounded-xl border border-neutral-800 bg-neutral-900/70 p-2"
+                          className="rounded-xl border border-[#262633] bg-[#16161f] px-3 py-2.5"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
-                              <p className="text-[11px] font-bold text-neutral-100">
+                              <p className="text-[12px] font-bold text-[#f2f3f7]">
                                 <span
                                   className={cn(
                                     "mr-1.5 inline-block rounded px-1 py-0.5 text-[8px] font-black uppercase",
@@ -130,36 +148,37 @@ export function ReconciliationSection(props: {
                                 </span>
                                 {f.title}
                               </p>
-                              <p className="mt-0.5 text-[10px] text-neutral-400">{f.detail}</p>
-                              <p className="mt-0.5 text-[10px] text-neutral-500">
-                                Propuesta: <span className="font-bold text-neutral-300">{f.proposedAction.label}</span>
+                              <p className="mt-0.5 text-[11px] text-[#9a9cb0]">{f.detail}</p>
+                              <p className="mt-0.5 text-[11px] text-[#9a9cb0]">
+                                Propuesta: <span className="font-bold text-[#f2f3f7]">{f.proposedAction.label}</span>
                               </p>
                             </div>
                           </div>
-                          <div className="mt-1.5 flex gap-1.5">
+                          <div className="mt-2 flex gap-2">
                             <button
                               type="button"
                               onClick={() => props.onApprove(f)}
-                              className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg bg-emerald-500/90 py-1.5 text-[10px] font-black text-black active:scale-95"
+                              className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl bg-[#2fbf71] py-2.5 text-[13px] font-extrabold text-[#06281a] active:scale-95"
                             >
-                              <Check className="size-3" /> Aprobar
+                              <Check className="size-3.5" /> OK
                             </button>
                             {(f.entryId || f.bankTx) && (
                               <button
                                 type="button"
                                 onClick={() => props.onEdit(f)}
-                                className="inline-flex flex-1 items-center justify-center gap-1 rounded-lg border border-neutral-700 bg-neutral-900 py-1.5 text-[10px] font-bold text-neutral-200 active:scale-95"
+                                className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl border border-[#262633] bg-[#16161f] py-2.5 text-[13px] font-semibold text-[#f2f3f7] active:scale-95"
                               >
-                                <Pencil className="size-3" /> Editar
+                                <Pencil className="size-3.5" /> Corregir
                               </button>
                             )}
                             <button
                               type="button"
                               onClick={() => props.onReject(f)}
-                              className="inline-flex items-center justify-center gap-1 rounded-lg border border-neutral-700 bg-neutral-900 px-2.5 py-1.5 text-[10px] font-bold text-neutral-400 active:scale-95"
+                              aria-label="Rechazar"
+                              className="inline-flex items-center justify-center rounded-xl border border-[#262633] bg-[#16161f] px-3 py-2.5 text-[#9a9cb0] active:scale-95"
                               title="Rechazar (no se propone por 7 días)"
                             >
-                              <X className="size-3" />
+                              <X className="size-3.5" />
                             </button>
                           </div>
                         </div>

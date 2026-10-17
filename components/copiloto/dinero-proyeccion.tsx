@@ -90,6 +90,40 @@ function KindBadge({ line }: { line: ForecastLine }) {
   )
 }
 
+/**
+ * Recurrentes + descartes de "probablemente pagado", releídos al montar y
+ * cuando el sync o otra pestaña los cambian. Compartido por la franja MONEY y
+ * la vista Projections para que ambas muestren el mismo número.
+ */
+export function useForecastInputs(): {
+  schedules: ScheduledEntry[]
+  dismissed: string[]
+  setDismissed: (next: string[]) => void
+} {
+  const [schedules, setSchedules] = useState<ScheduledEntry[]>([])
+  const [dismissed, setDismissedState] = useState<string[]>([])
+  useEffect(() => {
+    const load = () => {
+      setSchedules(readList<ScheduledEntry>(FINANCE_SCHEDULES_KEY))
+      setDismissedState(readList<string>(FORECAST_DISMISSED_KEY).filter((x) => typeof x === "string"))
+    }
+    load()
+    window.addEventListener(FINANCE_SYNCED_EVENT, load)
+    window.addEventListener("storage", load)
+    return () => {
+      window.removeEventListener(FINANCE_SYNCED_EVENT, load)
+      window.removeEventListener("storage", load)
+    }
+  }, [])
+  const setDismissed = (next: string[]) => {
+    setDismissedState(next)
+    try {
+      localStorage.setItem(FORECAST_DISMISSED_KEY, JSON.stringify(next))
+    } catch {}
+  }
+  return { schedules, dismissed, setDismissed }
+}
+
 export function DineroProyeccion(props: {
   registers: RegisterAccount[]
   balances: Record<string, number | null>
@@ -104,24 +138,9 @@ export function DineroProyeccion(props: {
   onMarkPaid?: (e: CashFlowEntry, paidDate: string) => void
 }) {
   const [horizon, setHorizon] = useState<Horizon>("mes")
-  const [schedules, setSchedules] = useState<ScheduledEntry[]>([])
-  const [dismissed, setDismissed] = useState<string[]>([])
   const [verDias, setVerDias] = useState(false)
-
   // Recurrentes y descartes: se releen al montar y cuando el sync trae cambios.
-  useEffect(() => {
-    const load = () => {
-      setSchedules(readList<ScheduledEntry>(FINANCE_SCHEDULES_KEY))
-      setDismissed(readList<string>(FORECAST_DISMISSED_KEY).filter((x) => typeof x === "string"))
-    }
-    load()
-    window.addEventListener(FINANCE_SYNCED_EVENT, load)
-    window.addEventListener("storage", load)
-    return () => {
-      window.removeEventListener(FINANCE_SYNCED_EVENT, load)
-      window.removeEventListener("storage", load)
-    }
-  }, [])
+  const { schedules, dismissed, setDismissed } = useForecastInputs()
 
   const today = todayKey()
   const horizonDays = horizon === "mes" ? daysToEndOfMonth(today) : horizon
@@ -149,11 +168,7 @@ export function DineroProyeccion(props: {
   )
 
   const descartar = (key: string) => {
-    const next = dismissed.includes(key) ? dismissed : [...dismissed, key]
-    setDismissed(next)
-    try {
-      localStorage.setItem(FORECAST_DISMISSED_KEY, JSON.stringify(next))
-    } catch {}
+    setDismissed(dismissed.includes(key) ? dismissed : [...dismissed, key])
   }
 
   const mainName = inicio.mainId

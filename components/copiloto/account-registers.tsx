@@ -7,8 +7,6 @@ import {
   Building2,
   Camera,
   Car,
-  CreditCard,
-  Landmark,
   Plus,
   Receipt,
   Star,
@@ -27,11 +25,17 @@ import {
   type DueItem,
   accountDisplayName,
   accountIdFor,
+  last4Of,
 } from "./registers-store"
 import type { TransferReport } from "./transfer-matcher"
 import { ReconciliationSection } from "./reconciliation-view"
 import type { ReconReport, ReconFinding } from "./reconciliation-check"
-import { DineroProyeccion } from "./dinero-proyeccion"
+import { DineroProyeccion, useForecastInputs } from "./dinero-proyeccion"
+import { buildForecast, daysToEndOfMonth, startingBalance, todayKey } from "./dinero-forecast"
+import { movementCounts } from "./bank-brand"
+import { BankLogo, MoneyAccountCard, MoneyHeader, MoneySectionTitle, MoneyStrip, MoneyTabs } from "./money-ui"
+import { bankBrandOf } from "./bank-brand"
+import { AccountSettings } from "./account-settings"
 
 export interface BankTx {
   date: string
@@ -186,157 +190,144 @@ export function RegistersHome(props: {
   const secTarjetas = resto.filter((r) => r.kind === "card")
   const secOtras = resto.filter((r) => r.source === "manual" && r.kind !== "card")
 
-  const tarjetaCuenta = (r: RegisterAccount) => {
-    const bal = balances[r.id]
-    const isCard = r.kind === "card"
-    const d = accountDisplayName(r.name)
-    return (
-      <button
-        key={r.id}
-        type="button"
-        onClick={() => props.onOpenAccount(r.id)}
-        className={cn(
-          "rounded-xl border p-2 text-left active:scale-[0.98]",
-          r.isMain ? "border-yellow-400/50 bg-yellow-400/[0.06]" : "border-neutral-800 bg-neutral-900/70",
-        )}
-      >
-        <div className="flex items-center justify-between gap-1">
-          <span
-            className={cn(
-              "inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[7px] font-black",
-              isCard ? "bg-purple-500/15 text-purple-300" : "bg-blue-500/15 text-blue-300",
-            )}
-          >
-            {isCard ? <CreditCard className="size-2" /> : <Landmark className="size-2" />}
-            {isCard ? "CARD" : "BANK"}
-          </span>
-          {r.isMain && <Star className="size-2.5 fill-yellow-400 text-yellow-400" />}
-        </div>
-        <p className="mt-1 truncate text-[10px] font-bold leading-tight text-white">{d.title}</p>
-        <p
-          className={cn(
-            "mt-0.5 text-base font-black tabular-nums leading-tight",
-            bal === null ? "text-neutral-500" : bal < 0 ? "text-rose-400" : "text-emerald-400",
-          )}
-        >
-          {bal === null ? "—" : money(bal)}
-        </p>
-      </button>
-    )
+  // Movimientos por cuenta ("N mov." en cada tarjeta, como en MONEY).
+  const movCount = movementCounts(
+    registers,
+    props.bankOk ? props.bankTxs || [] : [],
+    (props.entries || []) as { accountId?: string }[],
+    (n) => accountIdFor(n),
+  )
+
+  // PROYECTADO de la franja = mismo motor y mismas reglas que la página
+  // Projections (cuenta ★ + otros fondos, recurrentes, tarjetas, pagado en banco).
+  const { schedules, dismissed } = useForecastInputs()
+  const proyectadoMes = (() => {
+    const today = todayKey()
+    const inicio = startingBalance(registers, balances, props.otherFunds || [])
+    return buildForecast({
+      startBalance: inicio.value,
+      entries: props.entries || [],
+      schedules,
+      dues,
+      balances,
+      bankTxs: props.bankOk ? props.bankTxs || [] : [],
+      today,
+      horizonDays: daysToEndOfMonth(today),
+      dismissedPaid: dismissed,
+    })
+  })()
+  // CIERRE = hallazgos de reconciliación pendientes hoy ("Ex." = excepciones).
+  const pendientesCierre = (props.reconReport?.accounts || []).reduce((s, a) => s + a.findings.length, 0)
+
+  const subtituloCuenta = (r: RegisterAccount) => {
+    const last4 = last4Of(r.name)
+    const tipo = r.kind === "card" ? "Credit Card" : r.source === "manual" ? "Manual" : "Checking"
+    return `${last4 ? `•••• ${last4}` : r.institution || r.name} · ${tipo}`
   }
+
+  const tarjetaCuenta = (r: RegisterAccount) => (
+    <MoneyAccountCard
+      key={r.id}
+      name={accountDisplayName(r.name).title}
+      rawName={r.name}
+      institution={r.institution}
+      subtitle={subtituloCuenta(r)}
+      balance={balances[r.id] ?? null}
+      main={r.isMain}
+      count={movCount[r.id] ?? 0}
+      onClick={() => props.onOpenAccount(r.id)}
+    />
+  )
 
   const seccion = (label: string, list: RegisterAccount[]) =>
     list.length === 0 ? null : (
-      <div key={label} className="mt-2">
-        <p className="mb-1 px-1 text-[9px] font-bold uppercase tracking-widest text-neutral-600">{label}</p>
-        <div className="grid grid-cols-3 gap-1.5">{list.map(tarjetaCuenta)}</div>
+      <div key={label}>
+        <MoneySectionTitle>{label.toUpperCase()}</MoneySectionTitle>
+        <div className="grid grid-cols-2 gap-2.5 max-[360px]:grid-cols-1">{list.map(tarjetaCuenta)}</div>
       </div>
     )
 
-  const indicadorVista = (
-    <div className="flex items-center justify-center gap-2 py-0.5">
-      <button
-        type="button"
-        onClick={() => setVista(0)}
-        className={cn(
-          "rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest",
-          vista === 0 ? "bg-white text-black" : "bg-neutral-800 text-neutral-400",
-        )}
-      >
-        Real
-      </button>
-      <span className="flex gap-1">
-        <span className={cn("size-1.5 rounded-full", vista === 0 ? "bg-white" : "bg-neutral-700")} />
-        <span className={cn("size-1.5 rounded-full", vista === 1 ? "bg-cyan-300" : "bg-neutral-700")} />
-      </span>
-      <button
-        type="button"
-        onClick={() => setVista(1)}
-        className={cn(
-          "rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest",
-          vista === 1 ? "bg-cyan-300 text-black" : "bg-neutral-800 text-neutral-400",
-        )}
-      >
-        Proyectado
-      </button>
-    </div>
-  )
+  // Pestaña "Citibank Register" (como MONEY): nombre corto de la marca de la ★.
+  const mainName = (() => {
+    if (!principal) return "Cuenta"
+    const b = bankBrandOf(principal.name, principal.institution)
+    return b.id === "generic" ? accountDisplayName(principal.name).title.replace(/\s*·+\s*\d{4}$/, "") : b.short
+  })()
 
   return (
     <div className="flex flex-col gap-3 overflow-x-hidden" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-      {indicadorVista}
+      <MoneyHeader page={vista as 0 | 1} onPage={setVista} />
+      <MoneyTabs page={vista as 0 | 1} onPage={setVista} registerLabel={`${mainName} Register`} />
+      <MoneyStrip
+        cells={[
+          {
+            label: "BANCO REAL",
+            value: principal && balances[principal.id] != null ? money(balances[principal.id] as number) : money(available),
+            tone: "plain",
+            active: vista === 0,
+            onClick: () => setVista(0),
+          },
+          {
+            label: "PROYECTADO",
+            value: money(proyectadoMes.end),
+            tone: proyectadoMes.end < 0 ? "neg" : "plain",
+            active: vista === 1,
+            onClick: () => setVista(1),
+          },
+          {
+            label: "CIERRE",
+            value: `${pendientesCierre} Ex.`,
+            tone: pendientesCierre > 0 ? "neg" : "plain",
+            onClick: props.onRunRecon,
+          },
+        ]}
+      />
       {vista === 0 && (
         <>
-      <div className="grid grid-cols-3 gap-1.5 rounded-2xl border border-neutral-800 bg-neutral-950/80 p-2.5">
-        <div className="text-center">
-          <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Disponible</p>
-          <p className={cn("font-mono text-base font-black tabular-nums", available < 0 ? "text-rose-400" : "text-emerald-400")}>
+      {/* Salud: disponible · debo · neto (todas las cuentas) */}
+      <div className="grid grid-cols-3 gap-1.5 rounded-xl border border-[#262633] bg-[#111119] px-2 py-1.5 text-center">
+        <p className="text-[10px] text-[#9a9cb0]">
+          Disponible{" "}
+          <span className={cn("font-mono font-bold tabular-nums", available < 0 ? "text-[#ff5d6c]" : "text-[#2fbf71]")}>
             {money(available)}
-          </p>
-        </div>
-        <div className="border-x border-neutral-800 text-center">
-          <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Debo</p>
-          <p className="font-mono text-base font-black tabular-nums text-rose-400">{money(owe)}</p>
-        </div>
-        <div className="text-center">
-          <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Neto</p>
-          <p className={cn("font-mono text-base font-black tabular-nums", net < 0 ? "text-rose-400" : "text-white")}>{money(net)}</p>
-        </div>
+          </span>
+        </p>
+        <p className="border-x border-[#262633] text-[10px] text-[#9a9cb0]">
+          Debo <span className="font-mono font-bold tabular-nums text-[#ff5d6c]">{money(owe)}</span>
+        </p>
+        <p className="text-[10px] text-[#9a9cb0]">
+          Neto{" "}
+          <span className={cn("font-mono font-bold tabular-nums", net < 0 ? "text-[#ff5d6c]" : "text-[#f2f3f7]")}>
+            {money(net)}
+          </span>
+        </p>
       </div>
 
       <div>
-        <p className="mb-1 px-1 text-[10px] font-bold uppercase tracking-widest text-neutral-500">Cuentas · {gridRegs.length}</p>
-        <p className="mb-1.5 px-1 text-[11px] text-neutral-500">Toca una cuenta → estado con Balance · lo nuevo arriba</p>
-        {principal &&
-          (() => {
-            const bal = balances[principal.id]
-            const d = accountDisplayName(principal.name)
-            return (
-              <button
-                type="button"
-                onClick={() => props.onOpenAccount(principal.id)}
-                className="mb-1 flex w-full items-center justify-between gap-2 rounded-2xl border border-yellow-400/50 bg-yellow-400/[0.06] p-3 text-left active:scale-[0.99]"
-              >
-                <span className="min-w-0">
-                  <span className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-yellow-300">
-                    <Star className="size-3 fill-yellow-400 text-yellow-400" /> Principal
-                  </span>
-                  <span className="mt-0.5 block truncate text-sm font-bold text-white">{d.title}</span>
-                  <span
-                    className={cn(
-                      "mt-0.5 block font-mono text-xl font-black tabular-nums",
-                      bal === null || bal === undefined ? "text-neutral-500" : bal < 0 ? "text-rose-400" : "text-emerald-400",
-                    )}
-                  >
-                    {bal === null || bal === undefined ? "—" : money(bal)}
-                  </span>
-                </span>
-                <Landmark className="size-6 shrink-0 text-yellow-400/60" />
-              </button>
-            )
-          })()}
+        <MoneySectionTitle sub="Toca una cuenta → su registro con balance">CUENTAS · {gridRegs.length}</MoneySectionTitle>
+        {principal && tarjetaCuenta(principal)}
         {seccion("Bancos", secBancos)}
         {seccion("Tarjetas", secTarjetas)}
         {seccion("Otras", secOtras)}
         <button
           type="button"
           onClick={props.onAddAccount}
-          className="mt-2 flex w-full items-center justify-center gap-1 rounded-xl border border-dashed border-neutral-700 p-2.5 text-neutral-400"
+          className="mt-2.5 flex w-full items-center justify-center gap-1 rounded-[14px] border border-dashed border-[#262633] p-3 text-[#9a9cb0]"
         >
           <Plus className="size-4" />
-          <span className="text-[11px] font-bold">Agregar cuenta</span>
+          <span className="text-[13px] font-semibold">Agregar cuenta</span>
         </button>
         {hiddenCount > 0 && (
-          <p className="mt-1 px-1 text-[10px] text-neutral-600">{hiddenCount} sin movimiento reciente</p>
+          <p className="mt-1 px-1 text-[10px] text-[#66687c]">{hiddenCount} sin movimiento reciente</p>
         )}
       </div>
 
       {(pairCount > 0 || looseCount > 0) && (
-        <button type="button" onClick={props.onOpenTransfers} className="flex items-center justify-between rounded-2xl border border-neutral-800 bg-neutral-900/60 px-3 py-2.5 text-left">
-          <span className="flex items-center gap-2 text-[12px] font-bold text-neutral-200">
-            <ArrowLeftRight className="size-4 text-cyan-300" /> Transferencias
+        <button type="button" onClick={props.onOpenTransfers} className="flex items-center justify-between rounded-[14px] border border-[#262633] bg-[#16161f] px-3.5 py-3 text-left active:scale-[.99]">
+          <span className="flex items-center gap-2 text-[13px] font-bold text-[#f2f3f7]">
+            <ArrowLeftRight className="size-4 text-[#5b8cff]" /> Transferencias
           </span>
-          <span className="text-[10px] font-bold text-neutral-400">{pairCount} emparejadas · {looseCount} abiertas</span>
+          <span className="font-mono text-[10px] font-bold text-[#9a9cb0]">{pairCount} emparejadas · {looseCount} abiertas</span>
         </button>
       )}
 
@@ -458,6 +449,7 @@ export function RegisterDetail(props: {
   const { account: r } = props
   const isCard = r.kind === "card"
   const d = accountDisplayName(r.name)
+  const brand = bankBrandOf(r.name, r.institution)
 
   type Line = {
     key: string
@@ -532,25 +524,40 @@ export function RegisterDetail(props: {
 
   return (
     <div className="flex min-h-0 flex-col gap-3 px-1">
-      <div className="flex shrink-0 items-center gap-2">
-        <button type="button" onClick={props.onBack} className="inline-flex items-center gap-1 rounded-lg border border-yellow-400/50 bg-yellow-400/10 px-3 py-2 text-[12px] font-bold text-yellow-300">
-          <ArrowLeft className="size-4" /> Cuentas
+      {/* Cabecera de banco (diseño MONEY): color de marca arriba, logo, saldo grande */}
+      <div
+        className="shrink-0 rounded-[14px] border border-[#262633] bg-[#111119] p-3"
+        style={{ borderTop: `3px solid ${brand.c}` }}
+      >
+        <button
+          type="button"
+          onClick={props.onBack}
+          className="inline-flex items-center gap-1 rounded-lg border border-[#262633] bg-[#16161f] px-3 py-1.5 text-[12px] font-bold text-[#9a9cb0] active:scale-95"
+        >
+          <ArrowLeft className="size-4" /> Bancos
         </button>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[14px] font-extrabold text-white">
-            {d.title}
-            {r.isMain ? " ★" : ""}
-          </p>
-          <p className="truncate text-[10px] text-neutral-500">{r.name} · statement · newest on top</p>
+        <div className="mt-2.5 flex items-center gap-2.5">
+          <BankLogo brand={brand} name={r.name} size="lg" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[15px] font-extrabold text-[#f2f3f7]">
+              {d.title}
+              {r.isMain ? " ★" : ""}
+            </p>
+            <p className="truncate font-mono text-[11px] text-[#66687c]">
+              {r.name} · {isCard ? "tarjeta" : "estado"} · lo nuevo arriba
+            </p>
+          </div>
         </div>
-      </div>
-
-      <div className="shrink-0 rounded-2xl border border-neutral-800 bg-neutral-900/70 p-3.5 text-center">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">
-          {isCard ? "Debt" : "Current balance"}
-          {r.isMain ? " · MAIN" : ""}
+        <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-[#9a9cb0]">
+          {isCard ? "Deuda" : "Balance actual"}
+          {r.isMain ? " · PRINCIPAL" : ""}
         </p>
-        <p className={cn("mt-1 text-3xl font-black tabular-nums", (props.balance || 0) < 0 && !isCard ? "text-rose-400" : "text-emerald-400")}>
+        <p
+          className={cn(
+            "font-mono text-[26px] font-extrabold tabular-nums",
+            props.balance === null ? "text-[#66687c]" : (props.balance || 0) < 0 ? "text-[#ff5d6c]" : "text-[#2fbf71]",
+          )}
+        >
           {props.balance === null ? "—" : money(props.balance)}
         </p>
       </div>
@@ -559,6 +566,18 @@ export function RegisterDetail(props: {
         <button type="button" onClick={props.onAddBill} className="flex-1 rounded-xl border border-cyan-500/40 bg-cyan-500/10 py-2.5 text-xs font-bold text-cyan-200">+ Factura</button>
         <button type="button" onClick={props.onAddPost} className="flex-1 rounded-xl border border-purple-500/40 bg-purple-500/10 py-2.5 text-xs font-bold text-purple-200">+ Recibo</button>
       </div>
+
+      {/* Ajustes de la cuenta: principal ★, día de pago, saldo manual, otros fondos, borrar. */}
+      <AccountSettings
+        account={r}
+        balance={props.balance}
+        otherFunds={props.otherFunds}
+        onToggleOtherFund={props.onToggleOtherFund}
+        onSetMain={props.onSetMain}
+        onSaveDueDay={props.onSaveDueDay}
+        onSaveManualBalance={props.onSaveManualBalance}
+        onDeleteManual={props.onDeleteManual}
+      />
 
       {/* Statement: Date | Amount | Balance — ALL accounts */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-emerald-500/20 bg-neutral-950/80">
@@ -589,10 +608,33 @@ export function RegisterDetail(props: {
               </div>
             )
             if (line.entry) {
+              const ent = line.entry
+              const esFactura = ent.status === "projected"
               return (
-                <button key={line.key} type="button" onClick={() => props.onEditEntry(line.entry!)} className="w-full text-left active:bg-neutral-900/60">
-                  {body}
-                </button>
+                <div key={line.key} className="border-b border-neutral-900/80">
+                  <button type="button" onClick={() => props.onEditEntry(ent)} className="w-full text-left active:bg-neutral-900/60 [&>div]:border-b-0">
+                    {body}
+                  </button>
+                  {/* Acciones del asiento: factura↔recibo y borrar (con confirmación). */}
+                  <div className="flex gap-1.5 px-2.5 pb-2">
+                    {ent.type === "expense" && (
+                      <button
+                        type="button"
+                        onClick={() => props.onSetDocKind(ent.id, esFactura ? "receipt" : "bill")}
+                        className="rounded-md border border-[#262633] bg-[#16161f] px-2 py-0.5 text-[10px] font-bold text-[#9a9cb0] active:scale-95"
+                      >
+                        {esFactura ? "Marcar pagado (recibo)" : "Pasar a factura"}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => props.onDeleteEntry(ent.id)}
+                      className="rounded-md border border-rose-900/50 bg-rose-950/30 px-2 py-0.5 text-[10px] font-bold text-rose-300 active:scale-95"
+                    >
+                      Borrar
+                    </button>
+                  </div>
+                </div>
               )
             }
             return <div key={line.key}>{body}</div>
@@ -604,17 +646,86 @@ export function RegisterDetail(props: {
 }
 
 export function TransfersReport(props: { report: TransferReport; onBack: () => void }) {
+  const { report } = props
+  const abiertas = [
+    ...report.unmatchedOut.map((t) => ({ t, dir: "sale" as const })),
+    ...report.unmatchedIn.map((t) => ({ t, dir: "entra" as const })),
+  ].sort((a, b) => String(b.t.date).localeCompare(String(a.t.date)))
+  const fila = "flex items-center justify-between gap-2 border-b border-[#1f1f2a] py-2 last:border-b-0"
   return (
     <div className="flex flex-col gap-3 px-1">
-      <div className="flex items-center gap-2">
-        <button type="button" onClick={props.onBack} className="inline-flex items-center gap-1 rounded-lg border border-yellow-400/50 bg-yellow-400/10 px-3 py-2 text-[12px] font-bold text-yellow-300">
-          <ArrowLeft className="size-4" /> Cuentas
+      <div className="rounded-[14px] border border-[#262633] bg-[#111119] p-3" style={{ borderTop: "3px solid #5b8cff" }}>
+        <button
+          type="button"
+          onClick={props.onBack}
+          className="inline-flex items-center gap-1 rounded-lg border border-[#262633] bg-[#16161f] px-3 py-1.5 text-[12px] font-bold text-[#9a9cb0] active:scale-95"
+        >
+          <ArrowLeft className="size-4" /> Bancos
         </button>
-        <p className="text-[14px] font-extrabold text-white">Transferencias</p>
+        <p className="mt-2.5 flex items-center gap-2 text-[15px] font-extrabold text-[#f2f3f7]">
+          <ArrowLeftRight className="size-4 text-[#5b8cff]" /> Transferencias
+        </p>
+        <p className="mt-0.5 text-[11px] text-[#66687c]">Mismo dinero moviéndose entre tus cuentas · no es ingreso</p>
+        <p className="mt-1.5 font-mono text-[11px] text-[#9a9cb0]">
+          {report.pairs.length} emparejadas · {abiertas.length} sin emparejar
+        </p>
       </div>
-      <p className="text-[11px] text-neutral-400">
-        {props.report.pairs.length} emparejadas · {props.report.unmatchedOut.length + props.report.unmatchedIn.length} sin emparejar
-      </p>
+
+      <div>
+        <MoneySectionTitle>EMPAREJADAS · {report.pairs.length}</MoneySectionTitle>
+        {report.pairs.length === 0 ? (
+          <p className="rounded-[14px] border border-[#262633] bg-[#16161f] p-3 text-[11px] text-[#9a9cb0]">Ninguna todavía.</p>
+        ) : (
+          <div className="rounded-[14px] border border-[#262633] bg-[#16161f] px-3">
+            {report.pairs.map((p) => (
+              <div key={p.id} className={fila}>
+                <span className="min-w-0">
+                  <span className="block truncate text-[12px] font-semibold text-[#f2f3f7]">
+                    {accountDisplayName(p.outTx.bank_account).title} → {accountDisplayName(p.inTx.bank_account).title}
+                  </span>
+                  <span className="block font-mono text-[10px] text-[#66687c]">
+                    {shortDate(p.outDate)} → {shortDate(p.inDate)}
+                  </span>
+                </span>
+                <span className="shrink-0 font-mono text-[12px] font-bold text-[#f2f3f7]">{money(p.amount)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <MoneySectionTitle sub="Salidas sin llegada o llegadas sin salida (otra cuenta no conectada o aún en camino)">
+          SIN EMPAREJAR · {abiertas.length}
+        </MoneySectionTitle>
+        {abiertas.length === 0 ? (
+          <p className="rounded-[14px] border border-[rgba(47,191,113,.5)] bg-[#16161f] p-3 text-[11px] font-bold text-[#2fbf71]">
+            Todo emparejado.
+          </p>
+        ) : (
+          <div className="rounded-[14px] border border-[#262633] bg-[#16161f] px-3">
+            {abiertas.map(({ t, dir }, i) => (
+              <div key={`${dir}-${t.date}-${t.bank_account}-${t.amount}-${i}`} className={fila}>
+                <span className="min-w-0">
+                  <span className="block truncate text-[12px] font-semibold text-[#f2f3f7]">{t.detail || "Transferencia"}</span>
+                  <span className="block truncate font-mono text-[10px] text-[#66687c]">
+                    {shortDate(t.date)} · {accountDisplayName(t.bank_account).title} · {dir === "sale" ? "sale" : "entra"}
+                  </span>
+                </span>
+                <span
+                  className={cn(
+                    "shrink-0 font-mono text-[12px] font-bold",
+                    dir === "sale" ? "text-[#ff5d6c]" : "text-[#2fbf71]",
+                  )}
+                >
+                  {dir === "sale" ? "−" : "+"}
+                  {money(Math.abs(Number(t.amount) || 0))}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
