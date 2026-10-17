@@ -60,6 +60,8 @@ import {
   type Tombstones,
 } from "@/lib/sync"
 import { localDateKey } from "@/lib/dates"
+import { compareVersion } from "@/lib/version-check"
+import { applyMergedFinance, collectLocalFinance, financeCounts } from "./finance-sync"
 import { queueDualSync, flushDualSyncQueue } from "./dual-sync"
 
 const PRODUCCION_URL = "https://claris-lime.vercel.app"
@@ -91,6 +93,8 @@ export function CopilotoApp() {
   const [scannerOpen, setScannerOpen] = useState(false)
   const [mas, setMas] = useState(false)
   const [copiaVieja, setCopiaVieja] = useState<string | null>(null)
+  // Sha de producción cuando ESTA copia es una versión de prueba más nueva.
+  const [versionPrueba, setVersionPrueba] = useState<string | null>(null)
   const [avisoCerrado, setAvisoCerrado] = useState(false)
 
   const tripsRef = useRef<Trip[]>([])
@@ -113,14 +117,25 @@ export function CopilotoApp() {
       try {
         const res = await fetch(`${PRODUCCION_URL}/api/version`, { cache: "no-store" })
         if (!res.ok) return
-        const data = (await res.json()) as { sha?: string; short?: string }
+        const data = (await res.json()) as { sha?: string; short?: string; builtAt?: string | null }
         if (!vivo || !data.sha) return
-        if (data.sha !== propio) {
+        const estado = compareVersion(
+          { sha: propio, builtAt: process.env.NEXT_PUBLIC_BUILD_TIME },
+          { sha: data.sha, builtAt: data.builtAt },
+        )
+        if (estado === "older") {
           desajustes += 1
           if (desajustes >= 2) setCopiaVieja(data.short ?? data.sha.slice(0, 7))
+          setVersionPrueba(null)
+        } else if (estado === "newer") {
+          // Preview más nueva que producción: aviso informativo, no "copia vieja".
+          desajustes = 0
+          setCopiaVieja(null)
+          setVersionPrueba(data.short ?? data.sha.slice(0, 7))
         } else {
           desajustes = 0
           setCopiaVieja(null)
+          setVersionPrueba(null)
         }
       } catch {}
     }
@@ -363,8 +378,12 @@ export function CopilotoApp() {
         tombstonesRef.current,
         expensesRef.current,
         expenseTombstonesRef.current,
+        // DINERO (libro, recurrentes, cuentas) en el mismo documento cifrado.
+        collectLocalFinance(),
       )
       if (result.ok && Array.isArray(result.trips)) {
+        applyMergedFinance(result.finance)
+        const fin = financeCounts(result.finance)
         const next = result.trips as Trip[]
         const nextExp = (result.expenses ?? []) as Expense[]
         tombstonesRef.current = (result.deleted as Tombstones) ?? {}
@@ -377,7 +396,11 @@ export function CopilotoApp() {
         setExpenses(nextExp)
         persist(next, nextExp)
         setSyncTone("ok")
-        setSyncMessage(`Sincronizado · ${next.length} viajes y ${nextExp.length} gastos`)
+        setSyncMessage(
+          result.financeSkipped
+            ? `Sincronizado · ${next.length} viajes y ${nextExp.length} gastos. DINERO no se subió: el documento supera el límite del servidor.`
+            : `Sincronizado · ${next.length} viajes, ${nextExp.length} gastos, ${fin.ledger} movimientos y ${fin.schedules} recurrentes`,
+        )
       } else if (result.reason === "not_configured") {
         setSyncTone("info")
         setSyncMessage(
@@ -523,6 +546,17 @@ export function CopilotoApp() {
             (prod {copiaVieja}).
           </span>
           <button type="button" onClick={() => setAvisoCerrado(true)} className="text-amber-400">
+            ✕
+          </button>
+        </div>
+      )}
+      {versionPrueba && !avisoCerrado && (
+        <div className="flex items-center gap-2 border-b border-cyan-500/40 bg-cyan-950/70 px-3 py-1.5 text-[11px] text-cyan-200">
+          <span className="flex-1">
+            Versión de prueba {(process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 7)} · más nueva que
+            producción ({versionPrueba}).
+          </span>
+          <button type="button" onClick={() => setAvisoCerrado(true)} className="text-cyan-400">
             ✕
           </button>
         </div>

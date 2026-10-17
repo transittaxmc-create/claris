@@ -51,6 +51,7 @@ import {
   TransfersReport,
   type BankTx,
 } from "./account-registers"
+import { FINANCE_SYNCED_EVENT } from "./finance-sync"
 
 interface CashFlowRegisterProps {
   startingActualBalance: number
@@ -137,7 +138,7 @@ export function CashFlowRegister({
     fetchBank()
   }, [fetchBank])
 
-  useEffect(() => {
+  const loadLedger = useCallback(() => {
     try {
       const raw = localStorage.getItem(LEDGER_KEY)
       const parsed = raw ? JSON.parse(raw) : []
@@ -156,6 +157,21 @@ export function CashFlowRegister({
     }
     setIsLoaded(true)
   }, [])
+
+  useEffect(() => {
+    loadLedger()
+  }, [loadLedger])
+
+  // Sync con Supabase trajo cambios de otro teléfono: releer libro, cuentas y
+  // otros fondos (registers se recalcula porque depende de `entries`).
+  useEffect(() => {
+    const onSynced = () => {
+      loadLedger()
+      setOtherFunds(loadJson<string[]>(OTHER_FUNDS_KEY, []))
+    }
+    window.addEventListener(FINANCE_SYNCED_EVENT, onSynced)
+    return () => window.removeEventListener(FINANCE_SYNCED_EVENT, onSynced)
+  }, [loadLedger])
 
   const saveEntries = (next: CashFlowEntry[]) => {
     setEntries(next)
@@ -371,6 +387,22 @@ export function CashFlowRegister({
     saveEntries(entries.filter((e) => e.id !== id))
   }
 
+  // Proyectado → "Sí, pagado": la factura/ingreso pasa a real con la fecha del
+  // banco. Funcional para no pisar cambios recientes del estado.
+  const handleMarkPaid = useCallback((entry: CashFlowEntry, paidDate: string) => {
+    setEntries((prev) => {
+      const next = prev.map((e) =>
+        e.id === entry.id
+          ? { ...e, status: "actual" as CashFlowStatus, date: paidDate || e.date, isManuallyEdited: true }
+          : e,
+      )
+      try {
+        localStorage.setItem(LEDGER_KEY, JSON.stringify(next))
+      } catch {}
+      return next
+    })
+  }, [])
+
   const handleSaveEntry = (finalEntry: CashFlowEntry) => {
     const exists = entries.some((e) => e.id === finalEntry.id)
     saveEntries(exists ? entries.map((e) => (e.id === finalEntry.id ? finalEntry : e)) : [finalEntry, ...entries])
@@ -457,6 +489,8 @@ export function CashFlowRegister({
             bankTxs={bankTxs}
             bankOk={!bankError && bankAccounts.length > 0}
             onSyncBank={fetchBank}
+            otherFunds={otherFunds}
+            onMarkPaid={handleMarkPaid}
             dues={dues}
             pairCount={transferReport.pairs.length}
             looseCount={transferReport.unmatchedOut.length + transferReport.unmatchedIn.length}

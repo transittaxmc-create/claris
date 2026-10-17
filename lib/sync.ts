@@ -21,6 +21,23 @@ export type SyncDoc<T> = {
   // Gastos: mismo mecanismo que los viajes (mezcla por id + tombstones).
   expenses?: SyncTrip[]
   deletedExpenses?: Tombstones
+  // DINERO: libro, recurrentes y cuentas. Opcional (clientes viejos no lo traen).
+  finance?: SyncFinance
+}
+
+// DINERO viaja en el mismo documento cifrado (Supabase sync_docs).
+//  - ledger / schedules: mezcla por id + tombstones (igual que viajes y gastos).
+//    Cada item va envuelto: { id, savedAt, raw: <objeto original> }.
+//  - blobs: claves completas de localStorage (cuentas, otros fondos...): gana
+//    la copia con `at` más reciente; si lo local nunca se sincronizó (sin
+//    `at`), gana la nube.
+export type SyncBlob = { at: string; value: string }
+export type SyncFinance = {
+  ledger?: SyncTrip[]
+  deletedLedger?: Tombstones
+  schedules?: SyncTrip[]
+  deletedSchedules?: Tombstones
+  blobs?: Record<string, SyncBlob>
 }
 
 const PBKDF2_ITERATIONS = 150_000
@@ -112,13 +129,63 @@ export function mergeTrips<T extends SyncTrip>(
   return { trips, deleted }
 }
 
+function asList(v: unknown): SyncTrip[] {
+  return Array.isArray(v) ? (v as SyncTrip[]) : []
+}
+
+function asTombstones(v: unknown): Tombstones {
+  return v && typeof v === "object" && !Array.isArray(v) ? (v as Tombstones) : {}
+}
+
+function asBlobs(v: unknown): Record<string, SyncBlob> {
+  const out: Record<string, SyncBlob> = {}
+  if (!v || typeof v !== "object" || Array.isArray(v)) return out
+  for (const [k, b] of Object.entries(v as Record<string, any>)) {
+    if (b && typeof b.value === "string") out[k] = { at: typeof b.at === "string" ? b.at : "", value: b.value }
+  }
+  return out
+}
+
+// Combina DINERO local + remoto. Puro (probado en Node).
+export function mergeFinance(local: SyncFinance | null | undefined, remote: SyncFinance | null | undefined): SyncFinance {
+  const l = local || {}
+  const r = remote || {}
+  const ledger = mergeTrips(asList(l.ledger), asList(r.ledger), {
+    ...asTombstones(r.deletedLedger),
+    ...asTombstones(l.deletedLedger),
+  })
+  const schedules = mergeTrips(asList(l.schedules), asList(r.schedules), {
+    ...asTombstones(r.deletedSchedules),
+    ...asTombstones(l.deletedSchedules),
+  })
+  const lb = asBlobs(l.blobs)
+  const rb = asBlobs(r.blobs)
+  const blobs: Record<string, SyncBlob> = {}
+  for (const key of new Set([...Object.keys(lb), ...Object.keys(rb)])) {
+    const a = lb[key]
+    const b = rb[key]
+    // Local sin hora = nunca sincronizado en este teléfono: manda la nube
+    // (un teléfono nuevo no pisa las cuentas ya guardadas).
+    if (a && b) blobs[key] = !a.at || isNewer(b.at, a.at) ? b : a
+    else blobs[key] = (a || b) as SyncBlob
+  }
+  return {
+    ledger: ledger.trips,
+    deletedLedger: ledger.deleted,
+    schedules: schedules.trips,
+    deletedSchedules: schedules.deleted,
+    blobs,
+  }
+}
+
 export function buildDoc<T extends SyncTrip>(
   trips: T[],
   deleted: Tombstones,
   expenses: SyncTrip[] = [],
   deletedExpenses: Tombstones = {},
+  finance?: SyncFinance,
 ): SyncDoc<T> {
-  return {
+  const doc: SyncDoc<T> = {
     version: 1,
     updatedAt: nowIso(),
     entries: trips,
@@ -126,6 +193,14 @@ export function buildDoc<T extends SyncTrip>(
     expenses,
     deletedExpenses: pruneTombstones(deletedExpenses),
   }
+  if (finance) {
+    doc.finance = {
+      ...finance,
+      deletedLedger: pruneTombstones(asTombstones(finance.deletedLedger)),
+      deletedSchedules: pruneTombstones(asTombstones(finance.deletedSchedules)),
+    }
+  }
+  return doc
 }
 
 // ---------------------------------------------------------------------
@@ -230,6 +305,9 @@ export type SyncStatus = {
   deleted?: Tombstones
   expenses?: SyncTrip[]
   deletedExpenses?: Tombstones
+  finance?: SyncFinance
+  /** true = el documento era muy grande y DINERO no se subió esta vez. */
+  financeSkipped?: boolean
   updatedAt?: string
 }
 
@@ -287,6 +365,7 @@ export async function syncWithCloud<T extends SyncTrip>(
   localTombstones: Tombstones,
   localExpenses: SyncTrip[] = [],
   localExpenseTombstones: Tombstones = {},
+  localFinance?: SyncFinance,
 ): Promise<SyncStatus> {
   if (!isValidSyncCode(code)) {
     return {
@@ -311,6 +390,7 @@ export async function syncWithCloud<T extends SyncTrip>(
   let remoteTombstones: Tombstones = {}
   let remoteExpenses: SyncTrip[] = []
   let remoteExpenseTombstones: Tombstones = {}
+  let remoteFinance: SyncFinance | undefined
   if (remote.payload) {
     const doc = await decryptJson<SyncDoc<T>>(code, remote.payload)
     if (!doc) {
@@ -326,6 +406,7 @@ export async function syncWithCloud<T extends SyncTrip>(
     remoteExpenses = Array.isArray(doc.expenses) ? doc.expenses : []
     remoteExpenseTombstones =
       doc.deletedExpenses && typeof doc.deletedExpenses === "object" ? doc.deletedExpenses : {}
+    remoteFinance = doc.finance && typeof doc.finance === "object" ? doc.finance : undefined
   }
 
   const merged = mergeTrips(localTrips, remoteTrips, { ...remoteTombstones, ...localTombstones })
@@ -333,9 +414,20 @@ export async function syncWithCloud<T extends SyncTrip>(
     ...remoteExpenseTombstones,
     ...localExpenseTombstones,
   })
-  const doc = buildDoc(merged.trips, merged.deleted, mergedExpenses.trips, mergedExpenses.deleted)
+  // Sin DINERO local (cliente que no lo manda): se conserva el remoto tal cual,
+  // para no borrarlo del servidor.
+  const finance = localFinance ? mergeFinance(localFinance, remoteFinance) : remoteFinance
+  let doc = buildDoc(merged.trips, merged.deleted, mergedExpenses.trips, mergedExpenses.deleted, finance)
 
-  const pushed = await pushRemote(code, await encryptJson(code, doc))
+  let pushed = await pushRemote(code, await encryptJson(code, doc))
+  let financeSkipped = false
+  // Documento demasiado grande (413): viajes y gastos primero. Se sube sin el
+  // DINERO local (se conserva el remoto) y se avisa; nada se borra en local.
+  if (!pushed.ok && pushed.status === 413 && localFinance) {
+    doc = buildDoc(merged.trips, merged.deleted, mergedExpenses.trips, mergedExpenses.deleted, remoteFinance)
+    pushed = await pushRemote(code, await encryptJson(code, doc))
+    financeSkipped = pushed.ok
+  }
   if (!pushed.ok) {
     return {
       ok: false,
@@ -356,6 +448,8 @@ export async function syncWithCloud<T extends SyncTrip>(
     deleted: merged.deleted,
     expenses: mergedExpenses.trips,
     deletedExpenses: mergedExpenses.deleted,
+    finance: financeSkipped ? undefined : doc.finance,
+    financeSkipped,
     updatedAt: doc.updatedAt,
   }
 }

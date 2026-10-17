@@ -6,6 +6,7 @@ import { V1_DAILY_GOAL_KEY } from "./v1-dash/v1-dash-screen"
 import { cn } from "@/lib/utils"
 import type { StorageInfo } from "./storage"
 import { MIN_SYNC_CODE_LENGTH } from "@/lib/sync"
+import { compareVersion, type VersionStatus } from "@/lib/version-check"
 import type { Trip } from "./types"
 
 function Row({ label, value, tone = "text-white" }: { label: string; value: string; tone?: string }) {
@@ -75,6 +76,7 @@ export function DataScreen({
   const [confirmCache, setConfirmCache] = useState(false)
   // Versión que está sirviendo producción, para comparar con la de este teléfono.
   const [ultimaVersion, setUltimaVersion] = useState<string | null>(null)
+  const [estadoVersion, setEstadoVersion] = useState<VersionStatus>("unknown")
   // Meta diaria del DASHBOARD (clon del tablero de v1). Default 45 como en v1.
   const [dailyGoal, setDailyGoal] = useState<number>(() => {
     try {
@@ -94,8 +96,15 @@ export function DataScreen({
     let vivo = true
     fetch("https://claris-lime.vercel.app/api/version", { cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { short?: string } | null) => {
-        if (vivo && data?.short) setUltimaVersion(data.short)
+      .then((data: { sha?: string; short?: string; builtAt?: string | null } | null) => {
+        if (!vivo || !data?.short) return
+        setUltimaVersion(data.short)
+        setEstadoVersion(
+          compareVersion(
+            { sha: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA, builtAt: process.env.NEXT_PUBLIC_BUILD_TIME },
+            { sha: data.sha, builtAt: data.builtAt },
+          ),
+        )
       })
       .catch(() => {})
     return () => {
@@ -158,13 +167,21 @@ export function DataScreen({
             label="VERSIÓN DE LA APP"
             value={
               process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA
-                ? `${process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA.slice(0, 7)}${ultimaVersion && ultimaVersion !== process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA.slice(0, 7) ? ` (hay ${ultimaVersion})` : " · al día"}`
+                ? `${process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA.slice(0, 7)}${
+                    estadoVersion === "older"
+                      ? ` (hay ${ultimaVersion})`
+                      : estadoVersion === "newer"
+                        ? ` · prueba (prod ${ultimaVersion})`
+                        : " · al día"
+                  }`
                 : "local"
             }
             tone={
-              ultimaVersion && ultimaVersion !== (process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 7)
+              estadoVersion === "older"
                 ? "text-amber-300"
-                : "text-green-400"
+                : estadoVersion === "newer"
+                  ? "text-cyan-300"
+                  : "text-green-400"
             }
           />
           <p className="mt-2 text-[10px] leading-tight text-neutral-500">

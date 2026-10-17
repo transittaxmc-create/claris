@@ -19,6 +19,9 @@ export function GET() {
       short: sha.slice(0, 7),
       env: process.env.VERCEL_ENV || "local",
       deployment: url,
+      // Hora de build (next.config.mjs): permite saber si una copia es más
+      // vieja o más nueva que producción, no solo "distinta".
+      builtAt: process.env.NEXT_PUBLIC_BUILD_TIME || null,
       checkedAt: new Date().toISOString(),
     },
     {
