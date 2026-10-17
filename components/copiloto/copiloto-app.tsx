@@ -60,6 +60,7 @@ import {
   type Tombstones,
 } from "@/lib/sync"
 import { localDateKey } from "@/lib/dates"
+import { compareVersion } from "@/lib/version-check"
 import { applyMergedFinance, collectLocalFinance, financeCounts } from "./finance-sync"
 import { queueDualSync, flushDualSyncQueue } from "./dual-sync"
 
@@ -92,6 +93,8 @@ export function CopilotoApp() {
   const [scannerOpen, setScannerOpen] = useState(false)
   const [mas, setMas] = useState(false)
   const [copiaVieja, setCopiaVieja] = useState<string | null>(null)
+  // Sha de producción cuando ESTA copia es una versión de prueba más nueva.
+  const [versionPrueba, setVersionPrueba] = useState<string | null>(null)
   const [avisoCerrado, setAvisoCerrado] = useState(false)
 
   const tripsRef = useRef<Trip[]>([])
@@ -114,14 +117,25 @@ export function CopilotoApp() {
       try {
         const res = await fetch(`${PRODUCCION_URL}/api/version`, { cache: "no-store" })
         if (!res.ok) return
-        const data = (await res.json()) as { sha?: string; short?: string }
+        const data = (await res.json()) as { sha?: string; short?: string; builtAt?: string | null }
         if (!vivo || !data.sha) return
-        if (data.sha !== propio) {
+        const estado = compareVersion(
+          { sha: propio, builtAt: process.env.NEXT_PUBLIC_BUILD_TIME },
+          { sha: data.sha, builtAt: data.builtAt },
+        )
+        if (estado === "older") {
           desajustes += 1
           if (desajustes >= 2) setCopiaVieja(data.short ?? data.sha.slice(0, 7))
+          setVersionPrueba(null)
+        } else if (estado === "newer") {
+          // Preview más nueva que producción: aviso informativo, no "copia vieja".
+          desajustes = 0
+          setCopiaVieja(null)
+          setVersionPrueba(data.short ?? data.sha.slice(0, 7))
         } else {
           desajustes = 0
           setCopiaVieja(null)
+          setVersionPrueba(null)
         }
       } catch {}
     }
@@ -532,6 +546,17 @@ export function CopilotoApp() {
             (prod {copiaVieja}).
           </span>
           <button type="button" onClick={() => setAvisoCerrado(true)} className="text-amber-400">
+            ✕
+          </button>
+        </div>
+      )}
+      {versionPrueba && !avisoCerrado && (
+        <div className="flex items-center gap-2 border-b border-cyan-500/40 bg-cyan-950/70 px-3 py-1.5 text-[11px] text-cyan-200">
+          <span className="flex-1">
+            Versión de prueba {(process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 7)} · más nueva que
+            producción ({versionPrueba}).
+          </span>
+          <button type="button" onClick={() => setAvisoCerrado(true)} className="text-cyan-400">
             ✕
           </button>
         </div>
