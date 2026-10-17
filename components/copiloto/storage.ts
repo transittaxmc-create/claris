@@ -563,7 +563,9 @@ export async function loadExpensesFromIndexedDB(): Promise<Expense[]> {
 export async function clearAllData(): Promise<{ ok: boolean; error?: string }> {
   const ls = safeLocal()
   if (ls) {
-    for (const key of [...ALL_KEYS, ...TEMP_KEYS, BACKUP_KEY]) {
+    // claris_finance_sync_state_v1: foto del último sync de DINERO. Sin borrarla,
+    // el próximo sync tomaría el libro vacío como "borrado" y lo borraría en la nube.
+    for (const key of [...ALL_KEYS, ...TEMP_KEYS, BACKUP_KEY, "claris_finance_sync_state_v1"]) {
       try {
         ls.removeItem(key)
       } catch {}

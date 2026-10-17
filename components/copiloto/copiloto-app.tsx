@@ -60,6 +60,7 @@ import {
   type Tombstones,
 } from "@/lib/sync"
 import { localDateKey } from "@/lib/dates"
+import { applyMergedFinance, collectLocalFinance, financeCounts } from "./finance-sync"
 import { queueDualSync, flushDualSyncQueue } from "./dual-sync"
 
 const PRODUCCION_URL = "https://claris-lime.vercel.app"
@@ -363,8 +364,12 @@ export function CopilotoApp() {
         tombstonesRef.current,
         expensesRef.current,
         expenseTombstonesRef.current,
+        // DINERO (libro, recurrentes, cuentas) en el mismo documento cifrado.
+        collectLocalFinance(),
       )
       if (result.ok && Array.isArray(result.trips)) {
+        applyMergedFinance(result.finance)
+        const fin = financeCounts(result.finance)
         const next = result.trips as Trip[]
         const nextExp = (result.expenses ?? []) as Expense[]
         tombstonesRef.current = (result.deleted as Tombstones) ?? {}
@@ -377,7 +382,11 @@ export function CopilotoApp() {
         setExpenses(nextExp)
         persist(next, nextExp)
         setSyncTone("ok")
-        setSyncMessage(`Sincronizado · ${next.length} viajes y ${nextExp.length} gastos`)
+        setSyncMessage(
+          result.financeSkipped
+            ? `Sincronizado · ${next.length} viajes y ${nextExp.length} gastos. DINERO no se subió: el documento supera el límite del servidor.`
+            : `Sincronizado · ${next.length} viajes, ${nextExp.length} gastos, ${fin.ledger} movimientos y ${fin.schedules} recurrentes`,
+        )
       } else if (result.reason === "not_configured") {
         setSyncTone("info")
         setSyncMessage(

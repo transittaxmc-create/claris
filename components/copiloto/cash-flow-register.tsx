@@ -51,6 +51,7 @@ import {
   TransfersReport,
   type BankTx,
 } from "./account-registers"
+import { FINANCE_SYNCED_EVENT } from "./finance-sync"
 
 interface CashFlowRegisterProps {
   startingActualBalance: number
@@ -137,7 +138,7 @@ export function CashFlowRegister({
     fetchBank()
   }, [fetchBank])
 
-  useEffect(() => {
+  const loadLedger = useCallback(() => {
     try {
       const raw = localStorage.getItem(LEDGER_KEY)
       const parsed = raw ? JSON.parse(raw) : []
@@ -156,6 +157,21 @@ export function CashFlowRegister({
     }
     setIsLoaded(true)
   }, [])
+
+  useEffect(() => {
+    loadLedger()
+  }, [loadLedger])
+
+  // Sync con Supabase trajo cambios de otro teléfono: releer libro, cuentas y
+  // otros fondos (registers se recalcula porque depende de `entries`).
+  useEffect(() => {
+    const onSynced = () => {
+      loadLedger()
+      setOtherFunds(loadJson<string[]>(OTHER_FUNDS_KEY, []))
+    }
+    window.addEventListener(FINANCE_SYNCED_EVENT, onSynced)
+    return () => window.removeEventListener(FINANCE_SYNCED_EVENT, onSynced)
+  }, [loadLedger])
 
   const saveEntries = (next: CashFlowEntry[]) => {
     setEntries(next)
