@@ -32,6 +32,7 @@ import {
   deleteManualAccount,
   setManualBalance,
   setMainAccount,
+  setDueDay,
   upcomingDues,
   type RegisterAccount,
 } from "./registers-store"
@@ -460,18 +461,35 @@ export function CashFlowRegister({
       className="flex w-full flex-col overflow-x-hidden px-1"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <div className="sticky top-0 z-20 border-b border-neutral-800 bg-black/95 px-3 py-1.5 backdrop-blur-md">
-        <div className="flex items-center justify-center gap-2 px-1 text-[10px] font-bold text-neutral-400">
-          <span className="tracking-wider text-emerald-400">DUAL REGISTER</span>
-          <span className="rounded border border-emerald-800 bg-emerald-950 px-2 py-0.5 text-[9px] text-emerald-300">
-            EN VIVO
+      {/* Feed del banco (diseño MONEY): estado en vivo + sincronizar. */}
+      <div className="sticky top-0 z-20 -mx-1 border-b border-[#262633] bg-[#0a0a0f]/95 px-3 py-1.5 backdrop-blur-md">
+        <div className="flex items-center justify-center gap-2 px-1 text-[10px] font-bold text-[#9a9cb0]">
+          <span className="inline-flex items-center gap-1.5">
+            <span
+              className={cn(
+                "inline-block size-2 rounded-full",
+                bankError ? "bg-[#ff5d6c]" : bankLoading ? "animate-pulse bg-[#f5b84c]" : "bg-[#2fbf71]",
+              )}
+            />
+            <span className="tracking-wider text-[#0a7cff]">PLAID</span>
+            <span className="text-[#f2f3f7]">Feed del banco</span>
+          </span>
+          <span
+            className={cn(
+              "rounded border px-2 py-0.5 text-[9px]",
+              bankError
+                ? "border-rose-800 bg-rose-950 text-rose-300"
+                : "border-emerald-800 bg-emerald-950 text-emerald-300",
+            )}
+          >
+            {bankError ? "SIN CONEXIÓN" : "EN VIVO"}
           </span>
           <button
             type="button"
             onClick={fetchBank}
             disabled={bankLoading}
-            title={bankUpdatedAt ? `Bank synced ${bankUpdatedAt}` : "Sync bank now"}
-            className="rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-[9px] font-bold text-neutral-300 active:scale-95 disabled:opacity-50"
+            title={bankUpdatedAt ? `Banco sincronizado ${bankUpdatedAt}` : "Sincronizar banco"}
+            className="rounded border border-[#262633] bg-[#16161f] px-2 py-0.5 text-[9px] font-bold text-[#f2f3f7] active:scale-95 disabled:opacity-50"
           >
             <span className="inline-flex items-center gap-1">
               <RefreshCw className={cn("size-2.5", bankLoading && "animate-spin")} />
@@ -582,10 +600,7 @@ export function CashFlowRegister({
               setBankAccounts((prev) => [...prev])
             }}
             onSaveDueDay={(id, day) => {
-              try {
-                const { setDueDay } = require("./registers-store")
-                setDueDay(id, day)
-              } catch {}
+              setDueDay(id, day)
               setBankAccounts((prev) => [...prev])
             }}
             onSaveManualBalance={(id, v) => {

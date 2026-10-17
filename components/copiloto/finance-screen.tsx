@@ -15,12 +15,12 @@ export function createTollBill(trips: { toll: number }[], serviceDate: string) {
   }
 }
 
-/** DINERO — Ledger first. Tap an account card to open its register. */
+/** DINERO (diseño MONEY) — cuentas con su marca, registro por cuenta y proyecciones. */
 export function FinanceScreen(_props: {
   trips: Trip[]
   expenses: CopilotoExpense[]
   onSave: (e: CopilotoExpense) => void
-  onDelete: (id: string) => void
+  onDelete?: (id: string) => void
 }) {
   const [build, setBuild] = useState<string>("")
   useEffect(() => {
@@ -45,14 +45,16 @@ export function FinanceScreen(_props: {
     }
   }, [])
   return (
-    <div className="flex h-full flex-col">
-      <div className="border-b border-neutral-800 px-4 pb-2 pt-2">
-        <h1 className="text-2xl font-black tracking-tight text-white">Dinero</h1>
-        <p className="text-[11px] text-neutral-400">Libro mayor · toca una cuenta para ver su registro</p>
-        {build ? <p className="text-[9px] leading-tight text-neutral-600">{build}</p> : null}
-      </div>
+    <div
+      className="flex h-full flex-col bg-[#0a0a0f]"
+      style={{
+        backgroundImage:
+          "radial-gradient(1200px 600px at 50% -10%, rgba(91,140,255,.10), transparent 60%), radial-gradient(900px 500px at 90% 10%, rgba(124,92,255,.08), transparent 55%)",
+      }}
+    >
       <div className="flex-1 overflow-y-auto px-2 py-2">
         <CashFlowRegister startingActualBalance={0} />
+        {build ? <p className="mt-3 text-center font-mono text-[9px] leading-tight text-[#66687c]">{build}</p> : null}
       </div>
     </div>
   )

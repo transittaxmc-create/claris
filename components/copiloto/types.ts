@@ -127,6 +127,8 @@ export type Expense = {
   confidence?: number
   isAiGenerated: boolean
   isEditedByUser: boolean
+  /** Vino del escáner de recibos (lo usa el libro para la etiqueta "Escaneado"). */
+  scanned?: boolean
   scheduled?: boolean
   classification?: ExpenseClassification
   docType?: ExpenseDocType

@@ -3,6 +3,31 @@
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 
+/* DINERO - diseno MONEY: tarjetas de banco con color de marca */
+.money-card {
+  background: #16161f;
+  border: 1px solid #262633;
+  background: linear-gradient(150deg, color-mix(in srgb, var(--brand) 22%, #16161f) 0%, #16161f 70%);
+  border: 1px solid color-mix(in srgb, var(--brand) 45%, #262633);
+}
+.money-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(180deg, var(--brand), var(--brand-2));
+}
+.money-card:hover {
+  border-color: var(--brand);
+}
+.money-card-main {
+  border-color: rgba(245, 184, 76, 0.65);
+  box-shadow: 0 0 0 1px rgba(245, 184, 76, 0.15), 0 8px 24px color-mix(in srgb, var(--brand) 25%, transparent);
+}
+
+
 /* Utilidad de v1 (JetBrains Mono) para el DASHBOARD clonado. */
 .font-mono-jet{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
 
