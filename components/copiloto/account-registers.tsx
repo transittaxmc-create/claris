@@ -31,6 +31,7 @@ import {
 import type { TransferReport } from "./transfer-matcher"
 import { ReconciliationSection } from "./reconciliation-view"
 import type { ReconReport, ReconFinding } from "./reconciliation-check"
+import { DineroProyeccion } from "./dinero-proyeccion"
 
 export interface BankTx {
   date: string
@@ -109,6 +110,10 @@ export function RegistersHome(props: {
   bankTxs?: BankTx[]
   bankOk?: boolean
   onSyncBank?: () => void
+  /** Cuentas marcadas como "otros fondos" (suman al balance inicial del proyectado). */
+  otherFunds?: string[]
+  /** "Probablemente pagado" confirmado: el movimiento pasa a real. */
+  onMarkPaid?: (e: CashFlowEntry, paidDate: string) => void
 }) {
   const { registers, balances, dues, pairCount, looseCount } = props
   // Vista: 0 = Real (Reyes + balances DAILY), 1 = Proyectado. Swipe izq/der.
@@ -143,48 +148,6 @@ export function RegistersHome(props: {
   available = Math.round(available * 100) / 100
   owe = Math.round(owe * 100) / 100
   const net = Math.round((available - owe) * 100) / 100
-  // La proyección parte de la cuenta principal (CitiBank ★), no del total.
-  const mainReg = registers.find((r) => r.isMain) || null
-  const mainBal = mainReg ? balances[mainReg.id] : null
-  const mainAvailable = mainBal === null || mainBal === undefined ? available : Math.round(mainBal * 100) / 100
-  const dueLines = dues.slice(0, 8).map((d) => {
-    const bal = balances[d.accountId]
-    const amt = bal !== null && bal !== undefined ? Math.abs(bal) : 0
-    return { date: d.nextDate, label: `${d.accountName} due`, amount: amt }
-  })
-
-  // Facturas por pagar (proyectadas): lista individual, sin duplicar el pronóstico.
-  const facturas = (props.entries || [])
-    .filter((e) => e.type === "expense" && e.status === "projected" && Math.abs(Number(e.amount) || 0) > 0.009)
-    .sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")))
-
-  // PROYECCIÓN COMPACTA — transacciones proyectadas (ingresos + gastos), ordenadas por fecha.
-  const proyList = (() => {
-    const out: { id: string; label: string; fecha: string; amount: number }[] = []
-    for (const e of props.entries || []) {
-      if (e.status !== "projected") continue
-      const amt = Math.abs(Number(e.amount) || 0)
-      if (amt < 0.01) continue
-      const isIncome = e.type === "income"
-      out.push({
-        id: String((e as any).id || `${e.date}-${e.description}`),
-        label: (e as any).description || (e as any).category || (isIncome ? "Ingreso" : "Gasto"),
-        fecha: String((e as any).date || "").slice(0, 10),
-        amount: isIncome ? amt : -amt,
-      })
-    }
-    out.sort((a, b) => a.fecha.localeCompare(b.fecha))
-    return out
-  })()
-  const balanceProy = Math.round((available + proyList.reduce((s, p) => s + p.amount, 0)) * 100) / 100
-  const ingresosProy = Math.round(proyList.filter((p) => p.amount > 0).reduce((s, p) => s + p.amount, 0) * 100) / 100
-  const gastosProy = Math.round(proyList.filter((p) => p.amount < 0).reduce((s, p) => s + Math.abs(p.amount), 0) * 100) / 100
-  const MESES_ES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
-  const fechaCortaEs = (iso: string): string => {
-    const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/)
-    if (!m) return "—"
-    return `${Number(m[3])} ${MESES_ES[Number(m[2]) - 1] || ""}`
-  }
 
   // Dashboard: principal primero, luego por movimiento reciente. Sin
   // movimiento en 30 días → se oculta del grid (el balance sigue contando
@@ -393,11 +356,19 @@ export function RegistersHome(props: {
       {/* ============ VISTA PROYECTADO ============ */}
       {vista === 1 && (
         <>
-          <p className="px-1 text-[10px] font-bold uppercase tracking-widest text-cyan-300/80">
-            🔮 Proyectado · desde balance real
-          </p>
+          <DineroProyeccion
+            registers={registers}
+            balances={balances}
+            dues={dues}
+            entries={props.entries || []}
+            bankTxs={props.bankTxs || []}
+            bankOk={props.bankOk === true}
+            otherFunds={props.otherFunds || []}
+            onEditEntry={props.onEditEntry}
+            onMarkPaid={props.onMarkPaid}
+          />
 
-          {/* Columna de balances reales por cuenta (punto de partida) */}
+          {/* Balances reales por cuenta (referencia; el inicial es la cuenta ★ + otros fondos) */}
           <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">
             <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-neutral-400">
               Balances reales del banco
@@ -428,67 +399,6 @@ export function RegistersHome(props: {
                 )
               })}
             </div>
-          </div>
-
-          {/* Fórmula: real + ingresos − gastos = proyectado */}
-          <div className="rounded-2xl border border-cyan-500/30 bg-cyan-950/20 p-3">
-            <div className="space-y-1 text-[12px]">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-neutral-300">Balance real del banco</span>
-                <span className={cn("font-mono font-bold tabular-nums", available < 0 ? "text-rose-400" : "text-white")}>
-                  {money(available)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-neutral-300">+ Ingresos proyectados</span>
-                <span className="font-mono font-bold tabular-nums text-emerald-400">{money(ingresosProy)}</span>
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-neutral-300">− Gastos proyectados</span>
-                <span className="font-mono font-bold tabular-nums text-rose-400">{money(gastosProy)}</span>
-              </div>
-              <div className="flex items-center justify-between gap-2 border-t border-cyan-500/20 pt-1.5">
-                <span className="font-bold text-cyan-300">= Balance proyectado</span>
-                <span
-                  className={cn(
-                    "font-mono text-lg font-black tabular-nums",
-                    balanceProy < 0 ? "text-rose-400" : "text-cyan-300",
-                  )}
-                >
-                  {money(balanceProy)}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Transacciones proyectadas */}
-          <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">
-            <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-neutral-400">
-              Transacciones proyectadas
-            </p>
-            {proyList.length === 0 ? (
-              <p className="text-[11px] text-neutral-500">Sin movimientos proyectados.</p>
-            ) : (
-              <div className="space-y-1">
-                {proyList.map((p) => (
-                  <div key={p.id} className="flex items-center justify-between gap-2 text-[12px]">
-                    <span className="min-w-0">
-                      <span className="block truncate font-semibold text-neutral-200">{p.label}</span>
-                      <span className="block text-[10px] text-neutral-500">{fechaCortaEs(p.fecha)}</span>
-                    </span>
-                    <span
-                      className={cn(
-                        "shrink-0 font-mono font-bold tabular-nums",
-                        p.amount >= 0 ? "text-emerald-400" : "text-rose-400",
-                      )}
-                    >
-                      {p.amount >= 0 ? "+" : "\u2212"}
-                      {money(Math.abs(p.amount)).replace(/^\$/, "")}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
         </>
       )}

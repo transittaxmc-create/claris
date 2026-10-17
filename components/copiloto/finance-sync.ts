@@ -20,7 +20,10 @@ export const FINANCE_BLOB_KEYS = [
   "claris_other_funds_v1",
   "claris_toll_bills",
   "claris_finance_week_v1",
+  "claris_forecast_dismissed_v1",
 ] as const
+/** "Probablemente pagado" que el usuario descartó (viaja con el sync). */
+export const FORECAST_DISMISSED_KEY = "claris_forecast_dismissed_v1"
 /** Foto de la última sincronización (solo local, nunca viaja). */
 export const FINANCE_SYNC_STATE_KEY = "claris_finance_sync_state_v1"
 /** Evento que avisa a las pantallas de DINERO que relean localStorage. */

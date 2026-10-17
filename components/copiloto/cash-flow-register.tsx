@@ -387,6 +387,22 @@ export function CashFlowRegister({
     saveEntries(entries.filter((e) => e.id !== id))
   }
 
+  // Proyectado → "Sí, pagado": la factura/ingreso pasa a real con la fecha del
+  // banco. Funcional para no pisar cambios recientes del estado.
+  const handleMarkPaid = useCallback((entry: CashFlowEntry, paidDate: string) => {
+    setEntries((prev) => {
+      const next = prev.map((e) =>
+        e.id === entry.id
+          ? { ...e, status: "actual" as CashFlowStatus, date: paidDate || e.date, isManuallyEdited: true }
+          : e,
+      )
+      try {
+        localStorage.setItem(LEDGER_KEY, JSON.stringify(next))
+      } catch {}
+      return next
+    })
+  }, [])
+
   const handleSaveEntry = (finalEntry: CashFlowEntry) => {
     const exists = entries.some((e) => e.id === finalEntry.id)
     saveEntries(exists ? entries.map((e) => (e.id === finalEntry.id ? finalEntry : e)) : [finalEntry, ...entries])
@@ -473,6 +489,8 @@ export function CashFlowRegister({
             bankTxs={bankTxs}
             bankOk={!bankError && bankAccounts.length > 0}
             onSyncBank={fetchBank}
+            otherFunds={otherFunds}
+            onMarkPaid={handleMarkPaid}
             dues={dues}
             pairCount={transferReport.pairs.length}
             looseCount={transferReport.unmatchedOut.length + transferReport.unmatchedIn.length}
