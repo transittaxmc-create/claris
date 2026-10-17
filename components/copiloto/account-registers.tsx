@@ -30,7 +30,7 @@ import {
 import type { TransferReport } from "./transfer-matcher"
 import { ReconciliationSection } from "./reconciliation-view"
 import type { ReconReport, ReconFinding } from "./reconciliation-check"
-import { DineroProyeccion, useForecastInputs } from "./dinero-proyeccion"
+import { useForecastInputs } from "./dinero-proyeccion"
 import { buildForecast, daysToEndOfMonth, startingBalance, todayKey } from "./dinero-forecast"
 import { movementCounts } from "./bank-brand"
 import { BankLogo, MoneyAccountCard, MoneyHeader, MoneySectionTitle, MoneyStrip, MoneyTabs } from "./money-ui"
@@ -354,18 +354,6 @@ export function RegistersHome(props: {
       {/* ============ VISTA PROYECTADO ============ */}
       {vista === 1 && (
         <>
-          <DineroProyeccion
-            registers={registers}
-            balances={balances}
-            dues={dues}
-            entries={props.entries || []}
-            bankTxs={props.bankTxs || []}
-            bankOk={props.bankOk === true}
-            otherFunds={props.otherFunds || []}
-            onEditEntry={props.onEditEntry}
-            onMarkPaid={props.onMarkPaid}
-          />
-
           {/* Balances reales por cuenta (referencia; el inicial es la cuenta ★ + otros fondos) */}
           <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">
             <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-neutral-400">
