@@ -361,9 +361,13 @@ export function CashFlowRegister({
     for (const f of all) handleApproveFinding(f)
   }, [reconReport, handleApproveFinding])
 
-  const handleOpenAddModal = (type: CashFlowType, status: CashFlowStatus) => {
-    const today = new Date()
-    const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+  const handleOpenAddModal = (type: CashFlowType, status: CashFlowStatus, dateIso?: string) => {
+    const iso =
+      dateIso ||
+      (() => {
+        const today = new Date()
+        return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+      })()
     setEditingEntry({
       id: `tmp-${Date.now()}`,
       date: iso,
@@ -410,6 +414,20 @@ export function CashFlowRegister({
     setIsModalOpen(false)
     setEditingEntry(null)
   }
+
+  // Edición inline desde el registro proyectado (monto/fecha): guarda en el libro.
+  const handlePatchEntry = useCallback(
+    (id: string, patch: Partial<CashFlowEntry>) => {
+      setEntries((prev) => {
+        const next = prev.map((e) => (e.id === id ? { ...e, ...patch, isManuallyEdited: true } : e))
+        try {
+          localStorage.setItem(LEDGER_KEY, JSON.stringify(next))
+        } catch {}
+        return next
+      })
+    },
+    [],
+  )
 
   const handleAddAccount = (input: {
     name: string
@@ -524,6 +542,8 @@ export function CashFlowRegister({
               setEditingEntry(e)
               setIsModalOpen(true)
             }}
+            onPatchEntry={handlePatchEntry}
+            onAddEntry={(dateIso) => handleOpenAddModal("expense", "projected", dateIso)}
             onOpenAccount={(id) => setView({ kind: "account", id })}
             onAddAccount={() => setShowAddAccount(true)}
             onOpenTransfers={() => setView({ kind: "transfers" })}

@@ -5,7 +5,7 @@
 // componente solo lee recurrentes / descartes y pinta el resultado.
 
 import { useEffect, useMemo, useState } from "react"
-import { AlertTriangle, Check, CreditCard, Receipt, Repeat, TrendingUp, X } from "lucide-react"
+import { AlertTriangle, Check, CreditCard, Pencil, Receipt, Repeat, TrendingUp, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { money, type CashFlowEntry, type ScheduledEntry } from "./types"
 import { accountDisplayName, type DueItem, type RegisterAccount } from "./registers-store"
@@ -13,10 +13,12 @@ import {
   FREQ_LABEL,
   buildForecast,
   daysToEndOfMonth,
+  r2,
   startingBalance,
   todayKey,
   type ForecastBankTx,
   type ForecastLine,
+  type Forecast,
 } from "./dinero-forecast"
 import { FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT, FORECAST_DISMISSED_KEY } from "./finance-sync"
 
@@ -134,6 +136,10 @@ export function DineroProyeccion(props: {
   /** Ids de cuentas marcadas como "otros fondos" (suman al balance inicial). */
   otherFunds: string[]
   onEditEntry?: (e: CashFlowEntry) => void
+  /** Edición inline desde el registro proyectado: monto / fecha / descripción. */
+  onPatchEntry?: (id: string, patch: Partial<CashFlowEntry>) => void
+  /** Día vacío en el registro → alta de asiento con esa fecha preseleccionada. */
+  onAddEntry?: (dateIso: string) => void
   /** Confirmar "ya pagado": pasa el movimiento del libro a real (fecha del banco). */
   onMarkPaid?: (e: CashFlowEntry, paidDate: string) => void
 }) {
@@ -174,8 +180,6 @@ export function DineroProyeccion(props: {
   const mainName = inicio.mainId
     ? accountDisplayName(props.registers.find((r) => r.id === inicio.mainId)?.name || "").title
     : null
-  const diasConMov = fc.days.filter((d) => d.lines.length > 0)
-
   return (
     <>
       <p className="px-1 text-[10px] font-bold uppercase tracking-widest text-cyan-300/80">
@@ -328,57 +332,16 @@ export function DineroProyeccion(props: {
       )}
 
 
-      {/* Movimientos proyectados */}
-      <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">
-        <div className="mb-1.5 flex items-center justify-between gap-2">
-          <p className="text-[11px] font-bold uppercase tracking-wide text-neutral-400">
-            Movimientos · {fc.lines.length}
-          </p>
-          <button
-            type="button"
-            onClick={() => setVerDias((v) => !v)}
-            className="rounded-md border border-neutral-700 px-2 py-0.5 text-[10px] font-bold text-neutral-300"
-          >
-            {verDias ? "Lista" : "Día a día"}
-          </button>
-        </div>
-        {fc.lines.length === 0 ? (
-          <p className="text-[11px] text-neutral-500">Sin movimientos proyectados en este periodo.</p>
-        ) : verDias ? (
-          <div className="space-y-2">
-            {diasConMov.map((d) => (
-              <div key={d.date}>
-                <div className="flex items-center justify-between border-b border-neutral-800 pb-0.5 text-[10px] font-bold uppercase text-neutral-500">
-                  <span>{fechaDia(d.date, today)}</span>
-                  <span className={cn("font-mono", d.balance < 0 ? "text-rose-400" : "text-neutral-300")}>
-                    Saldo {money(d.balance)}
-                  </span>
-                </div>
-                {d.lines.map((ln) => (
-                  <LineRow key={ln.id} line={ln} today={today} showDate={false} onEdit={props.onEditEntry} />
-                ))}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="space-y-1">
-            {fc.lines.map((ln) => (
-              <LineRow key={ln.id} line={ln} today={today} showDate onEdit={props.onEditEntry} />
-            ))}
-          </div>
-        )}
-        {(fc.duplicatesSkipped > 0 || fc.recurringPaidSkipped > 0 || fc.beyondHorizonCount > 0) && (
-          <p className="mt-2 border-t border-neutral-800 pt-1.5 text-[10px] text-neutral-500">
-            {[
-              fc.duplicatesSkipped ? `${fc.duplicatesSkipped} recurrente(s) ya en el libro` : "",
-              fc.recurringPaidSkipped ? `${fc.recurringPaidSkipped} ya pagado(s) en el banco` : "",
-              fc.beyondHorizonCount ? `${fc.beyondHorizonCount} después del ${fechaCorta(fc.endDate)}` : "",
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
-        )}
-      </div>
+      {/* Registro proyectado — columnas estilo Register, un día por fila, scroll hasta 90 días. */}
+      <ProjectionRegister
+        fc={fc}
+        today={today}
+        onEditEntry={props.onEditEntry}
+        onPatchEntry={props.onPatchEntry}
+        onAddEntry={props.onAddEntry}
+        verDias={verDias}
+        setVerDias={setVerDias}
+      />
     </>
   )
 }
@@ -404,6 +367,263 @@ function LineRow(props: { line: ForecastLine; today: string; showDate: boolean; 
         {signed(ln.amount)}
       </span>
     </button>
+  )
+}
+
+
+// ---------------------------------------------------------------------------
+// Registro proyectado — FECHA · DESCRIPCIÓN · MONTO · SALDO ACUM. · BAL. PROYECTADO
+// Una fila por día consecutivo (hoy → horizonte, hasta 90/91 filas) dentro de una
+// caja con scroll. Saldo acumulado = asientos del libro; saldo proyectado = todo el
+// horizonte (recurrentes, tarjetas, vencidos). La diferencia muestra dónde el dinero
+// se pone débil; el saldo proyectado en rojo marca el quiebre.
+// ---------------------------------------------------------------------------
+
+type ProjRow = { line: ForecastLine | null; amount: number; balAcum: number; balProy: number }
+
+function ProjectionRegister(props: {
+  fc: Forecast
+  today: string
+  onEditEntry?: (e: CashFlowEntry) => void
+  onPatchEntry?: (id: string, patch: Partial<CashFlowEntry>) => void
+  onAddEntry?: (dateIso: string) => void
+  verDias: boolean
+  setVerDias: (v: boolean) => void
+}) {
+  const { fc, today, verDias } = props
+
+  const rows = useMemo(() => {
+    let acum = r2(fc.start)
+    let proy = r2(fc.start)
+    const out: ProjRow[] = []
+    for (const d of fc.days) {
+      for (const ln of d.lines) {
+        proy = r2(proy + ln.amount)
+        if (ln.kind === "proj" || ln.kind === "overdue") acum = r2(acum + ln.amount)
+        out.push({ line: ln, amount: ln.amount, balAcum: acum, balProy: proy })
+      }
+      if (d.lines.length === 0) out.push({ line: null, amount: 0, balAcum: acum, balProy: proy })
+    }
+    return out
+  }, [fc])
+
+  const totalDias = fc.days.length
+  const negDays = useMemo(() => fc.days.filter((d) => d.balance < 0).length, [fc])
+  const cols = "grid grid-cols-[4.5rem_minmax(0,1fr)_5.5rem_5rem_5.25rem] gap-1.5"
+
+  // Vista lista (la de siempre) como alternativa al registro.
+  if (verDias) {
+    return (
+      <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-neutral-400">
+            Movimientos · {fc.lines.length}
+          </p>
+          <button
+            type="button"
+            onClick={() => props.setVerDias(false)}
+            className="rounded-md border border-neutral-700 px-2 py-0.5 text-[10px] font-bold text-neutral-300"
+          >
+            Registro
+          </button>
+        </div>
+        {fc.lines.length === 0 ? (
+          <p className="text-[11px] text-neutral-500">Sin movimientos proyectados en este periodo.</p>
+        ) : (
+          <div className="space-y-1">
+            {fc.lines.map((ln) => (
+              <LineRow key={ln.id} line={ln} today={today} showDate onEdit={props.onEditEntry} />
+            ))}
+          </div>
+        )}
+        <FootNotes fc={fc} />
+      </div>
+    )
+  }
+
+  // Registro por defecto: días consecutivos con scroll.
+  return (
+    <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">
+      <div className="mb-1.5 flex items-center justify-between gap-2">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-neutral-400">
+          Registro proyectado · {totalDias} días
+        </p>
+        <button
+          type="button"
+          onClick={() => props.setVerDias(true)}
+          className="rounded-md border border-neutral-700 px-2 py-0.5 text-[10px] font-bold text-neutral-300"
+        >
+          Lista
+        </button>
+      </div>
+
+      <div className={cn(cols, "border-b border-neutral-800 pb-1 text-[9px] font-black uppercase tracking-wide")}>
+        <span className="text-neutral-400">Fecha</span>
+        <span className="text-neutral-400">Descripción</span>
+        <span className="text-right text-neutral-400">Monto</span>
+        <span className="text-right text-neutral-400">Saldo acum.</span>
+        <span className="text-right text-cyan-300">Bal. proy.</span>
+      </div>
+
+      <div className="max-h-[min(58vh,480px)] min-h-[220px] overflow-y-auto overscroll-contain">
+        {rows.length === 0 && (
+          <p className="px-2 py-8 text-center text-[12px] text-neutral-500">Sin días en el horizonte.</p>
+        )}
+        {rows.map((r, i) => {
+          const ln = r.line
+          const fecha = ln ? ln.date : fc.days[i]?.date || today
+          const editable = !!ln?.entry && !!props.onEditEntry && !!props.onPatchEntry
+          const rojo = r.balProy < 0
+          const primeroDelDia = i === 0 || rows[i - 1].line?.date !== fecha
+
+          const cells = (
+            <>
+              <span
+                className={cn(
+                  "font-mono text-[11px] font-semibold",
+                  fecha === today ? "text-cyan-300" : "text-neutral-400",
+                )}
+              >
+                {fecha === today ? "Hoy" : primeroDelDia ? fechaCorta(fecha) : ""}
+              </span>
+              <span className="flex min-w-0 items-center gap-1">
+                <span className={cn("truncate text-[12px]", ln ? "text-neutral-100" : "text-neutral-600")}>
+                  {ln ? ln.label : "sin movimiento"}
+                </span>
+                {ln && <KindBadge line={ln} />}
+              </span>
+              {ln ? (
+                editable ? (
+                  <AmountCell line={ln} entry={ln.entry!} patch={props.onPatchEntry!} />
+                ) : (
+                  <span
+                    className={cn(
+                      "text-right font-mono text-[12px] font-bold tabular-nums",
+                      ln.amount >= 0 ? "text-emerald-400" : "text-rose-400",
+                    )}
+                  >
+                    {signed(ln.amount)}
+                  </span>
+                )
+              ) : (
+                <span className="text-right text-neutral-700">—</span>
+              )}
+              <span className="text-right font-mono text-[12px] font-bold tabular-nums text-neutral-200">
+                {money(r.balAcum)}
+              </span>
+              <span
+                className={cn(
+                  "text-right font-mono text-[12px] font-bold tabular-nums",
+                  rojo ? "bg-rose-500/10 text-rose-400" : "text-cyan-200",
+                )}
+              >
+                {money(r.balProy)}
+              </span>
+            </>
+          )
+
+          // Día con asiento → clic abre el editor completo. Día vacío → alta con esa fecha.
+          if (ln) {
+            return (
+              <div key={ln.id} className={cn(cols, "items-center border-b border-neutral-900/80 py-1.5")}>
+                {props.onEditEntry && ln.entry ? (
+                  <button
+                    type="button"
+                    onClick={() => props.onEditEntry?.(ln.entry!)}
+                    className="flex w-full items-center gap-1 text-left active:bg-neutral-900/60"
+                  >
+                    {cells}
+                  </button>
+                ) : (
+                  cells
+                )}
+              </div>
+            )
+          }
+          return (
+            <button
+              key={`d:${fecha}`}
+              type="button"
+              onClick={() => props.onAddEntry?.(fecha)}
+              className={cn(
+                cols,
+                "w-full items-center border-b border-neutral-900/80 py-1.5 text-left active:bg-neutral-900/60",
+              )}
+            >
+              {cells}
+            </button>
+          )
+        })}
+      </div>
+
+      <p className="mt-1.5 flex items-center justify-between gap-2 border-t border-neutral-800 pt-1.5 text-[10px] text-neutral-500">
+        <span>
+          {totalDias} días seguidos ·{" "}
+          {negDays > 0 ? <span className="font-bold text-rose-400">{negDays} en rojo</span> : "sin quiebres"}
+        </span>
+        <span className="text-neutral-600">Toca un día sin movimiento para agregar</span>
+      </p>
+      <FootNotes fc={fc} />
+    </div>
+  )
+}
+
+/** Monto editable inline en el registro: Enter/blur guarda el cambio en el libro. */
+function AmountCell(props: {
+  line: ForecastLine
+  entry: CashFlowEntry
+  patch: (id: string, p: Partial<CashFlowEntry>) => void
+}) {
+  const { entry } = props
+  const income = entry.type === "income"
+  const signo = income ? 1 : -1
+  const guardar = (raw: string) => {
+    const n = parseFloat(raw)
+    if (!Number.isFinite(n)) return
+    const norm = r2(Math.abs(n) * signo)
+    if (norm === r2(Number(entry.amount) || 0)) return
+    props.patch(entry.id, { amount: norm, isManuallyEdited: true })
+  }
+  return (
+    <span className="flex items-center justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
+      <span className={cn("font-mono text-[11px] font-bold", income ? "text-emerald-500" : "text-rose-500")}>
+        {income ? "+" : "\u2212"}
+      </span>
+      <input
+        key={`${entry.id}:${entry.amount}`}
+        type="number"
+        step="0.01"
+        inputMode="decimal"
+        defaultValue={String(Math.abs(Number(entry.amount) || 0) || "")}
+        onBlur={(e) => guardar(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.target as HTMLInputElement).blur()
+        }}
+        onClick={(e) => e.stopPropagation()}
+        aria-label={`Monto de ${entry.description || props.line.label}`}
+        className={cn(
+          "w-[3.5rem] rounded border border-transparent bg-transparent px-1 py-0.5 text-right font-mono text-[12px] font-bold tabular-nums outline-none",
+          "focus:border-neutral-600 focus:bg-neutral-900",
+          income ? "text-emerald-400" : "text-rose-400",
+        )}
+      />
+    </span>
+  )
+}
+
+/** Nota al pie: lo que el motor dejó fuera del horizonte. */
+function FootNotes({ fc }: { fc: Forecast }) {
+  if (fc.duplicatesSkipped <= 0 && fc.recurringPaidSkipped <= 0 && fc.beyondHorizonCount <= 0) return null
+  return (
+    <p className="mt-2 border-t border-neutral-800 pt-1.5 text-[10px] text-neutral-500">
+      {[
+        fc.duplicatesSkipped ? `${fc.duplicatesSkipped} recurrente(s) ya en el libro` : "",
+        fc.recurringPaidSkipped ? `${fc.recurringPaidSkipped} ya pagado(s) en el banco` : "",
+        fc.beyondHorizonCount ? `${fc.beyondHorizonCount} después del ${fechaCorta(fc.endDate)}` : "",
+      ]
+        .filter(Boolean)
+        .join(" · ")}
+    </p>
   )
 }
 

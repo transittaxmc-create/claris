@@ -118,6 +118,10 @@ export function RegistersHome(props: {
   otherFunds?: string[]
   /** "Probablemente pagado" confirmado: el movimiento pasa a real. */
   onMarkPaid?: (e: CashFlowEntry, paidDate: string) => void
+  /** Edición inline en el registro proyectado (monto/fecha/descripción). */
+  onPatchEntry?: (id: string, patch: Partial<CashFlowEntry>) => void
+  /** Día vacío del registro proyectado → alta de asiento con esa fecha. */
+  onAddEntry?: (dateIso: string) => void
 }) {
   const { registers, balances, dues, pairCount, looseCount } = props
   // Vista: 0 = Real (Reyes + balances DAILY), 1 = Proyectado. Swipe izq/der.
@@ -130,6 +134,7 @@ export function RegistersHome(props: {
   }, [vista])
   // Swipe detection
   const touchX = useRef<number | null>(null)
+  const [verTodos, setVerBalancesTodos] = useState(false)
   const onTouchStart = (e: React.TouchEvent) => {
     touchX.current = e.touches[0].clientX
   }
@@ -176,12 +181,12 @@ export function RegistersHome(props: {
     props.bankOk === true && !r.isMain && !r.pinned && (lastMove.get(r.id) ?? 0) < inactCutoff
   const gridRegs = registers.filter((r) => !ocultas(r))
   const hiddenCount = registers.length - gridRegs.length
-  const ordenadas = [...gridRegs].sort((a, b) => {
+
+  // TODAS las cuentas (sin filtro de inactivas) para la lista de balances reales.
+  // Incluye cuentas con balance 0 o null/undefined para que el usuario las vea.
+  const todasLasCuentas = [...registers].sort((a, b) => {
     if (a.isMain && !b.isMain) return -1
     if (b.isMain && !a.isMain) return 1
-    const ta = lastMove.get(a.id) ?? 0
-    const tb = lastMove.get(b.id) ?? 0
-    if (tb !== ta) return tb - ta
     return a.name.localeCompare(b.name)
   })
   const principal = ordenadas.find((r) => r.isMain) || null
@@ -356,23 +361,41 @@ export function RegistersHome(props: {
             bankOk={props.bankOk === true}
             otherFunds={props.otherFunds || []}
             onEditEntry={props.onEditEntry}
+            onPatchEntry={props.onPatchEntry}
+            onAddEntry={props.onAddEntry}
             onMarkPaid={props.onMarkPaid}
           />
 
           {/* Balances reales por cuenta (referencia; el inicial es la cuenta ★ + otros fondos) */}
           <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">
-            <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-neutral-400">
-              Balances reales del banco
-            </p>
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <p className="text-[11px] font-bold uppercase tracking-wide text-neutral-400">
+                Balances reales del banco
+              </p>
+              <button
+                type="button"
+                onClick={() => setVerBalancesTodos(true)}
+                className="rounded-md border border-neutral-700 px-2 py-0.5 text-[10px] font-bold text-neutral-300"
+                title="Ver todas las cuentas (incluidas con saldo 0)"
+              >
+                {verTodos ? "Solo activas" : "Ver todas"}
+              </button>
+            </div>
             <div className="space-y-1">
-              {ordenadas.map((r) => {
+              {todasLasCuentas.map((r) => {
                 const bal = balances[r.id]
-                const d = accountDisplayName(r.name)
+                const brand = bankBrandOf(r.name, r.institution)
+                const mostrarse =
+                  verTodos ||
+                  bal !== null &&
+                  bal !== undefined &&
+                  (bal !== 0 || r.isMain || r.pinned || r.source !== "snapshot")
+                if (!mostrarse) return null
                 return (
                   <div key={r.id} className="flex items-center justify-between gap-2 text-[12px]">
                     <span className="flex min-w-0 items-center gap-1.5">
                       {r.isMain && <Star className="size-3 shrink-0 fill-yellow-400 text-yellow-400" />}
-                      <span className="truncate font-semibold text-neutral-200">{d.title}</span>
+                      <span className="truncate font-semibold text-neutral-200">{brand.short}</span>
                     </span>
                     <span
                       className={cn(
