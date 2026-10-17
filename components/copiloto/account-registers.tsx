@@ -198,6 +198,13 @@ export function RegistersHome(props: {
     (n) => accountIdFor(n),
   )
 
+  // En el resumen inferior solo mostramos cuentas útiles para esta vista:
+  // las que tienen saldo distinto de cero o al menos un movimiento.
+  const balancesVisibles = ordenadas.filter((r) => {
+    const bal = balances[r.id]
+    return (bal !== null && bal !== undefined && bal !== 0) || (movCount[r.id] ?? 0) > 0
+  })
+
   // PROYECTADO de la franja = mismo motor y mismas reglas que la página
   // Projections (cuenta ★ + otros fondos, recurrentes, tarjetas, pagado en banco).
   const { schedules, dismissed } = useForecastInputs()
@@ -365,7 +372,7 @@ export function RegistersHome(props: {
               Balances reales del banco
             </p>
             <div className="space-y-1">
-              {ordenadas.map((r) => {
+              {balancesVisibles.map((r) => {
                 const bal = balances[r.id]
                 const d = accountDisplayName(r.name)
                 return (
