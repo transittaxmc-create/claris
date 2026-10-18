@@ -3,7 +3,7 @@
 // ============================================================================
 
 import type { CashFlowEntry, CashFlowOrigin, Expense, Trip } from "./types"
-import { netOf, tripDateOf } from "./types"
+import { netOf, tripDateOf, migrateCategory } from "./types"
 
 export const LEDGER_KEY = "claris_cash_flow_entries"
 
@@ -41,25 +41,25 @@ export function prefijoCobroDia(date: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// ORIGEN vs TIPO
-//  - ORIGEN: cómo entró (Escaneado / Manual / Banco / Cobros). No cambia.
-//  - TIPO:   Factura (Bill, por pagar → Projected) o Recibo (ya pagado → Bank).
-// Son dos etiquetas separadas: antes una sola ("Recibo escaneado") las mezclaba.
+// ORIGEN vs TYPE
+//  - ORIGEN: cómo entró (Escaneado / Manual / Bank / Cobros). No cambia.
+//  - TYPE:   Bill (Bill, payable → Projected) o Receipt (already paid → Bank).
+// Son dos etiquetas separadas: antes una sola ("Receipt escaneado") las mezclaba.
 // ---------------------------------------------------------------------------
 export type TipoDoc = "factura" | "recibo"
 
 export const ETIQUETA_ORIGEN: Record<CashFlowOrigin, string> = {
   scan: "Escaneado",
   manual: "Manual",
-  bank: "Banco",
+  bank: "Bank",
   trip: "Cobros",
   square: "Square",
-  transfer: "Transfer interna",
+  transfer: "Internal transfer",
 }
 
 export const ETIQUETA_TIPO: Record<TipoDoc, string> = {
-  factura: "Factura",
-  recibo: "Recibo",
+  factura: "Bill",
+  recibo: "Receipt",
 }
 
 export function etiquetaCombinada(origin: CashFlowOrigin, tipo: TipoDoc | null): string {
@@ -226,7 +226,14 @@ export function leerLibroMayor(): CashFlowEntry[] {
   try {
     const raw = localStorage.getItem(LEDGER_KEY)
     if (!raw) return []
-    return sinSemillas(JSON.parse(raw))
+    const list = sinSemillas(JSON.parse(raw))
+    // Migración a inglés (2026-10-18): normalizar categorías viejas al leer.
+    for (const e of list) {
+      if (e && typeof (e as any).category === "string") {
+        ;(e as any).category = migrateCategory((e as any).category)
+      }
+    }
+    return list
   } catch {
     return []
   }
