@@ -34,6 +34,7 @@ import { DineroProyeccion, useForecastInputs } from "./dinero-proyeccion"
 import { buildForecast, daysToEndOfMonth, startingBalance, todayKey } from "./dinero-forecast"
 import { movementCounts } from "./bank-brand"
 import { BankLogo, MoneyAccountCard, MoneyHeader, MoneySectionTitle, MoneyStrip, MoneyTabs } from "./money-ui"
+import { PendingDeposits } from "./pending-deposits"
 import { bankBrandOf } from "./bank-brand"
 
 export interface BankTx {
@@ -331,6 +332,8 @@ export function RegistersHome(props: {
       {/* ============ VISTA PROYECTADO ============ */}
       {vista === 1 && (
         <>
+          {/* Lo que las plataformas aguantan: visible al frente, no entra al proyectado. */}
+          <PendingDeposits />
           <DineroProyeccion
             registers={registers}
             balances={balances}
