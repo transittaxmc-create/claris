@@ -279,9 +279,24 @@ function getPositionCached(): Promise<GeolocationPosition> {
 
 // Nunca lanza: si el GPS o la red fallan devuelve null y la cabecera se queda
 // sin línea de ubicación en vez de romper la pantalla.
-export async function refreshHeaderPlace(): Promise<HeaderPlace | null> {
+function getPositionFresh(): Promise<GeolocationPosition> {
+  return new Promise((resolve, reject) => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      reject(new Error("Geolocation unavailable"))
+      return
+    }
+    // Posición fresca para el header en vivo (sin reusar fijadas viejas).
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+      timeout: 8000,
+      maximumAge: 0,
+    })
+  })
+}
+
+export async function refreshHeaderPlace(opts?: { fresh?: boolean }): Promise<HeaderPlace | null> {
   try {
-    const pos = await getPositionCached()
+    const pos = opts?.fresh ? await getPositionFresh() : await getPositionCached()
     const { latitude: lat, longitude: lng, accuracy = 0 } = pos.coords
 
     let data: any = {}
