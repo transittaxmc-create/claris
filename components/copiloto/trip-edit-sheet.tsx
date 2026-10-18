@@ -11,10 +11,10 @@ import { diffOf, expectedOf, receivedOf, reconStateOf, applyDifferenceToTrip, ro
 
 // Tono por estado, con el mismo criterio que en REGISTER para no confundir.
 const TONE: Record<ReconState, { text: string; border: string; bg: string; label: string }> = {
-  pending: { text: "text-neutral-400", border: "border-neutral-700", bg: "bg-neutral-900/60", label: "Falta registrar el pago" },
-  ok: { text: "text-green-400", border: "border-green-500/40", bg: "bg-green-500/10", label: "El pago cuadra" },
-  short: { text: "text-rose-400", border: "border-rose-500/40", bg: "bg-rose-500/10", label: "Pagaron de menos" },
-  over: { text: "text-sky-400", border: "border-sky-500/40", bg: "bg-sky-500/10", label: "Pagaron de más" },
+  pending: { text: "text-neutral-400", border: "border-neutral-700", bg: "bg-neutral-900/60", label: "Record the payment" },
+  ok: { text: "text-green-400", border: "border-green-500/40", bg: "bg-green-500/10", label: "Payment balances" },
+  short: { text: "text-rose-400", border: "border-rose-500/40", bg: "bg-rose-500/10", label: "Pagaron short" },
+  over: { text: "text-sky-400", border: "border-sky-500/40", bg: "bg-sky-500/10", label: "Pagaron over" },
 }
 
 function signedMoney(n: number): string {
@@ -68,14 +68,14 @@ export function TripEditSheet({
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <button
         type="button"
-        aria-label="Cerrar"
+        aria-label="Close"
         onClick={onClose}
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
       />
       <div className="relative flex max-h-[90%] w-full max-w-[440px] flex-col overflow-hidden rounded-t-3xl border-t border-neutral-800 bg-neutral-950">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-neutral-800 px-4 py-3">
-          <h2 className="text-base font-bold text-white">Editar viaje</h2>
+          <h2 className="text-base font-bold text-white">Edit trip</h2>
           <button type="button" onClick={onClose} className="rounded-full p-1 text-neutral-400 hover:text-white">
             <X className="size-5" />
           </button>
@@ -154,7 +154,7 @@ export function TripEditSheet({
               onChange={(n) => set("platformFee", n)}
             />
             <label className="flex flex-col gap-1">
-              <span className="text-[10px] font-bold tracking-wide text-neutral-400">HORA</span>
+              <span className="text-[10px] font-bold tracking-wide text-neutral-400">HOUR</span>
               <input
                 value={draft.time}
                 onChange={(e) => {
@@ -166,7 +166,7 @@ export function TripEditSheet({
               />
               <input
                 type="date"
-                aria-label="Fecha de la transacción"
+                aria-label="Transaction date"
                 value={tripDateInputValue(draft)}
                 onChange={(e) => setDate(e.target.value)}
                 className="rounded-lg border border-neutral-700 bg-neutral-950 px-2.5 py-1 text-[11px] font-semibold text-white outline-none"
@@ -178,7 +178,7 @@ export function TripEditSheet({
           <section className={cn("rounded-2xl border p-3", tone.border, tone.bg)}>
             <div className="mb-2 flex items-center justify-between">
               <p className="flex items-center gap-1.5 text-[10px] font-bold tracking-wide text-neutral-300">
-                <Scale className="size-3.5" /> RECONCILIACIÓN
+                <Scale className="size-3.5" /> RECONCILIATION
               </p>
               <span className={cn("flex items-center gap-1 text-[10px] font-bold", tone.text)}>
                 {state === "ok" ? (
@@ -195,7 +195,7 @@ export function TripEditSheet({
             </div>
 
             <p className="mb-2 text-[10px] leading-tight text-neutral-500">
-              Neto calculado por la app: <span className="font-bold text-neutral-300">{money(computedNet)}</span>
+              Net calculated by the app: <span className="font-bold text-neutral-300">{money(computedNet)}</span>
               {overrideActive && <span className="text-yellow-400"> · esperado fijado a mano: {money(expected)}</span>}
             </p>
 
@@ -222,7 +222,7 @@ export function TripEditSheet({
             <input
               value={draft.reconciliation?.note ?? ""}
               onChange={(e) => setRecon({ note: e.target.value })}
-              placeholder="Nota del descuadre (opcional)"
+              placeholder="Mismatch note (optional)"
               className="mt-2 w-full rounded-lg border border-neutral-700 bg-neutral-950 px-2.5 py-2 text-xs text-white outline-none placeholder:text-neutral-600"
             />
 
@@ -233,13 +233,13 @@ export function TripEditSheet({
                 onClick={() => setDraft((d) => (d ? applyDifferenceToTrip(d) : d))}
                 className="mt-2 w-full rounded-xl border border-yellow-400/60 bg-yellow-400/10 py-2.5 text-xs font-bold text-yellow-400"
               >
-                AJUSTAR EARNINGS EN {signedMoney(diff)} PARA QUE CUADRE
+                ADJUST EARNINGS BY {signedMoney(diff)} TO BALANCE
               </button>
             )}
 
             {received == null && (
               <p className="mt-2 text-[10px] leading-tight text-neutral-500">
-                Escribe el monto que depositó la plataforma para ver si hay diferencia.
+                Enter the amount the platform deposited to see if there's a difference.
               </p>
             )}
 
@@ -249,7 +249,7 @@ export function TripEditSheet({
                 onClick={() => setRecon({ received: undefined, expected: undefined })}
                 className="mt-2 w-full rounded-xl border border-neutral-700 py-2 text-[10px] font-bold text-neutral-400"
               >
-                LIMPIAR RECONCILIACIÓN
+                CLEAR RECONCILIATION
               </button>
             )}
           </section>
@@ -260,7 +260,7 @@ export function TripEditSheet({
             <input
               value={draft.pickup}
               onChange={(e) => set("pickup", e.target.value)}
-              placeholder="Dirección de recogida"
+              placeholder="Pickup address"
               className="rounded-lg border border-neutral-700 bg-neutral-950 px-2.5 py-2 text-sm text-white outline-none placeholder:text-neutral-600"
             />
           </label>
@@ -269,7 +269,7 @@ export function TripEditSheet({
             <input
               value={draft.dropoff}
               onChange={(e) => set("dropoff", e.target.value)}
-              placeholder="Dirección de entrega"
+              placeholder="Drop-off address"
               className="rounded-lg border border-neutral-700 bg-neutral-950 px-2.5 py-2 text-sm text-white outline-none placeholder:text-neutral-600"
             />
           </label>
@@ -292,7 +292,7 @@ export function TripEditSheet({
           <button
             type="button"
             onClick={() => {
-              if (window.confirm("¿Eliminar este viaje? Esta acción no se puede deshacer.")) onDelete(draft.id)
+              if (window.confirm("Delete this trip? This can't be undone.")) onDelete(draft.id)
             }}
             className="flex items-center justify-center gap-1.5 rounded-xl border border-red-500/50 bg-red-500/10 px-4 py-3 text-sm font-bold text-red-400"
           >
@@ -303,7 +303,7 @@ export function TripEditSheet({
             onClick={() => onSave(draft)}
             className="flex-1 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 py-3 text-sm font-extrabold text-black active:scale-[0.99]"
           >
-            GUARDAR CAMBIOS
+            SAVE CHANGES
           </button>
         </div>
       </div>
