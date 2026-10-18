@@ -570,6 +570,17 @@ export async function clearAllData(): Promise<{ ok: boolean; error?: string }> {
         ls.removeItem(key)
       } catch {}
     }
+    // RESET TOTAL: además barrer TODAS las claves claris_* (AI diaria,
+    // decisiones del cierre, categorías aprendidas, ajustes, schedules...) para
+    // que nada de la historia vieja sobreviva al probar la sync de Plaid fresco.
+    for (let i = ls.length - 1; i >= 0; i -= 1) {
+      const k = ls.key(i)
+      if (k && k.startsWith("claris_")) {
+        try {
+          ls.removeItem(k)
+        } catch {}
+      }
+    }
   }
   try {
     await clearIndexedDB()
