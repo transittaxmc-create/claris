@@ -20,6 +20,7 @@ export type PlatformMeta = {
 export const PLATFORM_META: Record<Platform, PlatformMeta> = {
   Uber: { logo: "/logos/uber.jpg" },
   Lyft: { logo: "/logos/lyft.jpg" },
+  Limosys: {},
   "Eco Ride": {
     logo: "/logos/eco-ride.jpg",
     badge: "ACCESS-A-RIDE",
