@@ -5,13 +5,10 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowLeftRight,
-  Building2,
   Camera,
-  Car,
   Check,
   Pencil,
   Plus,
-  Receipt,
   Star,
   Trash2,
   TrendingUp,
@@ -61,43 +58,27 @@ function shortDate(iso: string): string {
 
 // Dos etiquetas por movimiento: ORIGEN (Escaneado / Manual / Banco / Cobros /
 // Square) y TIPO (Factura = por pagar, Recibo = ya pagado).
-function EntryBadges({ entry }: { entry: CashFlowEntry }) {
-  const base =
-    "inline-flex items-center gap-0.5 whitespace-nowrap rounded border px-1 py-0.5 text-[9px] font-semibold"
-  const origin: CashFlowOrigin = origenDe(entry)
+// Un solo indicador sutil por movimiento (sin iconos): tipo de documento
+// (Factura/Recibo) o, si no aplica, el origen cuando no es manual.
+function EntryTag({ entry }: { entry: CashFlowEntry }) {
   const tipo = tipoDocDe(entry)
-  const originStyle: Record<CashFlowOrigin, string> = {
-    scan: "border-sky-500/30 bg-sky-500/10 text-sky-300",
-    manual: "border-neutral-700 bg-neutral-800 text-neutral-400",
-    bank: "border-blue-500/20 bg-blue-500/10 text-blue-400",
-    trip: "border-amber-500/20 bg-amber-500/10 text-amber-400",
-    square: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
-    transfer: "border-violet-500/30 bg-violet-500/10 text-violet-300",
+  const origin: CashFlowOrigin = origenDe(entry)
+  let label: string | null = null
+  let cls = "text-neutral-500"
+  if (tipo === "factura") {
+    label = ETIQUETA_TIPO.factura
+    cls = "text-cyan-500/80"
+  } else if (tipo === "recibo") {
+    label = ETIQUETA_TIPO.recibo
+    cls = "text-purple-400/80"
+  } else if (origin !== "manual") {
+    label = entry.origin === "trip" && entry.sourceLabel ? entry.sourceLabel : ETIQUETA_ORIGEN[origin]
   }
-  return (
-    <span className="mt-0.5 flex flex-wrap items-center gap-1">
-      <span className={cn(base, originStyle[origin])}>
-        {origin === "scan" && <Camera className="size-2.5" />}
-        {origin === "bank" && <Building2 className="size-2.5" />}
-        {origin === "transfer" && <ArrowLeftRight className="size-2.5" />}
-        {origin === "trip" && <Car className="size-2.5" />}
-        {entry.origin === "trip" && entry.sourceLabel ? entry.sourceLabel : ETIQUETA_ORIGEN[origin]}
-      </span>
-      {tipo === "factura" && (
-        <span className={cn(base, "border-cyan-500/30 bg-cyan-500/10 text-cyan-300")}>
-          <TrendingUp className="size-2.5" /> {ETIQUETA_TIPO.factura}
-        </span>
-      )}
-      {tipo === "recibo" && (
-        <span className={cn(base, "border-purple-500/30 bg-purple-500/10 text-purple-300")}>
-          <Receipt className="size-2.5" /> {ETIQUETA_TIPO.recibo}
-        </span>
-      )}
-    </span>
-  )
+  if (!label) return null
+  return <span className={cn("mt-0.5 block truncate text-[9px] font-medium", cls)}>{label}</span>
 }
 
-export function RegistersHome(props: {
+export function RegistersHomeexport function RegistersHome(props: {
   registers: RegisterAccount[]
   balances: Record<string, number | null>
   dues: DueItem[]
@@ -478,6 +459,9 @@ export function RegisterDetail(props: {
   // ¿Cómo registrar? Escanear (la AI lee, categoriza, clasifica y registra a
   // donde va) o Manual. Hoja de acción al tocar + Factura / + Recibo.
   const [docChoice, setDocChoice] = useState<null | "bill" | "receipt">(null)
+  // Fila expandida (muestra Editar/Borrar) y monto en edición inline.
+  const [expandedKey, setExpandedKey] = useState<string | null>(null)
+  const [editingAmountId, setEditingAmountId] = useState<string | null>(null)
   // AI TRACKING de due dates: próxima factura por pagar y ¿alcanza el balance?
   const proximaFactura = (() => {
     const bills = (props.entries || []).filter(
@@ -688,37 +672,80 @@ export function RegisterDetail(props: {
             const ent = line.entry
             const income = line.amount >= 0
             const esFactura = ent ? ent.status === "projected" : false
+            const expanded = ent != null && expandedKey === line.key
+            const editingAmt = ent != null && editingAmountId === ent.id
+            const toggleExpand = () => setExpandedKey((k) => (k === line.key ? null : line.key))
             return (
               <div key={line.key} className="border-b border-neutral-900/80 px-2.5 py-2">
-                <div className="grid grid-cols-[3.25rem_minmax(0,1fr)_4.75rem_4.75rem] items-center gap-1">
+                <div
+                  role={ent ? "button" : undefined}
+                  tabIndex={ent ? 0 : undefined}
+                  onClick={ent ? toggleExpand : undefined}
+                  onKeyDown={
+                    ent
+                      ? (ev) => {
+                          if (ev.key === "Enter" || ev.key === " ") {
+                            ev.preventDefault()
+                            toggleExpand()
+                          }
+                        }
+                      : undefined
+                  }
+                  className={cn(
+                    "grid grid-cols-[3.25rem_minmax(0,1fr)_4.75rem_4.75rem] items-center gap-1",
+                    ent && "cursor-pointer",
+                  )}
+                >
                   <p className="font-mono text-[10px] font-semibold leading-tight text-neutral-500">{shortDate(line.date)}</p>
                   <div className="min-w-0">
                     <p className="truncate text-[12px] font-medium leading-snug text-neutral-100">{line.detail}</p>
-                    {ent && <EntryBadges entry={ent} />}
+                    {ent && <EntryTag entry={ent} />}
                   </div>
                   {ent ? (
-                    <span className="flex items-center justify-end gap-0.5">
-                      <span className={cn("font-mono text-[11px] font-bold", income ? "text-emerald-500" : "text-rose-500")}>
-                        {income ? "+" : "−"}
+                    editingAmt ? (
+                      <span className="flex items-center justify-end gap-0.5" onClick={(e) => e.stopPropagation()}>
+                        <span className={cn("font-mono text-[11px] font-bold", income ? "text-emerald-500" : "text-rose-500")}>
+                          {income ? "+" : "−"}
+                        </span>
+                        <input
+                          key={`${ent.id}:${ent.amount}`}
+                          autoFocus
+                          type="number"
+                          step="0.01"
+                          inputMode="decimal"
+                          defaultValue={String(Math.abs(Number(ent.amount) || 0))}
+                          onBlur={(ev) => {
+                            props.onInlineAmount(ent.id, ev.target.value)
+                            setEditingAmountId(null)
+                          }}
+                          onKeyDown={(ev) => {
+                            if (ev.key === "Enter") (ev.target as HTMLInputElement).blur()
+                            if (ev.key === "Escape") setEditingAmountId(null)
+                          }}
+                          aria-label={`Monto de ${ent.description || "apunte"} (editable)`}
+                          className={cn(
+                            "w-[3.9rem] rounded border border-neutral-600 bg-neutral-900 px-0.5 py-0.5 text-right font-mono text-[11px] font-bold tabular-nums outline-none",
+                            income ? "text-emerald-400" : "text-rose-400",
+                          )}
+                        />
                       </span>
-                      <input
-                        key={`${ent.id}:${ent.amount}`}
-                        type="number"
-                        step="0.01"
-                        inputMode="decimal"
-                        defaultValue={String(Math.abs(Number(ent.amount) || 0))}
-                        onBlur={(ev) => props.onInlineAmount(ent.id, ev.target.value)}
-                        onKeyDown={(ev) => {
-                          if (ev.key === "Enter") (ev.target as HTMLInputElement).blur()
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setEditingAmountId(ent.id)
                         }}
-                        aria-label={`Monto de ${ent.description || "apunte"} (editable)`}
+                        title="Tocar para editar monto"
                         className={cn(
-                          "w-[3.9rem] rounded border border-transparent bg-transparent px-0.5 py-0.5 text-right font-mono text-[11px] font-bold tabular-nums outline-none",
-                          "focus:border-neutral-600 focus:bg-neutral-900",
+                          "text-right font-mono text-[12px] font-bold tabular-nums",
                           income ? "text-emerald-400" : "text-rose-400",
                         )}
-                      />
-                    </span>
+                      >
+                        {income ? "+" : "−"}
+                        {money(Math.abs(Number(ent.amount) || 0)).replace(/^\$/, "")}
+                      </button>
+                    )
                   ) : (
                     <p
                       className={cn(
@@ -734,7 +761,7 @@ export function RegisterDetail(props: {
                     {line.dailyBalance === null ? "—" : money(line.dailyBalance)}
                   </p>
                 </div>
-                {ent && (
+                {expanded && ent && (
                   <div className="mt-1 flex items-center gap-1.5 pl-[3.25rem]">
                     <button
                       type="button"
@@ -750,22 +777,23 @@ export function RegisterDetail(props: {
                         onClick={() => props.onSetDocKind(ent.id, esFactura ? "receipt" : "bill")}
                         title={esFactura ? "Marcar pagado (recibo)" : "Pasar a factura (due date en proyecciones)"}
                         className={cn(
-                          "flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[9px] font-bold active:scale-95",
+                          "flex items-center gap-1 rounded-md border px-1 py-0.5 text-[8px] font-bold active:scale-95",
                           esFactura
                             ? "border-purple-500/30 bg-purple-500/10 text-purple-300"
                             : "border-cyan-500/30 bg-cyan-500/10 text-cyan-300",
                         )}
                       >
                         {esFactura ? <Check className="size-2.5" /> : <TrendingUp className="size-2.5" />}
+                        {esFactura ? "Recibo" : "Factura"}
                       </button>
                     )}
                     <button
                       type="button"
                       onClick={() => props.onDeleteEntry(ent.id)}
                       title="Borrar apunte"
-                      className="flex items-center rounded-md border border-rose-900/50 bg-rose-950/30 px-1.5 py-0.5 text-rose-300 active:scale-95"
+                      className="flex items-center gap-1 rounded-md border border-rose-900/50 bg-rose-950/30 px-1.5 py-0.5 text-[9px] font-bold text-rose-300 active:scale-95"
                     >
-                      <Trash2 className="size-2.5" />
+                      <Trash2 className="size-2.5" /> Borrar
                     </button>
                   </div>
                 )}
