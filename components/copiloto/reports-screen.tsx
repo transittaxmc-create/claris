@@ -18,11 +18,11 @@ import { BankTxReport } from "./bank-tx-report"
 type Preset = "week" | "lastWeek" | "month" | "lastMonth" | "last30" | "custom"
 
 const PRESETS: { id: Preset; label: string }[] = [
-  { id: "week", label: "Esta semana" },
-  { id: "lastWeek", label: "Semana pasada" },
-  { id: "month", label: "Este mes" },
-  { id: "lastMonth", label: "Mes pasado" },
-  { id: "last30", label: "Últimos 30 días" },
+  { id: "week", label: "This week" },
+  { id: "lastWeek", label: "Last week" },
+  { id: "month", label: "This month" },
+  { id: "lastMonth", label: "Last month" },
+  { id: "last30", label: "Last 30 days" },
   { id: "custom", label: "Personalizado" },
 ]
 
@@ -193,35 +193,35 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
     const lines: string[] = []
     lines.push(`Financial Statement,${from} a ${to}`)
     lines.push("")
-    lines.push("INGRESOS,VALOR")
+    lines.push("INCOME,VALUE")
     lines.push(`Bruto,${data.gross}`)
     lines.push(`Propinas,${data.tips}`)
     lines.push(`Extra cash,${data.extra}`)
     lines.push(`Peajes cobrados,${data.tolls}`)
-    lines.push(`Comisiones de plataforma,${data.fees > 0 ? "-" : ""}${data.fees}`)
-    lines.push(`NETO,${data.net}`)
+    lines.push(`Platform fees,${data.fees > 0 ? "-" : ""}${data.fees}`)
+    lines.push(`NET,${data.net}`)
     lines.push("")
-    lines.push("POR PLATAFORMA,VIAJES,BRUTO,NETO")
+    lines.push("BY PLATFORM,TRIPS,GROSS,NET")
     for (const p of data.byPlatform) lines.push(`${p.platform},${p.count},${p.gross},${p.net}`)
     lines.push("")
-    lines.push("GASTOS,CATEGORIA,MONTO")
-    for (const c of data.byCategory) lines.push(`Gasto,${c.category},${c.amount}`)
-    lines.push(`TOTAL GASTOS,,${data.expenseTotal}`)
+    lines.push("EXPENSES,CATEGORY,AMOUNT")
+    for (const c of data.byCategory) lines.push(`Expense,${c.category},${c.amount}`)
+    lines.push(`TOTAL EXPENSES,,${data.expenseTotal}`)
     lines.push("")
-    lines.push("CLASIFICACION,MONTO")
+    lines.push("CLASSIFICATION,AMOUNT")
     lines.push(`Business,${data.business}`)
     lines.push(`Personal,${data.personal}`)
-    lines.push(`Sin clasificar,${data.unclassified}`)
+    lines.push(`Unclassified,${data.unclassified}`)
     lines.push("")
-    lines.push("RESULTADO,MONTO")
-    lines.push(`Neto,${data.net}`)
-    lines.push(`Gastos,${data.expenseTotal > 0 ? "-" : ""}${data.expenseTotal}`)
-    lines.push(`RESULTADO DEL PERIODO,${data.result}`)
+    lines.push("RESULT,AMOUNT")
+    lines.push(`Net,${data.net}`)
+    lines.push(`Expenses,${data.expenseTotal > 0 ? "-" : ""}${data.expenseTotal}`)
+    lines.push(`PERIOD RESULT,${data.result}`)
     lines.push("")
-    lines.push("RECONCILIACION,MONTO")
+    lines.push("RECONCILIATION,AMOUNT")
     lines.push(`Esperado,${data.expectedTotal}`)
     lines.push(`Recibido,${data.receivedTotal}`)
-    lines.push(`Pendiente de cobro,${data.pendingTotal}`)
+    lines.push(`Pending collection,${data.pendingTotal}`)
 
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" })
     const url = URL.createObjectURL(blob)
@@ -251,7 +251,7 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
       .join("")
     const categoryRows =
       data.byCategory.length === 0
-        ? `<tr><td colspan="2">Sin gastos</td></tr>`
+        ? `<tr><td colspan="2">No expenses</td></tr>`
         : data.byCategory
             .map((c) => `<tr><td>${esc(c.category)}</td><td class="r">-${moneyHtml(c.amount)}</td></tr>`)
             .join("")
@@ -343,7 +343,7 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
       <div className="flex-1 space-y-3 overflow-y-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
           <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold tracking-wide text-neutral-400">
-            <FileText className="size-3.5 text-sky-300" /> RANGO DEL REPORTE
+            <FileText className="size-3.5 text-sky-300" /> REPORT RANGE
           </p>
           <div className="flex flex-wrap gap-1.5">
             {PRESETS.map((p) => (
@@ -365,7 +365,7 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
           {preset === "custom" && (
             <div className="mt-2 grid grid-cols-2 gap-2">
               <label className="flex flex-col gap-1">
-                <span className="text-[9px] font-bold text-neutral-500">DESDE</span>
+                <span className="text-[9px] font-bold text-neutral-500">FROM</span>
                 <input
                   type="date"
                   value={customFrom}
@@ -374,7 +374,7 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
                 />
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-[9px] font-bold text-neutral-500">HASTA</span>
+                <span className="text-[9px] font-bold text-neutral-500">UNTIL</span>
                 <input
                   type="date"
                   value={customTo}
@@ -389,59 +389,59 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
         <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
           <p className="mb-1 text-[11px] font-bold tracking-wide text-white">FINANCIAL STATEMENT</p>
           <p className="mb-2 text-[10px] text-neutral-500">
-            {data.tripsCount} viajes · {data.expensesCount} gastos en el periodo
+            {data.tripsCount} trips · {data.expensesCount} expenses in the period
           </p>
 
-          <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-emerald-400">Ingresos</p>
+          <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-emerald-400">Income</p>
           <Row label="Bruto (earnings + extra + propinas + peajes)" value={money(data.gross)} tone="income" />
           <Row label="· Propinas" value={money(data.tips)} indent tone="muted" />
           <Row label="· Extra cash" value={money(data.extra)} indent tone="muted" />
           <Row label="· Peajes cobrados" value={money(data.tolls)} indent tone="muted" />
-          <Row label="Comisiones de plataforma" value={`${data.fees > 0 ? "-" : ""}${money(data.fees)}`} tone="expense" />
-          <Row label="NETO DE INGRESOS" value={money(data.net)} bold tone="total" />
+          <Row label="Platform fees" value={`${data.fees > 0 ? "-" : ""}${money(data.fees)}`} tone="expense" />
+          <Row label="INCOME NET" value={money(data.net)} bold tone="total" />
 
           {data.byPlatform.length > 0 && (
             <>
-              <p className="mt-3 text-[10px] font-bold uppercase tracking-wide text-neutral-400">Por plataforma</p>
+              <p className="mt-3 text-[10px] font-bold uppercase tracking-wide text-neutral-400">By platform</p>
               {data.byPlatform.map((p) => (
                 <Row key={p.platform} label={`${p.platform} (${p.count})`} value={money(p.net)} tone="muted" />
               ))}
             </>
           )}
 
-          <p className="mt-3 text-[10px] font-bold uppercase tracking-wide text-rose-400">Gastos</p>
+          <p className="mt-3 text-[10px] font-bold uppercase tracking-wide text-rose-400">Expenses</p>
           {data.byCategory.length === 0 ? (
-            <Row label="Sin gastos en el periodo" value={money(0)} tone="muted" />
+            <Row label="No expenses in the period" value={money(0)} tone="muted" />
           ) : (
             data.byCategory.map((c) => (
               <Row key={c.category} label={c.category} value={`-${money(c.amount)}`} tone="expense" />
             ))
           )}
           <Row
-            label="TOTAL GASTOS"
+            label="TOTAL EXPENSES"
             value={`${data.expenseTotal > 0 ? "-" : ""}${money(data.expenseTotal)}`}
             bold
             tone="total"
           />
 
-          <p className="mt-3 text-[10px] font-bold uppercase tracking-wide text-neutral-400">Clasificación fiscal</p>
+          <p className="mt-3 text-[10px] font-bold uppercase tracking-wide text-neutral-400">Tax classification</p>
           <Row label="Business (deducible)" value={money(data.business)} tone="income" />
           <Row label="Personal" value={money(data.personal)} tone="muted" />
           {data.unclassified > 0 && (
-            <Row label="Sin clasificar" value={money(data.unclassified)} tone="muted" />
+            <Row label="Unclassified" value={money(data.unclassified)} tone="muted" />
           )}
 
           <div className="mt-3 flex items-center justify-between border-t border-neutral-800 pt-2">
-            <span className="text-xs font-bold text-white">RESULTADO DEL PERIODO</span>
+            <span className="text-xs font-bold text-white">PERIOD RESULT</span>
             <span className={cn("font-mono text-base font-black", data.result >= 0 ? "text-emerald-400" : "text-rose-400")}>
               {money(data.result)}
             </span>
           </div>
 
-          <p className="mt-3 text-[10px] font-bold uppercase tracking-wide text-neutral-400">Reconciliación de cobros</p>
+          <p className="mt-3 text-[10px] font-bold uppercase tracking-wide text-neutral-400">Earnings reconciliation</p>
           <Row label="Esperado" value={money(data.expectedTotal)} tone="muted" />
           <Row label="Recibido" value={money(data.receivedTotal)} tone="income" />
-          <Row label="Pendiente de cobro" value={money(data.pendingTotal)} tone={data.pendingTotal > 0 ? "expense" : "muted"} />
+          <Row label="Pending collection" value={money(data.pendingTotal)} tone={data.pendingTotal > 0 ? "expense" : "muted"} />
         </section>
 
         <BankTxReport />
