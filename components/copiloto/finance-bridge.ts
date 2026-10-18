@@ -84,7 +84,7 @@ export function applyTripsToDays(days: FinanceDay[], trips: RealTripInput[]): Fi
   })
 }
 
-// Totales reales de la semana (para las tarjetas de resumen).
+// Totales reales de la week (para las cards de resumen).
 export function computeRealWeekTotals(trips: RealTripInput[]): {
   realIncome: number
   realTripCount: number
@@ -122,8 +122,8 @@ function weekdayOf(date: string): (typeof WEEKDAYS)[number] | null {
   return WEEKDAYS[d.getDay()]
 }
 
-// Promedio histórico de ingresos por día de la semana (todos los viajes, sin
-// contar la semana actual para no contaminar la proyección con ella misma).
+// Promedio histórico de ingresos por día de la week (all los trips, sin
+// contar la week actual para no contaminar la proyección con ella misma).
 export function weekdayAverages(trips: RealTripInput[]): Record<string, number> {
   const sums: Record<string, number> = {}
   const counts: Record<string, number> = {}
@@ -170,7 +170,7 @@ export function tollBillsToPayments(bills: TollBillInput[] | null | undefined): 
   return bills
     .filter((b) => b && b.status === "unpaid")
     .map((b) => ({
-      description: `Peajes del ${String(b.serviceDate ?? "").slice(0, 10)}`,
+      description: `Tolls from ${String(b.serviceDate ?? "").slice(0, 10)}`,
       amount: cents(Number(b.amount) || 0) / 100,
       // Si no hay dueDate se usa el propio día del servicio: mejor contarlo en
       // su día que perderlo en silencio.
