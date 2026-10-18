@@ -877,7 +877,7 @@ function ProjectionRegister(props: {
   const totalDias = fc.days.length
   const negDays = useMemo(() => fc.days.filter((d) => d.balance < 0).length, [fc])
   // Registro por FECHA | DESCRIPCIÓN | MONTO | SALDO ACUM. | BAL. PROYECTADO
-  const cols = "grid grid-cols-[4.5rem_minmax(0,1fr)_4.75rem_5rem_5rem] gap-1"
+  const cols = "grid min-w-[34rem] grid-cols-[4.75rem_minmax(10rem,1fr)_5.75rem_6rem_6.5rem] gap-1"
 
   function descripcionDe(ln: ForecastLine): string {
     const d = String((ln.entry && (ln.entry.description || (ln.entry as any).detail)) || ln.label || "—")
@@ -941,15 +941,16 @@ function ProjectionRegister(props: {
       </div>
 
 
-      <div className={cn(cols, "border-b border-neutral-800 pb-1 text-[9px] font-black uppercase tracking-wide")}>
-        <span className="text-neutral-400">Fecha</span>
-        <span className="text-neutral-400">Descripción</span>
-        <span className="text-right text-neutral-400">Monto</span>
-        <span className="text-right text-neutral-400">Saldo acum.</span>
-        <span className="text-right text-cyan-300">Bal. proyectado</span>
-      </div>
+      <div className="overflow-x-auto">
+        <div className={cn(cols, "border-b border-neutral-800 pb-1 text-[9px] font-black uppercase tracking-wide")}>
+          <span className="text-neutral-400">Fecha</span>
+          <span className="text-neutral-400">Descripción</span>
+          <span className="text-right text-neutral-400">Monto</span>
+          <span className="text-right text-neutral-400">Saldo acum.</span>
+          <span className="text-right text-cyan-300">Bal. proyectado</span>
+        </div>
 
-      <div className="max-h-[min(58vh,480px)] min-h-[220px] overflow-y-auto overscroll-contain">
+        <div className="max-h-[min(58vh,480px)] min-h-[220px] overflow-y-auto overscroll-contain">
         {rows.length === 0 && (
           <p className="px-2 py-8 text-center text-[12px] text-neutral-500">Sin días en el horizonte.</p>
         )}
@@ -1062,6 +1063,7 @@ function ProjectionRegister(props: {
             </button>
           )
         })}
+        </div>
       </div>
 
       <p className="mt-1.5 flex items-center justify-between gap-2 border-t border-neutral-800 pt-1.5 text-[10px] text-neutral-500">
