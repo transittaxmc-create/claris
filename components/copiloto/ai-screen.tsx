@@ -17,53 +17,53 @@ interface Message {
 const QUICK_PROMPTS = [
   {
     icon: TrendingUp,
-    label: "¿Cuánto gano por hora?",
-    prompt: "¿Cuánto estoy ganando por hora (gross y neto)? Analiza mis horas trabajadas y rendimiento.",
+    label: "How much do I earn per hour?",
+    prompt: "How much am I earning per hour (gross and net)? Analyze my hours worked and performance.",
   },
   {
     icon: Zap,
     label: "Analizar rentabilidad",
-    prompt: "Analiza mi rentabilidad total comparando ingresos brutos, tarifas, comisiones y gastos.",
+    prompt: "Analyze my total profitability comparing gross income, fares, commissions and expenses.",
   },
   {
     icon: Receipt,
-    label: "Gastos deducibles",
-    prompt: "¿Qué gastos son deducibles al 100% de impuestos (gasolina, peajes, seguros)?",
+    label: "Deductible expenses",
+    prompt: "Which expenses are 100% tax-deductible (fuel, tolls, insurance)?",
   },
   {
     icon: Car,
-    label: "Ahorro de gasolina",
-    prompt: "¿Cómo puedo reducir el consumo de combustible y maximizar mi margen neto?",
+    label: "Gas savings",
+    prompt: "How can I cut fuel consumption and maximize my net margin?",
   },
   {
     icon: AlertTriangle,
-    label: "¿Cuánto me falta por cobrar?",
+    label: "How much is left to collect?",
     prompt:
-      "Analiza mis viajes y reconciliaciones: ¿cuánto me falta por cobrar, de qué plataformas y cuáles son los viajes concretos con descuadre?",
+      "Analyze my trips and reconciliations: how much is left to collect, from which platforms, and which specific trips have mismatches?",
   },
   {
     icon: Receipt,
-    label: "Deducibles del mes",
+    label: "This month's deductibles",
     prompt:
-      "Hazme un resumen de mis gastos deducibles de impuestos de este mes por categoría, con totales y consejos.",
+      "Summarize this month's tax-deductible expenses by category, with totals and tips.",
   },
   {
     icon: Sparkles,
-    label: "Analizar mis gastos",
+    label: "Analyze my expenses",
     prompt:
-      "[ANÁLISIS DE GASTOS] Revisa todos mis gastos: verifica que cada uno esté en la categoría correcta y clasifícalos como business (deducible) o personal. Corrige los que estén mal.",
+      "[EXPENSE ANALYSIS] Review all my expenses: check each one is in the right category and classify them as business (deductible) or personal. Fix the wrong ones.",
   },
   {
     icon: Scale,
-    label: "Cómo reconciliar hoy",
+    label: "How to reconcile today",
     prompt:
-      "Explícame paso a paso cómo reconciliar los cobros de hoy hacia DINERO (reemplazo de proyección, sin duplicar) y qué debo revisar antes de tocar el botón.",
+      "Walk me step by step through reconciling today's earnings into MONEY (projection replacement, no duplicates) and what to check before touching the button.",
   },
   {
     icon: TrendingUp,
-    label: "Resumen del día",
+    label: "Day summary",
     prompt:
-      "Dame un resumen ejecutivo de hoy: viajes, neto por plataforma, gastos, y si hay algo pendiente de cobrar o clasificar.",
+      "Give me an executive summary of today: trips, net by platform, expenses, and anything pending collection or classification.",
   },
 ]
 
@@ -75,8 +75,8 @@ function welcomeMessage(): Message {
     id: "welcome",
     role: "assistant",
     content:
-      "👋 Hola. Soy tu Copiloto financiero.\n\nPuedo ayudarte con:\n• Ganancias, neto, por hora y por plataforma\n• Gastos: categoría, Business vs Personal, deducibles\n• Reconciliar cobros del día y descuadres\n• Conciliar con el banco (CSV del statement)\n• Programar pagos/ingresos en el ledger\n• Ideas para el día, peajes, gasolina y reportes\n\nEscribe abajo o usa un acceso rápido.",
-    time: new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
+      "👋 Hi. I'm your financial Copilot.\n\nI can help with:\n• Earnings, net, per hour and per platform\n• Expenses: category, Business vs Personal, deductibles\n• Reconcile today's earnings and mismatches\n• Reconcile with the bank (statement CSV)\n• Schedule payments/income in the ledger\n• Ideas for the day, tolls, fuel and reports\n\nWrite below or use a quick action.",
+    time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
   }
 }
 
@@ -131,7 +131,7 @@ export function AIScreen({
       const rows = parseBankCsv(text)
       if (!rows || rows.length === 0) {
         window.alert(
-          "No se pudieron leer transacciones del archivo. Formato esperado (CSV): fecha, descripción, monto.",
+          "Couldn't read transactions from the file. Expected format (CSV): date, description, amount.",
         )
         return
       }
@@ -140,15 +140,15 @@ export function AIScreen({
         .map((r) => `${r.date} | ${r.description} | ${r.amount >= 0 ? "+" : "-"}$${Math.abs(r.amount).toFixed(2)}`)
         .join("\n")
       sendMessage(
-        `[CONCILIACIÓN BANCARIA] Subí ${rows.length} transacciones de mi banco (${file.name}). Compáralas con mis viajes y gastos, y dime:\n` +
-          `1) qué transacciones coinciden con pagos recibidos de viajes (por monto y fecha cercana)\n` +
-          `2) qué transacciones coinciden con mis gastos registrados\n` +
-          `3) diferencias, descuadres y pagos de menos o de más\n` +
-          `4) transacciones sin correspondencia\n\n` +
-          `TRANSACCIONES DEL BANCO:\n${movimientos}`,
+        `[BANK RECONCILIATION] I uploaded ${rows.length} bank transactions (${file.name}). Compare them with my trips and expenses, and tell me:\n` +
+          `1) which transactions match trip payouts received (by amount and close date)\n` +
+          `2) which transactions match my recorded expenses\n` +
+          `3) differences, mismatches and under/over payments\n` +
+          `4) transactions with no match\n\n` +
+          `BANK TRANSACTIONS:\n${movimientos}`,
       )
     } catch {
-      window.alert("No se pudo leer el archivo.")
+      window.alert("Couldn't read the file.")
     }
   }
 
@@ -305,10 +305,10 @@ export function AIScreen({
       },
       reconciliationProblems,
       finance: { startingBalance, reserveBalance, upcomingBillsTotal, unpaidTollsTotal, unpaidTollBillCount: unpaidTollBills.length, scheduledCount: scheduledAll.length, scheduledDueSoon },
-      tripsSummary: `${totalTrips} viajes registrados: $${totalGross.toFixed(2)} brutos, comisiones $${totalPlatformFees.toFixed(2)}, pago neto $${netPayout.toFixed(2)}. Horas estimadas: ${estimatedHoursSpan}h. Ganancia/h: $${grossPerHour}/h bruto, $${netPerHour}/h neto.`,
-      expensesSummary: `${expenses.length} gastos totalizando $${totalExpenses.toFixed(2)} (${topCategory}). Beneficio tras gastos: $${netProfit.toFixed(2)}.`,
-      reconciliationSummary: `Reconciliación: esperado $${recon.expected.toFixed(2)}, recibido $${recon.received.toFixed(2)}, diferencia $${recon.diff.toFixed(2)}. ${recon.pendingCount} sin pago, ${recon.shortCount} de menos, ${recon.overCount} de más.`,
-      financeSummaryText: `Finanzas: saldo $${startingBalance.toFixed(2)}, reserva $${reserveBalance.toFixed(2)}, facturas $${upcomingBillsTotal.toFixed(2)}, peajes pendientes $${unpaidTollsTotal.toFixed(2)}.`,
+      tripsSummary: `${totalTrips} recorded trips: $${totalGross.toFixed(2)} gross, fees $${totalPlatformFees.toFixed(2)}, net payout $${netPayout.toFixed(2)}. Horas estimadas: ${estimatedHoursSpan}h. Ganancia/h: $${grossPerHour}/h bruto, $${netPerHour}/h neto.`,
+      expensesSummary: `${expenses.length} expenses totaling $${totalExpenses.toFixed(2)} (${topCategory}). Profit after expenses: $${netProfit.toFixed(2)}.`,
+      reconciliationSummary: `Reconciliation: expected $${recon.expected.toFixed(2)}, received $${recon.received.toFixed(2)}, difference $${recon.diff.toFixed(2)}. ${recon.pendingCount} unpaid, ${recon.shortCount} short, ${recon.overCount} over.`,
+      financeSummaryText: `Finances: balance $${startingBalance.toFixed(2)}, reserve $${reserveBalance.toFixed(2)}, bills $${upcomingBillsTotal.toFixed(2)}, pending tolls $${unpaidTollsTotal.toFixed(2)}.`,
     }
   }, [trips, expenses])
 
@@ -326,7 +326,7 @@ export function AIScreen({
     const content = (textToSend || input).trim()
     if (!content || loading) return
 
-    const now = new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })
+    const now = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
     const userMsg: Message = { id: `u-${Date.now()}`, role: "user", content, time: now }
 
     setMessages((prev) => [...prev, userMsg])
@@ -349,17 +349,17 @@ export function AIScreen({
         const matches = data.structured?.matches
         if (Array.isArray(matches) && matches.length > 0 && onApplyBankMatches) {
           const applied = onApplyBankMatches(matches)
-          appliedNote = `\n\n✅ ACTUALIZADO: ${applied} viaje${applied === 1 ? "" : "s"} con el pago del banco.`
+          appliedNote = `\n\n✅ UPDATED: ${applied} trip${applied === 1 ? "" : "s"} with the bank payment.`
         }
         const schedules = data.structured?.schedules
         if (Array.isArray(schedules) && schedules.length > 0 && onApplySchedules) {
           const applied = onApplySchedules(schedules)
-          appliedNote += `\n\n✅ FINANCE: ${applied} programación${applied === 1 ? "" : "es"} creada${applied === 1 ? "" : "s"}.`
+          appliedNote += `\n\n✅ FINANCE: ${applied} schedule${applied === 1 ? "" : "es"} created${applied === 1 ? "" : "s"}.`
         }
         const expenseUpdates = data.structured?.expenseUpdates
         if (Array.isArray(expenseUpdates) && expenseUpdates.length > 0 && onApplyExpenseUpdates) {
           const applied = onApplyExpenseUpdates(expenseUpdates)
-          appliedNote += `\n\n🏷️ GASTOS: ${applied} corrección${applied === 1 ? "" : "es"} (categoría / Business-Personal).`
+          appliedNote += `\n\n🏷️ EXPENSES: ${applied} correction${applied === 1 ? "" : "es"} (category / Business-Personal).`
         }
         setMessages((prev) => [
           ...prev,
@@ -367,7 +367,7 @@ export function AIScreen({
             id: `a-${Date.now()}`,
             role: "assistant",
             content: data.reply + appliedNote,
-            time: new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
+            time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
           },
         ])
       } else {
@@ -376,8 +376,8 @@ export function AIScreen({
           {
             id: `e-${Date.now()}`,
             role: "assistant",
-            content: `⚠️ Error: ${data.error || "No se pudo obtener respuesta"}`,
-            time: new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
+            content: `⚠️ Error: ${data.error || "Couldn't get a response"}`,
+            time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
           },
         ])
       }
@@ -387,8 +387,8 @@ export function AIScreen({
         {
           id: `e-${Date.now()}`,
           role: "assistant",
-          content: "⚠️ Error de conexión al consultar el asistente.",
-          time: new Date().toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
+          content: "⚠️ Connection error talking to the assistant.",
+          time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
         },
       ])
     } finally {
@@ -417,7 +417,7 @@ export function AIScreen({
         <button
           type="button"
           onClick={() => {
-            if (window.confirm("¿Borrar toda la conversación guardada con el copiloto?")) {
+            if (window.confirm("Delete the whole saved conversation with the copilot?")) {
               try {
                 localStorage.removeItem(AI_HISTORY_KEY)
               } catch {}
@@ -481,7 +481,7 @@ export function AIScreen({
 
       {messages.length <= 2 && (
         <div className="shrink-0 px-3 pb-1 pt-1">
-          <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-neutral-400">Accesos rápidos</p>
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-wider text-neutral-400">Quick access</p>
           <div className="grid max-h-28 grid-cols-2 gap-1.5 overflow-y-auto">
             {QUICK_PROMPTS.map((qp) => {
               const Icon = qp.icon
@@ -516,7 +516,7 @@ export function AIScreen({
           className="mb-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-sky-500/40 bg-sky-950/40 py-2 text-[11px] font-bold text-sky-300 transition hover:bg-sky-900/40 disabled:opacity-50"
         >
           <Scale className="size-3.5" />
-          {bankCsvName ? `Banco: ${bankCsvName}` : "Conciliar banco (CSV)"}
+          {bankCsvName ? `Bank: ${bankCsvName}` : "Reconcile bank (CSV)"}
         </button>
 
         <form
@@ -544,7 +544,7 @@ export function AIScreen({
                 sendMessage()
               }
             }}
-            placeholder="Escribe aquí… (Enter envía, Shift+Enter nueva línea)"
+            placeholder="Write here… (Enter sends, Shift+Enter new line)"
             disabled={loading}
             className="max-h-28 min-h-[52px] flex-1 resize-none rounded-2xl border border-neutral-700 bg-neutral-900 px-3.5 py-3 text-[14px] leading-snug text-white placeholder-neutral-500 outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/40 disabled:opacity-50"
           />
@@ -552,7 +552,7 @@ export function AIScreen({
             type="submit"
             disabled={!input.trim() || loading}
             className="mb-0.5 flex size-11 shrink-0 items-center justify-center rounded-2xl bg-yellow-400 text-black transition active:scale-95 disabled:opacity-40"
-            aria-label="Enviar"
+            aria-label="Send"
           >
             {loading ? <Loader2 className="size-4 animate-spin" /> : <Send className="size-4" />}
           </button>
