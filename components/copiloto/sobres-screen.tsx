@@ -85,7 +85,7 @@ function SobreCard(props: {
         <button
           type="button"
           onClick={onDelete}
-          aria-label={`Borrar sobre ${sobre.nombre}`}
+          aria-label={`Delete envelope ${sobre.nombre}`}
           className="flex size-7 shrink-0 items-center justify-center rounded-lg text-neutral-600 active:scale-95"
         >
           <X className="size-4" />
@@ -94,7 +94,7 @@ function SobreCard(props: {
 
       <div className="mt-2.5 flex items-end justify-between gap-2">
         <div>
-          <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Meta</p>
+          <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Goal</p>
           <div className="flex items-center gap-1">
             <span className="font-mono text-sm font-bold text-white">$</span>
             <input
@@ -110,11 +110,11 @@ function SobreCard(props: {
           </div>
         </div>
         <div className="text-right">
-          <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Apartado</p>
+          <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Set aside</p>
           <p className="font-mono text-sm font-extrabold text-emerald-400">{money(sobre.asignado)}</p>
         </div>
         <div className="text-right">
-          <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Falta</p>
+          <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">To go</p>
           <p className={`font-mono text-sm font-extrabold ${restante <= 0 && sobre.meta > 0 ? "text-neutral-500" : "text-amber-300"}`}>
             {sobre.meta > 0 ? money(Math.max(0, restante)) : "—"}
           </p>
@@ -134,7 +134,7 @@ function SobreCard(props: {
           inputMode="decimal"
           value={addDraft}
           onChange={(e) => setAddDraft(e.target.value)}
-          placeholder="Monto"
+          placeholder="Amount"
           className="min-w-0 flex-1 rounded-lg border border-neutral-800 bg-neutral-950 px-2 py-1.5 font-mono text-xs text-white placeholder:text-neutral-600"
         />
         <button
@@ -142,20 +142,20 @@ function SobreCard(props: {
           onClick={apartar}
           className="flex items-center gap-1 rounded-lg bg-emerald-500 px-2.5 py-1.5 text-xs font-extrabold text-black active:scale-95"
         >
-          <Plus className="size-3.5" /> Apartar
+          <Plus className="size-3.5" /> Set aside
         </button>
         <button
           type="button"
           onClick={quitar}
           className="rounded-lg border border-neutral-700 px-2.5 py-1.5 text-xs font-bold text-neutral-300 active:scale-95"
         >
-          Quitar
+          Remove
         </button>
       </div>
 
       {completo && (
         <p className="mt-2 flex items-center gap-1 text-[10px] font-bold text-emerald-400">
-          <Check className="size-3" /> Listo para pagar
+          <Check className="size-3" /> Ready to pay
         </p>
       )}
     </div>
@@ -197,23 +197,23 @@ export function SobresScreen() {
     >
       <div className="flex-1 space-y-2.5 overflow-y-auto px-2 py-2">
         <div className="px-1 pt-1">
-          <p className="text-[15px] font-extrabold text-white">SOBRES</p>
+          <p className="text-[15px] font-extrabold text-white">ENVELOPES</p>
           <p className="text-[11px] leading-snug text-[#9a9cb0]">
-            Aparta dinero por bill antes de que venza. Caparazón — sin conexión al banco todavía.
+            Set aside money per bill before it's due. Manual for now — bank connection coming later.
           </p>
         </div>
 
         <div className="grid grid-cols-3 gap-2">
           <div className="rounded-[14px] border border-[#262633] bg-[#111119] p-2.5 text-center">
-            <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Metas</p>
+            <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Goals</p>
             <p className="font-mono text-sm font-extrabold text-white">{money(totalMeta)}</p>
           </div>
           <div className="rounded-[14px] border border-[#262633] bg-[#111119] p-2.5 text-center">
-            <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Apartado</p>
+            <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Set aside</p>
             <p className="font-mono text-sm font-extrabold text-emerald-400">{money(totalAsignado)}</p>
           </div>
           <div className="rounded-[14px] border border-[#262633] bg-[#111119] p-2.5 text-center">
-            <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Por apartar</p>
+            <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">To set aside</p>
             <p className="font-mono text-sm font-extrabold text-amber-300">{money(Math.max(0, r2(totalMeta - totalAsignado)))}</p>
           </div>
         </div>
@@ -228,12 +228,12 @@ export function SobresScreen() {
         ))}
 
         <div className="rounded-[14px] border border-dashed border-[#33333f] bg-[#111119]/60 p-3">
-          <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-neutral-400">Nuevo sobre</p>
+          <p className="mb-2 text-[10px] font-bold uppercase tracking-wide text-neutral-400">New envelope</p>
           <div className="flex gap-1.5">
             <input
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
-              placeholder="Nombre (ej. Seguro)"
+              placeholder="Name (e.g. Insurance)"
               className="min-w-0 flex-1 rounded-lg border border-neutral-800 bg-neutral-950 px-2 py-2 text-sm text-white placeholder:text-neutral-600"
             />
             <input
@@ -241,7 +241,7 @@ export function SobresScreen() {
               inputMode="decimal"
               value={meta}
               onChange={(e) => setMeta(e.target.value)}
-              placeholder="Meta"
+              placeholder="Goal"
               className="w-24 rounded-lg border border-neutral-800 bg-neutral-950 px-2 py-2 font-mono text-sm text-white placeholder:text-neutral-600"
             />
             <button
@@ -260,7 +260,7 @@ export function SobresScreen() {
           onClick={() => update(resetSobres())}
           className="mx-auto flex items-center gap-1.5 rounded-lg px-3 py-2 text-[10px] font-bold text-neutral-600 active:scale-95"
         >
-          <RotateCcw className="size-3" /> Restablecer los 3 sobres
+          <RotateCcw className="size-3" /> Reset the 3 envelopes
         </button>
       </div>
     </div>
