@@ -18,24 +18,46 @@ export type TripStatus = "pending" | "matched"
 export type { LocationPoint }
 
 export const EXPENSE_CATEGORIES = [
-  "Fuel / Gasolina",
-  "Maintenance / Vehicle",
+  "Fuel",
+  "Vehicle maintenance",
   "Car leasing",
-  "Rent / Renta",
-  "Tolls / EZPass",
-  "Food / Meals",
+  "Rent",
+  "Tolls",
+  "Food",
   "Car wash",
-  "Insurance / Permits",
+  "Insurance",
   "Bank fees",
-  "Phone / Data",
+  "Phone",
   "Parking",
   "Supplies",
-  "Other / Varios",
+  "Other",
 ] as const
 
 export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
 
 export const CUSTOM_CATEGORIES_KEY = "claris_custom_categories"
+
+/**
+ * Migración 2026-10-18: la app pasó a inglés. Los datos guardados en el
+ * teléfono pueden traer nombres viejos; se normalizan al leer.
+ */
+export const CATEGORY_MIGRATION: Record<string, string> = {
+  "Fuel / Gasolina": "Fuel",
+  "Tolls / EZPass": "Tolls",
+  "Food / Meals": "Food",
+  "Maintenance / Vehicle": "Vehicle maintenance",
+  "Rent / Renta": "Rent",
+  "Insurance / Permits": "Insurance",
+  "Phone / Data": "Phone",
+  "Other / Varios": "Other",
+  Ingresos: "Income",
+  "Transfer interna": "Internal transfer",
+}
+
+export function migrateCategory(c: unknown): string {
+  const s = String(c || "")
+  return CATEGORY_MIGRATION[s] ?? s
+}
 
 export type ScheduleFrequency = "once" | "daily" | "weekly" | "biweekly" | "monthly" | "annual"
 
@@ -148,7 +170,7 @@ export function newExpense(): Expense {
     id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `exp-${Date.now()}`,
     date: localDateKey(new Date()),
     vendor: "",
-    category: "Other / Varios",
+    category: "Other",
     amount: 0,
     isAiGenerated: false,
     isEditedByUser: false,
