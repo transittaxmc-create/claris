@@ -70,12 +70,14 @@ function EntryBadges({ entry }: { entry: CashFlowEntry }) {
     bank: "border-blue-500/20 bg-blue-500/10 text-blue-400",
     trip: "border-amber-500/20 bg-amber-500/10 text-amber-400",
     square: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+    transfer: "border-violet-500/30 bg-violet-500/10 text-violet-300",
   }
   return (
     <span className="mt-0.5 flex flex-wrap items-center gap-1">
       <span className={cn(base, originStyle[origin])}>
         {origin === "scan" && <Camera className="size-2.5" />}
         {origin === "bank" && <Building2 className="size-2.5" />}
+        {origin === "transfer" && <ArrowLeftRight className="size-2.5" />}
         {origin === "trip" && <Car className="size-2.5" />}
         {entry.origin === "trip" && entry.sourceLabel ? entry.sourceLabel : ETIQUETA_ORIGEN[origin]}
       </span>

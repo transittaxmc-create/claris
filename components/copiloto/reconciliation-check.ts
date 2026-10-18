@@ -6,7 +6,7 @@
 
 import { normalizeVendorName } from "./types"
 import { accountIdFor } from "./registers-store"
-import type { TransferReport } from "./transfer-matcher"
+import { looksLikeTransfer, type TransferReport } from "./transfer-matcher"
 
 export const AMOUNT_TOL = 0.011
 const DAY_WINDOW = 4
@@ -270,16 +270,19 @@ export function runReconciliationCheck(input: {
       const amt = Number(t.amount) || 0
       if (Math.abs(amt) < AMOUNT_TOL) continue
       const isIn = amt > 0
+      const esTransfer = looksLikeTransfer(String(t.detail || ""))
       push({
         key: `sc:${reg.id}:${txKey(t)}`,
         accountId: reg.id,
         accountName: reg.name,
         type: "sin-clasificar",
-        title: `Sin clasificar${isIn ? " (ingreso)" : ""}: ${t.detail || "Banco"}`,
+        title: esTransfer
+          ? `Transfer interna${isIn ? " (llegada)" : " (salida)"}: ${t.detail || "Banco"}`
+          : `Sin clasificar${isIn ? " (ingreso)" : ""}: ${t.detail || "Banco"}`,
         detail: `${fmt(amt)} · ${shortDate(t.date)}`,
         severity: "warn",
         bankTx: { date: String(t.date).slice(0, 10), detail: t.detail || "Banco", amount: amt },
-        proposedAction: { kind: "crear-apunte", label: "Crear apunte" },
+        proposedAction: { kind: "crear-apunte", label: esTransfer ? "Crear apunte transfer" : "Crear apunte" },
       })
     }
 

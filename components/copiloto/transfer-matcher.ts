@@ -52,7 +52,7 @@ function sameAccount(a: string, b: string): boolean {
 // CIERRE DEL DIA con informacion falsa. El emparejamiento (pares) no cambia.
 const TRANSFER_DETAIL_RE = /transfer|zelle|p2p|wire|money moved|cashout/i
 
-function looksLikeTransfer(detail: string): boolean {
+export function looksLikeTransfer(detail: string): boolean {
   return TRANSFER_DETAIL_RE.test(String(detail || ""))
 }
 

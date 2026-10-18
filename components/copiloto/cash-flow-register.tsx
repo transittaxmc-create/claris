@@ -36,7 +36,7 @@ import {
   upcomingDues,
   type RegisterAccount,
 } from "./registers-store"
-import { matchTransfers, type TransferReport } from "./transfer-matcher"
+import { matchTransfers, looksLikeTransfer, type TransferReport } from "./transfer-matcher"
 import {
   runReconciliationCheck,
   loadDecisions,
@@ -289,6 +289,11 @@ export function CashFlowRegister({
         })
       } else if (act.kind === "crear-apunte" && f.bankTx) {
         const amt = Number(f.bankTx.amount) || 0
+        // Regla de transfers JAMAS inflan ingresos: si el movimiento tiene
+        // pinta de transferencia interna (Zelle, transfer, wire...) se crea
+        // con origen "transfer" y etiqueta "Transfer interna", no como un
+        // ingreso bancario mas. El mismo dolar movido no es ingreso nuevo.
+        const esTransfer = looksLikeTransfer(String(f.bankTx.detail || ""))
         const nuevo = {
           id: `bank-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
           date: f.bankTx.date,
@@ -297,8 +302,8 @@ export function CashFlowRegister({
           type: amt < 0 ? "expense" : "income",
           status: "actual",
           source: "bank",
-          origin: "bank",
-          sourceLabel: "Banco",
+          origin: esTransfer ? "transfer" : "bank",
+          sourceLabel: esTransfer ? "Transfer interna" : "Banco",
           category: "",
           notes: "",
           accountId: f.accountId,

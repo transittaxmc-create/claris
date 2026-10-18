@@ -54,6 +54,7 @@ export const ETIQUETA_ORIGEN: Record<CashFlowOrigin, string> = {
   bank: "Banco",
   trip: "Cobros",
   square: "Square",
+  transfer: "Transfer interna",
 }
 
 export const ETIQUETA_TIPO: Record<TipoDoc, string> = {
