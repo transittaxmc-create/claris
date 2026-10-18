@@ -143,7 +143,9 @@ export function DineroProyeccion(props: {
   /** Confirmar "ya pagado": pasa el movimiento del libro a real (fecha del banco). */
   onMarkPaid?: (e: CashFlowEntry, paidDate: string) => void
 }) {
-  const [horizon, setHorizon] = useState<Horizon>("mes")
+  // 90 días FIJOS: todo el register de proyecciones se recorre con scroll
+  // dentro de su caja (se eliminaron el título 🔮 y el selector de horizonte).
+  const [horizon] = useState<Horizon>(90)
   const [verDias, setVerDias] = useState(false)
   // Recurrentes y descartes: se releen al montar y cuando el sync trae cambios.
   const { schedules, dismissed, setDismissed } = useForecastInputs()
@@ -182,28 +184,8 @@ export function DineroProyeccion(props: {
     : null
   return (
     <>
-      <p className="px-1 text-[10px] font-bold uppercase tracking-widest text-cyan-300/80">
-        🔮 Proyectado · hasta {fechaCorta(fc.endDate)}
-      </p>
-
-      {/* Horizonte */}
-      <div className="grid grid-cols-4 gap-1">
-        {HORIZONS.map((h) => (
-          <button
-            key={String(h.value)}
-            type="button"
-            onClick={() => setHorizon(h.value)}
-            className={cn(
-              "rounded-lg border py-1.5 text-[10px] font-bold",
-              horizon === h.value
-                ? "border-cyan-400/60 bg-cyan-400/10 text-cyan-200"
-                : "border-neutral-800 bg-neutral-900 text-neutral-400",
-            )}
-          >
-            {h.label}
-          </button>
-        ))}
-      </div>
+      {/* Registro de proyecciones a 90 días — sin título ni selector de
+          horizonte: el register completo se navega con scroll en su caja. */}
 
 
       {/* Fórmula: inicial + ingresos − gastos = proyectado */}
