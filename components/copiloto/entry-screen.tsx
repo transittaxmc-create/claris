@@ -1,12 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { ChevronDown, MapPin, Coffee, Loader2, X, AlertTriangle, RotateCw, Edit2, DollarSign, Timer } from "lucide-react"
+import { ChevronDown, MapPin, Coffee, Loader2, X, AlertTriangle, RotateCw, Edit2, DollarSign, Play, Pause, Square } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip, grossOf, tripDateOf } from "./types"
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
 import { isVoucherPlatform } from "./platform-meta"
-import { HourlyProduction } from "./hourly-production"
+import { timerReading } from "@/lib/production"
 import type { ShiftApi } from "./shift"
 import {
   captureLocation,
@@ -191,6 +191,14 @@ export function EntryScreen({
   const [geoError, setGeoError] = useState<string | null>(null)
   const [lowAccuracy, setLowAccuracy] = useState<{ which: "pickup" | "dropoff"; accuracy: number; errorMsg: string } | null>(null)
   const [storageSaved, setStorageSaved] = useState(false)
+  // Gross today visible o oculto (tap en la tira): se recuerda la preferencia.
+  const [showGross, setShowGross] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("claris_gross_visible") !== "0"
+    } catch {
+      return true
+    }
+  })
 
   const set = <K extends keyof Trip>(key: K, val: Trip[K]) =>
     setDraft((d) => ({ ...d, [key]: val }))
@@ -300,7 +308,24 @@ export function EntryScreen({
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
   const todayTrips = trips.filter((trip) => tripDateOf(trip) === todayKey)
   const grossIncomeToday = todayTrips.reduce((total, trip) => total + grossOf(trip), 0)
-  const tripCountToday = todayTrips.length
+
+  // Cronómetro del turno para la tira fina (mismo que el box STOPWATCH).
+  const timer = timerReading({ now: shift.now, on: shift.working, startedAt: shift.measureStart })
+  const timerH = String(Math.floor(timer.elapsedSec / 3600)).padStart(2, "0")
+  const timerM = String(Math.floor((timer.elapsedSec % 3600) / 60)).padStart(2, "0")
+  const timerS = String(timer.elapsedSec % 60).padStart(2, "0")
+
+  function toggleGross() {
+    setShowGross((v) => {
+      const next = !v
+      try {
+        localStorage.setItem("claris_gross_visible", next ? "1" : "0")
+      } catch {
+        /* noop */
+      }
+      return next
+    })
+  }
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
@@ -329,6 +354,59 @@ export function EntryScreen({
           <span className="size-1.5 rounded-full bg-green-400" />
           GPS · High accuracy
         </span>
+      </div>
+
+      {/* Slim strip: shift timer + gross today — always visible, no scroll needed */}
+      <div className="flex shrink-0 items-center gap-2 border-b border-neutral-800/60 bg-black px-4 py-1.5 sm:px-8">
+        <span className={cn("size-1.5 shrink-0 rounded-full", timer.running ? "bg-green-400" : "bg-neutral-600")} />
+        <span className="font-mono text-xs font-bold tabular-nums text-neutral-200">
+          {timerH}:{timerM}:{timerS}
+        </span>
+        {!shift.shiftActive ? (
+          <button
+            type="button"
+            onClick={shift.onStart}
+            className="flex items-center gap-1 rounded-md border border-emerald-500/50 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300"
+          >
+            <Play className="size-2.5" /> START
+          </button>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={shift.onBreak}
+              title={shift.isOnBreak ? "Resume the shift" : "Pause the shift"}
+              className={cn(
+                "flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold",
+                shift.isOnBreak
+                  ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300"
+                  : "border-amber-500/50 bg-amber-500/10 text-amber-300",
+              )}
+            >
+              {shift.isOnBreak ? <Play className="size-2.5" /> : <Pause className="size-2.5" />}
+              {shift.isOnBreak ? "RESUME" : "PAUSE"}
+            </button>
+            <button
+              type="button"
+              onClick={shift.onEnd}
+              title="End the shift"
+              className="flex items-center gap-1 rounded-md border border-rose-500/50 bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-300"
+            >
+              <Square className="size-2.5" /> END
+            </button>
+          </>
+        )}
+        <button
+          type="button"
+          onClick={toggleGross}
+          title={showGross ? "Tap to hide the amount" : "Tap to show the amount"}
+          className="ml-auto flex min-w-0 items-baseline gap-1.5"
+        >
+          <span className="shrink-0 text-[9px] font-bold tracking-[0.1em] text-emerald-300/70">GROSS TODAY</span>
+          <span className="text-base font-black tabular-nums text-emerald-300">
+            {showGross ? `$${grossIncomeToday.toFixed(2)}` : "••••••"}
+          </span>
+        </button>
       </div>
 
       {/* Scrollable body */}
@@ -497,41 +575,8 @@ export function EntryScreen({
           )}
         </section>
 
-{/* ============================================== */}
-        {/* BOX 2: CRONÓMETRO — timer + REF + HOY + MIS HORAS */}
-        {/* ============================================== */}
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3 sm:col-span-2">
-          {/* Box header */}
-          <div className="mb-3 flex items-center gap-2">
-            <Timer className="size-4 text-yellow-400" />
-            <span className="text-[11px] font-bold tracking-wide text-neutral-400">STOPWATCH</span>
-            <div className="ml-auto h-px flex-1 bg-neutral-800" />
-          </div>
-
-          {/* REF / INVOICE + HourlyProduction (timer + HOY + MIS HORAS + stats) */}
-          <div className="grid grid-cols-[minmax(0,0.48fr)_minmax(0,1.52fr)] items-end gap-2">
-            <label className="flex min-w-0 flex-col gap-1">
-              <span className="text-[10px] font-bold tracking-wide text-neutral-500">REF / INVOICE</span>
-              <input
-                value={draft.ref}
-                onChange={(e) => set("ref", e.target.value)}
-                placeholder="Reference"
-                className="min-h-[2.65rem] rounded-lg border border-neutral-800 bg-neutral-950 px-2 py-1.5 text-xs text-white outline-none placeholder:text-neutral-600 focus:border-neutral-600"
-              />
-            </label>
-            <HourlyProduction trips={trips} shift={shift} />
-          </div>
-        </section>
-
-        {/* Resumen discreto al final: GROSS TODAY + REGISTER */}
-        <div className="grid grid-cols-2 gap-2 sm:col-span-2">
-          <div className="flex items-center justify-between rounded-lg border border-emerald-900/50 bg-emerald-950/20 px-2.5 py-1.5">
-            <div className="min-w-0">
-              <p className="text-[9px] font-bold tracking-[0.1em] text-emerald-300/70">GROSS TODAY</p>
-              <p className="text-sm font-black tabular-nums text-emerald-300">${grossIncomeToday.toFixed(2)}</p>
-            </div>
-            <span className="shrink-0 text-[9px] text-neutral-500">{tripCountToday}</span>
-          </div>
+        {/* Resumen discreto al final: REGISTER */}
+        <div className="sm:col-span-2">
           <div className="flex items-center justify-between rounded-lg border border-sky-900/50 bg-sky-950/20 px-2.5 py-1.5">
             <div className="min-w-0">
               <p className="text-[9px] font-bold tracking-[0.1em] text-sky-300/70">REGISTER</p>
