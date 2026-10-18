@@ -124,10 +124,10 @@ export function last4Of(name: string): string | null {
 
 /**
  * "Otros fondos" (Miguel, 2026-10-18): en la lista de fondos de la proyección
- * solo van PayPal y Venmo. La principal ★ es la base y no se lista.
+ * solo van PayPal, Venmo y Square. La principal ★ es la base y no se lista.
  */
 export function esFondoPermitido(r: { name?: string | null }): boolean {
-  return /paypal|venmo/i.test(String(r?.name || ""))
+  return /paypal|venmo|square/i.test(String(r?.name || ""))
 }
 
 export function accountDisplayName(name: string): { title: string; subtitle: string | null } {
