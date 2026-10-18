@@ -597,14 +597,15 @@ export function CashFlowRegister({
             otherFunds={
               activeAccount.isMain
                 ? (() => {
-                    // Miguel (2026-10-18): en fondos solo PayPal y Venmo. Si hay
+                    // Miguel (2026-10-18): en fondos solo PayPal, Venmo y Square. Si hay
                     // varios "PayPal", se muestra el vivo (mayor |balance|).
                     const cands = registers.filter(
                       (r) => r.id !== activeAccount.id && r.kind === "bank" && esFondoPermitido(r),
                     )
                     const byBase = new Map<string, typeof cands>()
                     for (const r of cands) {
-                      const base = /venmo/i.test(r.name || "") ? "venmo" : "paypal"
+                      const nm = r.name || ""
+                      const base = /venmo/i.test(nm) ? "venmo" : /square/i.test(nm) ? "square" : "paypal"
                       byBase.set(base, [...(byBase.get(base) ?? []), r])
                     }
                     const picked: typeof cands = []
