@@ -77,7 +77,22 @@ export interface ForecastInput {
   horizonDays: number
   /** Claves de "probablemente pagado" que el usuario descartó. */
   dismissedPaid?: string[]
+  /** Excepciones de "solo esta vez" sobre un recurrente (edición o salto). */
+  overrides?: ScheduleOverride[]
 }
+
+/** Excepción puntual a un recurrente: "solo esta vez" (edición o no pagar). */
+export interface ScheduleOverride {
+  scheduleId: string
+  /** yyyy-mm-dd de la ocurrencia afectada. */
+  date: string
+  amount?: number
+  label?: string
+  /** true = esta ocurrencia no se proyecta. */
+  skip?: boolean
+}
+
+export const SCHEDULE_OVERRIDES_KEY = "claris_schedule_overrides"
 
 export interface Forecast {
   today: string
@@ -108,6 +123,7 @@ export const FREQ_LABEL: Record<ScheduleFrequency, string> = {
   once: "una vez",
   daily: "diario",
   weekly: "semanal",
+  biweekly: "quincenal",
   monthly: "mensual",
   annual: "anual",
 }
@@ -238,6 +254,7 @@ export function expandSchedule(s: ScheduledEntry, from: string, to: string): str
   const at = (k: number): string => {
     if (freq === "daily") return addDaysIso(anchor, k)
     if (freq === "weekly") return addDaysIso(anchor, 7 * k)
+    if (freq === "biweekly") return addDaysIso(anchor, 14 * k)
     if (freq === "monthly") {
       const total = am - 1 + k
       const y = ay + Math.floor(total / 12)
@@ -255,9 +272,11 @@ export function expandSchedule(s: ScheduledEntry, from: string, to: string): str
       ? gap
       : freq === "weekly"
         ? Math.floor(gap / 7)
-        : freq === "monthly"
-          ? Math.max(0, Math.floor(gap / 31) - 1)
-          : Math.max(0, Math.floor(gap / 366) - 1)
+        : freq === "biweekly"
+          ? Math.floor(gap / 14)
+          : freq === "monthly"
+            ? Math.max(0, Math.floor(gap / 31) - 1)
+            : Math.max(0, Math.floor(gap / 366) - 1)
 
   const out: string[] = []
   for (let guard = 0; guard < 800 && k < maxCount; guard++, k++) {
@@ -272,6 +291,7 @@ export function expandSchedule(s: ScheduledEntry, from: string, to: string): str
 export function paidWindow(freq: ScheduleFrequency | undefined): number {
   if (freq === "daily") return 0
   if (freq === "weekly") return 3
+  if (freq === "biweekly") return 5
   return 10
 }
 
@@ -441,13 +461,19 @@ export function buildForecast(input: ForecastInput): Forecast {
     const label = s.description || s.category || (income ? "Ingreso" : "Gasto")
     const win = paidWindow(s.frequency)
     for (const d of expandSchedule(s, today, endDate)) {
+      // Excepción "solo esta vez": saltar o cambiar esta ocurrencia.
+      const ov = (input.overrides || []).find((o) => o.scheduleId === s.id && o.date === d)
+      if (ov?.skip) continue
+      const effAmt =
+        ov && Number.isFinite(Number(ov.amount)) && Number(ov.amount) > 0 ? r2(Number(ov.amount)) : amt
+      const effLabel = ov?.label && String(ov.label).trim() ? String(ov.label).trim() : label
       // Ya está en el libro (misma factura creada desde Gastos/escáner): no duplicar.
       const dup = ledger.some(
         (p) =>
           p.income === income &&
           Math.abs(diffDays(p.date, d)) <= 3 &&
-          amountClose(p.amount, amt, 0.02) &&
-          (vendorMatch(p.label, label) || String(p.entry.id).replace(/^claris:gasto:/, "sch-") === s.id),
+          amountClose(p.amount, effAmt, 0.02) &&
+          (vendorMatch(p.label, effLabel) || String(p.entry.id).replace(/^claris:gasto:/, "sch-") === s.id),
       )
       if (dup) {
         duplicatesSkipped++
@@ -455,7 +481,7 @@ export function buildForecast(input: ForecastInput): Forecast {
       }
       // ¿Pagado/cobrado adelantado en el banco? (estilo Quicken: monto ±15 %)
       if (win > 0) {
-        const ti = findTx(income, amt, d, label, win, 0.15)
+        const ti = findTx(income, effAmt, d, effLabel, win, 0.15)
         if (ti >= 0) {
           usedTx.add(ti)
           recurringPaidSkipped++
@@ -466,8 +492,8 @@ export function buildForecast(input: ForecastInput): Forecast {
       lines.push({
         id: `rc:${s.id}:${d}`,
         date: d,
-        label,
-        amount: income ? amt : -amt,
+        label: effLabel,
+        amount: income ? effAmt : -effAmt,
         kind: "rec",
         scheduleId: s.id,
         frequency: s.frequency,
