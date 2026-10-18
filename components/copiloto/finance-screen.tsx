@@ -59,4 +59,3 @@ export function FinanceScreen(_props: {
     </div>
   )
 }
-
