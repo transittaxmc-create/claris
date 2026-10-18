@@ -72,7 +72,7 @@ function Placeholder({ label }: { label: string }) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
       <p className="text-lg font-bold text-white">{label}</p>
-      <p className="text-sm text-neutral-500">Esta sección aún no está en el rediseño.</p>
+      <p className="text-sm text-neutral-500">This section isn't in the redesign yet.</p>
     </div>
   )
 }
@@ -93,7 +93,7 @@ export function CopilotoApp() {
   const [syncTone, setSyncTone] = useState<"ok" | "error" | "info">("info")
   const [syncing, setSyncing] = useState(false)
   const [scannerOpen, setScannerOpen] = useState(false)
-  /** Tipo de documento preseleccionado al abrir el escáner desde un register. */
+  /** Document type preseleccionado al abrir el escáner desde un register. */
   const [scannerHint, setScannerHint] = useState<ExpenseDocType | "">("")
   const [mas, setMas] = useState(false)
   const [copiaVieja, setCopiaVieja] = useState<string | null>(null)
@@ -161,7 +161,7 @@ export function CopilotoApp() {
     const error = !res.ok ? res.error : !resExp.ok ? resExp.error : undefined
     if (error) {
       setSaveState("error")
-      setSaveError(error ?? "No se pudo guardar")
+      setSaveError(error ?? "Couldn't save")
       return
     }
     setSaveState("saved")
@@ -325,7 +325,7 @@ export function CopilotoApp() {
     const entry: ScheduledEntry = {
       id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `sch-${Date.now()}`,
       kind: "income",
-      description: e.description || "Ingreso",
+      description: e.description || "Income",
       category: e.category,
       amount: Number(e.amount) || 0,
       startDate: e.date,
@@ -402,13 +402,13 @@ export function CopilotoApp() {
         setSyncTone("ok")
         setSyncMessage(
           result.financeSkipped
-            ? `Sincronizado · ${next.length} viajes y ${nextExp.length} gastos. DINERO no se subió: el documento supera el límite del servidor.`
-            : `Sincronizado · ${next.length} viajes, ${nextExp.length} gastos, ${fin.ledger} movimientos y ${fin.schedules} recurrentes`,
+            ? `Synced · ${next.length} trips and ${nextExp.length} expenses. MONEY was not uploaded: the document exceeds the server limit.`
+            : `Synced · ${next.length} trips, ${nextExp.length} expenses, ${fin.ledger} movements and ${fin.schedules} recurring`,
         )
       } else if (result.reason === "not_configured") {
         setSyncTone("info")
         setSyncMessage(
-          "Falta activar la base de datos de sync en Vercel (Storage → KV). Mientras tanto puedes usar EXPORTAR/IMPORTAR JSON.",
+          "The sync database still needs activating in Vercel (Storage → KV). Meanwhile you can use EXPORT/IMPORT JSON.",
         )
       } else {
         setSyncTone("error")
@@ -452,7 +452,7 @@ export function CopilotoApp() {
         setExpenses(exp)
         setTab("REGISTER")
       } else {
-        alert("No se pudo leer el archivo. Verifica que sea un export válido.")
+        alert("Couldn't read the file. Make sure it's a valid export.")
       }
     }
     reader.readAsText(file)
@@ -475,7 +475,7 @@ export function CopilotoApp() {
   function loadDemo() {
     const demo = SEED_TRIPS.length ? SEED_TRIPS : []
     if (demo.length === 0) {
-      alert("No hay datos de demo en esta build.")
+      alert("No demo data in this build.")
       return
     }
     const stamped = demo.map((t) => stampTrip(t))
@@ -516,7 +516,7 @@ export function CopilotoApp() {
   function connectSync(code: string) {
     if (!isValidSyncCode(code)) {
       setSyncTone("error")
-      setSyncMessage(`Código inválido (mín. ${MIN_SYNC_CODE_LENGTH} caracteres).`)
+      setSyncMessage(`Código inválido (mín. ${MIN_SYNC_CODE_LENGTH} characters).`)
       return
     }
     saveSyncCode(code)
@@ -562,7 +562,7 @@ export function CopilotoApp() {
       {versionPrueba && !avisoCerrado && (
         <div className="flex items-center gap-2 border-b border-cyan-500/40 bg-cyan-950/70 px-3 py-1.5 text-[11px] text-cyan-200">
           <span className="flex-1">
-            Versión de prueba {(process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 7)} · más nueva que
+            Test build {(process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 7)} · newer than
             producción ({versionPrueba}).
           </span>
           <button type="button" onClick={() => setAvisoCerrado(true)} className="text-cyan-400">
@@ -577,7 +577,7 @@ export function CopilotoApp() {
       )}
       {saveState === "error" && (
         <div className="border-b border-rose-800/50 bg-rose-950/40 px-3 py-1 text-[10px] text-rose-300">
-          Error al guardar: {saveError}
+          Error saving: {saveError}
         </div>
       )}
 
@@ -710,8 +710,8 @@ export function CopilotoApp() {
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-neutral-700" />
             <div className="px-4 pb-1">
-              <p className="text-[15px] font-extrabold text-white">Más</p>
-              <p className="text-[11px] text-neutral-500">Herramientas, datos y guía del sistema</p>
+              <p className="text-[15px] font-extrabold text-white">More</p>
+              <p className="text-[11px] text-neutral-500">Tools, data and system guide</p>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2 px-4">
               <button
@@ -734,15 +734,15 @@ export function CopilotoApp() {
                 }}
                 className="flex flex-col items-start gap-1 rounded-2xl border border-sky-500/30 bg-sky-500/10 px-3 py-3 text-left active:scale-[0.98]"
               >
-                <span className="text-[10px] font-bold uppercase tracking-wide text-sky-400">Guía</span>
-                <span className="text-[13px] font-extrabold text-white">Cómo funciona</span>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-sky-400">Guide</span>
+                <span className="text-[13px] font-extrabold text-white">How it works</span>
                 <span className="text-[10px] leading-snug text-neutral-400">Dual register · Reconcile · Bill/Receipt</span>
               </button>
             </div>
             <div className="mt-4 space-y-4 px-4">
               {(
                 [
-                  { title: "Operación", keys: ["EXPENSES", "DASH", "V1DASH", "SOBRES"] as const },
+                  { title: "Operations", keys: ["EXPENSES", "DASH", "V1DASH", "SOBRES"] as const },
                   { title: "Inteligencia y datos", keys: ["AI", "DATA"] as const },
                   { title: "Ayuda", keys: ["HELP"] as const },
                 ] as const
@@ -781,7 +781,7 @@ export function CopilotoApp() {
                               <span className="block text-[11px] leading-snug text-neutral-500">{hint}</span>
                             </span>
                             {isActive && (
-                              <span className="shrink-0 rounded-full bg-yellow-400/20 px-2 py-0.5 text-[9px] font-bold text-yellow-400">AQUÍ</span>
+                              <span className="shrink-0 rounded-full bg-yellow-400/20 px-2 py-0.5 text-[9px] font-bold text-yellow-400">HERE</span>
                             )}
                           </button>
                         )
@@ -793,7 +793,7 @@ export function CopilotoApp() {
             </div>
             <div className="mt-4 px-4">
               <button type="button" onClick={() => setMas(false)} className="w-full rounded-2xl border border-neutral-700 py-3 text-xs font-bold text-neutral-300">
-                Cerrar
+                Close
               </button>
             </div>
           </div>
