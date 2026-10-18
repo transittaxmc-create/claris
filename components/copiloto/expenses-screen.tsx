@@ -65,7 +65,7 @@ function daysBetween(a: string, b: string): number {
 
 /** Busca el cargo bancario que corresponde a un recibo (mismo monto, fecha cercana).
  * Si el gasto tiene cuenta indicada, solo se busca en ESA cuenta; si no,
- * se busca en todas (comportamiento anterior para entradas viejas). */
+ * se busca en all (comportamiento anterior para entradas viejas). */
 function bankMatchFor(expense: Expense, bankTxs: BankTxLite[]): BankTxLite | null {
   if (!bankTxs || bankTxs.length === 0) return null
   const esRecibo = expense.scanned || expense.isAiGenerated || expense.docType === "recibo"
@@ -171,7 +171,7 @@ function ExpenseRow({
     <div className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3.5">
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 flex-col gap-1">
-          <span className="truncate font-bold text-white">{expense.vendor || "(sin vendedor)"}</span>
+          <span className="truncate font-bold text-white">{expense.vendor || "(no vendor)"}</span>
           <span className="text-[11px] text-neutral-500">{expense.date}</span>
         </div>
         <p className="shrink-0 text-base font-extrabold text-rose-400">{money(expense.amount)}</p>
@@ -188,12 +188,12 @@ function ExpenseRow({
         )}
         {expense.docType === "factura" && (
           <span className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-bold text-cyan-300">
-            FACTURA
+            BILL
           </span>
         )}
         {expense.docType === "recibo" && (
           <span className="rounded-full border border-purple-500/40 bg-purple-500/10 px-2 py-0.5 text-[9px] font-bold text-purple-300">
-            RECIBO
+            RECEIPT
           </span>
         )}
         {expense.isEditedByUser && (
@@ -219,15 +219,15 @@ function ExpenseRow({
         {bankMatch && (
           <span
             className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold text-emerald-300"
-            title={`${bankMatch.detail || "Banco"} · ${String(bankMatch.date).slice(0, 10)} · ${bankMatch.bank_account || ""}`}
+            title={`${bankMatch.detail || "Bank"} · ${String(bankMatch.date).slice(0, 10)} · ${bankMatch.bank_account || ""}`}
           >
-            🏦 EN BANCO
+            🏦 IN BANK
           </span>
         )}
         {accountName && (
           <span
             className="rounded-full border border-neutral-700 bg-neutral-950 px-2 py-0.5 text-[9px] font-bold text-neutral-300"
-            title="Cuenta de donde salió"
+            title="Account it came from"
           >
             {accountName}
           </span>
@@ -238,12 +238,12 @@ function ExpenseRow({
           onClick={() => onEdit(expense)}
           className="flex items-center gap-1 rounded-lg border border-neutral-700 bg-neutral-950 px-2 py-1 text-[11px] font-bold text-neutral-300 hover:text-white"
         >
-          <Pencil className="size-3" /> EDITAR
+          <Pencil className="size-3" /> EDIT
         </button>
         <button
           type="button"
           onClick={() => onDelete(expense.id)}
-          aria-label="Eliminar gasto"
+          aria-label="Delete expense"
           className="flex items-center gap-1 rounded-lg border border-rose-900/60 bg-rose-950/30 px-2 py-1 text-[11px] font-bold text-rose-400 hover:text-rose-300"
         >
           <Trash2 className="size-3" />
@@ -267,7 +267,7 @@ function ExpenseRow({
               </span>
             ) : (
               <span className="inline-flex shrink-0 animate-pulse items-center gap-1 rounded-full border border-amber-500/50 bg-amber-500/15 px-2 py-0.5 text-[9px] font-black text-amber-300">
-                ⏳ Pending Balance
+                ⏳ Pending balance
               </span>
             )}
           </div>
@@ -291,7 +291,7 @@ function ExpenseRow({
                     type="button"
                     onClick={() => onDeletePayment?.(expense.id, p.id)}
                     className="shrink-0 rounded px-1.5 py-0.5 text-[9px] font-bold text-rose-400 hover:bg-rose-950/40"
-                    title="Quitar pago (deshacer)"
+                    title="Remove payment (undo)"
                   >
                     quitar
                   </button>
@@ -305,7 +305,7 @@ function ExpenseRow({
               onClick={() => onAddPayment(expense.id)}
               className="mt-1.5 w-full rounded-lg border border-cyan-500/40 bg-cyan-500/10 py-1.5 text-[10px] font-extrabold text-cyan-200 active:scale-[0.99]"
             >
-              ＋ REGISTRAR PAGO
+              ＋ RECORD PAYMENT
             </button>
           )}
         </div>
@@ -330,7 +330,7 @@ export function ExpensesScreen({
 }) {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [search, setSearch] = useState("")
-  const [category, setCategory] = useState("Todas")
+  const [category, setCategory] = useState("All")
   const [isScanning, setIsScanning] = useState(false)
   const [scanStatus, setScanStatus] = useState<string | null>(null)
 
@@ -347,7 +347,7 @@ export function ExpensesScreen({
   const [newCategory, setNewCategory] = useState("")
 
   // Snapshot del banco (para emparejar recibos con el statement).
-  // Se trae una vez al abrir la pantalla; si falla, simplemente no hay matches.
+  // Se trae once al abrir la pantalla; si falla, simplemente no hay matches.
   const [bankTxs, setBankTxs] = useState<BankTxLite[]>([])
   const [bankAccounts, setBankAccounts] = useState<any[]>([])
   useEffect(() => {
@@ -408,7 +408,7 @@ export function ExpensesScreen({
   }, [expenses, bankTxs])
 
   // ---- Sistema de pago de facturas por partes ----
-  // Formulario compacto "Registrar pago" (monto + cuenta + fecha).
+  // Formulario compacto "Record payment" (monto + cuenta + fecha).
   const [payDraft, setPayDraft] = useState<{ billId: string; amount: string; accountId: string; date: string } | null>(null)
   // Sugerencias descartadas por Miguel (no vuelven a salir en esta sesión).
   const [dismissed, setDismissed] = useState<Set<string>>(new Set())
@@ -509,11 +509,11 @@ export function ExpensesScreen({
     }
     const monto = Number(payDraft.amount)
     if (!Number.isFinite(monto) || monto <= 0) {
-      window.alert("Indica el monto del pago.")
+      window.alert("Enter the payment amount.")
       return
     }
     if (monto > billRemaining(bill) + 0.011) {
-      if (!window.confirm(`El pago (${money(monto)}) supera lo que resta (${money(billRemaining(bill))}). ¿Guardarlo igual?`)) return
+      if (!window.confirm(`The payment (${money(monto)}) exceeds the remaining (${money(billRemaining(bill))}). Save anyway?`)) return
     }
     const updated = addBillPayment(bill, {
       amount: monto,
@@ -530,7 +530,7 @@ export function ExpensesScreen({
   function deletePayment(billId: string, paymentId: string) {
     const bill = expenses.find((e) => e.id === billId)
     if (!bill) return
-    if (!window.confirm("¿Quitar este pago de la factura?")) return
+    if (!window.confirm("Remove this payment from the bill?")) return
     const updated = removeBillPayment(bill, paymentId)
     onSave(updated)
     syncBillToProjections(updated)
@@ -560,7 +560,7 @@ export function ExpensesScreen({
     const term = search.trim().toLowerCase()
     return expenses.filter((e) => {
       const matchesSearch = !term || (e.vendor ?? "").toLowerCase().includes(term)
-      const matchesCategory = category === "Todas" || e.category === category
+      const matchesCategory = category === "All" || e.category === category
       return matchesSearch && matchesCategory
     })
   }, [expenses, search, category])
@@ -590,7 +590,7 @@ export function ExpensesScreen({
           canvas.height = height
           const ctx = canvas.getContext("2d")
           if (!ctx) {
-            reject(new Error("No se pudo inicializar canvas"))
+            reject(new Error("Couldn't initialize canvas"))
             return
           }
           ctx.drawImage(img, 0, 0, width, height)
@@ -614,7 +614,7 @@ export function ExpensesScreen({
       setScanStatus("Procesando imagen...")
 
       const { base64, mimeType } = await resizeImage(file)
-      setScanStatus("Analizando con IA...")
+      setScanStatus("Analyzing with AI...")
 
       const res = await fetch("/api/scan-receipt", {
         method: "POST",
@@ -624,7 +624,7 @@ export function ExpensesScreen({
 
       const json = await res.json()
       if (!res.ok || !json.success) {
-        throw new Error(json.error || "No se pudo analizar el recibo")
+        throw new Error(json.error || "Couldn't analyze the receipt")
       }
 
       const { result } = json
@@ -642,7 +642,7 @@ export function ExpensesScreen({
         nextDate: scanDate,
         accountId: defaultAccountId || undefined,
       })
-      setScanStatus("¡Recibo detectado! Revisa y guarda.")
+      setScanStatus("Receipt detected! Review and save.")
       setTimeout(() => setScanStatus(null), 3500)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error al procesar"
@@ -665,7 +665,7 @@ export function ExpensesScreen({
     // fecha y mismo monto = el mismo ticket. Se avisa, y el usuario decide si
     // es un gasto legítimo distinto o un escaneo repetido.
     if (draft.docType !== "factura" && draft.docType !== "recibo") {
-      window.alert("Elige el tipo: Factura (por pagar) o Recibo (ya pagado).")
+      window.alert("Elige el tipo: Bill (payable) o Receipt (already paid).")
       return
     }
     const dup = findDuplicateExpense(draft, expenses)
@@ -675,7 +675,7 @@ export function ExpensesScreen({
         `${dup.expense.vendor} · ${dup.expense.date} · ${money(dup.expense.amount)} · ${dup.expense.category}\n\n` +
         `Ya existe un gasto idéntico (vendedor + fecha + monto).\n\n` +
         `"Aceptar" lo guarda igual (¿dos compras iguales el mismo día?)\n` +
-        `"Cancelar" no guarda nada.`
+        `"Cancel" no guarda nada.`
       if (!window.confirm(msg)) return
     }
 
@@ -692,7 +692,7 @@ export function ExpensesScreen({
       isEditedByUser: draft.id !== null,
       scheduled: draft.docType === "factura" || ["daily", "weekly", "monthly", "annual"].includes(draft.frequency),
       classification: draft.classification,
-      // Cuenta/register de donde salió (editable; el match 🏦 se limita a ella).
+      // Account/register de donde salió (editable; el match 🏦 se limita a ella).
       accountId: draft.accountId || undefined,
       savedAt: new Date().toISOString(),
     }
@@ -739,7 +739,7 @@ export function ExpensesScreen({
     // Programación: si el gasto se repite, queda en el ledger que ve FINANCE
     // para dar seguimiento a cada pago con su vencimiento y frecuencia.
     // La guarda de frecuencia protege contra valores inesperados (la UI solo
-    // produce los cinco válidos, pero nunca está de más).
+    // produce los cinco válidos, pero nunca está over).
     const RECURRING: ScheduleFrequency[] = ["daily", "weekly", "monthly", "annual"]
     if (RECURRING.includes(draft.frequency)) {
       const entry = scheduledEntryFromExpense(expense, draft.frequency, draft.nextDate || expense.date)
@@ -758,7 +758,7 @@ export function ExpensesScreen({
   }
 
   function deleteWithConfirm(id: string) {
-    if (window.confirm("¿Eliminar este gasto?")) onDelete(id)
+    if (window.confirm("Delete this expense?")) onDelete(id)
   }
 
   function editFromRow(ex: Expense) {
@@ -808,7 +808,7 @@ export function ExpensesScreen({
                 type="button"
                 onClick={() => (onScanReceipt ? onScanReceipt() : cameraInputRef.current?.click())}
                 disabled={isScanning}
-                aria-label="Escanear recibo con cámara"
+                aria-label="Scan receipt with camera"
                 className="flex items-center gap-1 rounded-full border border-sky-500/50 bg-sky-950/40 px-2.5 py-1.5 text-[11px] font-bold text-sky-300 hover:bg-sky-900/50 active:scale-95 disabled:opacity-50"
               >
                 {isScanning ? (
@@ -822,7 +822,7 @@ export function ExpensesScreen({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isScanning}
-                aria-label="Subir foto de recibo"
+                aria-label="Upload receipt photo"
                 className="flex items-center rounded-full border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-neutral-300 hover:bg-neutral-800 active:scale-95 disabled:opacity-50"
                 title="Subir archivo"
               >
@@ -848,7 +848,7 @@ export function ExpensesScreen({
         )}
 
         <div className="mt-3 flex gap-2">
-          <StatCard label="TOTAL GASTOS" value={money(total)} valueClass="text-rose-400" />
+          <StatCard label="TOTAL EXPENSES" value={money(total)} valueClass="text-rose-400" />
           <StatCard label="FILTRADOS" value={money(filteredTotal)} valueClass="text-amber-400" />
           <StatCard label="CANTIDAD" value={String(expenses.length)} valueClass="text-white" />
         </div>
@@ -859,22 +859,22 @@ export function ExpensesScreen({
             <div className="mb-2 flex items-center justify-between">
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-bold text-neutral-300">
-                  {draft.id ? "EDITAR GASTO" : "NUEVO GASTO"}
+                  {draft.id ? "EDIT EXPENSE" : "NEW EXPENSE"}
                 </span>
                 {draft.isAiGenerated && (
                   <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/50 bg-sky-500/20 px-2 py-0.5 text-[10px] font-bold text-sky-300">
-                    <Sparkles className="size-2.5" /> DETECTADO POR IA
+                    <Sparkles className="size-2.5" /> AI DETECTED
                   </span>
                 )}
               </div>
               <button type="button" onClick={() => setDraft(null)} className="text-[11px] font-bold text-rose-400">
-                CANCELAR
+                CANCEL
               </button>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <label className="flex flex-col gap-1">
-                <span className="text-[10px] font-bold text-neutral-400">FECHA</span>
+                <span className="text-[10px] font-bold text-neutral-400">DATE</span>
                 <input
                   type="date"
                   value={draft.date}
@@ -883,7 +883,7 @@ export function ExpensesScreen({
                 />
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-[10px] font-bold text-neutral-400">CATEGORÍA</span>
+                <span className="text-[10px] font-bold text-neutral-400">CATEGORY</span>
                 <select
                   value={draft.category}
                   onChange={(e) => setDraft({ ...draft, category: e.target.value })}
@@ -894,7 +894,7 @@ export function ExpensesScreen({
                       {c}
                     </option>
                   ))}
-                  <option value="__new__">＋ Nueva categoría…</option>
+                  <option value="__new__">+ New category…</option>
                 </select>
               </label>
             </div>
@@ -902,13 +902,13 @@ export function ExpensesScreen({
             {/* Factura o Recibo: decide dónde suma o resta en el libro mayor */}
             <div className="mt-2">
               <span className="text-[10px] font-bold text-neutral-400">
-                TIPO <span className="text-amber-400">*</span>
+                TYPE <span className="text-amber-400">*</span>
               </span>
               <div className="mt-1 grid grid-cols-2 gap-2">
                 {(
                   [
-                    ["factura", "FACTURA", "por pagar"],
-                    ["recibo", "RECIBO", "ya pagado"],
+                    ["factura", "BILL", "payable"],
+                    ["recibo", "RECEIPT", "already paid"],
                   ] as const
                 ).map(([key, titulo, sub]) => (
                   <button
@@ -928,7 +928,7 @@ export function ExpensesScreen({
                 ))}
               </div>
               {!draft.docType && sugerirTipoDoc(draft.vendor, draft.notes) === "factura" && (
-                <p className="mt-1 text-[10px] text-amber-400">Sugerido: Factura (parece peaje o cuenta por pagar).</p>
+                <p className="mt-1 text-[10px] text-amber-400">Suggested: Bill (looks like a toll or account payable).</p>
               )}
             </div>
 
@@ -936,7 +936,7 @@ export function ExpensesScreen({
             {orderedRegisters.length > 0 && (
               <div className="mt-2">
                 <span className="text-[10px] font-bold text-neutral-400">
-                  ¿DE QUÉ CUENTA SALIÓ? <span className="text-amber-400">*</span>
+                  WHICH ACCOUNT DID IT COME FROM? <span className="text-amber-400">*</span>
                 </span>
                 <select
                   value={draft.accountId || ""}
@@ -964,14 +964,14 @@ export function ExpensesScreen({
               </div>
             )}
 
-            {/* Categoría personalizada: si la IA no tiene la correcta, se añade */}
+            {/* Category personalizada: si la IA no tiene la correcta, se añade */}
             {draft.category === "__new__" && (
               <div className="mt-2 flex gap-2">
                 <input
                   autoFocus
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value)}
-                  placeholder="Nombre de la categoría nueva"
+                  placeholder="New category name"
                   className="min-w-0 flex-1 rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white outline-none placeholder:text-neutral-600"
                 />
                 <button
@@ -979,7 +979,7 @@ export function ExpensesScreen({
                   onClick={addCustomCategory}
                   className="shrink-0 rounded-xl bg-yellow-400 px-3 py-2 text-xs font-bold text-black"
                 >
-                  Añadir
+                  Add
                 </button>
               </div>
             )}
@@ -996,7 +996,7 @@ export function ExpensesScreen({
 
             <div className="mt-2">
               <MoneyInput
-                label="MONTO"
+                label="AMOUNT"
                 color="text-rose-400"
                 value={draft.amount}
                 onChange={(n) => setDraft({ ...draft, amount: n })}
@@ -1015,13 +1015,13 @@ export function ExpensesScreen({
 
             {/* Clasificación fiscal: negocio (deducible) o personal */}
             <div className="mt-2 flex flex-col gap-1.5">
-              <span className="text-[10px] font-bold tracking-wide text-neutral-400">CLASIFICACIÓN</span>
+              <span className="text-[10px] font-bold tracking-wide text-neutral-400">CLASSIFICATION</span>
               <div className="grid grid-cols-3 gap-1.5">
                 {(
                   [
                     ["business", "💼 Negocio"],
                     ["personal", "🏠 Personal"],
-                    ["", "Sin clasificar"],
+                    ["", "Unclassified"],
                   ] as [ExpenseClassification | "", string][]
                 ).map(([value, label]) => (
                   <button
@@ -1048,7 +1048,7 @@ export function ExpensesScreen({
             {/* Programación del pago: vencimiento y frecuencia */}
             <div className="mt-2 rounded-xl border border-yellow-400/20 bg-yellow-400/5 p-2.5">
               <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold tracking-wide text-yellow-300/90">
-                <CalendarClock className="size-3.5" /> ¿SE REPITE ESTE PAGO?
+                <CalendarClock className="size-3.5" /> DOES THIS PAYMENT REPEAT?
               </p>
               <div className="grid grid-cols-2 gap-2">
                 <select
@@ -1065,7 +1065,7 @@ export function ExpensesScreen({
                   }}
                   className="rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white outline-none"
                 >
-                  <option value="once">Una vez</option>
+                  <option value="once">Once</option>
                   <option value="daily">Diario</option>
                   <option value="weekly">Semanal</option>
                   <option value="monthly">Mensual</option>
@@ -1073,22 +1073,22 @@ export function ExpensesScreen({
                 </select>
                 {draft.frequency === "once" ? (
                   <div className="flex items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900/40 text-[11px] text-neutral-400">
-                    Vence el día del gasto ({draft.date})
+                    Due on the expense date ({draft.date})
                   </div>
                 ) : (
                   <input
                     type="date"
                     value={draft.nextDate}
                     onChange={(e) => setDraft({ ...draft, nextDate: e.target.value })}
-                    aria-label="Próximo vencimiento"
+                    aria-label="Next due date"
                     className="rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white outline-none [color-scheme:dark]"
                   />
                 )}
               </div>
               {draft.frequency !== "once" && (
                 <p className="mt-1.5 text-[10px] leading-tight text-neutral-500">
-                  Se guardará en el ledger programado de FINANCE y repetirá cada{" "}
-                  {draft.frequency === "daily" ? "día" : draft.frequency === "weekly" ? "semana" : draft.frequency === "monthly" ? "mes" : "año"}.
+                  It will be saved to the FINANCE scheduled ledger and repeat every{" "}
+                  {draft.frequency === "daily" ? "día" : draft.frequency === "weekly" ? "week" : draft.frequency === "monthly" ? "mes" : "año"}.
                 </p>
               )}
             </div>
@@ -1098,7 +1098,7 @@ export function ExpensesScreen({
               onClick={saveDraft}
               className="mt-3 w-full rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 py-3 text-sm font-extrabold text-black active:scale-[0.99]"
             >
-              {draft.id ? "GUARDAR CAMBIOS" : "GUARDAR GASTO"}
+              {draft.id ? "SAVE CHANGES" : "SAVE EXPENSE"}
             </button>
           </section>
         )}
@@ -1119,7 +1119,7 @@ export function ExpensesScreen({
             onChange={(e) => setCategory(e.target.value)}
             className="max-w-[45%] rounded-xl border border-neutral-800 bg-neutral-950 px-2 py-2 text-[11px] text-neutral-300 outline-none"
           >
-            <option value="Todas">Todas</option>
+            <option value="All">All</option>
             {[...EXPENSE_CATEGORIES, ...customCategories].map((c) => (
               <option key={c} value={c}>
                 {c}
@@ -1134,13 +1134,13 @@ export function ExpensesScreen({
       {visibleDetected.length > 0 && (
         <div className="mx-4 mt-2 rounded-2xl border border-sky-500/40 bg-sky-950/40 p-3">
           <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-sky-300">
-            🔎 Pagos detectados ({visibleDetected.length})
+            🔎 Payments detected ({visibleDetected.length})
           </p>
           <div className="space-y-2">
             {visibleDetected.map((d) => (
               <div key={d.id} className="rounded-xl border border-neutral-800 bg-neutral-950/70 p-2.5">
                 <p className="text-[11px] font-bold text-white">
-                  {d.isSplit ? "Pago dividido de " : "Posible pago de "}
+                  {d.isSplit ? "Split payment of " : "Possible payment of "}
                   <span className="text-cyan-300">{d.billVendor}</span>
                   <span className="text-neutral-500"> · restan {money(d.billRemaining)}</span>
                 </p>
@@ -1156,7 +1156,7 @@ export function ExpensesScreen({
                 </div>
                 {d.isSplit && (
                   <p className="mt-1 text-[10px] font-bold text-emerald-300">
-                    = {money(d.total)} entre {d.txs.length} cuentas
+                    = {money(d.total)} across {d.txs.length} accounts
                   </p>
                 )}
                 <div className="mt-2 flex gap-2">
@@ -1165,7 +1165,7 @@ export function ExpensesScreen({
                     onClick={() => attachDetected(d)}
                     className="flex-1 rounded-lg bg-emerald-500/20 border border-emerald-500/50 py-1.5 text-[11px] font-extrabold text-emerald-300 active:scale-[0.99]"
                   >
-                    ✓ ES PAGO
+                    ✓ IS PAYMENT
                   </button>
                   <button
                     type="button"
@@ -1185,14 +1185,14 @@ export function ExpensesScreen({
       {payDraft && (
         <div className="mx-4 mt-2 rounded-2xl border border-cyan-500/40 bg-neutral-900/80 p-3">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-[11px] font-black uppercase tracking-widest text-cyan-300">Registrar pago</p>
+            <p className="text-[11px] font-black uppercase tracking-widest text-cyan-300">Record payment</p>
             <button type="button" onClick={() => setPayDraft(null)} className="text-[11px] font-bold text-rose-400">
-              CANCELAR
+              CANCEL
             </button>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <label className="flex flex-col gap-1">
-              <span className="text-[10px] font-bold text-neutral-400">MONTO</span>
+              <span className="text-[10px] font-bold text-neutral-400">AMOUNT</span>
               <input
                 type="number"
                 inputMode="decimal"
@@ -1204,7 +1204,7 @@ export function ExpensesScreen({
               />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-[10px] font-bold text-neutral-400">FECHA</span>
+              <span className="text-[10px] font-bold text-neutral-400">DATE</span>
               <input
                 type="date"
                 value={payDraft.date}
@@ -1215,13 +1215,13 @@ export function ExpensesScreen({
           </div>
           {orderedRegisters.length > 0 && (
             <label className="mt-2 flex flex-col gap-1">
-              <span className="text-[10px] font-bold text-neutral-400">¿DE QUÉ CUENTA SALIÓ?</span>
+              <span className="text-[10px] font-bold text-neutral-400">WHICH ACCOUNT DID IT COME FROM?</span>
               <select
                 value={payDraft.accountId}
                 onChange={(e) => setPayDraft({ ...payDraft, accountId: e.target.value })}
                 className="rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white outline-none"
               >
-                <option value="">Sin indicar</option>
+                <option value="">Not specified</option>
                 {orderedRegisters.map((r) => (
                   <option key={r.id} value={r.id}>
                     {accountDisplayName(r.name).title}
@@ -1236,17 +1236,17 @@ export function ExpensesScreen({
             onClick={savePayDraft}
             className="mt-3 w-full rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 py-2.5 text-sm font-extrabold text-black active:scale-[0.99]"
           >
-            GUARDAR PAGO
+            SAVE PAYMENT
           </button>
         </div>
       )}
 
-      {/* Lista */}
+      {/* List */}
       <div className="flex-1 space-y-2.5 overflow-y-auto px-4 py-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center gap-2 py-10 text-center">
             <p className="text-sm text-neutral-600">
-              {expenses.length === 0 ? "Sin gastos todavía." : "Ningún gasto coincide con el filtro."}
+              {expenses.length === 0 ? "No expenses yet." : "No expense matches the filter."}
             </p>
             {expenses.length === 0 && !draft && (
               <button
@@ -1254,7 +1254,7 @@ export function ExpensesScreen({
                 onClick={() => setDraft({ ...emptyDraft(), accountId: defaultAccountId || undefined })}
                 className="flex items-center gap-1.5 rounded-xl border border-neutral-700 px-3 py-2 text-xs font-bold text-neutral-300"
               >
-                <Plus className="size-3.5" /> AÑADIR PRIMER GASTO
+                <Plus className="size-3.5" /> ADD FIRST EXPENSE
               </button>
             )}
           </div>
