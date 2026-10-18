@@ -120,7 +120,7 @@ function wrapList(
   return { list, deleted: outDeleted }
 }
 
-/** Lee DINERO de localStorage y lo prepara para syncWithCloud. */
+/** Lee MONEY de localStorage y lo prepara para syncWithCloud. */
 export function collectLocalFinance(
   s?: StorageLike | null,
   now: string = new Date().toISOString(),
