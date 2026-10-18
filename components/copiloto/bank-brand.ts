@@ -57,7 +57,7 @@ export function bankBrandOf(name: string, institution?: string | null): BankBran
       }
     }
   }
-  const first = String(name || "").replace(/[^A-Za-z0-9 ]/g, " ").trim().split(/\s+/)[0] || "Cuenta"
+  const first = String(name || "").replace(/[^A-Za-z0-9 ]/g, " ").trim().split(/\s+/)[0] || "Account"
   return { ...GENERIC, short: first.slice(0, 14) }
 }
 
