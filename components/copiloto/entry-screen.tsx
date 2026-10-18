@@ -280,6 +280,32 @@ export function EntryScreen({
     }
   }, [])
 
+  // La ubicación del header se refresca sola mientras la página está abierta
+  // (cada 20 s, con posición fresca), para que diga dónde está mientras maneja.
+  useEffect(() => {
+    let alive = true
+    let busy = false
+    const poll = async () => {
+      if (!alive || busy || document.hidden) return
+      busy = true
+      try {
+        const p = await refreshHeaderPlace({ fresh: true })
+        if (alive && p) {
+          setPlace((prev) => (prev && prev.street === p.street && prev.city === p.city ? prev : p))
+        }
+      } catch {
+        // sin GPS en este ciclo: se reintenta en el siguiente
+      } finally {
+        busy = false
+      }
+    }
+    const id = window.setInterval(poll, 20_000)
+    return () => {
+      alive = false
+      window.clearInterval(id)
+    }
+  }, [])
+
   const greeting = now
     ? now.getHours() < 12
       ? "Good morning"
@@ -332,17 +358,17 @@ export function EntryScreen({
       {/* Header */}
       <div className="flex items-start justify-between gap-3 px-4 pt-2 sm:px-8 sm:pt-3">
         <div className="min-w-0">
-          <h1 className="truncate text-lg font-bold text-white">{greeting}</h1>
+          <h1 className="truncate text-2xl font-bold text-white">{greeting}</h1>
           {/* From the GPS: CALLE, CIUDAD */}
           <p
-            className="mt-0.5 flex items-center gap-1 text-xs"
+            className="mt-0.5 flex items-center gap-1.5 text-sm"
             title={place?.address || undefined}
             suppressHydrationWarning
           >
-            <MapPin className="size-3 shrink-0 text-yellow-400" />
+            <MapPin className="size-4 shrink-0 text-yellow-400" />
             {place ? (
               <span className="truncate text-neutral-500">
-                <span className="font-semibold text-neutral-300">{place.street || place.city}</span>
+                <span className="font-semibold text-neutral-200">{place.street || place.city}</span>
                 {place.street && place.city ? <span>, {place.city}</span> : null}
               </span>
             ) : (
@@ -357,18 +383,18 @@ export function EntryScreen({
       </div>
 
       {/* Slim strip: shift timer + gross today — always visible, no scroll needed */}
-      <div className="flex shrink-0 items-center gap-2 border-b border-neutral-800/60 bg-black px-4 py-1.5 sm:px-8">
-        <span className={cn("size-1.5 shrink-0 rounded-full", timer.running ? "bg-green-400" : "bg-neutral-600")} />
-        <span className="font-mono text-xs font-bold tabular-nums text-neutral-200">
+      <div className="flex shrink-0 items-center gap-2.5 border-b border-neutral-800/60 bg-black px-4 py-2.5 sm:px-8">
+        <span className={cn("size-2 shrink-0 rounded-full", timer.running ? "bg-green-400" : "bg-neutral-600")} />
+        <span className="font-mono text-base font-bold tabular-nums text-neutral-100">
           {timerH}:{timerM}:{timerS}
         </span>
         {!shift.shiftActive ? (
           <button
             type="button"
             onClick={shift.onStart}
-            className="flex items-center gap-1 rounded-md border border-emerald-500/50 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300"
+            className="flex items-center gap-1 rounded-md border border-emerald-500/50 bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-300"
           >
-            <Play className="size-2.5" /> START
+            <Play className="size-3" /> START
           </button>
         ) : (
           <>
@@ -377,22 +403,22 @@ export function EntryScreen({
               onClick={shift.onBreak}
               title={shift.isOnBreak ? "Resume the shift" : "Pause the shift"}
               className={cn(
-                "flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold",
+                "flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-bold",
                 shift.isOnBreak
                   ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300"
                   : "border-amber-500/50 bg-amber-500/10 text-amber-300",
               )}
             >
-              {shift.isOnBreak ? <Play className="size-2.5" /> : <Pause className="size-2.5" />}
+              {shift.isOnBreak ? <Play className="size-3" /> : <Pause className="size-3" />}
               {shift.isOnBreak ? "RESUME" : "PAUSE"}
             </button>
             <button
               type="button"
               onClick={shift.onEnd}
               title="End the shift"
-              className="flex items-center gap-1 rounded-md border border-rose-500/50 bg-rose-500/10 px-2 py-0.5 text-[10px] font-bold text-rose-300"
+              className="flex items-center gap-1 rounded-md border border-rose-500/50 bg-rose-500/10 px-2.5 py-1 text-xs font-bold text-rose-300"
             >
-              <Square className="size-2.5" /> END
+              <Square className="size-3" /> END
             </button>
           </>
         )}
@@ -402,8 +428,8 @@ export function EntryScreen({
           title={showGross ? "Tap to hide the amount" : "Tap to show the amount"}
           className="ml-auto flex min-w-0 items-baseline gap-1.5"
         >
-          <span className="shrink-0 text-[9px] font-bold tracking-[0.1em] text-emerald-300/70">GROSS TODAY</span>
-          <span className="text-base font-black tabular-nums text-emerald-300">
+          <span className="shrink-0 text-[10px] font-bold tracking-[0.1em] text-emerald-300/70">GROSS TODAY</span>
+          <span className="text-xl font-black tabular-nums text-emerald-300">
             {showGross ? `$${grossIncomeToday.toFixed(2)}` : "••••••"}
           </span>
         </button>
