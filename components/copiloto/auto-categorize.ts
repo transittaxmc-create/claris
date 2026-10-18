@@ -4,7 +4,7 @@
 // Las correcciones se aprenden (localStorage) y se aplican solas la próxima vez.
 // ============================================================================
 
-import { EXPENSE_CATEGORIES } from "./types"
+import { EXPENSE_CATEGORIES, migrateCategory } from "./types"
 
 export type BankTxInput = {
   date: string
@@ -39,7 +39,12 @@ export function loadLearned(): LearnedMap {
   try {
     const raw = localStorage.getItem(LEARNED_KEY)
     const p = raw ? JSON.parse(raw) : {}
-    return p && typeof p === "object" ? p : {}
+    if (!p || typeof p !== "object") return {}
+    // Migración a inglés (2026-10-18): normalizar categorías viejas al leer.
+    for (const k of Object.keys(p)) {
+      if (p[k] && typeof p[k].category === "string") p[k].category = migrateCategory(p[k].category)
+    }
+    return p
   } catch {
     return {}
   }
@@ -82,39 +87,39 @@ function hits(text: string, words: string[]): boolean {
   return words.some((w) => t.includes(w))
 }
 
-// Clasificación fiscal por defecto de cada categoría (Miguel la puede corregir).
+// Tax classification por defecto de cada categoría (Miguel la puede corregir).
 const CLASS_BY_CATEGORY: Record<string, "business" | "personal"> = {
-  "Fuel / Gasolina": "business",
-  "Maintenance / Vehicle": "business",
+  "Fuel": "business",
+  "Vehicle maintenance": "business",
   "Car leasing": "business",
-  "Rent / Renta": "business",
-  "Tolls / EZPass": "business",
-  "Food / Meals": "personal",
+  "Rent": "business",
+  "Tolls": "business",
+  "Food": "personal",
   "Car wash": "business",
-  "Insurance / Permits": "business",
+  "Insurance": "business",
   "Bank fees": "business",
-  "Phone / Data": "business",
+  "Phone": "business",
   "Parking": "business",
   "Supplies": "business",
-  "Other / Varios": "personal",
-  "Ingresos": "business",
+  "Other": "personal",
+  "Income": "business",
 }
 
-export const INCOME_CATEGORY = "Ingresos"
+export const INCOME_CATEGORY = "Income"
 
 function ruleCategory(vendor: string, amount: number): string | null {
   const v = normVendor(vendor)
   if (amount > 0 && hits(v, INCOME_WORDS)) return INCOME_CATEGORY
-  if (hits(v, FUEL)) return "Fuel / Gasolina"
-  if (hits(v, TOLLS)) return "Tolls / EZPass"
+  if (hits(v, FUEL)) return "Fuel"
+  if (hits(v, TOLLS)) return "Tolls"
   if (hits(v, CARWASH)) return "Car wash"
-  if (hits(v, INSURANCE)) return "Insurance / Permits"
+  if (hits(v, INSURANCE)) return "Insurance"
   if (hits(v, BANKFEES)) return "Bank fees"
-  if (hits(v, PHONE)) return "Phone / Data"
+  if (hits(v, PHONE)) return "Phone"
   if (hits(v, PARKING)) return "Parking"
-  if (hits(v, MAINT)) return "Maintenance / Vehicle"
+  if (hits(v, MAINT)) return "Vehicle maintenance"
   if (hits(v, LEASINGW)) return "Car leasing"
-  if (hits(v, FOOD)) return "Food / Meals"
+  if (hits(v, FOOD)) return "Food"
   if (hits(v, SUPPLIES)) return "Supplies"
   return null
 }
@@ -149,7 +154,7 @@ export function categorizeOne(tx: BankTxInput, learned: LearnedMap): Categorized
   if (tx.amount > 0) {
     return { ...tx, id, vendor, category: INCOME_CATEGORY, classification: "business", learned: false, uncategorized: false }
   }
-  return { ...tx, id, vendor, category: "Other / Varios", classification: "personal", learned: false, uncategorized: true }
+  return { ...tx, id, vendor, category: "Other", classification: "personal", learned: false, uncategorized: true }
 }
 
 export function categorizeAll(txs: BankTxInput[]): CategorizedTx[] {
