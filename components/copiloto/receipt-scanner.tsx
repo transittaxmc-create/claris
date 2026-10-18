@@ -71,11 +71,14 @@ function aplicarTecla(actual: string, tecla: string): string {
 }
 
 export function ReceiptScanner({
+  initialDocTipo,
   onClose,
   onSaveExpense,
   onSaveIncome,
   totales,
 }: {
+  /** Preselección de tipo de documento al abrir desde un register (factura/recibo). */
+  initialDocTipo?: ExpenseDocType | ""
   onClose: () => void
   onSaveExpense: (e: Expense) => void
   onSaveIncome: (e: { description: string; category: string; amount: number; date: string; notes?: string }) => void
@@ -93,7 +96,7 @@ export function ReceiptScanner({
   const [fecha, setFecha] = useState(localDateKey(new Date()))
   const [verCategorias, setVerCategorias] = useState(false)
   // Empty until user chooses — Easy Pass / Tower look like receipts but are Bills
-  const [docTipo, setDocTipo] = useState<ExpenseDocType | "">("")
+  const [docTipo, setDocTipo] = useState<ExpenseDocType | "">(initialDocTipo ?? "")
   // Categorías personalizadas (igual que en GASTOS): si la IA no tiene la
   // correcta, Miguel escribe una y queda guardada.
   const [customCategories, setCustomCategories] = useState<string[]>(() => {

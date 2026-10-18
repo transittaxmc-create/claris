@@ -58,6 +58,8 @@ import { FINANCE_SYNCED_EVENT } from "./finance-sync"
 interface CashFlowRegisterProps {
   startingActualBalance: number
   onUpdateStartingBalance?: (newBal: number) => void
+  /** Escanear factura/recibo desde un register: abre el escáner AI de la app. */
+  onOpenScanner?: (docTipo?: string) => void
 }
 
 interface SnapshotAccount {
@@ -614,6 +616,28 @@ export function CashFlowRegister({
             onBack={() => setView({ kind: "home" })}
             onAddBill={() => handleOpenAddModal("expense", "projected")}
             onAddPost={() => handleOpenAddModal("expense", "actual")}
+            onAddAdjust={() => {
+              // El ajuste de balance se hace AHORA como una entrada del register:
+              // una apunte con propósito de balancear (no hay pantalla de ajuste).
+              const today = new Date()
+              const iso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
+              setEditingEntry({
+                id: `tmp-adj-${Date.now()}`,
+                date: iso,
+                description: "Ajuste de balance",
+                amount: 0,
+                type: "income",
+                status: "actual",
+                source: "manual",
+                origin: "manual",
+                sourceLabel: "Ajuste",
+                category: "Ajuste",
+                notes: "Entrada con propósito de balancear el register",
+                accountId: activeAccount.id,
+              } as CashFlowEntry)
+              setIsModalOpen(true)
+            }}
+            onScanDoc={(t) => props.onOpenScanner?.(t)}
             onEditEntry={(e) => {
               setEditingEntry(e)
               setIsModalOpen(true)

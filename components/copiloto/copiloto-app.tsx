@@ -18,7 +18,7 @@ import { ReceiptScanner } from "./receipt-scanner"
 import { useShift } from "./shift"
 import { guardarMovimiento, movimientoDeGasto } from "./cash-flow-store"
 import { applyDifferenceToTrip, applyBankMatchesToTrips, normalizeTripStatus } from "./reconciliation"
-import { SEED_TRIPS, newTrip, stampExpense, applyExpenseUpdatesToExpenses, grossOf, netOf, tripDateOf, money, type Expense, type Trip, type ScheduledEntry } from "./types"
+import { SEED_TRIPS, newTrip, stampExpense, applyExpenseUpdatesToExpenses, grossOf, netOf, tripDateOf, money, type Expense, type ExpenseDocType, type Trip, type ScheduledEntry } from "./types"
 import {
   addBillPayment,
   billRemaining,
@@ -91,6 +91,8 @@ export function CopilotoApp() {
   const [syncTone, setSyncTone] = useState<"ok" | "error" | "info">("info")
   const [syncing, setSyncing] = useState(false)
   const [scannerOpen, setScannerOpen] = useState(false)
+  /** Tipo de documento preseleccionado al abrir el escáner desde un register. */
+  const [scannerHint, setScannerHint] = useState<ExpenseDocType | "">("")
   const [mas, setMas] = useState(false)
   const [copiaVieja, setCopiaVieja] = useState<string | null>(null)
   // Sha de producción cuando ESTA copia es una versión de prueba más nueva.
@@ -593,10 +595,23 @@ export function CopilotoApp() {
               expenses={expenses}
               onSave={saveExpense}
               onDelete={deleteExpense}
-              onScanReceipt={() => setScannerOpen(true)}
+              onScanReceipt={() => {
+              setScannerHint("")
+              setScannerOpen(true)
+            }}
             />
           )}
-          {tab === "FINANCE" && <FinanceScreen trips={trips} expenses={expenses} onSave={saveExpense} />}
+          {tab === "FINANCE" && (
+            <FinanceScreen
+              trips={trips}
+              expenses={expenses}
+              onSave={saveExpense}
+              onOpenScanner={(t) => {
+                setScannerHint(((t === "factura" ? "factura" : t === "recibo" ? "recibo" : "") as ExpenseDocType | ""))
+                setScannerOpen(true)
+              }}
+            />
+          )}
           {tab === "AI" && (
             <AIScreen
               trips={trips}
@@ -652,6 +667,7 @@ export function CopilotoApp() {
 
       {scannerOpen && (
         <ReceiptScanner
+          initialDocTipo={scannerHint}
           onClose={() => setScannerOpen(false)}
           onSaveExpense={(e) => {
             saveExpense(e)

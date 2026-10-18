@@ -2,14 +2,18 @@
 
 import { useEffect, useRef, useState } from "react"
 import {
+  AlertTriangle,
   ArrowLeft,
   ArrowLeftRight,
   Building2,
   Camera,
   Car,
+  Check,
+  Pencil,
   Plus,
   Receipt,
   Star,
+  Trash2,
   TrendingUp,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -34,7 +38,6 @@ import { buildForecast, daysToEndOfMonth, startingBalance, todayKey } from "./di
 import { movementCounts } from "./bank-brand"
 import { BankLogo, MoneyAccountCard, MoneyHeader, MoneySectionTitle, MoneyStrip, MoneyTabs } from "./money-ui"
 import { bankBrandOf } from "./bank-brand"
-import { AccountSettings } from "./account-settings"
 
 export interface BankTx {
   date: string
@@ -455,6 +458,10 @@ export function RegisterDetail(props: {
   onBack: () => void
   onAddBill: () => void
   onAddPost: () => void
+  /** Ajuste de balance COMO ENTRADA del register (propósito: balancear). */
+  onAddAdjust: () => void
+  /** Escanear factura/recibo: abre el escáner AI con el tipo de documento. */
+  onScanDoc: (docTipo: string) => void
   onEditEntry: (e: CashFlowEntry) => void
   onDeleteEntry: (id: string) => void
   onSetDocKind: (id: string, kind: "bill" | "receipt") => void
@@ -468,6 +475,20 @@ export function RegisterDetail(props: {
   const isCard = r.kind === "card"
   const d = accountDisplayName(r.name)
   const brand = bankBrandOf(r.name, r.institution)
+  // ¿Cómo registrar? Escanear (la AI lee, categoriza, clasifica y registra a
+  // donde va) o Manual. Hoja de acción al tocar + Factura / + Recibo.
+  const [docChoice, setDocChoice] = useState<null | "bill" | "receipt">(null)
+  // AI TRACKING de due dates: próxima factura por pagar y ¿alcanza el balance?
+  const proximaFactura = (() => {
+    const bills = (props.entries || []).filter(
+      (e) => e.status === "projected" && e.type === "expense" && Math.abs(Number(e.amount) || 0) > 0,
+    )
+    if (bills.length === 0) return null
+    const hoy = new Date().toISOString().slice(0, 10)
+    return bills.filter((e) => String(e.date || "") >= hoy).sort((a, b) => String(a.date).localeCompare(String(b.date)))[0]
+  })()
+  const alcanza =
+    proximaFactura != null && props.balance != null && (props.balance || 0) >= Math.abs(Number(proximaFactura.amount) || 0)
 
   type Line = {
     key: string
@@ -578,29 +599,95 @@ export function RegisterDetail(props: {
         >
           {props.balance === null ? "—" : money(props.balance)}
         </p>
+        {/* AI TRACKing de due dates: próxima factura por pagar + ¿alcanza el balance? */}
+        {proximaFactura && (
+          <div className="mt-2 flex items-center justify-between gap-2 rounded-lg border border-[#262633] bg-[#16161f] px-2.5 py-1.5">
+            <span className="flex min-w-0 items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-[#9a9cb0]">
+              <AlertTriangle className="size-3.5 shrink-0 text-amber-400" />
+              <span className="truncate">
+                Próx. factura · {shortDate(proximaFactura.date)} · {proximaFactura.description || "—"}
+              </span>
+            </span>
+            <span
+              className={cn(
+                "shrink-0 rounded-full px-2 py-0.5 font-mono text-[9px] font-extrabold",
+                alcanza ? "bg-emerald-400/15 text-emerald-300" : "bg-rose-400/15 text-rose-300",
+              )}
+            >
+              {money(Math.abs(Number(proximaFactura.amount) || 0))} · {alcanza ? "ALCANZA ✓" : "NO ALCANZA ✗"}
+            </span>
+          </div>
+        )}
       </div>
 
       <div className="flex shrink-0 gap-2">
-        <button type="button" onClick={props.onAddBill} className="flex-1 rounded-xl border border-cyan-500/40 bg-cyan-500/10 py-2.5 text-xs font-bold text-cyan-200">+ Factura</button>
-        <button type="button" onClick={props.onAddPost} className="flex-1 rounded-xl border border-purple-500/40 bg-purple-500/10 py-2.5 text-xs font-bold text-purple-200">+ Recibo</button>
+        <button type="button" onClick={() => setDocChoice("bill")} className="flex-1 rounded-xl border border-cyan-500/40 bg-cyan-500/10 py-2.5 text-xs font-bold text-cyan-200">+ Factura</button>
+        <button type="button" onClick={() => setDocChoice("receipt")} className="flex-1 rounded-xl border border-purple-500/40 bg-purple-500/10 py-2.5 text-xs font-bold text-purple-200">+ Recibo</button>
+        <button type="button" onClick={props.onAddAdjust} className="flex-1 rounded-xl border border-amber-500/40 bg-amber-500/10 py-2.5 text-xs font-bold text-amber-200">+ Ajuste</button>
       </div>
 
-      {/* Ajustes de la cuenta: principal ★, día de pago, saldo manual, otros fondos, borrar. */}
-      <AccountSettings
-        account={r}
-        balance={props.balance}
-        otherFunds={props.otherFunds}
-        onToggleOtherFund={props.onToggleOtherFund}
-        onSetMain={props.onSetMain}
-        onSaveDueDay={props.onSaveDueDay}
-        onSaveManualBalance={props.onSaveManualBalance}
-        onDeleteManual={props.onDeleteManual}
-      />
+      {/* El ajuste de balance YA NO es una pantalla aparte: se registra como una
+          entrada más del register (botón + Ajuste) con propósito de balancear. */}
 
-      {/* Statement: Date | Amount | Balance — ALL accounts */}
+      {/* ¿Cómo registrar la factura/recibo? Escanear (la AI lee, categoriza,
+          clasifica y registra a donde va) o Manual. */}
+      {docChoice && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70" onClick={() => setDocChoice(null)}>
+          <div
+            className="w-full max-w-md rounded-t-3xl border-t border-neutral-700 bg-neutral-950 p-4 pb-8"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="mb-1 text-[10px] font-bold tracking-wide text-neutral-500">
+              {docChoice === "bill" ? "NUEVA FACTURA · POR PAGAR (VA A PROYECCIONES CON SU DUE DATE)" : "NUEVO RECIBO · YA PAGADO (SE MATCHA CON EL BANCO)"}
+            </p>
+            <p className="mb-3 text-sm font-extrabold text-white">¿Cómo la vas a registrar?</p>
+            <button
+              type="button"
+              onClick={() => {
+                props.onScanDoc(docChoice === "bill" ? "factura" : "recibo")
+                setDocChoice(null)
+              }}
+              className="mb-2 flex w-full items-center gap-2.5 rounded-2xl border border-cyan-500/40 bg-cyan-500/10 px-3.5 py-3.5 text-left active:scale-[0.99]"
+            >
+              <Camera className="size-5 shrink-0 text-cyan-300" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-extrabold text-cyan-100">Escanear</span>
+                <span className="block text-[10px] leading-snug text-cyan-200/70">
+                  La AI lee el documento, lo categoriza, clasifica y registra a donde va.
+                </span>
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (docChoice === "bill") props.onAddBill()
+                else props.onAddPost()
+                setDocChoice(null)
+              }}
+              className="mb-3 flex w-full items-center gap-2.5 rounded-2xl border border-neutral-700 bg-neutral-900 px-3.5 py-3.5 text-left active:scale-[0.99]"
+            >
+              <Pencil className="size-5 shrink-0 text-neutral-300" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-extrabold text-neutral-100">Manual</span>
+                <span className="block text-[10px] leading-snug text-neutral-400">Escribe el apunte tú mismo.</span>
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDocChoice(null)}
+              className="w-full rounded-2xl border border-neutral-700 py-3 text-xs font-bold text-neutral-300"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Statement: Fecha | Detalle | Monto | Balance — alineado, monto editable */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-emerald-500/20 bg-neutral-950/80">
-        <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_4.5rem_4.75rem] gap-1 border-b border-neutral-800 bg-neutral-900/90 px-2.5 py-2.5 text-[10px] font-black uppercase tracking-wide">
-          <span className="text-neutral-400">Fecha · Detalle</span>
+        <div className="grid shrink-0 grid-cols-[3.25rem_minmax(0,1fr)_4.75rem_4.75rem] gap-1 border-b border-neutral-800 bg-neutral-900/90 px-2.5 py-2 text-[10px] font-black uppercase tracking-wide">
+          <span className="text-neutral-400">Fecha</span>
+          <span className="text-neutral-400">Detalle</span>
           <span className="text-right text-neutral-400">Monto</span>
           <span className="text-right text-emerald-400">Balance</span>
         </div>
@@ -609,53 +696,92 @@ export function RegisterDetail(props: {
             <p className="px-3 py-8 text-center text-[12px] text-neutral-500">Sin movimientos · Sincroniza el banco</p>
           )}
           {statementLines.map((line) => {
-            const body = (
-              <div className="grid grid-cols-[minmax(0,1fr)_4.5rem_4.75rem] items-start gap-1 border-b border-neutral-900/80 px-2.5 py-2.5">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-semibold text-neutral-500">{shortDate(line.date)}</p>
-                  <p className="truncate text-[12px] font-medium leading-snug text-neutral-100">{line.detail}</p>
-                  {line.entry && <EntryBadges entry={line.entry} />}
+            const ent = line.entry
+            const income = line.amount >= 0
+            const esFactura = ent ? ent.status === "projected" : false
+            return (
+              <div key={line.key} className="border-b border-neutral-900/80 px-2.5 py-2">
+                <div className="grid grid-cols-[3.25rem_minmax(0,1fr)_4.75rem_4.75rem] items-center gap-1">
+                  <p className="font-mono text-[10px] font-semibold leading-tight text-neutral-500">{shortDate(line.date)}</p>
+                  <div className="min-w-0">
+                    <p className="truncate text-[12px] font-medium leading-snug text-neutral-100">{line.detail}</p>
+                    {ent && <EntryBadges entry={ent} />}
+                  </div>
+                  {ent ? (
+                    <span className="flex items-center justify-end gap-0.5">
+                      <span className={cn("font-mono text-[11px] font-bold", income ? "text-emerald-500" : "text-rose-500")}>
+                        {income ? "+" : "−"}
+                      </span>
+                      <input
+                        key={`${ent.id}:${ent.amount}`}
+                        type="number"
+                        step="0.01"
+                        inputMode="decimal"
+                        defaultValue={String(Math.abs(Number(ent.amount) || 0))}
+                        onBlur={(ev) => props.onInlineAmount(ent.id, ev.target.value)}
+                        onKeyDown={(ev) => {
+                          if (ev.key === "Enter") (ev.target as HTMLInputElement).blur()
+                        }}
+                        aria-label={`Monto de ${ent.description || "apunte"} (editable)`}
+                        className={cn(
+                          "w-[3.4rem] rounded border border-transparent bg-transparent px-1 py-0.5 text-right font-mono text-[12px] font-bold tabular-nums outline-none",
+                          "focus:border-neutral-600 focus:bg-neutral-900",
+                          income ? "text-emerald-400" : "text-rose-400",
+                        )}
+                      />
+                    </span>
+                  ) : (
+                    <p
+                      className={cn(
+                        "text-right font-mono text-[12px] font-bold tabular-nums",
+                        income ? "text-emerald-400" : "text-rose-400",
+                      )}
+                    >
+                      {income ? "+" : "−"}
+                      {money(Math.abs(line.amount)).replace(/^\$/, "")}
+                    </p>
+                  )}
+                  <p className="text-right font-mono text-[12px] font-bold tabular-nums text-white">
+                    {line.dailyBalance === null ? "—" : money(line.dailyBalance)}
+                  </p>
                 </div>
-                <p className={cn("text-right font-mono text-[12px] font-bold tabular-nums", line.amount >= 0 ? "text-emerald-400" : "text-rose-400")}>
-                  {line.amount >= 0 ? "+" : "−"}
-                  {money(Math.abs(line.amount)).replace(/^\$/, "")}
-                </p>
-                <p className="text-right font-mono text-[12px] font-bold tabular-nums text-white">
-                  {line.dailyBalance === null ? "—" : money(line.dailyBalance)}
-                </p>
-              </div>
-            )
-            if (line.entry) {
-              const ent = line.entry
-              const esFactura = ent.status === "projected"
-              return (
-                <div key={line.key} className="border-b border-neutral-900/80">
-                  <button type="button" onClick={() => props.onEditEntry(ent)} className="w-full text-left active:bg-neutral-900/60 [&>div]:border-b-0">
-                    {body}
-                  </button>
-                  {/* Acciones del asiento: factura↔recibo y borrar (con confirmación). */}
-                  <div className="flex gap-1.5 px-2.5 pb-2">
+                {ent && (
+                  <div className="mt-1 flex items-center gap-1.5 pl-[3.25rem]">
+                    <button
+                      type="button"
+                      onClick={() => props.onEditEntry(ent)}
+                      title="Editar apunte"
+                      className="flex items-center gap-1 rounded-md border border-[#262633] bg-[#16161f] px-1.5 py-0.5 text-[9px] font-bold text-[#9a9cb0] active:scale-95"
+                    >
+                      <Pencil className="size-2.5" /> Editar
+                    </button>
                     {ent.type === "expense" && (
                       <button
                         type="button"
                         onClick={() => props.onSetDocKind(ent.id, esFactura ? "receipt" : "bill")}
-                        className="rounded-md border border-[#262633] bg-[#16161f] px-2 py-0.5 text-[10px] font-bold text-[#9a9cb0] active:scale-95"
+                        title={esFactura ? "Marcar pagado (recibo)" : "Pasar a factura (due date en proyecciones)"}
+                        className={cn(
+                          "flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[9px] font-bold active:scale-95",
+                          esFactura
+                            ? "border-purple-500/30 bg-purple-500/10 text-purple-300"
+                            : "border-cyan-500/30 bg-cyan-500/10 text-cyan-300",
+                        )}
                       >
-                        {esFactura ? "Marcar pagado (recibo)" : "Pasar a factura"}
+                        {esFactura ? <Check className="size-2.5" /> : <TrendingUp className="size-2.5" />}
                       </button>
                     )}
                     <button
                       type="button"
                       onClick={() => props.onDeleteEntry(ent.id)}
-                      className="rounded-md border border-rose-900/50 bg-rose-950/30 px-2 py-0.5 text-[10px] font-bold text-rose-300 active:scale-95"
+                      title="Borrar apunte"
+                      className="flex items-center rounded-md border border-rose-900/50 bg-rose-950/30 px-1.5 py-0.5 text-rose-300 active:scale-95"
                     >
-                      Borrar
+                      <Trash2 className="size-2.5" />
                     </button>
                   </div>
-                </div>
-              )
-            }
-            return <div key={line.key}>{body}</div>
+                )}
+              </div>
+            )
           })}
         </div>
       </div>

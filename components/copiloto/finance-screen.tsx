@@ -16,11 +16,13 @@ export function createTollBill(trips: { toll: number }[], serviceDate: string) {
 }
 
 /** DINERO (diseño MONEY) — cuentas con su marca, registro por cuenta y proyecciones. */
-export function FinanceScreen(_props: {
+export function FinanceScreen(props: {
   trips: Trip[]
   expenses: CopilotoExpense[]
   onSave: (e: CopilotoExpense) => void
   onDelete?: (id: string) => void
+  /** Escanear factura/recibo desde un register: sube hasta el escáner AI. */
+  onOpenScanner?: (docTipo?: string) => void
 }) {
   const [build, setBuild] = useState<string>("")
   useEffect(() => {
@@ -53,7 +55,7 @@ export function FinanceScreen(_props: {
       }}
     >
       <div className="flex-1 overflow-y-auto px-2 py-2">
-        <CashFlowRegister startingActualBalance={0} />
+        <CashFlowRegister startingActualBalance={0} onOpenScanner={props.onOpenScanner} />
         {build ? <p className="mt-3 text-center font-mono text-[9px] leading-tight text-[#66687c]">{build}</p> : null}
       </div>
     </div>
