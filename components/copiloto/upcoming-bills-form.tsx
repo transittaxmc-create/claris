@@ -29,12 +29,12 @@ export function UpcomingBillsForm() {
     <div className="space-y-3">
       <OpenBillsPanel />
       <div className="space-y-3 rounded-2xl border border-neutral-800 bg-neutral-900/40 p-4">
-        <h3 className="text-sm font-bold uppercase text-white">Plan de Pagos</h3>
+        <h3 className="text-sm font-bold uppercase text-white">Payment plan</h3>
         <input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Nombre (ej. Renta, Geico)"
+          placeholder="Name (e.g. Rent, Geico)"
           className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white"
         />
         <div className="flex gap-2">
@@ -43,7 +43,7 @@ export function UpcomingBillsForm() {
             inputMode="decimal"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            placeholder="Monto $"
+            placeholder="Amount $"
             className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white"
           />
           <input
@@ -68,7 +68,7 @@ export function UpcomingBillsForm() {
                   : "border-neutral-700 text-neutral-500",
               )}
             >
-              {p === 1 ? "🔴 Crítico" : "🟡 Secundario"}
+              {p === 1 ? "🔴 Critical" : "🟡 Secondary"}
             </button>
           ))}
         </div>
@@ -77,7 +77,7 @@ export function UpcomingBillsForm() {
           onClick={submit}
           className="w-full rounded-xl bg-yellow-400 py-2.5 text-sm font-extrabold text-black"
         >
-          Añadir factura
+          Add bill
         </button>
 
         {upcomingExpenses.length > 0 && (
@@ -99,7 +99,7 @@ export function UpcomingBillsForm() {
                     </span>
                     <button
                       type="button"
-                      aria-label="Borrar factura"
+                      aria-label="Delete bill"
                       onClick={() => removeUpcomingExpense(e.id)}
                       className="rounded-lg border border-neutral-700 p-1.5 text-rose-400"
                     >
