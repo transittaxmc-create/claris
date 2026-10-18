@@ -17,6 +17,7 @@ import {
 } from "./cash-flow-store"
 import {
   money,
+  migrateCategory,
   type CashFlowEntry,
   type CashFlowOrigin,
   type CashFlowSource,
@@ -151,8 +152,20 @@ export function CashFlowRegister({
       const sinSem = sinSemillas(lista)
       // Etiquetas viejas ("Recibo escaneado") → origen + tipo por separado.
       const { lista: limpio, cambio } = normalizarLibro(sinSem)
+      // Migración a inglés (2026-10-18): normalizar categorías viejas.
+      let migro = false
+      for (const e of limpio) {
+        const c = (e as any)?.category
+        if (typeof c === "string") {
+          const m = migrateCategory(c)
+          if (m !== c) {
+            ;(e as any).category = m
+            migro = true
+          }
+        }
+      }
       setEntries(limpio)
-      if (cambio || sinSem.length !== lista.length) {
+      if (cambio || migro || sinSem.length !== lista.length) {
         try {
           localStorage.setItem(LEDGER_KEY, JSON.stringify(limpio))
         } catch {}
@@ -324,7 +337,7 @@ export function CashFlowRegister({
         const amt = Number(f.bankTx.amount) || 0
         // Regla de transfers JAMAS inflan ingresos: si el movimiento tiene
         // pinta de transferencia interna (Zelle, transfer, wire...) se crea
-        // con origen "transfer" y etiqueta "Transfer interna", no como un
+        // con origen "transfer" y etiqueta "Internal transfer", no como un
         // ingreso bancario mas. El mismo dolar movido no es ingreso nuevo.
         const esTransfer = looksLikeTransfer(String(f.bankTx.detail || ""))
         const nuevo = {
@@ -336,7 +349,7 @@ export function CashFlowRegister({
           status: "actual",
           source: "bank",
           origin: esTransfer ? "transfer" : "bank",
-          sourceLabel: esTransfer ? "Transfer interna" : "Banco",
+          sourceLabel: esTransfer ? "Internal transfer" : "Bank",
           category: "",
           notes: "",
           accountId: f.accountId,
@@ -383,7 +396,7 @@ export function CashFlowRegister({
           status: "actual",
           source: "bank",
           origin: "bank",
-          sourceLabel: "Banco",
+          sourceLabel: "Bank",
           category: "",
           notes: "",
           accountId: f.accountId,
@@ -528,7 +541,7 @@ export function CashFlowRegister({
               )}
             />
             <span className="tracking-wider text-[#0a7cff]">PLAID</span>
-            <span className="text-[#f2f3f7]">Feed del banco</span>
+            <span className="text-[#f2f3f7]">Bank feed</span>
           </span>
           <span
             className={cn(
@@ -538,18 +551,18 @@ export function CashFlowRegister({
                 : "border-emerald-800 bg-emerald-950 text-emerald-300",
             )}
           >
-            {bankError ? "SIN CONEXIÓN" : "EN VIVO"}
+            {bankError ? "OFFLINE" : "LIVE"}
           </span>
           <button
             type="button"
             onClick={fetchBank}
             disabled={bankLoading}
-            title={bankUpdatedAt ? `Banco sincronizado ${bankUpdatedAt}` : "Sincronizar banco"}
+            title={bankUpdatedAt ? `Bank synced ${bankUpdatedAt}` : "Sync bank"}
             className="rounded border border-[#262633] bg-[#16161f] px-2 py-0.5 text-[9px] font-bold text-[#f2f3f7] active:scale-95 disabled:opacity-50"
           >
             <span className="inline-flex items-center gap-1">
               <RefreshCw className={cn("size-2.5", bankLoading && "animate-spin")} />
-              {bankLoading ? "SINCRONIZANDO" : bankError ? "REINTENTAR" : "SYNC"}
+              {bankLoading ? "SYNCING" : bankError ? "RETRY" : "SYNC"}
             </span>
           </button>
         </div>
@@ -643,7 +656,7 @@ export function CashFlowRegister({
               setEditingEntry({
                 id: `tmp-adj-${Date.now()}`,
                 date: iso,
-                description: "Ajuste de balance",
+                description: "Balance adjustment",
                 amount: 0,
                 type: "income",
                 status: "actual",
@@ -651,7 +664,7 @@ export function CashFlowRegister({
                 origin: "manual",
                 sourceLabel: "Ajuste",
                 category: "Ajuste",
-                notes: "Entrada con propósito de balancear el register",
+                notes: "Entry to balance the register",
                 accountId: activeAccount.id,
               } as CashFlowEntry)
               setIsModalOpen(true)
@@ -813,7 +826,7 @@ export function EntryModal(props: {
               </select>
             </div>
             <div>
-              <label className="text-[10px] font-bold uppercase text-neutral-400">Factura o Recibo</label>
+              <label className="text-[10px] font-bold uppercase text-neutral-400">Bill o Receipt</label>
               <select
                 value={editingEntry.status}
                 onChange={(e) => {
@@ -834,14 +847,14 @@ export function EntryModal(props: {
                 }}
                 className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none"
               >
-                <option value="projected">Factura (Bill) — por pagar</option>
-                <option value="actual">Recibo (Receipt) — ya pagado</option>
+                <option value="projected">Bill — payable</option>
+                <option value="actual">Receipt (Receipt) — already paid</option>
               </select>
             </div>
           </div>
           {editingEntry.type === "income" && (
             <div>
-              <label className="text-[10px] font-bold uppercase text-neutral-400">Origen del ingreso</label>
+              <label className="text-[10px] font-bold uppercase text-neutral-400">Income source</label>
               <select
                 value={origenDe(editingEntry)}
                 onChange={(e) => {
