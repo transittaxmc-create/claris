@@ -326,8 +326,8 @@ export function startingBalance(
   for (const id of otherFundIds) {
     const r = registers.find((x) => x.id === id)
     if (!r || r.isMain || r.kind !== "bank") continue
-    // Solo PayPal/Venmo pueden ser fondos (Miguel), y solo si tienen balance positivo.
-    if (!/paypal|venmo/i.test(String(r.name || ""))) continue
+    // Solo PayPal/Venmo/Square pueden ser fondos (Miguel), y solo si tienen balance positivo.
+    if (!/paypal|venmo|square/i.test(String(r.name || ""))) continue
     const b = balances[id]
     if (b === null || b === undefined || !Number.isFinite(Number(b)) || Number(b) <= 0) continue
     extras.push({ id, name: r.name, balance: r2(Number(b)) })
