@@ -249,10 +249,10 @@ function byTimeDesc(a: Trip, b: Trip): number {
   return (b.time || "").localeCompare(a.time || "")
 }
 
-// Aplica la diferencia al viaje para que el neto calculado cuadre con lo
+// Aplica la diferencia al trip para que el neto calculado cuadre con lo
 // recibido. El ajuste entra por EARNINGS porque es el campo del que cuelga el
 // neto (gross = earnings + extraCash + tips + toll; net = gross − platformFee).
-// Devuelve un viaje nuevo: no muta el original.
+// Devuelve un trip nuevo: no muta el original.
 export function applyDifferenceToTrip(t: Trip): Trip {
   const received = receivedOf(t)
   if (received == null) return t
