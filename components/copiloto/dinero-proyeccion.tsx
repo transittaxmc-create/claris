@@ -399,77 +399,6 @@ function ProjectionRegister(props: {
     return d.slice(0, 28)
   }
 
-  // AI FOLLOW · PAGAR A TIEMPO: facturas por pagar del horizonte + veredicto
-  // de solvencia en su fecha (¿alcanza el balance ese día?).
-  const porPagar = useMemo(
-    () => fc.lines.filter((ln) => ln.amount < 0).sort((a, b) => String(a.date).localeCompare(String(b.date))),
-    [fc],
-  )
-  const balPorDia = useMemo(() => {
-    const m = new Map<string, number>()
-    for (const d of fc.days) m.set(d.date, d.balance)
-    return m
-  }, [fc])
-  const primeraDebil = useMemo(() => fc.days.find((d) => d.balance < 0) || null, [fc])
-
-  function veredictoPago(ln: ForecastLine): { ok: boolean | null; falta: number } {
-    const bal = balPorDia.get(String(ln.date).slice(0, 10))
-    if (bal === undefined) return { ok: null, falta: 0 }
-    return { ok: bal >= 0, falta: bal < 0 ? r2(-bal) : 0 }
-  }
-
-  const aiPagarATiempo = (
-    <div className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-3">
-      <p className="mb-1.5 flex items-center justify-between gap-2 text-[10px] font-black uppercase tracking-wide text-amber-300">
-        <span>AI · Pagar a tiempo</span>
-        <span className="font-mono text-[9px] font-bold text-neutral-400">{porPagar.length} por pagar</span>
-      </p>
-      {porPagar.length === 0 && (
-        <p className="text-[11px] text-neutral-400">Sin facturas pendientes en el horizonte. ✓</p>
-      )}
-      {porPagar.length > 0 && (
-        <div className="space-y-1">
-          {porPagar.map((ln) => {
-            const v = veredictoPago(ln)
-            const vencida = ln.kind === "overdue"
-            return (
-              <div key={ln.id} className="flex items-center justify-between gap-2 rounded-lg bg-neutral-950/60 px-2 py-1.5">
-                <span className="flex min-w-0 items-center gap-1.5">
-                  <span className="w-14 shrink-0 font-mono text-[10px] font-semibold text-neutral-400">
-                    {vencida ? "VENCIDA" : fechaCorta(String(ln.date).slice(0, 10))}
-                  </span>
-                  <span className="min-w-0 truncate text-[11px] font-semibold text-neutral-100">{descripcionDe(ln)}</span>
-                </span>
-                <span className="flex shrink-0 items-center gap-2">
-                  <span className="font-mono text-[11px] font-bold text-rose-300">{signed(-Math.abs(ln.amount))}</span>
-                  <span
-                    className={cn(
-                      "rounded-full px-1.5 py-0.5 text-[9px] font-extrabold",
-                      vencida
-                        ? "bg-amber-400/15 text-amber-300"
-                        : v.ok === true
-                          ? "bg-emerald-400/15 text-emerald-300"
-                          : v.ok === false
-                            ? "bg-rose-400/15 text-rose-300"
-                            : "bg-neutral-700/40 text-neutral-300",
-                    )}
-                  >
-                    {vencida ? "PAGAR HOY" : v.ok === true ? "ALCANZA ✓" : v.ok === false ? `FALTAN ${money(v.falta)}` : "—"}
-                  </span>
-                </span>
-              </div>
-            )
-          })}
-        </div>
-      )}
-      {primeraDebil && (
-        <p className="mt-2 flex items-center gap-1.5 text-[10px] font-bold text-rose-300">
-          <AlertTriangle className="size-3 shrink-0" />
-          Primera debilidad: {fechaCorta(primeraDebil.date)} · el balance cae a {money(primeraDebil.balance)}
-        </p>
-      )}
-    </div>
-  )
 
   // Vista lista (la de siempre) como alternativa al registro.
   if (verDias) {
@@ -488,7 +417,6 @@ function ProjectionRegister(props: {
           </button>
         </div>
 
-        {aiPagarATiempo}
         {fc.lines.length === 0 ? (
           <p className="text-[11px] text-neutral-500">Sin movimientos proyectados en este periodo.</p>
         ) : (
@@ -518,7 +446,6 @@ function ProjectionRegister(props: {
         </button>
       </div>
 
-      {aiPagarATiempo}
 
       <div className={cn(cols, "border-b border-neutral-800 pb-1 text-[9px] font-black uppercase tracking-wide")}>
         <span className="text-neutral-400">Fecha</span>
