@@ -83,7 +83,7 @@ function LocationColumn({
         >
           <button
             type="button"
-            aria-label={`Borrar ${label.toLowerCase()}`}
+            aria-label={`Delete ${label.toLowerCase()}`}
             onClick={onClear}
             className="absolute right-1.5 top-1.5 rounded-lg bg-black/40 p-1 text-neutral-400 hover:text-white"
           >
@@ -112,7 +112,7 @@ function LocationColumn({
           <div className="flex items-start gap-1.5">
             <AlertTriangle className="size-4 shrink-0 text-amber-400 mt-0.5" />
             <div className="flex-1 text-[11px] leading-tight">
-              <div className="font-bold text-amber-300">Ubicación no confirmada</div>
+              <div className="font-bold text-amber-300">Location not confirmed</div>
               <div className="mt-0.5 text-[10px] text-neutral-300">{lowAccuracy.errorMsg}</div>
             </div>
           </div>
@@ -216,7 +216,7 @@ export function EntryScreen({
         setLowAccuracy({
           which,
           accuracy: 0,
-          errorMsg: e instanceof Error ? e.message : "Error al obtener GPS",
+          errorMsg: e instanceof Error ? e.message : "Couldn't get GPS",
         })
       }
     } finally {
@@ -274,11 +274,11 @@ export function EntryScreen({
 
   const greeting = now
     ? now.getHours() < 12
-      ? "Buenos días"
+      ? "Good morning"
       : now.getHours() < 18
-        ? "Buenas tardes"
-        : "Buenas noches"
-    : "Buenos días"
+        ? "Good afternoon"
+        : "Good evening"
+    : "Good morning"
 
   function handleSave() {
     if (lowAccuracy) return
@@ -321,13 +321,13 @@ export function EntryScreen({
                 {place.street && place.city ? <span>, {place.city}</span> : null}
               </span>
             ) : (
-              <span className="truncate text-neutral-600">Buscando ubicación…</span>
+              <span className="truncate text-neutral-600">Looking up location…</span>
             )}
           </p>
         </div>
         <span className="flex shrink-0 items-center gap-1.5 rounded-full border border-green-500/40 bg-green-500/10 px-2.5 py-1 text-[10px] font-bold text-green-400">
           <span className="size-1.5 rounded-full bg-green-400" />
-          GPS · Alta Precisión
+          GPS · High accuracy
         </span>
       </div>
 
@@ -404,7 +404,7 @@ export function EntryScreen({
           {/* Box header */}
           <div className="mb-2 flex items-center gap-2">
             <DollarSign className="size-4 text-emerald-400" />
-            <span className="text-[11px] font-bold tracking-wide text-neutral-400">ECONOMÍA</span>
+            <span className="text-[11px] font-bold tracking-wide text-neutral-400">ECONOMY</span>
             <div className="ml-auto h-px flex-1 bg-neutral-800" />
           </div>
 
@@ -504,7 +504,7 @@ export function EntryScreen({
           {/* Box header */}
           <div className="mb-3 flex items-center gap-2">
             <Timer className="size-4 text-yellow-400" />
-            <span className="text-[11px] font-bold tracking-wide text-neutral-400">CRONÓMETRO</span>
+            <span className="text-[11px] font-bold tracking-wide text-neutral-400">STOPWATCH</span>
             <div className="ml-auto h-px flex-1 bg-neutral-800" />
           </div>
 
@@ -557,7 +557,7 @@ export function EntryScreen({
               : "bg-gradient-to-r from-yellow-500 to-amber-500 text-black active:scale-[0.99]"
           )}
         >
-          {storageSaved ? "STORAGE OK ✓" : lowAccuracy ? "⚠️ RESUELVA GPS PRIMERO" : "+ GRABAR EN DISCO"}
+          {storageSaved ? "STORAGE OK ✓" : lowAccuracy ? "⚠️ FIX GPS FIRST" : "+ SAVE TO DISK"}
         </button>
       </div>
     </div>
