@@ -227,7 +227,7 @@ export function removeUpcomingExpense(id: string) {
   set({ upcomingExpenses: state.upcomingExpenses.filter((e) => e.id !== id) })
 }
 
-// Registro rápido: descuenta del saldo real y separa 10% a la reserva.
+// Register rápido: descuenta del saldo real y separa 10% a la reserva.
 export function addExpense(expense: Omit<LoggedExpense, "id" | "date">) {
   hydrate()
   const reserveCut = (Number(expense.amount) || 0) * RESERVE_RATE
@@ -319,7 +319,7 @@ export function getEmergencyPlan(): {
     const sorted = [...s.upcomingExpenses].sort(
       (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(),
     )
-    const target = sorted[0]?.name || "Compromisos Próximos"
+    const target = sorted[0]?.name || "Upcoming commitments"
     const workingDaysLeft = Math.max(1, s.days.filter((d) => d.isWorkingDay).length || 5)
     return {
       hasDeficit: true,
