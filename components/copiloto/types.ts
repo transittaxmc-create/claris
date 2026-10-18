@@ -19,6 +19,8 @@ export type { LocationPoint }
 export const EXPENSE_CATEGORIES = [
   "Fuel / Gasolina",
   "Maintenance / Vehicle",
+  "Car leasing",
+  "Rent / Renta",
   "Tolls / EZPass",
   "Food / Meals",
   "Car wash",
@@ -34,7 +36,7 @@ export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number]
 
 export const CUSTOM_CATEGORIES_KEY = "claris_custom_categories"
 
-export type ScheduleFrequency = "once" | "daily" | "weekly" | "monthly" | "annual"
+export type ScheduleFrequency = "once" | "daily" | "weekly" | "biweekly" | "monthly" | "annual"
 
 export type ScheduledEntry = {
   id: string
