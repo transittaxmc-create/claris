@@ -95,7 +95,7 @@ export function matchTransfers(txs: MatchTx[]): TransferReport {
         amount: Math.round(need * 100) / 100,
         outDate: String(out.date).slice(0, 10),
         inDate: String(inTx.date).slice(0, 10),
-        originLabel: `viene de ${out.bank_account || "otra cuenta"}`,
+        originLabel: `comes from ${out.bank_account || "another account"}`,
       })
     } else if (looksLikeTransfer(out.detail)) {
       unmatchedOut.push(out)
