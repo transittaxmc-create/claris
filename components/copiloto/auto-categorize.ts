@@ -85,6 +85,8 @@ function hits(text: string, words: string[]): boolean {
 const CLASS_BY_CATEGORY: Record<string, "business" | "personal"> = {
   "Fuel / Gasolina": "business",
   "Maintenance / Vehicle": "business",
+  "Car leasing": "business",
+  "Rent / Renta": "business",
   "Tolls / EZPass": "business",
   "Food / Meals": "personal",
   "Car wash": "business",
