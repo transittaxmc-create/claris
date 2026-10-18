@@ -97,7 +97,7 @@ export function ReceiptScanner({
   const [verCategorias, setVerCategorias] = useState(false)
   // Empty until user chooses — Easy Pass / Tower look like receipts but are Bills
   const [docTipo, setDocTipo] = useState<ExpenseDocType | "">(initialDocTipo ?? "")
-  // Categorías personalizadas (igual que en GASTOS): si la IA no tiene la
+  // Categorías personalizadas (igual que en EXPENSES): si la IA no tiene la
   // correcta, Miguel escribe una y queda guardada.
   const [customCategories, setCustomCategories] = useState<string[]>(() => {
     try {
@@ -110,7 +110,7 @@ export function ReceiptScanner({
   const [newCategory, setNewCategory] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Cuentas/registers para "¿De qué cuenta salió?" (mismos que DINERO).
+  // Accounts/registers para "Which account did it come from?" (mismos que MONEY).
   const [snapshotAccounts, setSnapshotAccounts] = useState<any[]>([])
   const [cuentaId, setCuentaId] = useState("")
   useEffect(() => {
@@ -198,7 +198,7 @@ export function ReceiptScanner({
       // Auto-seleccionar Factura/Recibo según sugerencia; Miguel revisa y puede cambiarlo.
       const sug = sugerirTipoDoc(r.vendor ? String(r.vendor) : "", r.notes ? String(r.notes) : "")
       if (sug) setDocTipo(sug)
-      setAviso({ tipo: "ok", texto: "Documento leído. Revisa los datos y guarda." })
+      setAviso({ tipo: "ok", texto: "Document read. Review the data and save." })
     } catch (err) {
       setAviso({ tipo: "error", texto: String((err as Error)?.message || err) })
     } finally {
@@ -383,7 +383,7 @@ export function ReceiptScanner({
               className="mt-1 flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-semibold"
               style={{ background: "#fff", border: `1px solid ${LINE}`, color: "#1F2937" }}
             >
-              {categoria === "__new__" ? "＋ Nueva categoría…" : categoria}
+              {categoria === "__new__" ? "+ New category…" : categoria}
               <span style={{ color: "#9CA3AF" }}>{verCategorias ? "▲" : "▼"}</span>
             </button>
             {verCategorias && (
@@ -412,7 +412,7 @@ export function ReceiptScanner({
                   className="flex w-full items-center px-3 py-2.5 text-left text-[13px] font-bold"
                   style={{ background: "#fff", color: BLUE, borderTop: `1px solid ${LINE}` }}
                 >
-                  ＋ Nueva categoría…
+                  + New category…
                 </button>
               </div>
             )}
@@ -422,7 +422,7 @@ export function ReceiptScanner({
                   autoFocus
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value)}
-                  placeholder="Nombre de la categoría nueva"
+                  placeholder="New category name"
                   className="min-w-0 flex-1 rounded-xl px-3 py-2.5 text-sm font-semibold outline-none"
                   style={{ background: "#fff", border: `1px solid ${LINE}`, color: "#1F2937" }}
                 />
@@ -432,7 +432,7 @@ export function ReceiptScanner({
                   className="shrink-0 rounded-xl px-4 py-2.5 text-[13px] font-extrabold text-white"
                   style={{ background: BLUE }}
                 >
-                  Añadir
+                  Add
                 </button>
               </div>
             )}
@@ -452,7 +452,7 @@ export function ReceiptScanner({
           {/* REQUIRED dropdown: Factura = por pagar | Recibo = ya pagado */}
           <div className="mt-3">
             <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#6B7280" }}>
-              Tipo de documento
+              Document type
             </p>
             <select
               value={docTipo}
@@ -464,17 +464,17 @@ export function ReceiptScanner({
                 color: "#1F2937",
               }}
             >
-              <option value="">— Elige el tipo —</option>
-              <option value="factura">Factura (Bill) — por pagar (Easy Pass, Tower, invoice)</option>
-              <option value="recibo">Recibo (Receipt) — ya pagado</option>
+              <option value="">— Choose the type —</option>
+              <option value="factura">Bill — payable (Easy Pass, Tower, invoice)</option>
+              <option value="recibo">Receipt (Receipt) — already paid</option>
             </select>
             <p className="mt-1.5 text-[10px] leading-snug" style={{ color: "#8A93A3" }}>
               {docTipo === "factura"
-                ? "Se guarda como Escaneado · Factura: va a Projected (por pagar) y no toca el banco todavía."
+                ? "Se guarda como Escaneado · Bill: va a Projected (payable) y no toca el banco todavía."
                 : docTipo === "recibo"
-                  ? "Se guarda como Escaneado · Recibo: va a Bank como Posted (ya pagado)."
+                  ? "Se guarda como Escaneado · Receipt: va a Bank como Posted (already paid)."
                   : sugerirTipoDoc(comercio, notas) === "factura"
-                    ? "Sugerido: Factura (parece un peaje o cuenta por pagar). Tú decides."
+                    ? "Sugerido: Bill (parece un peaje o cuenta payable). Tú decides."
                     : "Los peajes (Easy Pass, SunPass, Tower) casi siempre son Facturas, no recibos."}
             </p>
           </div>
@@ -484,7 +484,7 @@ export function ReceiptScanner({
           {direccion === "gasto" && orderedRegisters.length > 0 && (
             <div className="mt-3">
               <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#6B7280" }}>
-                ¿De qué cuenta salió? <span style={{ color: ORANGE }}>*</span>
+                Which account did it come from? <span style={{ color: ORANGE }}>*</span>
               </p>
               <select
                 value={cuentaId}
