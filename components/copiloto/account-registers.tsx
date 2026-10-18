@@ -189,6 +189,15 @@ export function RegistersHome(props: {
     if (b.isMain && !a.isMain) return 1
     return a.name.localeCompare(b.name)
   })
+  // Cuentas visibles de la cuadricula, ordenadas: main primero, luego por movimiento reciente.
+  const ordenadas = [...gridRegs].sort((a, b) => {
+    if (a.isMain && !b.isMain) return -1
+    if (b.isMain && !a.isMain) return 1
+    const ta = lastMove.get(a.id) ?? 0
+    const tb = lastMove.get(b.id) ?? 0
+    if (tb !== ta) return tb - ta
+    return a.name.localeCompare(b.name)
+  })
   const principal = ordenadas.find((r) => r.isMain) || null
   const resto = ordenadas.filter((r) => r !== principal)
   const secBancos = resto.filter((r) => r.kind === "bank" && r.source === "snapshot")
