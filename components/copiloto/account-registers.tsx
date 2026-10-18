@@ -145,8 +145,8 @@ export function RegistersHome(props: {
   const net = Math.round((available - owe) * 100) / 100
 
   // Dashboard: principal primero, luego por movimiento reciente. Sin
-  // movimiento en 30 días → se oculta del grid (el balance sigue contando
-  // en Disponible/Debo/Neto). Si el banco no cargó, no se oculta nada.
+  // movimiento en 30 days → se oculta del grid (el balance sigue contando
+  // en Disponible/Debo/Net). Si el banco no cargó, no se oculta nada.
   const INACT_MS = 30 * 86400000
   const inactCutoff = Date.now() - INACT_MS
   const lastMove = new Map<string, number>()
@@ -249,7 +249,7 @@ export function RegistersHome(props: {
 
   // Pestaña "Citibank Register" (como MONEY): nombre corto de la marca de la ★.
   const mainName = (() => {
-    if (!principal) return "Cuenta"
+    if (!principal) return "Account"
     const b = bankBrandOf(principal.name, principal.institution)
     return b.id === "generic" ? accountDisplayName(principal.name).title.replace(/\s*·+\s*\d{4}$/, "") : b.short
   })()
@@ -261,14 +261,14 @@ export function RegistersHome(props: {
       <MoneyStrip
         cells={[
           {
-            label: "BANCO REAL",
+            label: "REAL BANK",
             value: principal && balances[principal.id] != null ? money(balances[principal.id] as number) : money(available),
             tone: "plain",
             active: vista === 0,
             onClick: () => setVista(0),
           },
           {
-            label: "PROYECTADO MES",
+            label: "PROJECTED MONTH",
             value: money(proyectadoMes.end),
             tone: proyectadoMes.end < 0 ? "neg" : "plain",
             active: vista === 1,
@@ -290,7 +290,7 @@ export function RegistersHome(props: {
           Debo <span className="font-mono font-bold tabular-nums text-[#ff5d6c]">{money(owe)}</span>
         </p>
         <p className="text-[10px] text-[#9a9cb0]">
-          Neto{" "}
+          Net{" "}
           <span className={cn("font-mono font-bold tabular-nums", net < 0 ? "text-[#ff5d6c]" : "text-[#f2f3f7]")}>
             {money(net)}
           </span>
@@ -298,7 +298,7 @@ export function RegistersHome(props: {
       </div>
 
       <div>
-        <MoneySectionTitle>CUENTAS · {gridRegs.length}</MoneySectionTitle>
+        <MoneySectionTitle>ACCOUNTS · {gridRegs.length}</MoneySectionTitle>
         {principal && tarjetaCuenta(principal)}
         {seccion("Bancos", secBancos)}
         {seccion("Tarjetas", secTarjetas)}
@@ -309,10 +309,10 @@ export function RegistersHome(props: {
           className="mt-2.5 flex w-full items-center justify-center gap-1 rounded-[14px] border border-dashed border-[#262633] p-3 text-[#9a9cb0]"
         >
           <Plus className="size-4" />
-          <span className="text-[13px] font-semibold">Agregar cuenta</span>
+          <span className="text-[13px] font-semibold">Add account</span>
         </button>
         {hiddenCount > 0 && (
-          <p className="mt-1 px-1 text-[10px] text-[#66687c]">{hiddenCount} sin movimiento reciente</p>
+          <p className="mt-1 px-1 text-[10px] text-[#66687c]">{hiddenCount} no recent activity</p>
         )}
       </div>
 
@@ -321,15 +321,15 @@ export function RegistersHome(props: {
           <span className="flex items-center gap-2 text-[13px] font-bold text-[#f2f3f7]">
             <ArrowLeftRight className="size-4 text-[#5b8cff]" /> Transferencias
           </span>
-          <span className="font-mono text-[10px] font-bold text-[#9a9cb0]">{pairCount} emparejadas · {looseCount} abiertas</span>
+          <span className="font-mono text-[10px] font-bold text-[#9a9cb0]">{pairCount} matched · {looseCount} abiertas</span>
         </button>
       )}
 
-      {/* CIERRE DEL DÍA removido del home: la AI clasifica sola a diario.
-          Revisión y corrección por categoría en REPORTES (AI · Clasificación diaria). */}
+      {/* CIERRE DEL DAY removido del home: la AI clasifica sola a daily.
+          Revisión y correction por categoría en REPORTS (AI · Clasificación diaria). */}
         </>
       )}
-      {/* ============ VISTA PROYECTADO ============ */}
+      {/* ============ VISTA PROJECTED ============ */}
       {vista === 1 && (
         <>
           {/* Lo que las plataformas aguantan: visible al frente, no entra al proyectado. */}
@@ -352,15 +352,15 @@ export function RegistersHome(props: {
           <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">
             <div className="mb-1.5 flex items-center justify-between gap-2">
               <p className="text-[11px] font-bold uppercase tracking-wide text-neutral-400">
-                Balances reales del banco
+                Real bank balances
               </p>
               <button
                 type="button"
                 onClick={() => setVerBalancesTodos(true)}
                 className="rounded-md border border-neutral-700 px-2 py-0.5 text-[10px] font-bold text-neutral-300"
-                title="Ver todas las cuentas (incluidas con saldo 0)"
+                title="See all accounts (including $0 balance)"
               >
-                {verTodos ? "Solo activas" : "Ver todas"}
+                {verTodos ? "Active only" : "See all"}
               </button>
             </div>
             <div className="space-y-1">
@@ -413,18 +413,18 @@ export function AddAccountModal(props: {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 sm:items-center" onClick={props.onClose}>
       <div className="w-full max-w-md rounded-t-2xl border border-neutral-700 bg-neutral-950 p-4" onClick={(e) => e.stopPropagation()}>
-        <h3 className="text-sm font-extrabold text-white">Agregar cuenta</h3>
-        <input className="mt-3 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white" value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre de la cuenta" />
+        <h3 className="text-sm font-extrabold text-white">Add account</h3>
+        <input className="mt-3 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white" value={name} onChange={(e) => setName(e.target.value)} placeholder="Account name" />
         <div className="mt-2 grid grid-cols-2 gap-2">
           {(["bank", "card"] as const).map((k) => (
             <button key={k} type="button" onClick={() => setKind(k)} className={cn("rounded-xl border py-2.5 text-xs font-bold", kind === k ? "border-yellow-400/60 text-yellow-300" : "border-neutral-700 text-neutral-300")}>
-              {k === "bank" ? "Banco" : "Tarjeta"}
+              {k === "bank" ? "Bank" : "Card"}
             </button>
           ))}
         </div>
         <input className="mt-2 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white" type="number" value={balance} onChange={(e) => setBalance(e.target.value)} placeholder="Balance" />
         <div className="mt-3 flex gap-2">
-          <button type="button" onClick={props.onClose} className="flex-1 rounded-xl border border-neutral-700 py-2.5 text-xs font-bold text-neutral-300">Cancelar</button>
+          <button type="button" onClick={props.onClose} className="flex-1 rounded-xl border border-neutral-700 py-2.5 text-xs font-bold text-neutral-300">Cancel</button>
           <button type="button" disabled={!name.trim()} onClick={() => props.onSave({ name: name.trim(), kind, balance: balance ? parseFloat(balance) : 0 })} className="flex-1 rounded-xl bg-yellow-400 py-2.5 text-xs font-black text-black disabled:opacity-40">Crear</button>
         </div>
       </div>
@@ -460,9 +460,9 @@ export function RegisterDetail(props: {
   const d = accountDisplayName(r.name)
   const brand = bankBrandOf(r.name, r.institution)
   // ¿Cómo registrar? Escanear (la AI lee, categoriza, clasifica y registra a
-  // donde va) o Manual. Hoja de acción al tocar + Factura / + Recibo.
+  // donde va) o Manual. Hoja de acción al tocar + Bill / + Receipt.
   const [docChoice, setDocChoice] = useState<null | "bill" | "receipt">(null)
-  // Fila expandida (muestra Editar/Borrar) y monto en edición inline.
+  // Fila expandida (muestra Edit/Delete) y monto en edición inline.
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
   const [editingAmountId, setEditingAmountId] = useState<string | null>(null)
   // AI TRACKING de due dates: próxima factura por pagar y ¿alcanza el balance?
@@ -570,12 +570,12 @@ export function RegisterDetail(props: {
               {r.isMain ? " ★" : ""}
             </p>
             <p className="truncate font-mono text-[11px] text-[#66687c]">
-              {r.name} · {isCard ? "tarjeta" : "estado"}
+              {r.name} · {isCard ? "card" : "status"}
             </p>
           </div>
         </div>
         <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-[#9a9cb0]">
-          {isCard ? "Deuda" : "Balance actual"}
+          {isCard ? "Debt" : "Current balance"}
           {r.isMain ? " · PRINCIPAL" : ""}
         </p>
         <p
@@ -592,7 +592,7 @@ export function RegisterDetail(props: {
             <span className="flex min-w-0 items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide text-[#9a9cb0]">
               <AlertTriangle className="size-3.5 shrink-0 text-amber-400" />
               <span className="truncate">
-                Próx. factura · {shortDate(proximaFactura.date)} · {proximaFactura.description || "—"}
+                Next bill · {shortDate(proximaFactura.date)} · {proximaFactura.description || "—"}
               </span>
             </span>
             <span
@@ -608,8 +608,8 @@ export function RegisterDetail(props: {
       </div>
 
       <div className="flex shrink-0 gap-2">
-        <button type="button" onClick={() => setDocChoice("bill")} className="flex-1 rounded-xl border border-cyan-500/40 bg-cyan-500/10 py-2.5 text-xs font-bold text-cyan-200">+ Factura</button>
-        <button type="button" onClick={() => setDocChoice("receipt")} className="flex-1 rounded-xl border border-purple-500/40 bg-purple-500/10 py-2.5 text-xs font-bold text-purple-200">+ Recibo</button>
+        <button type="button" onClick={() => setDocChoice("bill")} className="flex-1 rounded-xl border border-cyan-500/40 bg-cyan-500/10 py-2.5 text-xs font-bold text-cyan-200">+ Bill</button>
+        <button type="button" onClick={() => setDocChoice("receipt")} className="flex-1 rounded-xl border border-purple-500/40 bg-purple-500/10 py-2.5 text-xs font-bold text-purple-200">+ Receipt</button>
         <button type="button" onClick={props.onAddAdjust} className="flex-1 rounded-xl border border-amber-500/40 bg-amber-500/10 py-2.5 text-xs font-bold text-amber-200">+ Ajuste</button>
       </div>
 
@@ -624,7 +624,7 @@ export function RegisterDetail(props: {
             className="w-full max-w-md rounded-t-3xl border-t border-neutral-700 bg-neutral-950 p-4 pb-8"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="mb-3 text-sm font-extrabold text-white">¿Cómo la vas a registrar?</p>
+            <p className="mb-3 text-sm font-extrabold text-white">How will you record it?</p>
             <button
               type="button"
               onClick={() => {
@@ -653,23 +653,23 @@ export function RegisterDetail(props: {
               onClick={() => setDocChoice(null)}
               className="w-full rounded-2xl border border-neutral-700 py-3 text-xs font-bold text-neutral-300"
             >
-              Cancelar
+              Cancel
             </button>
           </div>
         </div>
       )}
 
-      {/* Statement: Fecha | Detalle | Monto | Balance — alineado, monto editable */}
+      {/* Statement: Date | Detail | Amount | Balance — alineado, monto editable */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-emerald-500/20 bg-neutral-950/80">
         <div className="grid shrink-0 grid-cols-[3.25rem_minmax(0,1fr)_4.75rem_4.75rem] gap-1 border-b border-neutral-800 bg-neutral-900/90 px-2.5 py-2 text-[10px] font-black uppercase tracking-wide">
-          <span className="text-neutral-400">Fecha</span>
-          <span className="text-neutral-400">Detalle</span>
-          <span className="text-right text-neutral-400">Monto</span>
+          <span className="text-neutral-400">Date</span>
+          <span className="text-neutral-400">Detail</span>
+          <span className="text-right text-neutral-400">Amount</span>
           <span className="text-right text-emerald-400">Balance</span>
         </div>
         <div className="max-h-[min(58vh,480px)] min-h-[220px] overflow-y-auto overscroll-contain">
           {statementLines.length === 0 && (
-            <p className="px-3 py-8 text-center text-[12px] text-neutral-500">Sin movimientos</p>
+            <p className="px-3 py-8 text-center text-[12px] text-neutral-500">No activity</p>
           )}
           {statementLines.map((line) => {
             const ent = line.entry
@@ -725,7 +725,7 @@ export function RegisterDetail(props: {
                             if (ev.key === "Enter") (ev.target as HTMLInputElement).blur()
                             if (ev.key === "Escape") setEditingAmountId(null)
                           }}
-                          aria-label={`Monto de ${ent.description || "apunte"} (editable)`}
+                          aria-label={`Amount of ${ent.description || "entry"} (editable)`}
                           className={cn(
                             "w-[3.9rem] rounded border border-neutral-600 bg-neutral-900 px-0.5 py-0.5 text-right font-mono text-[11px] font-bold tabular-nums outline-none",
                             income ? "text-emerald-400" : "text-rose-400",
@@ -739,7 +739,7 @@ export function RegisterDetail(props: {
                           e.stopPropagation()
                           setEditingAmountId(ent.id)
                         }}
-                        title="Tocar para editar monto"
+                        title="Tap to edit amount"
                         className={cn(
                           "text-right font-mono text-[12px] font-bold tabular-nums",
                           income ? "text-emerald-400" : "text-rose-400",
@@ -769,16 +769,16 @@ export function RegisterDetail(props: {
                     <button
                       type="button"
                       onClick={() => props.onEditEntry(ent)}
-                      title="Editar apunte"
+                      title="Edit entry"
                       className="flex items-center gap-1 rounded-md border border-[#262633] bg-[#16161f] px-1.5 py-0.5 text-[9px] font-bold text-[#9a9cb0] active:scale-95"
                     >
-                      <Pencil className="size-2.5" /> Editar
+                      <Pencil className="size-2.5" /> Edit
                     </button>
                     {ent.type === "expense" && (
                       <button
                         type="button"
                         onClick={() => props.onSetDocKind(ent.id, esFactura ? "receipt" : "bill")}
-                        title={esFactura ? "Marcar pagado (recibo)" : "Pasar a factura (due date en proyecciones)"}
+                        title={esFactura ? "Marcar pagado (recibo)" : "Convert to bill (due date in projections)"}
                         className={cn(
                           "flex items-center gap-1 rounded-md border px-1 py-0.5 text-[8px] font-bold active:scale-95",
                           esFactura
@@ -787,16 +787,16 @@ export function RegisterDetail(props: {
                         )}
                       >
                         {esFactura ? <Check className="size-2.5" /> : <TrendingUp className="size-2.5" />}
-                        {esFactura ? "Recibo" : "Factura"}
+                        {esFactura ? "Receipt" : "Bill"}
                       </button>
                     )}
                     <button
                       type="button"
                       onClick={() => props.onDeleteEntry(ent.id)}
-                      title="Borrar apunte"
+                      title="Delete entry"
                       className="flex items-center gap-1 rounded-md border border-rose-900/50 bg-rose-950/30 px-1.5 py-0.5 text-[9px] font-bold text-rose-300 active:scale-95"
                     >
-                      <Trash2 className="size-2.5" /> Borrar
+                      <Trash2 className="size-2.5" /> Delete
                     </button>
                   </div>
                 )}
@@ -830,14 +830,14 @@ export function TransfersReport(props: { report: TransferReport; onBack: () => v
           <ArrowLeftRight className="size-4 text-[#5b8cff]" /> Transferencias
         </p>
         <p className="mt-0.5 text-[11px] text-[#66687c]">
-          {report.pairs.length} emparejadas · {abiertas.length} sin emparejar
+          {report.pairs.length} matched · {abiertas.length} unmatched
         </p>
       </div>
 
       <div>
         <MoneySectionTitle>EMPAREJADAS · {report.pairs.length}</MoneySectionTitle>
         {report.pairs.length === 0 ? (
-          <p className="rounded-[14px] border border-[#262633] bg-[#16161f] p-3 text-[11px] text-[#9a9cb0]">Ninguna todavía.</p>
+          <p className="rounded-[14px] border border-[#262633] bg-[#16161f] p-3 text-[11px] text-[#9a9cb0]">None yet.</p>
         ) : (
           <div className="rounded-[14px] border border-[#262633] bg-[#16161f] px-3">
             {report.pairs.map((p) => (
@@ -858,7 +858,7 @@ export function TransfersReport(props: { report: TransferReport; onBack: () => v
       </div>
 
       <div>
-        <MoneySectionTitle>SIN EMPAREJAR · {abiertas.length}</MoneySectionTitle>
+        <MoneySectionTitle>UNMATCHED · {abiertas.length}</MoneySectionTitle>
         {abiertas.length === 0 ? (
           <p className="rounded-[14px] border border-[rgba(47,191,113,.5)] bg-[#16161f] p-3 text-[11px] font-bold text-[#2fbf71]">
             Todo emparejado.
