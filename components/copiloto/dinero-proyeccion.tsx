@@ -392,7 +392,7 @@ function ProjectionRegister(props: {
   const totalDias = fc.days.length
   const negDays = useMemo(() => fc.days.filter((d) => d.balance < 0).length, [fc])
   // Registro por FECHA | DESCRIPCIÓN | MONTO | SALDO ACUM. | BAL. PROYECTADO
-  const cols = "grid grid-cols-[3.75rem_minmax(0,1fr)_4.75rem_5rem_5rem] gap-1"
+  const cols = "grid grid-cols-[4.5rem_minmax(0,1fr)_4.75rem_5rem_5rem] gap-1"
 
   function descripcionDe(ln: ForecastLine): string {
     const d = String((ln.entry && (ln.entry.description || (ln.entry as any).detail)) || ln.label || "—")
@@ -474,7 +474,7 @@ function ProjectionRegister(props: {
                   fecha === today ? "text-cyan-300" : "text-neutral-400",
                 )}
               >
-                {fecha === today ? "Hoy" : primeroDelDia ? fechaCorta(fecha) : ""}
+                {fecha === today ? "Hoy" : primeroDelDia ? fechaDia(fecha, today) : ""}
               </span>
               <span className="flex min-w-0 items-center gap-1">
                 <span
