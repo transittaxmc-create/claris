@@ -95,11 +95,8 @@ function CorrectSheet({
           }}
           className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-400 py-3 text-sm font-extrabold text-black"
         >
-          <Check className="size-4" /> Guardar (se aprende)
+          <Check className="size-4" /> Guardar
         </button>
-        <p className="mt-2 text-center text-[10px] text-neutral-500">
-          La próxima vez este vendedor se categoriza solo.
-        </p>
       </div>
     </div>
   )
@@ -176,10 +173,6 @@ export function BankTxReport() {
             )}
           </span>
         )}
-      </p>
-      <p className="mb-2 text-[10px] text-neutral-500">
-        La AI clasifica los movimientos del banco cada día y crea los apuntes con categoría.
-        Revisa el reporte y toca una para corregir — el apunte se actualiza y la AI lo aprende.
       </p>
 
       {loading && <p className="py-4 text-center text-xs text-neutral-500">Trayendo movimientos…</p>}

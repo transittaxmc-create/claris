@@ -499,7 +499,6 @@ function ProjectionRegister(props: {
             ))}
           </div>
         )}
-        <FootNotes fc={fc} />
       </div>
     )
   }
@@ -627,9 +626,7 @@ function ProjectionRegister(props: {
           {totalDias} días seguidos ·{" "}
           {negDays > 0 ? <span className="font-bold text-rose-400">{negDays} en rojo</span> : "sin quiebres"}
         </span>
-        <span className="text-neutral-600">Toca un día sin movimiento para agregar</span>
       </p>
-      <FootNotes fc={fc} />
     </div>
   )
 }

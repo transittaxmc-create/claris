@@ -316,7 +316,7 @@ export function RegistersHome(props: {
       </div>
 
       <div>
-        <MoneySectionTitle sub="Toca una cuenta → su registro con balance">CUENTAS · {gridRegs.length}</MoneySectionTitle>
+        <MoneySectionTitle>CUENTAS · {gridRegs.length}</MoneySectionTitle>
         {principal && tarjetaCuenta(principal)}
         {seccion("Bancos", secBancos)}
         {seccion("Tarjetas", secTarjetas)}
@@ -583,7 +583,7 @@ export function RegisterDetail(props: {
               {r.isMain ? " ★" : ""}
             </p>
             <p className="truncate font-mono text-[11px] text-[#66687c]">
-              {r.name} · {isCard ? "tarjeta" : "estado"} · lo nuevo arriba
+              {r.name} · {isCard ? "tarjeta" : "estado"}
             </p>
           </div>
         </div>
@@ -637,9 +637,6 @@ export function RegisterDetail(props: {
             className="w-full max-w-md rounded-t-3xl border-t border-neutral-700 bg-neutral-950 p-4 pb-8"
             onClick={(e) => e.stopPropagation()}
           >
-            <p className="mb-1 text-[10px] font-bold tracking-wide text-neutral-500">
-              {docChoice === "bill" ? "NUEVA FACTURA · POR PAGAR (VA A PROYECCIONES CON SU DUE DATE)" : "NUEVO RECIBO · YA PAGADO (SE MATCHA CON EL BANCO)"}
-            </p>
             <p className="mb-3 text-sm font-extrabold text-white">¿Cómo la vas a registrar?</p>
             <button
               type="button"
@@ -650,12 +647,7 @@ export function RegisterDetail(props: {
               className="mb-2 flex w-full items-center gap-2.5 rounded-2xl border border-cyan-500/40 bg-cyan-500/10 px-3.5 py-3.5 text-left active:scale-[0.99]"
             >
               <Camera className="size-5 shrink-0 text-cyan-300" />
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-extrabold text-cyan-100">Escanear</span>
-                <span className="block text-[10px] leading-snug text-cyan-200/70">
-                  La AI lee el documento, lo categoriza, clasifica y registra a donde va.
-                </span>
-              </span>
+              <span className="min-w-0 flex-1 text-sm font-extrabold text-cyan-100">Escanear</span>
             </button>
             <button
               type="button"
@@ -667,10 +659,7 @@ export function RegisterDetail(props: {
               className="mb-3 flex w-full items-center gap-2.5 rounded-2xl border border-neutral-700 bg-neutral-900 px-3.5 py-3.5 text-left active:scale-[0.99]"
             >
               <Pencil className="size-5 shrink-0 text-neutral-300" />
-              <span className="min-w-0 flex-1">
-                <span className="block text-sm font-extrabold text-neutral-100">Manual</span>
-                <span className="block text-[10px] leading-snug text-neutral-400">Escribe el apunte tú mismo.</span>
-              </span>
+              <span className="min-w-0 flex-1 text-sm font-extrabold text-neutral-100">Manual</span>
             </button>
             <button
               type="button"
@@ -693,7 +682,7 @@ export function RegisterDetail(props: {
         </div>
         <div className="max-h-[min(58vh,480px)] min-h-[220px] overflow-y-auto overscroll-contain">
           {statementLines.length === 0 && (
-            <p className="px-3 py-8 text-center text-[12px] text-neutral-500">Sin movimientos · Sincroniza el banco</p>
+            <p className="px-3 py-8 text-center text-[12px] text-neutral-500">Sin movimientos</p>
           )}
           {statementLines.map((line) => {
             const ent = line.entry
@@ -724,7 +713,7 @@ export function RegisterDetail(props: {
                         }}
                         aria-label={`Monto de ${ent.description || "apunte"} (editable)`}
                         className={cn(
-                          "w-[3.4rem] rounded border border-transparent bg-transparent px-1 py-0.5 text-right font-mono text-[12px] font-bold tabular-nums outline-none",
+                          "w-[3.9rem] rounded border border-transparent bg-transparent px-0.5 py-0.5 text-right font-mono text-[11px] font-bold tabular-nums outline-none",
                           "focus:border-neutral-600 focus:bg-neutral-900",
                           income ? "text-emerald-400" : "text-rose-400",
                         )}
@@ -809,8 +798,7 @@ export function TransfersReport(props: { report: TransferReport; onBack: () => v
         <p className="mt-2.5 flex items-center gap-2 text-[15px] font-extrabold text-[#f2f3f7]">
           <ArrowLeftRight className="size-4 text-[#5b8cff]" /> Transferencias
         </p>
-        <p className="mt-0.5 text-[11px] text-[#66687c]">Mismo dinero moviéndose entre tus cuentas · no es ingreso</p>
-        <p className="mt-1.5 font-mono text-[11px] text-[#9a9cb0]">
+        <p className="mt-0.5 text-[11px] text-[#66687c]">
           {report.pairs.length} emparejadas · {abiertas.length} sin emparejar
         </p>
       </div>
@@ -839,9 +827,7 @@ export function TransfersReport(props: { report: TransferReport; onBack: () => v
       </div>
 
       <div>
-        <MoneySectionTitle sub="Salidas sin llegada o llegadas sin salida (otra cuenta no conectada o aún en camino)">
-          SIN EMPAREJAR · {abiertas.length}
-        </MoneySectionTitle>
+        <MoneySectionTitle>SIN EMPAREJAR · {abiertas.length}</MoneySectionTitle>
         {abiertas.length === 0 ? (
           <p className="rounded-[14px] border border-[rgba(47,191,113,.5)] bg-[#16161f] p-3 text-[11px] font-bold text-[#2fbf71]">
             Todo emparejado.
