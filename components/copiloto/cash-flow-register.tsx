@@ -28,6 +28,7 @@ import {
   accountBalance,
   accountIdFor,
   last4Of,
+  esFondoPermitido,
   addManualAccount,
   deleteManualAccount,
   setManualBalance,
@@ -595,13 +596,30 @@ export function CashFlowRegister({
             entries={entriesForAccount(activeAccount)}
             otherFunds={
               activeAccount.isMain
-                ? registers
-                    .filter((r) => r.id !== activeAccount.id && r.kind === "bank")
-                    .map((r) => ({
+                ? (() => {
+                    // Miguel (2026-10-18): en fondos solo PayPal y Venmo. Si hay
+                    // varios "PayPal", se muestra el vivo (mayor |balance|).
+                    const cands = registers.filter(
+                      (r) => r.id !== activeAccount.id && r.kind === "bank" && esFondoPermitido(r),
+                    )
+                    const byBase = new Map<string, typeof cands>()
+                    for (const r of cands) {
+                      const base = /venmo/i.test(r.name || "") ? "venmo" : "paypal"
+                      byBase.set(base, [...(byBase.get(base) ?? []), r])
+                    }
+                    const picked: typeof cands = []
+                    for (const arr of byBase.values()) {
+                      const sorted = [...arr].sort(
+                        (a, b) => Math.abs(balances[b.id] ?? 0) - Math.abs(balances[a.id] ?? 0),
+                      )
+                      if (sorted[0]) picked.push(sorted[0])
+                    }
+                    return picked.map((r) => ({
                       reg: r,
                       balance: balances[r.id] ?? null,
                       checked: otherFunds.includes(r.id),
                     }))
+                  })()
                 : []
             }
             onToggleOtherFund={(id) => {
