@@ -73,7 +73,7 @@ function saveState(s: StoredState) {
   } catch {}
 }
 
-// Cuentas manuales fijas de Miguel: siempre existen y siempre visibles.
+// Accounts manuales fijas de Miguel: siempre existen y siempre visibles.
 const SEED_MANUAL: Array<{ id: string; name: string }> = [
   { id: "manual:venmo", name: "Venmo" },
   { id: "manual:square-checking", name: "Square Checking" },
@@ -154,11 +154,11 @@ function looksLikeCard(name: string, institution: string | null, type?: string |
     if (/credit/.test(pt)) return true
     return false // depository u otro: es cuenta de banco
   }
-  // Sin tipo: heurística por nombre. "credit union" es un banco, no una tarjeta.
+  // Sin tipo: heurística por nombre. "credit union" es un banco, no una card.
   const t = `${name} ${institution || ""}`.toLowerCase().replace(/credit\s*union/g, " ")
   // Palabras de cuenta bancaria siempre ganan.
   if (/checking|savings|depository/.test(t)) return false
-  return /credit|card|tarjeta|amex|visa|mastercard|discover|crédito/.test(t)
+  return /credit|card|card|amex|visa|mastercard|discover|crédito/.test(t)
 }
 
 export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAccount[] {
