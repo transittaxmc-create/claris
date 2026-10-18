@@ -64,16 +64,17 @@ export function learnCorrection(vendor: string, category: string, classification
 // Reglas por palabra clave (inglés + español, como vienen los bancos).
 // ---------------------------------------------------------------------------
 
-const FUEL = ["shell", "exxon", "mobil", " bp ", "sunoco", "speedway", "wawa", "citgo", "gulf", "gasolina", "combustible"]
-const TOLLS = ["ezpass", "ez pass", "e-zpass", "toll", "peaje", "mta", "port authority"]
-const FOOD = ["mcdonald", "burger king", "wendy", "pizza", "restaurant", "restaurante", "food", "comida", "starbucks", "dunkin", "cafe", "taco", "pollo", "subway", "kfc", "domino", "chipotle", "panera"]
+const FUEL = ["shell", "exxon", "mobil", " bp ", "sunoco", "speedway", "wawa", "citgo", "gulf", "gasolina", "combustible", "electrify america", "evgo"]
+const TOLLS = ["ezpass", "ez pass", "e-zpass", "zpass", "toll", "peaje", "mta", "port authority"]
+const FOOD = ["mcdonald", "burger king", "wendy", "pizza", "restaurant", "restaurante", "food", "comida", "starbucks", "dunkin", "cafe", "taco", "pollo", "subway", "kfc", "domino", "chipotle", "panera", "7 eleven", "bagel", "tim hortons", " deli ", "stop shop"]
 const CARWASH = ["car wash", "lavado", "autolavado"]
 const INSURANCE = ["insurance", "seguro", "geico", "progressive", "allstate", "state farm", "tlc", "permit", "permiso", "dmv"]
-const BANKFEES = ["overdraft", "sobregiro", "service charge", "monthly fee", "maintenance fee", "nsf fee", "late fee", "cargo por", "comision"]
+const BANKFEES = ["overdraft", "sobregiro", "service charge", "monthly fee", "monthly service fee", "maintenance fee", "nsf fee", "late fee", "cargo por", "comision", "unload", "non citibank atm"]
 const PHONE = ["verizon", "t-mobile", "tmobile", "at&t", "att ", "mint mobile", "metro pcs", "metropcs", "phone", "telefono", "sprint"]
 const PARKING = ["parking", "parqueo", "estacionamiento", "park ", "la z park"]
 const MAINT = ["autozone", "pep boys", "advance auto", "mechanic", "mecanico", "repair", "reparacion", "tire", "llanta", "oil change", "cambio de aceite", "jiffy", "brake", "freno", "firestone", "midas", "valvoline"]
-const SUPPLIES = ["amazon", "walmart", "target", "suppl", "suministro", "home depot", "lowes"]
+const SUPPLIES = ["amazon", "walmart", "target", "suppl", "suministro", "home depot", "lowes", "harbor freight"]
+const LEASINGW = ["leasing", "car lease"]
 const INCOME_WORDS = ["deposit", "deposito", "payroll", "nomina", "uber", "lyft", "via ", "curb", "zelle", "venmo", "cash app", "pago recibido", "transfer in"]
 
 function hits(text: string, words: string[]): boolean {
@@ -112,6 +113,7 @@ function ruleCategory(vendor: string, amount: number): string | null {
   if (hits(v, PHONE)) return "Phone / Data"
   if (hits(v, PARKING)) return "Parking"
   if (hits(v, MAINT)) return "Maintenance / Vehicle"
+  if (hits(v, LEASINGW)) return "Car leasing"
   if (hits(v, FOOD)) return "Food / Meals"
   if (hits(v, SUPPLIES)) return "Supplies"
   return null
