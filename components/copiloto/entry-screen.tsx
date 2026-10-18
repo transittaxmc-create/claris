@@ -460,7 +460,7 @@ export function EntryScreen({
           {/* Box header */}
           <div className="mb-3 flex items-center gap-2">
             <MapPin className="size-4 text-green-400" />
-            <span className="text-[11px] font-bold tracking-wide text-neutral-400">UBICACIONES</span>
+            <span className="text-[11px] font-bold tracking-wide text-neutral-400">LOCATIONS</span>
             <div className="ml-auto h-px flex-1 bg-neutral-800" />
           </div>
 
