@@ -236,7 +236,7 @@ export function useShift() {
         },
         () => {
           setGps(null)
-          showToast("⚠️ GPS denegado: activa el permiso")
+          showToast("⚠️ GPS denied: enable the permission")
         },
         { enableHighAccuracy: true, maximumAge: 10_000, timeout: 20_000 }
       )
@@ -272,7 +272,7 @@ export function useShift() {
         showToast("📍 GPS listo")
       },
       () => {
-        showToast("⚠️ GPS denegado: activa el permiso")
+        showToast("⚠️ GPS denied: enable the permission")
       },
       { enableHighAccuracy: true, timeout: 15_000 }
     )
@@ -288,7 +288,7 @@ export function useShift() {
     requestWake()
     startWatch()
     refreshGps()
-    showToast("▶ Turno iniciado — ¡buena suerte!")
+    showToast("▶ Shift started — good luck!")
   }, [requestWake, startWatch, refreshGps, showToast])
 
   const onBreak = useCallback(() => {
@@ -298,12 +298,12 @@ export function useShift() {
     if (cur.breakStart != null) {
       // Terminar break: se reanuda la medición desde ahora.
       setShift({ ...cur, breakMs: cur.breakMs + (t - cur.breakStart), breakStart: null, measureStart: t, lastSeen: t })
-      showToast("▶ De vuelta — a darle")
+      showToast("▶ Back — let's go")
     } else {
       // Empezar break: se consolida el tramo abierto y se pausa la medición.
       commitOpen(t)
       setShift({ ...cur, breakStart: t, measureStart: null, lastSeen: t })
-      showToast("⏸️ Break — el reloj se pausa")
+      showToast("⏸️ Break — clock paused")
     }
   }, [commitOpen, showToast])
 
