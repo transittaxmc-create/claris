@@ -4,6 +4,7 @@ import { localDateKey } from "@/lib/dates"
 export type Platform =
   | "Uber"
   | "Lyft"
+  | "Limosys"
   | "Eco Ride"
   | "Throo"
   | "AKI Technology"
