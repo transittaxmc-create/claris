@@ -7,7 +7,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { AlertTriangle, Check, CreditCard, Pencil, Receipt, Repeat, TrendingUp, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { money, EXPENSE_CATEGORIES, type CashFlowEntry, type ScheduledEntry } from "./types"
+import { money, migrateCategory, EXPENSE_CATEGORIES, type CashFlowEntry, type ScheduledEntry } from "./types"
 import { INCOME_CATEGORY } from "./auto-categorize"
 import { accountDisplayName, type DueItem, type RegisterAccount } from "./registers-store"
 import {
@@ -29,14 +29,14 @@ import { FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT, FORECAST_DISMISSED_KEY } f
 
 type Horizon = "mes" | 30 | 60 | 90
 const HORIZONS: { value: Horizon; label: string }[] = [
-  { value: "mes", label: "Fin de mes" },
-  { value: 30, label: "30 días" },
-  { value: 60, label: "60 días" },
-  { value: 90, label: "90 días" },
+  { value: "mes", label: "End of month" },
+  { value: 30, label: "30 days" },
+  { value: 60, label: "60 days" },
+  { value: 90, label: "90 days" },
 ]
 
-const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
-const DIAS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"]
+const MESES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+const DIAS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
 
 function fechaCorta(iso: string): string {
   const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/)
@@ -44,7 +44,7 @@ function fechaCorta(iso: string): string {
 }
 
 function fechaDia(iso: string, today: string): string {
-  if (iso === today) return "Hoy"
+  if (iso === today) return "Today"
   const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/)
   if (!m) return "—"
   const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12)
@@ -69,19 +69,19 @@ function KindBadge({ line }: { line: ForecastLine }) {
   if (line.kind === "rec")
     return (
       <span className={cn(base, "border-violet-500/30 bg-violet-500/10 text-violet-300")}>
-        <Repeat className="size-2.5" /> {line.frequency ? FREQ_LABEL[line.frequency] : "recurrente"}
+        <Repeat className="size-2.5" /> {line.frequency ? FREQ_LABEL[line.frequency] : "recurring"}
       </span>
     )
   if (line.kind === "card")
     return (
       <span className={cn(base, "border-purple-500/30 bg-purple-500/10 text-purple-300")}>
-        <CreditCard className="size-2.5" /> Tarjeta
+        <CreditCard className="size-2.5" /> Card
       </span>
     )
   if (line.kind === "overdue")
     return (
       <span className={cn(base, "border-amber-500/30 bg-amber-500/10 text-amber-300")}>
-        <AlertTriangle className="size-2.5" /> Vencida {line.originalDate ? fechaCorta(line.originalDate) : ""}
+        <AlertTriangle className="size-2.5" /> Overdue {line.originalDate ? fechaCorta(line.originalDate) : ""}
       </span>
     )
   const income = line.amount >= 0
@@ -92,7 +92,7 @@ function KindBadge({ line }: { line: ForecastLine }) {
         income ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : "border-cyan-500/30 bg-cyan-500/10 text-cyan-300",
       )}
     >
-      {income ? <TrendingUp className="size-2.5" /> : <Receipt className="size-2.5" />} {income ? "Ingreso" : "Factura"}
+      {income ? <TrendingUp className="size-2.5" /> : <Receipt className="size-2.5" />} {income ? "Income" : "Bill"}
     </span>
   )
 }
@@ -113,7 +113,12 @@ export function useForecastInputs(): {
   const [dismissed, setDismissedState] = useState<string[]>([])
   useEffect(() => {
     const load = () => {
-      setSchedules(readList<ScheduledEntry>(FINANCE_SCHEDULES_KEY))
+      const sch = readList<ScheduledEntry>(FINANCE_SCHEDULES_KEY)
+      // Migración a inglés (2026-10-18): normalizar categorías viejas al leer.
+      for (const s of sch) {
+        if (s && typeof s.category === "string") s.category = migrateCategory(s.category)
+      }
+      setSchedules(sch)
       setOverrides(readList<ScheduleOverride>(SCHEDULE_OVERRIDES_KEY))
       setDismissedState(readList<string>(FORECAST_DISMISSED_KEY).filter((x) => typeof x === "string"))
     }
@@ -217,7 +222,7 @@ function RecurrenteSheet(props: {
   const [kind, setKind] = useState<"income" | "expense">(s?.kind ?? "expense")
   const [nombre, setNombre] = useState(s?.description ?? "")
   const [monto, setMonto] = useState(s ? String(Math.abs(Number(s.amount) || 0)) : "")
-  const [categoria, setCategoria] = useState(s?.category ?? "Other / Varios")
+  const [categoria, setCategoria] = useState(s?.category ?? "Other")
   const [freq, setFreq] = useState<"weekly" | "biweekly" | "monthly">(
     s?.frequency === "biweekly" ? "biweekly" : s?.frequency === "monthly" ? "monthly" : "weekly",
   )
@@ -260,14 +265,14 @@ function RecurrenteSheet(props: {
         {phase === "form" ? (
           <>
             <p className="mb-3 text-[10px] font-bold tracking-wide text-neutral-500">
-              {s ? "EDITAR RECURRENTE" : "NUEVO RECURRENTE"}
+              {s ? "EDIT RECURRING" : "NEW RECURRING"}
             </p>
 
             <div className="mb-3 flex gap-2">
               {(
                 [
-                  { id: "expense", label: "GASTO" },
-                  { id: "income", label: "INGRESO" },
+                  { id: "expense", label: "EXPENSE" },
+                  { id: "income", label: "INCOME" },
                 ] as const
               ).map((o) => (
                 <button
@@ -275,7 +280,7 @@ function RecurrenteSheet(props: {
                   type="button"
                   onClick={() => {
                     setKind(o.id)
-                    setCategoria(o.id === "income" ? INCOME_CATEGORY : "Other / Varios")
+                    setCategoria(o.id === "income" ? INCOME_CATEGORY : "Other")
                   }}
                   className={cn(
                     "flex-1 rounded-2xl border py-2.5 text-xs font-extrabold",
@@ -291,7 +296,7 @@ function RecurrenteSheet(props: {
               ))}
             </div>
 
-            <p className="mb-1 text-[10px] font-bold text-neutral-500">NOMBRE</p>
+            <p className="mb-1 text-[10px] font-bold text-neutral-500">NAME</p>
             <input
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
@@ -299,7 +304,7 @@ function RecurrenteSheet(props: {
               className="mb-3 w-full rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2.5 text-sm text-white placeholder:text-neutral-600"
             />
 
-            <p className="mb-1 text-[10px] font-bold text-neutral-500">MONTO</p>
+            <p className="mb-1 text-[10px] font-bold text-neutral-500">AMOUNT</p>
             <input
               value={monto}
               onChange={(e) => setMonto(e.target.value)}
@@ -310,7 +315,7 @@ function RecurrenteSheet(props: {
               className="mb-3 w-full rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2.5 font-mono text-sm text-white placeholder:text-neutral-600"
             />
 
-            <p className="mb-1.5 text-[10px] font-bold text-neutral-500">CATEGORÍA</p>
+            <p className="mb-1.5 text-[10px] font-bold text-neutral-500">CATEGORY</p>
             <div className="mb-3 flex flex-wrap gap-1.5">
               {cats.map((c) => (
                 <button key={c} type="button" onClick={() => setCategoria(c)} className={chip(categoria === c)}>
@@ -336,7 +341,7 @@ function RecurrenteSheet(props: {
 
             {freq === "monthly" ? (
               <>
-                <p className="mb-1 text-[10px] font-bold text-neutral-500">DÍA DEL MES</p>
+                <p className="mb-1 text-[10px] font-bold text-neutral-500">DAY OF MONTH</p>
                 <input
                   value={monthDay}
                   onChange={(e) => setMonthDay(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))}
@@ -348,7 +353,7 @@ function RecurrenteSheet(props: {
               </>
             ) : (
               <>
-                <p className="mb-1.5 text-[10px] font-bold text-neutral-500">DÍA DE LA SEMANA</p>
+                <p className="mb-1.5 text-[10px] font-bold text-neutral-500">DAY OF WEEK</p>
                 <div className="mb-3 flex gap-1.5">
                   {[1, 2, 3, 4, 5, 6, 0].map((d) => (
                     <button
@@ -366,7 +371,7 @@ function RecurrenteSheet(props: {
 
             <div className="mb-4 flex gap-2">
               <div className="flex-1">
-                <p className="mb-1 text-[10px] font-bold text-neutral-500">DESDE</p>
+                <p className="mb-1 text-[10px] font-bold text-neutral-500">FROM</p>
                 <input
                   value={desde}
                   onChange={(e) => setDesde(e.target.value)}
@@ -375,7 +380,7 @@ function RecurrenteSheet(props: {
                 />
               </div>
               <div className="flex-1">
-                <p className="mb-1 text-[10px] font-bold text-neutral-500">HASTA (OPCIONAL)</p>
+                <p className="mb-1 text-[10px] font-bold text-neutral-500">UNTIL (OPCIONAL)</p>
                 <input
                   value={hasta}
                   onChange={(e) => setHasta(e.target.value)}
@@ -392,7 +397,7 @@ function RecurrenteSheet(props: {
                   onClick={() => setPhase("scope-del")}
                   className="rounded-2xl border border-rose-500/50 px-4 py-3 text-sm font-extrabold text-rose-300"
                 >
-                  Borrar
+                  Delete
                 </button>
               )}
               <button
@@ -411,23 +416,23 @@ function RecurrenteSheet(props: {
                   valido ? "bg-amber-400 text-black" : "bg-neutral-800 text-neutral-600",
                 )}
               >
-                <Check className="size-4" /> Guardar
+                <Check className="size-4" /> Save
               </button>
             </div>
           </>
         ) : (
           <>
             <p className="mb-1 text-[10px] font-bold tracking-wide text-neutral-500">
-              {phase === "scope-save" ? "GUARDAR CAMBIO" : "BORRAR RECURRENTE"}
+              {phase === "scope-save" ? "SAVE CHANGE" : "DELETE RECURRING"}
             </p>
             <p className="mb-3 truncate text-sm font-bold text-white">{nombre.trim() || s?.description}</p>
-            <p className="mb-3 text-xs text-neutral-400">¿Alcance?</p>
+            <p className="mb-3 text-xs text-neutral-400">Scope?</p>
             <div className="mb-2 flex flex-col gap-2">
               {(
                 [
-                  { id: "once", label: "Solo esta vez" },
-                  { id: "future", label: "Esta y las futuras" },
-                  { id: "all", label: "Todas" },
+                  { id: "once", label: "Just this time" },
+                  { id: "future", label: "This and future" },
+                  { id: "all", label: "All" },
                 ] as const
               ).map((o) => (
                 <button
@@ -450,7 +455,7 @@ function RecurrenteSheet(props: {
               onClick={() => setPhase("form")}
               className="w-full py-2 text-center text-xs font-bold text-neutral-500"
             >
-              Atrás
+              Back
             </button>
           </>
         )}
@@ -476,7 +481,7 @@ export function DineroProyeccion(props: {
   /** Confirmar "ya pagado": pasa el movimiento del libro a real (fecha del banco). */
   onMarkPaid?: (e: CashFlowEntry, paidDate: string) => void
 }) {
-  // 90 días FIJOS: todo el register de proyecciones se recorre con scroll
+  // 90 days FIJOS: todo el register de proyecciones se recorre con scroll
   // dentro de su caja (se eliminaron el título 🔮 y el selector de horizonte).
   const [horizon] = useState<Horizon>(90)
   const [verDias, setVerDias] = useState(false)
@@ -514,7 +519,7 @@ export function DineroProyeccion(props: {
           id: newScheduleId(),
           kind: "expense",
           description: "Frantz Pierre",
-          category: "Rent / Renta",
+          category: "Rent",
           amount: 1500,
           startDate: d0,
           frequency: "monthly",
@@ -589,7 +594,7 @@ export function DineroProyeccion(props: {
       saveSchedules(next)
       return
     }
-    // Solo esta vez: excepción puntual.
+    // Just this time: excepción puntual.
     const ovs = readList<ScheduleOverride>(SCHEDULE_OVERRIDES_KEY).filter(
       (o) => !(o.scheduleId === s.id && o.date === date),
     )
@@ -658,11 +663,11 @@ export function DineroProyeccion(props: {
         <div className="space-y-1 text-[12px]">
           <div className="flex items-start justify-between gap-2">
             <span className="min-w-0 text-neutral-300">
-              Balance inicial
+              Starting balance
               <span className="block text-[10px] text-neutral-500">
                 {inicio.usedFallback
-                  ? "Sin saldo de la cuenta ★ — suma de bancos"
-                  : `${mainName || "Cuenta ★"}${inicio.extras.length ? ` + ${inicio.extras.length} ${inicio.extras.length === 1 ? "fondo" : "fondos"}` : ""}`}
+                  ? "No ★ account balance — sum of banks"
+                  : `${mainName || "Account ★"}${inicio.extras.length ? ` + ${inicio.extras.length} ${inicio.extras.length === 1 ? "fondo" : "fondos"}` : ""}`}
               </span>
             </span>
             <span className={cn("font-mono font-bold tabular-nums", fc.start < 0 ? "text-rose-400" : "text-white")}>
@@ -670,15 +675,15 @@ export function DineroProyeccion(props: {
             </span>
           </div>
           <div className="flex items-center justify-between gap-2">
-            <span className="text-neutral-300">+ Ingresos ({fc.incomeCount})</span>
+            <span className="text-neutral-300">+ Income ({fc.incomeCount})</span>
             <span className="font-mono font-bold tabular-nums text-emerald-400">{money(fc.incomeTotal)}</span>
           </div>
           <div className="flex items-center justify-between gap-2">
-            <span className="text-neutral-300">− Gastos ({fc.expenseCount})</span>
+            <span className="text-neutral-300">− Expenses ({fc.expenseCount})</span>
             <span className="font-mono font-bold tabular-nums text-rose-400">{money(fc.expenseTotal)}</span>
           </div>
           <div className="flex items-center justify-between gap-2 border-t border-cyan-500/20 pt-1.5">
-            <span className="font-bold text-cyan-300">= Balance proyectado ({fc.days.length} días)</span>
+            <span className="font-bold text-cyan-300">= Projected balance ({fc.days.length} days)</span>
             <span className={cn("font-mono text-lg font-black tabular-nums", fc.end < 0 ? "text-rose-400" : "text-cyan-300")}>
               {money(fc.end)}
             </span>
@@ -686,30 +691,30 @@ export function DineroProyeccion(props: {
         </div>
         <div className="mt-2 grid grid-cols-2 gap-1.5 text-[10px]">
           <div className="rounded-lg border border-neutral-800 bg-black/40 px-2 py-1">
-            <span className="block text-neutral-500">Punto más bajo</span>
+            <span className="block text-neutral-500">Lowest point</span>
             <span className={cn("font-mono font-bold", fc.lowest.balance < 0 ? "text-rose-400" : "text-neutral-200")}>
               {money(fc.lowest.balance)}
             </span>{" "}
             <span className="text-neutral-500">· {fechaDia(fc.lowest.date, today)}</span>
           </div>
           <div className="rounded-lg border border-neutral-800 bg-black/40 px-2 py-1">
-            <span className="block text-neutral-500">Incluye</span>
+            <span className="block text-neutral-500">Includes</span>
             <span className="text-neutral-300">
-              {fc.recurringCount} {fc.recurringCount === 1 ? "recurrente" : "recurrentes"}
+              {fc.recurringCount} {fc.recurringCount === 1 ? "recurring" : "recurring"}
               {fc.cardCount > 0 && (
-                <> · {fc.cardCount} {fc.cardCount === 1 ? "tarjeta" : "tarjetas"}</>
+                <> · {fc.cardCount} {fc.cardCount === 1 ? "card" : "cards"}</>
               )}
             </span>
           </div>
         </div>
         {fc.lowest.balance < 0 && (
           <p className="mt-2 flex items-center gap-1 rounded-lg border border-rose-500/30 bg-rose-500/10 px-2 py-1 text-[11px] font-semibold text-rose-300">
-            <AlertTriangle className="size-3.5 shrink-0" /> El saldo queda en negativo el {fechaDia(fc.lowest.date, today)}.
+            <AlertTriangle className="size-3.5 shrink-0" /> Balance goes negative on {fechaDia(fc.lowest.date, today)}.
           </p>
         )}
         {!props.bankOk && (
           <p className="mt-2 text-[10px] text-amber-300/90">
-            Banco sin sincronizar: no se detectan pagos ya hechos. Pulsa SYNC.
+            Bank not synced: payments already made aren't detected. Hit SYNC.
           </p>
         )}
       </div>
@@ -721,7 +726,7 @@ export function DineroProyeccion(props: {
           <p className="mb-1 text-[11px] font-bold uppercase tracking-wide text-emerald-300">
             Probablemente pagado · {fc.probablePaid.length}
           </p>
-          <p className="mb-2 text-[10px] text-neutral-400">Encontrado en el banco: ya no se resta. Confirma o descarta.</p>
+          <p className="mb-2 text-[10px] text-neutral-400">Found at the bank: no longer subtracted. Confirm or dismiss.</p>
           <div className="space-y-1.5">
             {fc.probablePaid.map((p) => (
               <div key={p.key} className="rounded-lg border border-neutral-800 bg-black/40 px-2 py-1.5 text-[11px]">
@@ -730,7 +735,7 @@ export function DineroProyeccion(props: {
                   <span className="shrink-0 font-mono font-bold text-neutral-300">{money(Math.abs(Number(p.entry.amount) || 0))}</span>
                 </div>
                 <p className="truncate text-[10px] text-neutral-500">
-                  Banco {fechaCorta(p.tx.date)} · {p.tx.detail} · {money(Math.abs(p.tx.amount))}
+                  Bank {fechaCorta(p.tx.date)} · {p.tx.detail} · {money(Math.abs(p.tx.amount))}
                 </p>
                 <div className="mt-1 flex gap-1.5">
                   {props.onMarkPaid && (
@@ -739,7 +744,7 @@ export function DineroProyeccion(props: {
                       onClick={() => props.onMarkPaid?.(p.entry, String(p.tx.date).slice(0, 10))}
                       className="inline-flex items-center gap-1 rounded-md bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-200"
                     >
-                      <Check className="size-3" /> Sí, pagado
+                      <Check className="size-3" /> Yes, paid
                     </button>
                   )}
                   <button
@@ -747,7 +752,7 @@ export function DineroProyeccion(props: {
                     onClick={() => descartar(p.key)}
                     className="inline-flex items-center gap-1 rounded-md bg-neutral-800 px-2 py-0.5 text-[10px] font-bold text-neutral-300"
                   >
-                    <X className="size-3" /> No es este
+                    <X className="size-3" /> Not this one
                   </button>
                 </div>
               </div>
@@ -760,9 +765,9 @@ export function DineroProyeccion(props: {
       {fc.overdueIncome.length > 0 && (
         <div className="rounded-2xl border border-amber-500/30 bg-amber-950/20 p-3">
           <p className="text-[11px] font-bold uppercase tracking-wide text-amber-300">
-            Ingresos atrasados · {money(fc.overdueIncomeTotal)}
+            Overdue income · {money(fc.overdueIncomeTotal)}
           </p>
-          <p className="mb-1.5 text-[10px] text-neutral-400">No llegaron y no se cuentan en el proyectado.</p>
+          <p className="mb-1.5 text-[10px] text-neutral-400">They didn't arrive and don't count in the projection.</p>
           <div className="space-y-1">
             {fc.overdueIncome.map((ln) => (
               <button
@@ -782,7 +787,7 @@ export function DineroProyeccion(props: {
       )}
 
 
-      {/* Registro proyectado — columnas estilo Register, un día por fila, scroll hasta 90 días. */}
+      {/* Projected register — columnas estilo Register, un día por fila, scroll hasta 90 days. */}
       <ProjectionRegister
         fc={fc}
         today={today}
@@ -898,12 +903,12 @@ function ProjectionRegister(props: {
             onClick={() => props.setVerDias(false)}
             className="rounded-md border border-neutral-700 px-2 py-0.5 text-[10px] font-bold text-neutral-300"
           >
-            Registro
+            Register
           </button>
         </div>
 
         {fc.lines.length === 0 ? (
-          <p className="text-[11px] text-neutral-500">Sin movimientos proyectados en este periodo.</p>
+          <p className="text-[11px] text-neutral-500">No projected movements in this period.</p>
         ) : (
           <div className="space-y-1">
             {fc.lines.map((ln) => (
@@ -915,12 +920,12 @@ function ProjectionRegister(props: {
     )
   }
 
-  // Registro por defecto: días consecutivos con scroll.
+  // Register por defecto: days consecutivos con scroll.
   return (
     <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">
       <div className="mb-1.5 flex items-center justify-between gap-2">
         <p className="text-[11px] font-bold uppercase tracking-wide text-neutral-400">
-          Registro proyectado · {totalDias} días
+          Projected register · {totalDias} days
         </p>
         <div className="flex gap-1.5">
           <button
@@ -935,23 +940,23 @@ function ProjectionRegister(props: {
             onClick={() => props.setVerDias(true)}
             className="rounded-md border border-neutral-700 px-2 py-0.5 text-[10px] font-bold text-neutral-300"
           >
-            Lista
+            List
           </button>
         </div>
       </div>
 
 
       <div className={cn(cols, "border-b border-neutral-800 pb-1 text-[9px] font-black uppercase tracking-wide")}>
-        <span className="text-neutral-400">Fecha</span>
-        <span className="text-neutral-400">Descripción</span>
-        <span className="text-right text-neutral-400">Monto</span>
-        <span className="text-right text-neutral-400">Saldo acum.</span>
+        <span className="text-neutral-400">Date</span>
+        <span className="text-neutral-400">Description</span>
+        <span className="text-right text-neutral-400">Amount</span>
+        <span className="text-right text-neutral-400">Running bal.</span>
         <span className="text-right text-cyan-300">Bal. proyectado</span>
       </div>
 
       <div className="max-h-[min(58vh,480px)] min-h-[220px] overflow-y-auto overscroll-contain">
         {rows.length === 0 && (
-          <p className="px-2 py-8 text-center text-[12px] text-neutral-500">Sin días en el horizonte.</p>
+          <p className="px-2 py-8 text-center text-[12px] text-neutral-500">No days in the horizon.</p>
         )}
         {rows.map((r, i) => {
           const ln = r.line
@@ -972,7 +977,7 @@ function ProjectionRegister(props: {
                   fecha === today ? "text-cyan-300" : "text-neutral-400",
                 )}
               >
-                {fecha === today ? "Hoy" : primeroDelDia ? fechaDia(fecha, today) : ""}
+                {fecha === today ? "Today" : primeroDelDia ? fechaDia(fecha, today) : ""}
               </span>
               {/* Descripción + badge apilados: el badge nunca invade la columna del monto. */}
               <span className="flex min-w-0 flex-col items-start gap-0.5">
@@ -982,7 +987,7 @@ function ProjectionRegister(props: {
                     ln ? (rojo ? "text-rose-200" : ln.kind === "rec" ? "text-neutral-400" : "text-neutral-100") : "text-neutral-600",
                   )}
                 >
-                  {ln ? descripcionDe(ln) : "sin movimiento"}
+                  {ln ? descripcionDe(ln) : "no activity"}
                 </span>
                 {ln && <KindBadge line={ln} />}
               </span>
@@ -1021,7 +1026,7 @@ function ProjectionRegister(props: {
             </>
           )
 
-          // Día con asiento → clic abre el editor completo. Recurrente → editor con alcance. Día vacío → alta con esa fecha.
+          // Day con asiento → clic abre el editor completo. Recurrente → editor con alcance. Day vacío → alta con esa fecha.
           // El botón ES el grid (no flex): si no, las 5 columnas se enciman.
           if (ln) {
             return (
@@ -1066,15 +1071,15 @@ function ProjectionRegister(props: {
 
       <p className="mt-1.5 flex items-center justify-between gap-2 border-t border-neutral-800 pt-1.5 text-[10px] text-neutral-500">
         <span>
-          {totalDias} días seguidos ·{" "}
-          {negDays > 0 ? <span className="font-bold text-rose-400">{negDays} en rojo</span> : "sin quiebres"}
+          {totalDias} consecutive days ·{" "}
+          {negDays > 0 ? <span className="font-bold text-rose-400">{negDays} in red</span> : "no dips"}
         </span>
       </p>
     </div>
   )
 }
 
-/** Monto editable inline en el registro: Enter/blur guarda el cambio en el libro. */
+/** Amount editable inline en el registro: Enter/blur guarda el cambio en el libro. */
 function AmountCell(props: {
   line: ForecastLine
   entry: CashFlowEntry
@@ -1106,7 +1111,7 @@ function AmountCell(props: {
           if (e.key === "Enter") (e.target as HTMLInputElement).blur()
         }}
         onClick={(e) => e.stopPropagation()}
-        aria-label={`Monto de ${entry.description || props.line.label}`}
+        aria-label={`Amount of ${entry.description || props.line.label}`}
         className={cn(
           "w-[3.5rem] rounded border border-transparent bg-transparent px-1 py-0.5 text-right font-mono text-[12px] font-bold tabular-nums outline-none",
           "focus:border-neutral-600 focus:bg-neutral-900",
@@ -1123,8 +1128,8 @@ function FootNotes({ fc }: { fc: Forecast }) {
   return (
     <p className="mt-2 border-t border-neutral-800 pt-1.5 text-[10px] text-neutral-500">
       {[
-        fc.duplicatesSkipped ? `${fc.duplicatesSkipped} recurrente(s) ya en el libro` : "",
-        fc.recurringPaidSkipped ? `${fc.recurringPaidSkipped} ya pagado(s) en el banco` : "",
+        fc.duplicatesSkipped ? `${fc.duplicatesSkipped} recurring(s) ya en el libro` : "",
+        fc.recurringPaidSkipped ? `${fc.recurringPaidSkipped} already paid at the bank` : "",
         fc.beyondHorizonCount ? `${fc.beyondHorizonCount} después del ${fechaCorta(fc.endDate)}` : "",
       ]
         .filter(Boolean)
