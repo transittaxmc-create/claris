@@ -37,6 +37,7 @@ import {
   type RegisterAccount,
 } from "./registers-store"
 import { matchTransfers, looksLikeTransfer, type TransferReport } from "./transfer-matcher"
+import { AI_CLASS_LAST_KEY, aiApuntesForFindings } from "./ai-daily-classification"
 import {
   runReconciliationCheck,
   loadDecisions,
@@ -259,6 +260,35 @@ export function CashFlowRegister({
     reconAutoRan.current = true
     runRecon()
   }, [bankLoading, isLoaded, runRecon])
+
+  // AI · CLASIFICACIÓN DIARIA — una vez al día, con el banco y el libro listos:
+  // la AI toma los movimientos "sin clasificar" del chequeo y crea los apuntes
+  // YA categorizados (reglas + lo aprendido). Miguel solo revisa en REPORTES.
+  const aiDailyRan = useRef(false)
+  useEffect(() => {
+    if (aiDailyRan.current || bankLoading || !isLoaded || !reconReport) return
+    aiDailyRan.current = true
+    if (!reconReport.ok) return
+    const today = new Date().toISOString().slice(0, 10)
+    let last = ""
+    try {
+      last = localStorage.getItem(AI_CLASS_LAST_KEY) || ""
+    } catch {}
+    if (last === today) return
+    const nuevos = aiApuntesForFindings(reconReport.accounts.flatMap((a) => a.findings))
+    if (nuevos.length > 0) {
+      setEntries((prev) => {
+        const next = [...nuevos, ...prev]
+        try {
+          localStorage.setItem(LEDGER_KEY, JSON.stringify(next))
+        } catch {}
+        return next
+      })
+    }
+    try {
+      localStorage.setItem(AI_CLASS_LAST_KEY, today)
+    } catch {}
+  }, [bankLoading, isLoaded, reconReport])
 
   const dropFinding = useCallback((key: string) => {
     setReconReport((prev) => {

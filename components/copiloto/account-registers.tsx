@@ -28,7 +28,6 @@ import {
   last4Of,
 } from "./registers-store"
 import type { TransferReport } from "./transfer-matcher"
-import { ReconciliationSection } from "./reconciliation-view"
 import type { ReconReport, ReconFinding } from "./reconciliation-check"
 import { DineroProyeccion, useForecastInputs } from "./dinero-proyeccion"
 import { buildForecast, daysToEndOfMonth, startingBalance, todayKey } from "./dinero-forecast"
@@ -232,8 +231,8 @@ export function RegistersHome(props: {
       dismissedPaid: dismissed,
     })
   })()
-  // CIERRE = hallazgos de reconciliación pendientes hoy ("Ex." = excepciones).
-  const pendientesCierre = (props.reconReport?.accounts || []).reduce((s, a) => s + a.findings.length, 0)
+  // CIERRE DEL DÍA ya no vive en el home: la AI clasifica sola a diario
+  // (AI · Clasificación diaria) y la revisión/corrección está en REPORTES.
 
   const subtituloCuenta = (r: RegisterAccount) => {
     const last4 = last4Of(r.name)
@@ -290,12 +289,6 @@ export function RegistersHome(props: {
             active: vista === 1,
             onClick: () => setVista(1),
           },
-          {
-            label: "CIERRE",
-            value: `${pendientesCierre} Ex.`,
-            tone: pendientesCierre > 0 ? "neg" : "plain",
-            onClick: props.onRunRecon,
-          },
         ]}
       />
       {vista === 0 && (
@@ -347,17 +340,8 @@ export function RegistersHome(props: {
         </button>
       )}
 
-      {/* RECONCILIACIÓN — sección separada, solo en vista Real. */}
-      <ReconciliationSection
-        report={props.reconReport ?? null}
-        loading={props.reconLoading ?? false}
-        onRun={props.onRunRecon ?? (() => {})}
-        onApprove={props.onApproveFinding ?? (() => {})}
-        onReject={props.onRejectFinding ?? (() => {})}
-        onEdit={props.onEditFinding ?? (() => {})}
-        onApproveAll={props.onApproveAllFindings ?? (() => {})}
-      />
-      {/* Cierre vista Real */}
+      {/* CIERRE DEL DÍA removido del home: la AI clasifica sola a diario.
+          Revisión y corrección por categoría en REPORTES (AI · Clasificación diaria). */}
         </>
       )}
       {/* ============ VISTA PROYECTADO ============ */}

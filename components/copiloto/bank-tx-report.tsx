@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Landmark, RefreshCw, Check } from "lucide-react"
+import { Sparkles, RefreshCw, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
   categorizeAll,
@@ -11,6 +11,8 @@ import {
   INCOME_CATEGORY,
   type CategorizedTx,
 } from "./auto-categorize"
+import { AI_TRANSFER_CATEGORY, patchAIApunte } from "./ai-daily-classification"
+import { looksLikeTransfer } from "./transfer-matcher"
 
 function money(n: number): string {
   const v = Number(n) || 0
@@ -18,7 +20,7 @@ function money(n: number): string {
   return `${v < 0 ? "-" : ""}$${t}`
 }
 
-const ALL_CATS = [...EXPENSE_CATEGORIES, INCOME_CATEGORY]
+const ALL_CATS = [...EXPENSE_CATEGORIES, INCOME_CATEGORY, AI_TRANSFER_CATEGORY]
 
 function CorrectSheet({
   tx,
@@ -135,19 +137,35 @@ export function BankTxReport() {
     }
   }, [])
 
-  const categorized = useMemo(() => categorizeAll(txs), [txs, version])
+  const categorized = useMemo(
+    () =>
+      categorizeAll(txs).map((t) =>
+        // Regla de transfers: una transferencia interna (Zelle, etc.) JAMÁS
+        // se reporta como ingreso — es el mismo dólar movido entre cuentas.
+        looksLikeTransfer(t.detail)
+          ? { ...t, category: AI_TRANSFER_CATEGORY, classification: "personal" as const, uncategorized: false }
+          : t,
+      ),
+    [txs, version],
+  )
   const groups = useMemo(() => groupByCategory(categorized), [categorized])
   const uncatCount = useMemo(() => categorized.filter((t) => t.uncategorized).length, [categorized])
 
   function handleSave(tx: CategorizedTx, category: string, classification: "business" | "personal") {
+    // 1) La AI aprende la corrección de Miguel para siempre.
     learnCorrection(tx.vendor, category, classification)
+    // 2) El apunte ya creado en el libro se corrige AHORA (mismo id "ai:…").
+    patchAIApunte(`ai:${tx.id}`, {
+      category,
+      ...(category === AI_TRANSFER_CATEGORY ? {} : { classification }),
+    })
     setVersion((v) => v + 1)
   }
 
   return (
     <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
       <p className="mb-1 flex items-center gap-1.5 text-[11px] font-bold tracking-wide text-white">
-        <Landmark className="size-3.5 text-amber-300" /> TRANSACCIONES DEL BANCO
+        <Sparkles className="size-3.5 text-amber-300" /> AI · CLASIFICACIÓN DIARIA
         {loading ? null : (
           <span className="ml-auto flex items-center gap-1 text-[10px] font-normal text-neutral-500">
             {categorized.length} movs
@@ -160,7 +178,8 @@ export function BankTxReport() {
         )}
       </p>
       <p className="mb-2 text-[10px] text-neutral-500">
-        Categorizadas automáticamente. Toca una para corregir — se aprende.
+        La AI clasifica los movimientos del banco cada día y crea los apuntes con categoría.
+        Revisa el reporte y toca una para corregir — el apunte se actualiza y la AI lo aprende.
       </p>
 
       {loading && <p className="py-4 text-center text-xs text-neutral-500">Trayendo movimientos…</p>}
