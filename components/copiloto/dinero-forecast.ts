@@ -77,11 +77,11 @@ export interface ForecastInput {
   horizonDays: number
   /** Claves de "probablemente pagado" que el usuario descartó. */
   dismissedPaid?: string[]
-  /** Excepciones de "solo esta vez" sobre un recurrente (edición o salto). */
+  /** Excepciones de "solo esta vez" sobre un recurring (edición o salto). */
   overrides?: ScheduleOverride[]
 }
 
-/** Excepción puntual a un recurrente: "solo esta vez" (edición o no pagar). */
+/** Excepción puntual a un recurring: "solo esta vez" (edición o no pagar). */
 export interface ScheduleOverride {
   scheduleId: string
   /** yyyy-mm-dd de la ocurrencia afectada. */
@@ -108,7 +108,7 @@ export interface Forecast {
   lowest: { date: string; balance: number }
   overdueExpenseTotal: number
   overdueExpenseCount: number
-  /** Ingresos con fecha pasada que no llegaron: NO incluidos en el total. */
+  /** Income con fecha pasada que no llegaron: NO incluidos en el total. */
   overdueIncome: ForecastLine[]
   overdueIncomeTotal: number
   probablePaid: ProbablePaid[]
@@ -120,12 +120,12 @@ export interface Forecast {
 }
 
 export const FREQ_LABEL: Record<ScheduleFrequency, string> = {
-  once: "una vez",
-  daily: "diario",
-  weekly: "semanal",
-  biweekly: "quincenal",
-  monthly: "mensual",
-  annual: "anual",
+  once: "once",
+  daily: "daily",
+  weekly: "Weekly",
+  biweekly: "Every 2 weeks",
+  monthly: "Monthly",
+  annual: "Annual",
 }
 
 // ---------------------------------------------------------------------------
@@ -191,7 +191,7 @@ export function daysToEndOfMonth(today: string): number {
 const STOP = new Set([
   "payment", "pmt", "purchase", "debit", "credit", "card", "online", "recurring", "transfer",
   "deposit", "account", "checking", "savings", "autopay", "bill", "llc", "inc", "corp", "the",
-  "pos", "ach", "web", "www", "com", "des", "ppd", "indn", "pago", "factura", "recibo", "tarjeta",
+  "pos", "ach", "web", "www", "com", "des", "ppd", "indn", "pago", "factura", "recibo", "card",
 ])
 
 export function vendorTokens(s: unknown): string[] {
@@ -287,7 +287,7 @@ export function expandSchedule(s: ScheduledEntry, from: string, to: string): str
   return out
 }
 
-/** Ventana (días) para considerar un recurrente "ya pagado" por el banco. */
+/** Ventana (days) para considerar un recurring "already paid" por el banco. */
 export function paidWindow(freq: ScheduleFrequency | undefined): number {
   if (freq === "daily") return 0
   if (freq === "weekly") return 3
@@ -296,7 +296,7 @@ export function paidWindow(freq: ScheduleFrequency | undefined): number {
 }
 
 // ---------------------------------------------------------------------------
-// Balance inicial
+// Starting balance
 // ---------------------------------------------------------------------------
 
 export interface StartRegister {
@@ -347,7 +347,7 @@ export function startingBalance(
 }
 
 // ---------------------------------------------------------------------------
-// Proyección
+// Projection
 // ---------------------------------------------------------------------------
 
 interface LedgerItem {
@@ -366,7 +366,7 @@ function ledgerProjected(entries: CashFlowEntry[], today: string): LedgerItem[] 
     if (amt < 0.01) continue
     const income = e.type === "income"
     const date = isIsoDate(e.date) ? String(e.date).slice(0, 10) : today
-    out.push({ entry: e, date, amount: r2(amt), income, label: e.description || e.category || (income ? "Ingreso" : "Gasto") })
+    out.push({ entry: e, date, amount: r2(amt), income, label: e.description || e.category || (income ? "Income" : "Expense") })
   }
   return out
 }
@@ -458,7 +458,7 @@ export function buildForecast(input: ForecastInput): Forecast {
     const amt = r2(Math.abs(Number(s?.amount) || 0))
     if (!s || amt < 0.01) continue
     const income = s.kind === "income"
-    const label = s.description || s.category || (income ? "Ingreso" : "Gasto")
+    const label = s.description || s.category || (income ? "Income" : "Expense")
     const win = paidWindow(s.frequency)
     for (const d of expandSchedule(s, today, endDate)) {
       // Excepción "solo esta vez": saltar o cambiar esta ocurrencia.
@@ -501,7 +501,7 @@ export function buildForecast(input: ForecastInput): Forecast {
     }
   }
 
-  // 3) Pagos de tarjeta (vencen el día que toca). El monto = saldo actual de la tarjeta.
+  // 3) Pagos de card (vencen el día que toca). El monto = saldo actual de la card.
   let cardCount = 0
   for (const d of input.dues || []) {
     if (!d || d.kind !== "card" || !isIsoDate(d.nextDate)) continue
@@ -517,7 +517,7 @@ export function buildForecast(input: ForecastInput): Forecast {
     lines.push({
       id: `cd:${d.accountId}:${dt}`,
       date: dt,
-      label: `Pago · ${d.accountName || d.accountId}`,
+      label: `Payment · ${d.accountName || d.accountId}`,
       amount: -amt,
       kind: "card",
     })
@@ -547,7 +547,7 @@ export function buildForecast(input: ForecastInput): Forecast {
     }
   }
 
-  // 6) Día a día con balance corriendo (sirve para la gráfica y para el saldo más bajo).
+  // 6) Day a día con balance corriendo (sirve para la gráfica y para el saldo más bajo).
   const days: ForecastDay[] = []
   let bal = start
   let lowest = { date: today, balance: start }
