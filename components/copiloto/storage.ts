@@ -218,7 +218,7 @@ export function lastSavedAt(): string | null {
 // en pantalla, que es lo que antes hacía que los viajes "desaparecieran".
 export function saveTrips(trips: Trip[]): SaveResult {
   const ls = safeLocal()
-  if (!ls) return { ok: false, error: "El almacenamiento del navegador está bloqueado" }
+  if (!ls) return { ok: false, error: "Browser storage is blocked" }
 
   const now = new Date().toISOString()
   let doc: RawEntry = {}
@@ -239,7 +239,7 @@ export function saveTrips(trips: Trip[]): SaveResult {
   try {
     ls.setItem(KEY, serialized)
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "No se pudo guardar" }
+    return { ok: false, error: err instanceof Error ? err.message : "Couldn't save" }
   }
 
   // La copia de seguridad es un extra: si falla, el guardado principal ya está bien.
@@ -315,14 +315,14 @@ export function loadExpenses(): Expense[] | null {
 
 export function saveExpenses(expenses: Expense[]): SaveResult {
   const ls = safeLocal()
-  if (!ls) return { ok: false, error: "El almacenamiento del navegador está bloqueado" }
+  if (!ls) return { ok: false, error: "Browser storage is blocked" }
 
   const doc = { version: 1, savedAt: new Date().toISOString(), entries: expenses }
   const serialized = JSON.stringify(doc)
   try {
     ls.setItem(EXPENSES_KEY, serialized)
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "No se pudieron guardar los gastos" }
+    return { ok: false, error: err instanceof Error ? err.message : "Couldn't save expenses" }
   }
   try {
     ls.setItem(EXPENSES_BACKUP_KEY, serialized)
@@ -363,7 +363,7 @@ const ALL_KEYS = [
   "ic-recurring-plan",
   "ic-bank-balance",
   "ic-week-overrides",
-  // FINANCE semanal (sin zustand): semana, próximas facturas y reserva.
+  // FINANCE Weekly (sin zustand): week, próximas facturas y reserva.
   "claris_finance_week_v1",
   // Ledger programado + facturas de peajes (mismas claves que REGISTER).
   "claris_scheduled_entries",
@@ -453,7 +453,7 @@ function getIndexedDB(): Promise<IDBDatabase> {
   })
 }
 
-// Guarda toda la lista (no sólo el último viaje) para que IndexedDB sea una
+// Guarda toda la lista (no sólo el último trip) para que IndexedDB sea una
 // segunda copia completa: si el teléfono borra localStorage, aquí queda todo.
 export async function saveTripsToIndexedDB(trips: Trip[]): Promise<void> {
   const db = await getIndexedDB()
@@ -527,7 +527,7 @@ export async function clearIndexedDB(): Promise<void> {
   })
 }
 
-// Gastos: segunda copia completa en IndexedDB (misma idea que los viajes).
+// Expenses: segunda copia completa en IndexedDB (misma idea que los trips).
 export async function saveExpensesToIndexedDB(expenses: Expense[]): Promise<void> {
   const db = await getIndexedDB()
   return new Promise((resolve, reject) => {
@@ -557,9 +557,9 @@ export async function loadExpensesFromIndexedDB(): Promise<Expense[]> {
   })
 }
 
-// RESET TOTAL: borra viajes, copia de seguridad, GPS temporal e IndexedDB.
+// RESET TOTAL: borra trips, copia de seguridad, GPS temporal e IndexedDB.
 // Los tombstones se guardan aparte (no se borran aquí) para que el borrado
-// también llegue al otro teléfono y no "revivan" los viajes.
+// también llegue al otro teléfono y no "revivan" los trips.
 export async function clearAllData(): Promise<{ ok: boolean; error?: string }> {
   const ls = safeLocal()
   if (ls) {
@@ -585,7 +585,7 @@ export async function clearAllData(): Promise<{ ok: boolean; error?: string }> {
   try {
     await clearIndexedDB()
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "No se pudo borrar IndexedDB" }
+    return { ok: false, error: err instanceof Error ? err.message : "Couldn't clear IndexedDB" }
   }
   return { ok: true }
 }
