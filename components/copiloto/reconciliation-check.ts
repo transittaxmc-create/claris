@@ -171,7 +171,7 @@ export function runReconciliationCheck(input: {
       ranAt: new Date().toISOString(),
       date: today,
       ok: false,
-      error: "sin datos del banco",
+      error: "no bank data",
       accounts: [],
       summary: { total: 0, cuadradas: 0, conHallazgos: 0, diferenciaTotal: 0 },
     }
@@ -217,16 +217,16 @@ export function runReconciliationCheck(input: {
             accountId: reg.id,
             accountName: reg.name,
             type: "diferencia",
-            title: "Diferencia de balance",
-            detail: `Banco ${fmt(bankBal)} · statement ${fmt(latest)} (${shortDate(withBal[0].date)}) · dif. ${fmt(diff)}`,
+            title: "Balance difference",
+            detail: `Bank ${fmt(bankBal)} · statement ${fmt(latest)} (${shortDate(withBal[0].date)}) · diff. ${fmt(diff)}`,
             severity: "warn",
-            proposedAction: { kind: "revisar", label: "Revisar" },
+            proposedAction: { kind: "revisar", label: "Review" },
           })
         }
       }
       // Nota: cuenta SIN movimientos del banco (tipico en ahorros) ya no genera
-      // hallazgo: no hay nada que cuadrar hoy. Si el feed falla por completo,
-      // bankOk=false y el reporte entero avisa "sin datos del banco"; no hace
+      // hallazgo: no hay nada que cuadrar today. Si el feed falla por completo,
+      // bankOk=false y el reporte entero avisa "no bank data"; no hace
       // falta ruido de revision cuenta por cuenta.
     }
 
@@ -263,7 +263,7 @@ export function runReconciliationCheck(input: {
       usedEntry.add(p.entryId)
     }
 
-    // 2) Banco sin clasificar: movimientos sin apunte.
+    // 2) Bank sin clasificar: movimientos sin apunte.
     for (const i of txIdxAll) {
       if (localUsedTx.has(i)) continue
       const t = txs[i]
@@ -277,11 +277,11 @@ export function runReconciliationCheck(input: {
         accountName: reg.name,
         type: "sin-clasificar",
         title: esTransfer
-          ? `Transfer interna${isIn ? " (llegada)" : " (salida)"}: ${t.detail || "Banco"}`
-          : `Sin clasificar${isIn ? " (ingreso)" : ""}: ${t.detail || "Banco"}`,
+          ? `Internal transfer${isIn ? " (in)" : " (out)"}: ${t.detail || "Bank"}`
+          : `Unclassified${isIn ? " (income)" : ""}: ${t.detail || "Bank"}`,
         detail: `${fmt(amt)} · ${shortDate(t.date)}`,
         severity: "warn",
-        bankTx: { date: String(t.date).slice(0, 10), detail: t.detail || "Banco", amount: amt },
+        bankTx: { date: String(t.date).slice(0, 10), detail: t.detail || "Bank", amount: amt },
         proposedAction: { kind: "crear-apunte", label: esTransfer ? "Crear apunte transfer" : "Crear apunte" },
       })
     }
@@ -296,7 +296,7 @@ export function runReconciliationCheck(input: {
         accountId: reg.id,
         accountName: reg.name,
         type: "pendiente-banco",
-        title: `Pendiente en banco: ${e.description || "Apunte"}`,
+        title: `Pending at bank: ${e.description || "Entry"}`,
         detail: `${fmt(e.type === "income" ? Math.abs(amt) : -Math.abs(amt))} · ${shortDate(e.date)}`,
         severity: "info",
         entryId: e.id,
@@ -326,16 +326,16 @@ export function runReconciliationCheck(input: {
           accountName: reg.name,
           type: "duplicado",
           title: "Posible duplicado",
-          detail: `${a.description || "Apunte"} · ${fmt(Math.abs(Number(a.amount)))} · ${shortDate(a.date)} y ${shortDate(b.date)}`,
+          detail: `${a.description || "Entry"} · ${fmt(Math.abs(Number(a.amount)))} · ${shortDate(a.date)} y ${shortDate(b.date)}`,
           severity: "warn",
           entryId: newer.id,
-          proposedAction: { kind: "eliminar-duplicado", label: "Eliminar el más reciente", entryId: newer.id },
+          proposedAction: { kind: "eliminar-duplicado", label: "Delete the newest", entryId: newer.id },
         })
       }
     }
 
     // 5) Transfers sin pareja en esta cuenta.
-    // Un movimiento ya reportado como "Sin clasificar" no se duplica aqui:
+    // Un movimiento ya reportado como "Unclassified" no se duplica aqui:
     // se resuelve con Crear apunte, no pidiendo revision dos veces.
     const yaReportados = new Set(
       findings
@@ -352,10 +352,10 @@ export function runReconciliationCheck(input: {
         accountId: reg.id,
         accountName: reg.name,
         type: "transfer-sin-pareja",
-        title: `Transfer sin pareja${amt < 0 ? " (salida)" : " (llegada)"}`,
+        title: `Unmatched transfer${amt < 0 ? " (out)" : " (in)"}`,
         detail: `${fmt(amt)} · ${shortDate(t.date)} · ${t.detail || ""}`,
         severity: "info",
-        proposedAction: { kind: "revisar", label: "Revisar" },
+        proposedAction: { kind: "revisar", label: "Review" },
       })
     }
 
