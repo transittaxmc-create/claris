@@ -7,6 +7,8 @@
  */
 "use client"
 
+import { migrateCategory } from "./types"
+
 export type BillPayment = {
   id: string
   date: string
@@ -61,7 +63,7 @@ export function loadOpenBills(): OpenBill[] {
           originalAmount,
           remainingAmount,
           dueDate: String(b.dueDate || "").slice(0, 10),
-          category: typeof b.category === "string" ? b.category : undefined,
+          category: typeof b.category === "string" ? migrateCategory(b.category) : undefined,
           status: deriveStatus(originalAmount, remainingAmount),
           payments: Array.isArray(b.payments)
             ? b.payments.map((p: any) => ({
@@ -95,7 +97,7 @@ export function createOpenBill(input: {
   const now = new Date().toISOString()
   return {
     id: uid(),
-    description: input.description.trim() || "Factura",
+    description: input.description.trim() || "Bill",
     originalAmount: amount,
     remainingAmount: amount,
     dueDate: input.dueDate.slice(0, 10),
