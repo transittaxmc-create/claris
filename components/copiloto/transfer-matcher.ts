@@ -46,6 +46,16 @@ function sameAccount(a: string, b: string): boolean {
   return String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase()
 }
 
+// Solo movimientos con "pinta de transferencia" se reportan sin pareja.
+// Una compra (7-Eleven, gasolina, mercado...) o un ingreso real NO son
+// transferencias: reportarlas como "sin pareja" duplica hallazgos en el
+// CIERRE DEL DIA con informacion falsa. El emparejamiento (pares) no cambia.
+const TRANSFER_DETAIL_RE = /transfer|zelle|p2p|wire|money moved|cashout/i
+
+function looksLikeTransfer(detail: string): boolean {
+  return TRANSFER_DETAIL_RE.test(String(detail || ""))
+}
+
 /**
  * Emparea salidas con llegadas entre cuentas DISTINTAS.
  * Cada movimiento se usa una sola vez (greedy por cercanía de fecha).
@@ -87,12 +97,12 @@ export function matchTransfers(txs: MatchTx[]): TransferReport {
         inDate: String(inTx.date).slice(0, 10),
         originLabel: `viene de ${out.bank_account || "otra cuenta"}`,
       })
-    } else {
+    } else if (looksLikeTransfer(out.detail)) {
       unmatchedOut.push(out)
     }
   }
 
-  const unmatchedIn = ins.filter((_, i) => !usedIn.has(i))
+  const unmatchedIn = ins.filter((_, i) => !usedIn.has(i)).filter((t) => looksLikeTransfer(t.detail))
   pairs.sort((a, b) => b.outDate.localeCompare(a.outDate))
   return { pairs, unmatchedOut, unmatchedIn }
 }

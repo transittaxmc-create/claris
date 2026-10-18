@@ -223,18 +223,11 @@ export function runReconciliationCheck(input: {
             proposedAction: { kind: "revisar", label: "Revisar" },
           })
         }
-      } else if (acctTxs.length === 0 && bankBal !== null) {
-        push({
-          key: `nb:${reg.id}:${today}`,
-          accountId: reg.id,
-          accountName: reg.name,
-          type: "diferencia",
-          title: "Sin movimientos del banco",
-          detail: `No llegaron movimientos para cuadrar esta cuenta hoy.`,
-          severity: "info",
-          proposedAction: { kind: "revisar", label: "Revisar" },
-        })
       }
+      // Nota: cuenta SIN movimientos del banco (tipico en ahorros) ya no genera
+      // hallazgo: no hay nada que cuadrar hoy. Si el feed falla por completo,
+      // bankOk=false y el reporte entero avisa "sin datos del banco"; no hace
+      // falta ruido de revision cuenta por cuenta.
     }
 
     // Emparejar txs ↔ entries de esta cuenta (para 2 y 3).
@@ -339,10 +332,18 @@ export function runReconciliationCheck(input: {
     }
 
     // 5) Transfers sin pareja en esta cuenta.
+    // Un movimiento ya reportado como "Sin clasificar" no se duplica aqui:
+    // se resuelve con Crear apunte, no pidiendo revision dos veces.
+    const yaReportados = new Set(
+      findings
+        .filter((f) => f.type === "sin-clasificar" && f.bankTx)
+        .map((f) => txKey({ date: f.bankTx!.date, detail: f.bankTx!.detail, amount: f.bankTx!.amount })),
+    )
     const unmatched = [...input.transfers.unmatchedOut, ...input.transfers.unmatchedIn]
     for (const t of unmatched) {
       if (accountIdFor(String(t.bank_account || "")) !== reg.id) continue
       const amt = Number(t.amount) || 0
+      if (yaReportados.has(txKey({ date: String(t.date), detail: String(t.detail), amount: amt }))) continue
       push({
         key: `ts:${reg.id}:${txKey({ date: String(t.date), detail: String(t.detail), amount: amt })}`,
         accountId: reg.id,
