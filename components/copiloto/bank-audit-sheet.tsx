@@ -32,7 +32,7 @@ async function resizeImage(file: File, maxDim = 1200): Promise<{ base64: string;
         canvas.height = height
         const ctx = canvas.getContext("2d")
         if (!ctx) {
-          reject(new Error("No se pudo inicializar canvas"))
+          reject(new Error("Couldn't initialize canvas"))
           return
         }
         ctx.drawImage(img, 0, 0, width, height)
@@ -57,7 +57,7 @@ export function BankAuditSheet() {
     const value = parseFloat(manualBalance)
     if (!Number.isNaN(value)) {
       setStartingBalance(value)
-      setStatus(`Saldo aplicado: $${value.toFixed(2)}`)
+      setStatus(`Balance applied: $${value.toFixed(2)}`)
     }
     setOpen(false)
     setManualBalance("")
@@ -70,7 +70,7 @@ export function BankAuditSheet() {
     e.target.value = ""
     if (!file) return
     setBusy(true)
-    setStatus("Leyendo saldo del banco...")
+    setStatus("Reading bank balance...")
     try {
       const { base64, mimeType } = await resizeImage(file)
       const res = await fetch("/api/scan-balance", {
@@ -86,7 +86,7 @@ export function BankAuditSheet() {
         setStatus(`⚠️ ${json.error || "No se pudo leer el saldo"}. Ingrésalo a mano.`)
       }
     } catch {
-      setStatus("⚠️ Error al leer la captura. Ingrésalo a mano.")
+      setStatus("⚠️ Couldn't read the screenshot. Enter it manually.")
     } finally {
       setBusy(false)
     }
@@ -101,7 +101,7 @@ export function BankAuditSheet() {
           setStatus(null)
         }}
         className="rounded-xl border border-yellow-400/30 bg-yellow-400/10 p-2 text-xs font-semibold text-yellow-300 hover:bg-yellow-400/20"
-        title="Auditoría bancaria"
+        title="Bank audit"
       >
         📷
       </button>
@@ -109,9 +109,9 @@ export function BankAuditSheet() {
       {open && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 sm:items-center">
           <div className="w-full max-w-sm space-y-3 rounded-t-2xl border border-neutral-800 bg-neutral-950 p-5 sm:rounded-2xl">
-            <h3 className="text-sm font-bold text-white">Auditoría de Saldo</h3>
+            <h3 className="text-sm font-bold text-white">Balance audit</h3>
             <p className="text-[11px] text-neutral-400">
-              Sube una captura del banco y la IA lee tu saldo disponible, o ingrésalo manualmente.
+              Upload a bank screenshot and the AI reads your available balance, or enter it manually.
             </p>
 
             <label className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-neutral-700 bg-neutral-900 py-3 text-xs font-bold text-neutral-300 hover:border-yellow-400/40">
@@ -141,7 +141,7 @@ export function BankAuditSheet() {
               inputMode="decimal"
               value={manualBalance}
               onChange={(e) => setManualBalance(e.target.value)}
-              placeholder="Saldo real $ (manual)"
+              placeholder="Real balance $ (manual)"
               className="w-full rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-white"
             />
             <div className="flex gap-2">
@@ -153,7 +153,7 @@ export function BankAuditSheet() {
                 }}
                 className="flex-1 rounded-xl border border-neutral-700 py-2 text-xs font-semibold text-neutral-300"
               >
-                Cancelar
+                Cancel
               </button>
               <button
                 type="button"
