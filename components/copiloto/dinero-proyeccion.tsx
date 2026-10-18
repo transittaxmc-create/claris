@@ -662,7 +662,7 @@ export function DineroProyeccion(props: {
               <span className="block text-[10px] text-neutral-500">
                 {inicio.usedFallback
                   ? "Sin saldo de la cuenta ★ — suma de bancos"
-                  : `${mainName || "Cuenta ★"}${inicio.extras.length ? ` + ${inicio.extras.length} fondo(s)` : ""}`}
+                  : `${mainName || "Cuenta ★"}${inicio.extras.length ? ` + ${inicio.extras.length} ${inicio.extras.length === 1 ? "fondo" : "fondos"}` : ""}`}
               </span>
             </span>
             <span className={cn("font-mono font-bold tabular-nums", fc.start < 0 ? "text-rose-400" : "text-white")}>
@@ -678,7 +678,7 @@ export function DineroProyeccion(props: {
             <span className="font-mono font-bold tabular-nums text-rose-400">{money(fc.expenseTotal)}</span>
           </div>
           <div className="flex items-center justify-between gap-2 border-t border-cyan-500/20 pt-1.5">
-            <span className="font-bold text-cyan-300">= Balance proyectado</span>
+            <span className="font-bold text-cyan-300">= Balance proyectado ({fc.days.length} días)</span>
             <span className={cn("font-mono text-lg font-black tabular-nums", fc.end < 0 ? "text-rose-400" : "text-cyan-300")}>
               {money(fc.end)}
             </span>
@@ -695,7 +695,10 @@ export function DineroProyeccion(props: {
           <div className="rounded-lg border border-neutral-800 bg-black/40 px-2 py-1">
             <span className="block text-neutral-500">Incluye</span>
             <span className="text-neutral-300">
-              {fc.recurringCount} recurrente(s) · {fc.cardCount} tarjeta(s)
+              {fc.recurringCount} {fc.recurringCount === 1 ? "recurrente" : "recurrentes"}
+              {fc.cardCount > 0 && (
+                <> · {fc.cardCount} {fc.cardCount === 1 ? "tarjeta" : "tarjetas"}</>
+              )}
             </span>
           </div>
         </div>
@@ -971,10 +974,11 @@ function ProjectionRegister(props: {
               >
                 {fecha === today ? "Hoy" : primeroDelDia ? fechaDia(fecha, today) : ""}
               </span>
-              <span className="flex min-w-0 items-center gap-1">
+              {/* Descripción + badge apilados: el badge nunca invade la columna del monto. */}
+              <span className="flex min-w-0 flex-col items-start gap-0.5">
                 <span
                   className={cn(
-                    "truncate text-[12px] font-semibold",
+                    "w-full truncate text-[12px] font-semibold",
                     ln ? (rojo ? "text-rose-200" : ln.kind === "rec" ? "text-neutral-400" : "text-neutral-100") : "text-neutral-600",
                   )}
                 >
@@ -1018,14 +1022,15 @@ function ProjectionRegister(props: {
           )
 
           // Día con asiento → clic abre el editor completo. Recurrente → editor con alcance. Día vacío → alta con esa fecha.
+          // El botón ES el grid (no flex): si no, las 5 columnas se enciman.
           if (ln) {
             return (
-              <div key={ln.id} className={cn(cols, "items-center border-b border-neutral-900/80 py-1.5", rojo && "bg-rose-500/5")}>
+              <div key={ln.id} className={cn("border-b border-neutral-900/80 py-1.5", rojo && "bg-rose-500/5")}>
                 {props.onEditEntry && ln.entry ? (
                   <button
                     type="button"
                     onClick={() => props.onEditEntry?.(ln.entry!)}
-                    className="flex w-full items-center gap-1 text-left active:bg-neutral-900/60"
+                    className={cn(cols, "w-full items-center text-left active:bg-neutral-900/60")}
                   >
                     {cells}
                   </button>
@@ -1033,12 +1038,12 @@ function ProjectionRegister(props: {
                   <button
                     type="button"
                     onClick={() => props.onOpenRecurrente(recSched, ln.date)}
-                    className="flex w-full items-center gap-1 text-left active:bg-neutral-900/60"
+                    className={cn(cols, "w-full items-center text-left active:bg-neutral-900/60")}
                   >
                     {cells}
                   </button>
                 ) : (
-                  cells
+                  <div className={cn(cols, "items-center")}>{cells}</div>
                 )}
               </div>
             )
