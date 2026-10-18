@@ -78,7 +78,7 @@ function EntryTag({ entry }: { entry: CashFlowEntry }) {
   return <span className={cn("mt-0.5 block truncate text-[9px] font-medium", cls)}>{label}</span>
 }
 
-export function RegistersHomeexport function RegistersHome(props: {
+export function RegistersHome(props: {
   registers: RegisterAccount[]
   balances: Record<string, number | null>
   dues: DueItem[]
