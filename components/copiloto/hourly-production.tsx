@@ -72,7 +72,7 @@ export function HourlyProduction({ trips, shift }: { trips: Trip[]; shift: Shift
         <div className="flex min-w-0 flex-1 flex-col rounded-xl border border-neutral-800 bg-black/25 px-2.5 py-1.5">
           <div className="flex items-center justify-between gap-1 text-[8px] font-bold tracking-wide text-neutral-500">
             <span className="flex items-center gap-1">
-              <Timer className={cn("size-2.5", timer.running ? "text-yellow-400" : "text-neutral-600")} /> HORA
+              <Timer className={cn("size-2.5", timer.running ? "text-yellow-400" : "text-neutral-600")} /> HOUR
             </span>
             <span className={cn("shrink-0", timer.running ? "text-neutral-500" : shift.isOnBreak ? "text-amber-400" : "text-rose-400")}>
               {statusLabel}
@@ -96,7 +96,7 @@ export function HourlyProduction({ trips, shift }: { trips: Trip[]; shift: Shift
             <button
               type="button"
               onClick={shift.onStart}
-              title="Empezar el turno: el cronómetro arranca desde cero"
+              title="Start the shift: the stopwatch starts from zero"
               className="mt-1.5 flex w-full items-center justify-center gap-1 rounded-lg border border-emerald-500/50 bg-emerald-500/10 py-1 text-[8px] font-bold text-emerald-300 transition-colors hover:bg-emerald-500/20"
             >
               <Play className="size-2.5" />
@@ -107,7 +107,7 @@ export function HourlyProduction({ trips, shift }: { trips: Trip[]; shift: Shift
               <button
                 type="button"
                 onClick={shift.onBreak}
-                title={shift.isOnBreak ? "Terminar el break y seguir midiendo" : "Pausar la medición sin cerrar el turno"}
+                title={shift.isOnBreak ? "End the break and keep measuring" : "Pause measuring without ending the shift"}
                 className={cn(
                   "flex flex-1 items-center justify-center gap-1 rounded-lg border py-1 text-[8px] font-bold transition-colors",
                   shift.isOnBreak
@@ -121,7 +121,7 @@ export function HourlyProduction({ trips, shift }: { trips: Trip[]; shift: Shift
               <button
                 type="button"
                 onClick={shift.onEnd}
-                title="Cerrar el turno: la medición vuelve a cero"
+                title="End the shift: the measurement resets to zero"
                 className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-rose-500/50 bg-rose-500/10 py-1 text-[8px] font-bold text-rose-300 transition-colors hover:bg-rose-500/20"
               >
                 <Square className="size-2.5" />
@@ -134,11 +134,11 @@ export function HourlyProduction({ trips, shift }: { trips: Trip[]; shift: Shift
         <button
           type="button"
           onClick={() => setEditingGoal((v) => !v)}
-          title="Tocar para ajustar la meta por hora"
+          title="Tap to adjust the hourly goal"
           className="min-w-0 flex-1 rounded-xl border border-neutral-800 bg-black/25 px-2.5 py-1.5 text-left transition-colors hover:border-neutral-700"
         >
           <div className="flex items-center gap-1 text-[8px] font-bold tracking-wide text-neutral-500">
-            <TrendingUp className="size-2.5 text-emerald-400" /> HOY
+            <TrendingUp className="size-2.5 text-emerald-400" /> TODAY
           </div>
           <div className={cn("text-base font-black leading-tight", shift.shiftActive ? "text-emerald-400" : "text-neutral-500")}>
             ${earned.toFixed(2)}
@@ -175,22 +175,22 @@ export function HourlyProduction({ trips, shift }: { trips: Trip[]; shift: Shift
           <BarChart3 className="size-3 shrink-0 text-yellow-400" /> MIS HORAS
           {todayTotals.measuredHours > 0 && (
             <span className="truncate font-semibold text-neutral-500">
-              hoy ${todayTotals.produced.toFixed(2)} ·{" "}
-              {todayTotals.rate !== null ? `$${todayTotals.rate.toFixed(0)}/h` : "sin tiempo"}
+              today ${todayTotals.produced.toFixed(2)} ·{" "}
+              {todayTotals.rate !== null ? `$${todayTotals.rate.toFixed(0)}/h` : "no time"}
             </span>
           )}
         </span>
-        <span className="shrink-0 text-neutral-500">{showStats ? "ocultar" : "ver"}</span>
+        <span className="shrink-0 text-neutral-500">{showStats ? "hide" : "see"}</span>
       </button>
 
       {showStats && (
         <div className="col-span-2 space-y-2 rounded-xl border border-neutral-800 bg-black/30 p-2.5">
           {/* Hoy, hora por hora */}
           <div>
-            <p className="text-[9px] font-bold tracking-wide text-neutral-400">HOY · HORA POR HORA</p>
+            <p className="text-[9px] font-bold tracking-wide text-neutral-400">TODAY · HOUR BY HOUR</p>
             {todayStats.length === 0 ? (
               <p className="mt-1 text-[9px] text-neutral-500">
-                Todavía no hay horas de hoy. Deja el cronómetro encendido mientras trabajas.
+                No hours today yet. Keep the stopwatch running while you work.
               </p>
             ) : (
               <div className="mt-1 flex flex-col">
@@ -202,7 +202,7 @@ export function HourlyProduction({ trips, shift }: { trips: Trip[]; shift: Shift
                     <span className="font-mono text-neutral-400">{stat.label.slice(0, 5)}</span>
                     <span className="flex items-center gap-2">
                       <span className="text-neutral-500">
-                        {stat.workedMin > 0 ? `${Math.round(stat.workedMin)}m` : "sin tiempo"}
+                        {stat.workedMin > 0 ? `${Math.round(stat.workedMin)}m` : "no time"}
                       </span>
                       <span
                         className={cn(
@@ -224,10 +224,10 @@ export function HourlyProduction({ trips, shift }: { trips: Trip[]; shift: Shift
             )}
             {todayStats.length > 0 && (
               <p className="mt-1.5 text-[9px] font-semibold text-neutral-400">
-                HOY: <span className="text-white">${todayTotals.produced.toFixed(2)}</span> en{" "}
+                TODAY: <span className="text-white">${todayTotals.produced.toFixed(2)}</span> en{" "}
                 {(todayTotals.workedMin / 60).toFixed(1)} h medidas · ritmo{" "}
                 <span className="text-yellow-300">
-                  {todayTotals.rate !== null ? `$${todayTotals.rate.toFixed(0)}/h` : "sin tiempo medido"}
+                  {todayTotals.rate !== null ? `$${todayTotals.rate.toFixed(0)}/h` : "no time tracked"}
                 </span>{" "}
                 · meta en {todayTotals.goalHours} de {todayTotals.measuredHours} horas
               </p>
@@ -237,7 +237,7 @@ export function HourlyProduction({ trips, shift }: { trips: Trip[]; shift: Shift
           {/* Cómo mejorar, con los números reales */}
           <div className="border-t border-neutral-800 pt-2">
             <p className="flex items-center gap-1.5 text-[9px] font-bold tracking-wide text-yellow-300">
-              <Lightbulb className="size-3" /> CÓMO MEJORAR
+              <Lightbulb className="size-3" /> HOW TO IMPROVE
             </p>
             <div className="mt-1 flex flex-col gap-1.5">
               {tips.map((tip) => (
