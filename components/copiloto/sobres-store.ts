@@ -18,7 +18,7 @@ const KEY = "claris_sobres_v1"
 const DEFAULTS: Omit<Sobre, "id" | "createdAt">[] = [
   { nombre: "Renta", meta: 1500, asignado: 0 },
   { nombre: "Car leasing", meta: 924, asignado: 0 },
-  { nombre: "Teléfono", meta: 0, asignado: 0 },
+  { nombre: "Phone", meta: 0, asignado: 0 },
 ]
 
 function uid(): string {
@@ -55,7 +55,7 @@ export function saveSobres(sobres: Sobre[]) {
 export function newSobre(nombre: string, meta: number): Sobre {
   return {
     id: uid(),
-    nombre: nombre.trim() || "Sobre",
+    nombre: nombre.trim() || "Envelope",
     meta: Math.max(0, Number(meta) || 0),
     asignado: 0,
     createdAt: new Date().toISOString(),
