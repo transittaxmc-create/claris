@@ -15,7 +15,7 @@ import { looksLikeTransfer } from "./transfer-matcher"
 /** localStorage: fecha (yyyy-mm-dd) de la última clasificación diaria. */
 export const AI_CLASS_LAST_KEY = "claris_ai_class_last_v1"
 export const AI_SOURCE_LABEL = "AI diaria"
-export const AI_TRANSFER_CATEGORY = "Transfer interna"
+export const AI_TRANSFER_CATEGORY = "Internal transfer"
 
 /** Id estable del apunte AI para un movimiento bancario: "ai:<date>|<vendor>|<amount>". */
 export function aiApunteId(date: string, detail: string, amount: number): string {
@@ -47,13 +47,13 @@ export function aiApuntesForFindings(findings: ReconFinding[]): CashFlowEntry[] 
     out.push({
       id,
       date: String(t.date).slice(0, 10),
-      description: String(t.detail || "Movimiento del banco"),
+      description: String(t.detail || "Bank movement"),
       amount: Math.abs(amt),
       type: amt < 0 ? "expense" : "income",
       status: "actual",
       source: "bank",
       origin: esTransfer ? "transfer" : "bank",
-      sourceLabel: esTransfer ? "Transfer interna" : AI_SOURCE_LABEL,
+      sourceLabel: esTransfer ? "Internal transfer" : AI_SOURCE_LABEL,
       category: esTransfer ? AI_TRANSFER_CATEGORY : cat.category,
       classification: esTransfer ? undefined : cat.classification,
       notes: "",
