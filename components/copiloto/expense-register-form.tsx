@@ -73,14 +73,14 @@ export function ExpenseRegisterForm() {
         inputMode="decimal"
         value={amount}
         onChange={(e) => setAmount(e.target.value)}
-        placeholder="Monto $"
+        placeholder="Amount $"
         className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-white"
       />
       <input
         type="text"
         value={note}
         onChange={(e) => setNote(e.target.value)}
-        placeholder="Nota (opcional)"
+        placeholder="Nota (optional)"
         className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-white"
       />
 
@@ -89,11 +89,11 @@ export function ExpenseRegisterForm() {
         onClick={submit}
         className="w-full rounded-xl bg-yellow-400 py-2.5 font-bold text-black"
       >
-        Registrar Gasto
+        Record expense
       </button>
 
       <p className="text-[10px] text-neutral-500">
-        Cae directo al Libro Mayor (un solo libro). Se descuenta del saldo operativo y separa 10% para la Reserva de Imprevistos.
+        Goes straight to the Ledger (one book). Deducted from the operating balance, setting aside 10% for the contingency reserve.
       </p>
 
       {loggedExpenses.length > 0 && (
