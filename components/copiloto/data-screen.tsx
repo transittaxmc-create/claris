@@ -29,7 +29,7 @@ function fmtTime(value: string | null): string {
   if (!value) return "—"
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return value
-  return d.toLocaleString("es-ES", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
+  return d.toLocaleString("en-US", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })
 }
 
 export function DataScreen({
@@ -77,7 +77,7 @@ export function DataScreen({
   // Versión que está sirviendo producción, para comparar con la de este teléfono.
   const [ultimaVersion, setUltimaVersion] = useState<string | null>(null)
   const [estadoVersion, setEstadoVersion] = useState<VersionStatus>("unknown")
-  // Meta diaria del DASHBOARD (clon del tablero de v1). Default 45 como en v1.
+  // Goal diaria del DASHBOARD (clon del tablero de v1). Default 45 como en v1.
   const [dailyGoal, setDailyGoal] = useState<number>(() => {
     try {
       const n = Number(localStorage.getItem(V1_DAILY_GOAL_KEY))
@@ -135,7 +135,7 @@ export function DataScreen({
           <div className="flex items-start gap-2 rounded-2xl border border-rose-500/50 bg-rose-500/10 p-3 text-rose-200">
             <AlertTriangle className="mt-0.5 size-4 shrink-0 text-rose-400" />
             <div className="text-[11px] leading-tight">
-              <p className="font-bold text-rose-300">No se pudo guardar en el teléfono</p>
+              <p className="font-bold text-rose-300">Couldn't save on the phone</p>
               <p className="mt-0.5 break-words">{saveError}</p>
             </div>
           </div>
@@ -145,11 +145,11 @@ export function DataScreen({
         <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
           <div className="mb-1 flex items-center gap-2">
             <Database className="size-4 text-yellow-400" />
-            <h2 className="text-xs font-bold tracking-wide text-neutral-200">GUARDADO EN ESTE TELÉFONO</h2>
+            <h2 className="text-xs font-bold tracking-wide text-neutral-200">SAVED ON THIS PHONE</h2>
           </div>
-          <Row label="VIAJES EN MEMORIA" value={String(trips.length)} />
-          <Row label="GASTOS EN MEMORIA" value={String(info?.expenses ?? 0)} tone="text-rose-300" />
-          <Row label="ÚLTIMA GRABACIÓN" value={fmtTime(info?.lastSavedAt ?? null)} />
+          <Row label="TRIPS IN MEMORY" value={String(trips.length)} />
+          <Row label="EXPENSES IN MEMORY" value={String(info?.expenses ?? 0)} tone="text-rose-300" />
+          <Row label="LAST RECORDING" value={fmtTime(info?.lastSavedAt ?? null)} />
           <Row
             label="LOCALSTORAGE"
             value={info ? (info.localStorageOk ? "OK" : "BLOQUEADO") : "…"}
@@ -164,7 +164,7 @@ export function DataScreen({
           <Row label="BORRADOS PENDIENTES" value={String(info?.tombstones ?? 0)} tone="text-neutral-400" />
           {/* Versión: sirve para saber si este teléfono abrió la última copia. */}
           <Row
-            label="VERSIÓN DE LA APP"
+            label="APP VERSION"
             value={
               process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA
                 ? `${process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA.slice(0, 7)}${
@@ -172,7 +172,7 @@ export function DataScreen({
                       ? ` (hay ${ultimaVersion})`
                       : estadoVersion === "newer"
                         ? ` · prueba (prod ${ultimaVersion})`
-                        : " · al día"
+                        : " · per day"
                   }`
                 : "local"
             }
@@ -185,8 +185,8 @@ export function DataScreen({
             }
           />
           <p className="mt-2 text-[10px] leading-tight text-neutral-500">
-            Cada viaje se guarda en dos sitios (localStorage + IndexedDB) y con copia de seguridad. Si el teléfono borra
-            el navegador, IndexedDB devuelve los viajes al abrir la app.
+            Each trip is saved in two places (localStorage + IndexedDB) and backed up. If the phone wipes
+            el navegador, IndexedDB devuelve los trips al abrir la app.
           </p>
         </section>
 
@@ -194,15 +194,15 @@ export function DataScreen({
         <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
           <div className="mb-1 flex items-center gap-2">
             <Target className="size-4 text-yellow-400" />
-            <h2 className="text-xs font-bold tracking-wide text-neutral-200">METAS DEL TABLERO</h2>
+            <h2 className="text-xs font-bold tracking-wide text-neutral-200">BOARD GOALS</h2>
           </div>
           <p className="text-[10px] leading-tight text-neutral-500">
-            Las usa la pestaña DASHBOARD (el tablero por hora clonado de v1). La meta por hora también se ajusta con
+            Used by the DASHBOARD tab (the v1-cloned hourly board). The hourly goal is also adjusted with
             el deslizador del propio tablero.
           </p>
           <div className="mt-2 flex items-center gap-2">
             <label htmlFor="meta-diaria" className="text-[11px] font-bold text-neutral-300">
-              Meta diaria $
+              Goal diaria $
             </label>
             <input
               id="meta-diaria"
@@ -223,7 +223,7 @@ export function DataScreen({
         <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
           <div className="mb-2 flex items-center gap-2">
             <Save className="size-4 text-sky-400" />
-            <h2 className="text-xs font-bold tracking-wide text-neutral-200">COPIA DE SEGURIDAD</h2>
+            <h2 className="text-xs font-bold tracking-wide text-neutral-200">BACKUP</h2>
           </div>
           <div className="flex gap-2">
             <button
@@ -259,13 +259,13 @@ export function DataScreen({
             onClick={onExportFull}
             className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-sky-500/40 bg-sky-950/30 py-2.5 text-[11px] font-bold text-sky-300 hover:bg-sky-900/40"
           >
-            <Download className="size-3.5" /> DESCARGAR TODO (BACKUP TOTAL)
+            <Download className="size-3.5" /> DOWNLOAD ALL (FULL BACKUP)
           </button>
           <p className="mt-1.5 text-[10px] leading-tight text-neutral-500">
-            Descarga <strong className="text-neutral-300">todos los archivos JSON</strong> de la app
-            (viajes, gastos, finanzas, ledger, categorías, ajustes) más un{" "}
-            <strong className="text-neutral-300">índice HTML legible</strong> con totales y tablas. Con
-            eso nunca hay que empezar desde cero.
+            Descarga <strong className="text-neutral-300">all JSON files</strong> of the app
+            (trips, expenses, finances, ledger, categories, settings) plus a{" "}
+            <strong className="text-neutral-300">readable HTML index</strong> with totals and tables. With
+            that you never have to start from scratch.
           </p>
           {trips.length === 0 && (
             <button
@@ -273,7 +273,7 @@ export function DataScreen({
               onClick={onLoadDemo}
               className="mt-2 w-full rounded-xl border border-neutral-800 py-2 text-[11px] font-bold text-neutral-400 hover:text-neutral-200"
             >
-              CARGAR VIAJES DE EJEMPLO
+              LOAD SAMPLE TRIPS
             </button>
           )}
         </section>
@@ -282,16 +282,16 @@ export function DataScreen({
         <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
           <div className="mb-1 flex items-center gap-2">
             {syncCode ? <Cloud className="size-4 text-green-400" /> : <CloudOff className="size-4 text-neutral-500" />}
-            <h2 className="text-xs font-bold tracking-wide text-neutral-200">SINCRONIZAR CON OTRO TELÉFONO</h2>
+            <h2 className="text-xs font-bold tracking-wide text-neutral-200">SYNC WITH ANOTHER PHONE</h2>
           </div>
           <p className="mb-2 text-[10px] leading-tight text-neutral-500">
-            Escribe el mismo código privado en tus dos teléfonos. Los viajes se cifran aquí antes de salir y nadie más
+            Enter the same private code on both phones. Trips are encrypted here before leaving and nobody else
             (ni el servidor) puede leerlos. Sin código no hay sincronización.
           </p>
 
           {syncCode ? (
             <div className="space-y-2">
-              <Row label="CÓDIGO" value={`•••• ${syncCode.slice(-4)}`} tone="text-green-400" />
+              <Row label="CODE" value={`•••• ${syncCode.slice(-4)}`} tone="text-green-400" />
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -300,7 +300,7 @@ export function DataScreen({
                   className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-500 py-2.5 text-[11px] font-extrabold text-black disabled:opacity-60"
                 >
                   <RefreshCw className={cn("size-3.5", syncing && "animate-spin")} />
-                  {syncing ? "SINCRONIZANDO…" : "SINCRONIZAR AHORA"}
+                  {syncing ? "SYNCING…" : "SINCRONIZAR AHORA"}
                 </button>
                 <button
                   type="button"
@@ -316,7 +316,7 @@ export function DataScreen({
               <input
                 value={codeDraft}
                 onChange={(e) => setCodeDraft(e.target.value)}
-                placeholder={`Código privado (mín. ${MIN_SYNC_CODE_LENGTH} caracteres)`}
+                placeholder={`Private code (min. ${MIN_SYNC_CODE_LENGTH} characters)`}
                 autoComplete="off"
                 spellCheck={false}
                 className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 font-mono text-sm text-white outline-none placeholder:text-neutral-600 focus:border-neutral-500"
@@ -354,9 +354,9 @@ export function DataScreen({
 
           {/* Opción 1: limpiar solo caché y pantallas (conserva los datos) */}
           <p className="mb-2 text-[10px] leading-tight text-neutral-400">
-            <strong className="text-neutral-300">Solo caché y pantallas:</strong> borra el historial del
-            chat de IA, las ubicaciones GPS temporales y la semana de finanzas (se recalcula sola).
-            <strong className="text-emerald-300"> Conserva viajes, gastos, ledger y código.</strong>
+            <strong className="text-neutral-300">Cache & screens only:</strong> clears the history of
+            chat de IA, las ubicaciones GPS temporales y la week de finanzas (se recalcula sola).
+            <strong className="text-emerald-300"> Keeps trips, expenses, ledger and code.</strong>
           </p>
           {confirmCache ? (
             <div className="flex gap-2">
@@ -368,14 +368,14 @@ export function DataScreen({
                 }}
                 className="flex-1 rounded-xl bg-amber-500 py-2.5 text-[11px] font-extrabold text-black active:scale-[0.99]"
               >
-                SÍ, LIMPIAR CACHÉ
+                YES, CLEAR CACHE
               </button>
               <button
                 type="button"
                 onClick={() => setConfirmCache(false)}
                 className="flex-1 rounded-xl border border-neutral-700 py-2.5 text-[11px] font-bold text-neutral-300"
               >
-                CANCELAR
+                CANCEL
               </button>
             </div>
           ) : (
@@ -384,13 +384,13 @@ export function DataScreen({
               onClick={() => setConfirmCache(true)}
               className="w-full rounded-xl border border-amber-500/50 bg-amber-500/10 py-2.5 text-[11px] font-extrabold text-amber-300 active:scale-[0.99]"
             >
-              LIMPIAR SOLO CACHÉ Y PANTALLAS
+              CLEAR CACHE & SCREENS ONLY
             </button>
           )}
 
           {/* Opción 2: reset desde cero (todo) */}
           <p className="mb-2 mt-3 border-t border-rose-900/40 pt-2 text-[10px] leading-tight text-neutral-400">
-            <strong className="text-rose-300">Desde cero (ALL):</strong> borra todos los viajes de este
+            <strong className="text-rose-300">From cero (ALL):</strong> deletes all trips from this
             teléfono: memoria, localStorage, copia de seguridad, GPS temporal e IndexedDB. Se conserva el
             código de sync para poder volver a bajar tus datos.
           </p>
@@ -404,14 +404,14 @@ export function DataScreen({
                 }}
                 className="flex-1 rounded-xl bg-rose-600 py-2.5 text-[11px] font-extrabold text-white active:scale-[0.99]"
               >
-                SÍ, BORRAR TODO
+                YES, DELETE ALL
               </button>
               <button
                 type="button"
                 onClick={() => setConfirmReset(false)}
                 className="flex-1 rounded-xl border border-neutral-700 py-2.5 text-[11px] font-bold text-neutral-300"
               >
-                CANCELAR
+                CANCEL
               </button>
             </div>
           ) : (
@@ -420,7 +420,7 @@ export function DataScreen({
               onClick={() => setConfirmReset(true)}
               className="w-full rounded-xl border border-rose-500/50 bg-rose-500/10 py-2.5 text-[11px] font-extrabold text-rose-300 active:scale-[0.99]"
             >
-              RESETEAR TODO DESDE CERO (ALL)
+              RESET EVERYTHING FROM SCRATCH (ALL)
             </button>
           )}
         </section>
