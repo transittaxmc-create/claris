@@ -177,7 +177,7 @@ function GoalRing({ grossToday, todayGoal, goalPct }: { grossToday: number; toda
   )
 }
 
-// ---- p4: ZONES HOY (v1 intacto) ----
+// ---- p4: ZONES TODAY (v1 intacto) ----
 function ZonesCard({ zones, clock, hasGps }: { zones: ReturnType<typeof recommendZones>; clock: Date; hasGps: boolean }) {
   return (
     <div className="rounded-xl overflow-hidden" style={{ background: "#0d0d0d", border: "1px solid #2a2200", borderLeft: "3px solid #f6dd8c" }}>
@@ -186,10 +186,10 @@ function ZonesCard({ zones, clock, hasGps }: { zones: ReturnType<typeof recommen
           <span className="text-[15px]">🗺</span>
           <div>
             <p className="text-[9px] tracking-[0.18em] font-bold" style={{ color: "#f6dd8c" }}>
-              ZONES HOY
+              ZONES TODAY
             </p>
             <p className="text-[8px] text-neutral-500 mt-0.5">
-              {clock.getDay() === 0 || clock.getDay() === 6 ? "Fin de semana" : "Día laboral"}
+              {clock.getDay() === 0 || clock.getDay() === 6 ? "Weekend" : "Workday"}
               {" · "}
               {clock.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
             </p>
@@ -202,7 +202,7 @@ function ZonesCard({ zones, clock, hasGps }: { zones: ReturnType<typeof recommen
       </div>
       <div className="px-3.5 py-2.5 space-y-2.5">
         {zones.length === 0 ? (
-          <p className="text-[11px] text-neutral-500 py-1">No hay datos para esta hora.</p>
+          <p className="text-[11px] text-neutral-500 py-1">No data for this hour.</p>
         ) : (
           zones.map((r, o) => {
             const l = o === 0
@@ -224,7 +224,7 @@ function ZonesCard({ zones, clock, hasGps }: { zones: ReturnType<typeof recommen
                   </p>
                   {l && (
                     <p className="text-[8px] font-mono-jet mt-0.5" style={{ color: r.heat === "hot" ? "#fb923c" : "#fbbf24" }}>
-                      ↑ Mejor zona ahora
+                      ↑ Best zone now
                     </p>
                   )}
                 </div>
@@ -255,7 +255,7 @@ function ZonesCard({ zones, clock, hasGps }: { zones: ReturnType<typeof recommen
   )
 }
 
-// ---- m4: tira semanal TRIPS TODAY / AVG/TRIP / WEEK TOTAL (v1 intacto) ----
+// ---- m4: tira Weekly TRIPS TODAY / AVG/TRIP / WEEK TOTAL (v1 intacto) ----
 function WeekStrip({ todayTripCount, grossToday, weeklyTotal }: { todayTripCount: number; grossToday: number; weeklyTotal: number }) {
   return (
     <div className="grid grid-cols-3 gap-0 bg-[#0a0a0a] border border-[#1f1f1f] rounded-xl overflow-hidden">
@@ -323,7 +323,7 @@ function TollsCard({
   )
 }
 
-// ---- d4: Financial Intelligence (tarjeta del mes, v1 intacta) ----
+// ---- d4: Financial Intelligence (card del mes, v1 intacta) ----
 function MonthCard({
   clock,
   earnMonth,
