@@ -13,6 +13,7 @@ export type Tab =
   | "REPORTS"
   | "AI"
   | "DATA"
+  | "SOBRES"
   | "HELP"
 
 const ITEMS: { key: Tab; label: string; icon: typeof Home }[] = [
@@ -28,6 +29,7 @@ export const TABS_EN_MAS: { key: Tab; label: string; hint: string; icon: typeof 
   { key: "V1DASH", label: "DASHBOARD", hint: "Tablero por hora estilo v1", icon: Gauge },
   { key: "AI", label: "COPILOTO IA", hint: "Preguntas, gastos y conciliación", icon: Sparkles },
   { key: "DATA", label: "DATOS Y COPIA", hint: "Copia de seguridad, sync y reset", icon: Boxes },
+  { key: "SOBRES", label: "SOBRES", hint: "Aparta dinero por bill antes de que venza", icon: Wallet },
   { key: "HELP", label: "CÓMO FUNCIONA", hint: "Guía, dual register, reconciliación, Bill/Receipt", icon: BookOpen },
 ]
 
