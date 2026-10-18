@@ -54,7 +54,7 @@ export function OpenBillsPanel() {
     setBills((prev) => [bill, ...prev])
     setDesc("")
     setAmount("")
-    setLastMsg(`Cuenta por pagar creada: ${bill.description} ${money(value)}`)
+    setLastMsg(`Account payable creada: ${bill.description} ${money(value)}`)
   }
 
   function recordPayment() {
@@ -67,7 +67,7 @@ export function OpenBillsPanel() {
       billId: payBillId || undefined,
     })
     if (applications.length === 0) {
-      setLastMsg("No hay cuentas por pagar abiertas para descontar este pago.")
+      setLastMsg("No open accounts payable to deduct this payment from.")
       return
     }
     setBills(next)
@@ -77,42 +77,42 @@ export function OpenBillsPanel() {
       (a) => `• ${a.description}: ${money(a.amount)} (queda ${money(a.remainingAfter)})`,
     )
     const extra = leftover > 0.009 ? `\nSobrante no aplicado: ${money(leftover)}` : ""
-    setLastMsg(`Descontado de cuentas por pagar (más vieja → más nueva):\n${lines.join("\n")}${extra}`)
+    setLastMsg(`Deducted from accounts payable (oldest → newest):\n${lines.join("\n")}${extra}`)
   }
 
   function removeBill(id: string) {
-    if (!window.confirm("¿Borrar esta cuenta por pagar y su historial?")) return
+    if (!window.confirm("Delete this account payable and its history?")) return
     setBills((prev) => prev.filter((b) => b.id !== id))
   }
 
   return (
     <section
       className="rounded-2xl border border-violet-500/30 bg-violet-950/10 p-3.5"
-      aria-label="Cuentas por pagar — no es por cobrar ni recibo"
+      aria-label="Accounts payable — not receivable or receipt"
     >
       <div className="mb-2 flex items-start justify-between gap-2">
         <div>
           <p className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide text-violet-300">
             <CircleDollarSign className="size-3.5" />
-            CUENTAS POR PAGAR (AP)
+            ACCOUNTS PAYABLE (AP)
           </p>
           <p className="mt-0.5 text-[10px] leading-snug text-neutral-500">
-            Esto es cuentas por pagar: lo que tú debes. No es recibo ni cuenta por cobrar. Cada pago
+            This is accounts payable: what you owe. Not a receipt or receivable. Each payment
             descuenta de la más vieja hasta $0; el sobrante a la siguiente.
           </p>
         </div>
         <div className="shrink-0 rounded-xl border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-right">
-          <p className="text-[9px] font-bold text-violet-300">POR PAGAR</p>
+          <p className="text-[9px] font-bold text-violet-300">PAYABLE</p>
           <p className="font-mono text-sm font-extrabold text-white">{money(remainingTotal)}</p>
         </div>
       </div>
 
       <div className="mb-3 space-y-2 rounded-xl border border-neutral-800 bg-neutral-950/50 p-2.5">
-        <p className="text-[10px] font-bold uppercase tracking-wide text-neutral-400">Nueva cuenta por pagar</p>
+        <p className="text-[10px] font-bold uppercase tracking-wide text-neutral-400">New account payable</p>
         <input
           value={desc}
           onChange={(e) => setDesc(e.target.value)}
-          placeholder="Ej. Carro, EZPass (lo que debo)"
+          placeholder="E.g. Car, EZPass (what I owe)"
           className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white placeholder:text-neutral-600"
         />
         <div className="grid grid-cols-2 gap-2">
@@ -136,13 +136,13 @@ export function OpenBillsPanel() {
           onClick={addBill}
           className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-violet-400/40 bg-violet-500/15 py-2 text-xs font-bold text-violet-200"
         >
-          <Plus className="size-3.5" /> Añadir cuenta por pagar
+          <Plus className="size-3.5" /> Add account payable
         </button>
       </div>
 
       <div className="mb-3 space-y-2 rounded-xl border border-emerald-500/25 bg-emerald-950/20 p-2.5">
         <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-400">
-          Registrar pago (descuenta de por pagar)
+          Record payment (deducts from payable)
         </p>
         <div className="grid grid-cols-2 gap-2">
           <input
@@ -150,7 +150,7 @@ export function OpenBillsPanel() {
             inputMode="decimal"
             value={payAmount}
             onChange={(e) => setPayAmount(e.target.value)}
-            placeholder="Monto pagado"
+            placeholder="Amount paid"
             className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white"
           />
           <input
@@ -165,7 +165,7 @@ export function OpenBillsPanel() {
           onChange={(e) => setPayBillId(e.target.value)}
           className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-xs text-white"
         >
-          <option value="">Descuenta la más vieja primero</option>
+          <option value="">Oldest first</option>
           {openOnes.map((b) => (
             <option key={b.id} value={b.id}>
               {b.description} · queda {money(b.remainingAmount)}
@@ -183,7 +183,7 @@ export function OpenBillsPanel() {
           onClick={recordPayment}
           className="w-full rounded-xl bg-emerald-500 py-2.5 text-xs font-extrabold text-black"
         >
-          Descontar de por pagar
+          Deduct from payable
         </button>
       </div>
 
@@ -195,7 +195,7 @@ export function OpenBillsPanel() {
 
       <div className="space-y-1.5">
         {openOnes.length === 0 && (
-          <p className="text-[11px] text-neutral-500">Nada por pagar. Todo en $0.</p>
+          <p className="text-[11px] text-neutral-500">Nothing to pay. All at $0.</p>
         )}
         {openOnes.map((b) => (
           <div key={b.id} className="rounded-xl border border-neutral-800 bg-neutral-950/40 px-2.5 py-2">
@@ -218,7 +218,7 @@ export function OpenBillsPanel() {
                 </span>
                 <button
                   type="button"
-                  aria-label="Borrar"
+                  aria-label="Delete"
                   onClick={() => removeBill(b.id)}
                   className="rounded-lg border border-neutral-700 p-1 text-rose-400"
                 >
@@ -245,7 +245,7 @@ export function OpenBillsPanel() {
 
       {paidOnes.length > 0 && (
         <div className="mt-3 space-y-1 border-t border-neutral-800 pt-2">
-          <p className="text-[10px] font-bold uppercase tracking-wide text-neutral-500">Pagadas / cerradas en $0</p>
+          <p className="text-[10px] font-bold uppercase tracking-wide text-neutral-500">Paid / closed at $0</p>
           {paidOnes.map((b) => (
             <div key={b.id} className="flex items-center justify-between gap-2 text-[11px] text-neutral-500">
               <span className="flex min-w-0 items-center gap-1 truncate">
