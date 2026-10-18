@@ -391,13 +391,12 @@ function ProjectionRegister(props: {
 
   const totalDias = fc.days.length
   const negDays = useMemo(() => fc.days.filter((d) => d.balance < 0).length, [fc])
-  // Registro por FECHA | CATEGORIA | MONTO | BAL. PROYECTADO — la descripción
-  // no hace falta aquí: manda la categoría de cada movimiento.
-  const cols = "grid grid-cols-[4.5rem_minmax(0,1fr)_5.5rem_5.25rem] gap-1.5"
+  // Registro por FECHA | DESCRIPCIÓN | MONTO | SALDO ACUM. | BAL. PROYECTADO
+  const cols = "grid grid-cols-[3.75rem_minmax(0,1fr)_4.75rem_5rem_5rem] gap-1"
 
-  function categoriaDe(ln: ForecastLine): string {
-    const cat = String((ln.entry && ln.entry.category) || ln.label || "—")
-    return cat.split(" · ")[0].slice(0, 24)
+  function descripcionDe(ln: ForecastLine): string {
+    const d = String((ln.entry && (ln.entry.description || (ln.entry as any).detail)) || ln.label || "—")
+    return d.slice(0, 28)
   }
 
   // AI FOLLOW · PAGAR A TIEMPO: facturas por pagar del horizonte + veredicto
@@ -439,7 +438,7 @@ function ProjectionRegister(props: {
                   <span className="w-14 shrink-0 font-mono text-[10px] font-semibold text-neutral-400">
                     {vencida ? "VENCIDA" : fechaCorta(String(ln.date).slice(0, 10))}
                   </span>
-                  <span className="min-w-0 truncate text-[11px] font-semibold text-neutral-100">{categoriaDe(ln)}</span>
+                  <span className="min-w-0 truncate text-[11px] font-semibold text-neutral-100">{descripcionDe(ln)}</span>
                 </span>
                 <span className="flex shrink-0 items-center gap-2">
                   <span className="font-mono text-[11px] font-bold text-rose-300">{signed(-Math.abs(ln.amount))}</span>
@@ -523,8 +522,9 @@ function ProjectionRegister(props: {
 
       <div className={cn(cols, "border-b border-neutral-800 pb-1 text-[9px] font-black uppercase tracking-wide")}>
         <span className="text-neutral-400">Fecha</span>
-        <span className="text-neutral-400">Categoría</span>
+        <span className="text-neutral-400">Descripción</span>
         <span className="text-right text-neutral-400">Monto</span>
+        <span className="text-right text-neutral-400">Saldo acum.</span>
         <span className="text-right text-cyan-300">Bal. proyectado</span>
       </div>
 
@@ -556,7 +556,7 @@ function ProjectionRegister(props: {
                     ln ? (rojo ? "text-rose-200" : "text-neutral-100") : "text-neutral-600",
                   )}
                 >
-                  {ln ? categoriaDe(ln) : "sin movimiento"}
+                  {ln ? descripcionDe(ln) : "sin movimiento"}
                 </span>
                 {ln && <KindBadge line={ln} />}
               </span>
@@ -576,6 +576,14 @@ function ProjectionRegister(props: {
               ) : (
                 <span className="text-right text-neutral-700">—</span>
               )}
+              <span
+                className={cn(
+                  "text-right font-mono text-[12px] font-bold tabular-nums",
+                  r.balAcum < 0 ? "text-rose-400" : "text-neutral-200",
+                )}
+              >
+                {money(r.balAcum)}
+              </span>
               <span
                 className={cn(
                   "text-right font-mono text-[12px] font-bold tabular-nums",
