@@ -268,7 +268,7 @@ export function RegistersHome(props: {
             onClick: () => setVista(0),
           },
           {
-            label: "PROYECTADO",
+            label: "PROYECTADO MES",
             value: money(proyectadoMes.end),
             tone: proyectadoMes.end < 0 ? "neg" : "plain",
             active: vista === 1,
