@@ -548,7 +548,7 @@ export function CashFlowRegister({
           >
             <span className="inline-flex items-center gap-1">
               <RefreshCw className={cn("size-2.5", bankLoading && "animate-spin")} />
-              {bankLoading ? "SYNCING" : bankError ? "RETRY" : "SYNC"}
+              {bankLoading ? "SINCRONIZANDO" : bankError ? "REINTENTAR" : "SYNC"}
             </span>
           </button>
         </div>
