@@ -65,10 +65,10 @@ export function PendingDeposits() {
 
   return (
     <div>
-      <MoneySectionTitle>POR DEPOSITAR</MoneySectionTitle>
+      <MoneySectionTitle>PENDING DEPOSITS</MoneySectionTitle>
       <div className="rounded-[14px] border border-[#262633] bg-[#111119] p-3">
         <p className="mb-2 text-[10px] leading-snug text-[#9a9cb0]">
-          Lo que las plataformas aguantan hasta que lo transfieres. No entra al proyectado — es
+          What the platforms hold until you transfer it. Not in the projection — for reference
           referencia. Manual: no se importa solo.
         </p>
         <div className="space-y-1.5">
@@ -88,7 +88,7 @@ export function PendingDeposits() {
                     value={bal[key] === 0 ? "" : String(bal[key])}
                     onChange={(e) => set(key, Number(e.target.value))}
                     placeholder="0.00"
-                    aria-label={`Balance pendiente en ${label}`}
+                    aria-label={`Pending balance in ${label}`}
                     className="w-24 rounded-lg border border-[#262633] bg-[#0a0a0f] px-2 py-1 text-right font-mono text-[13px] font-bold text-[#f2f3f7] placeholder:text-[#4a4c5e]"
                   />
                 </span>
@@ -100,7 +100,7 @@ export function PendingDeposits() {
         </div>
         <div className="mt-2.5 flex items-center justify-between border-t border-[#262633] pt-2">
           <span className="text-[10px] font-bold uppercase tracking-wide text-[#9a9cb0]">
-            Total en camino
+            Total incoming
           </span>
           <span className="font-mono text-[15px] font-extrabold text-[#2fbf71]">{money(total)}</span>
         </div>
