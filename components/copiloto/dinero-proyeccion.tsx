@@ -7,11 +7,15 @@
 import { useEffect, useMemo, useState } from "react"
 import { AlertTriangle, Check, CreditCard, Pencil, Receipt, Repeat, TrendingUp, X } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { money, type CashFlowEntry, type ScheduledEntry } from "./types"
+import { money, EXPENSE_CATEGORIES, type CashFlowEntry, type ScheduledEntry } from "./types"
+import { INCOME_CATEGORY } from "./auto-categorize"
 import { accountDisplayName, type DueItem, type RegisterAccount } from "./registers-store"
 import {
   FREQ_LABEL,
+  SCHEDULE_OVERRIDES_KEY,
+  addDaysIso,
   buildForecast,
+  daysInMonth,
   daysToEndOfMonth,
   r2,
   startingBalance,
@@ -19,6 +23,7 @@ import {
   type ForecastBankTx,
   type ForecastLine,
   type Forecast,
+  type ScheduleOverride,
 } from "./dinero-forecast"
 import { FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT, FORECAST_DISMISSED_KEY } from "./finance-sync"
 
@@ -99,14 +104,17 @@ function KindBadge({ line }: { line: ForecastLine }) {
  */
 export function useForecastInputs(): {
   schedules: ScheduledEntry[]
+  overrides: ScheduleOverride[]
   dismissed: string[]
   setDismissed: (next: string[]) => void
 } {
   const [schedules, setSchedules] = useState<ScheduledEntry[]>([])
+  const [overrides, setOverrides] = useState<ScheduleOverride[]>([])
   const [dismissed, setDismissedState] = useState<string[]>([])
   useEffect(() => {
     const load = () => {
       setSchedules(readList<ScheduledEntry>(FINANCE_SCHEDULES_KEY))
+      setOverrides(readList<ScheduleOverride>(SCHEDULE_OVERRIDES_KEY))
       setDismissedState(readList<string>(FORECAST_DISMISSED_KEY).filter((x) => typeof x === "string"))
     }
     load()
@@ -123,7 +131,332 @@ export function useForecastInputs(): {
       localStorage.setItem(FORECAST_DISMISSED_KEY, JSON.stringify(next))
     } catch {}
   }
-  return { schedules, dismissed, setDismissed }
+  return { schedules, overrides, dismissed, setDismissed }
+}
+
+// ---------------------------------------------------------------------------
+// Recurrentes: alta / edición con alcance (Quicken/YNA B: el futuro en gris,
+// nunca toca el balance real).
+// ---------------------------------------------------------------------------
+
+type ScopeKind = "once" | "future" | "all"
+
+type RecVals = {
+  kind: "income" | "expense"
+  description: string
+  amount: number
+  category: string
+  frequency: "weekly" | "biweekly" | "monthly"
+  weekday: number // 0=dom..6=sáb
+  monthDay: string // 1..31
+  start: string // yyyy-mm-dd
+  end: string // "" = sin fin
+}
+
+function saveSchedules(next: ScheduledEntry[]) {
+  try {
+    localStorage.setItem(FINANCE_SCHEDULES_KEY, JSON.stringify(next))
+  } catch {}
+  try {
+    window.dispatchEvent(new Event(FINANCE_SYNCED_EVENT))
+  } catch {}
+}
+
+function saveOverrides(next: ScheduleOverride[]) {
+  try {
+    localStorage.setItem(SCHEDULE_OVERRIDES_KEY, JSON.stringify(next))
+  } catch {}
+  try {
+    window.dispatchEvent(new Event(FINANCE_SYNCED_EVENT))
+  } catch {}
+}
+
+function newScheduleId(): string {
+  return `sch:${Date.now().toString(36)}${Math.floor(Math.random() * 46656).toString(36)}`
+}
+
+const pad2 = (n: number) => String(n).padStart(2, "0")
+
+/** Próxima fecha con ese día de semana (0=dom..6=sáb), >= desde. */
+function nextWeekday(from: string, weekday: number): string {
+  const m = String(from).match(/^(\d{4})-(\d{2})-(\d{2})/)
+  const dt = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), 12) : new Date()
+  const diff = (weekday - dt.getDay() + 7) % 7
+  dt.setDate(dt.getDate() + diff)
+  return `${dt.getFullYear()}-${pad2(dt.getMonth() + 1)}-${pad2(dt.getDate())}`
+}
+
+/** Próximo día N del mes >= desde (respeta meses cortos). */
+function nextMonthDay(from: string, day: number): string {
+  const m = String(from).match(/^(\d{4})-(\d{2})-(\d{2})/)
+  let y = m ? Number(m[1]) : new Date().getFullYear()
+  let mo = m ? Number(m[2]) : new Date().getMonth() + 1
+  const d = m ? Number(m[3]) : new Date().getDate()
+  const dd = Math.min(Math.max(1, day), 31)
+  if (d <= Math.min(dd, daysInMonth(y, mo))) return `${y}-${pad2(mo)}-${pad2(Math.min(dd, daysInMonth(y, mo)))}`
+  mo += 1
+  if (mo > 12) {
+    mo = 1
+    y += 1
+  }
+  return `${y}-${pad2(mo)}-${pad2(Math.min(dd, daysInMonth(y, mo)))}`
+}
+
+/** Hoja de alta/edición de un recurrente, con pregunta de alcance al guardar. */
+function RecurrenteSheet(props: {
+  schedule: ScheduledEntry | null
+  date: string | null
+  onClose: () => void
+  onCreate: (v: RecVals) => void
+  onSave: (s: ScheduledEntry, date: string, v: RecVals, scope: ScopeKind) => void
+  onDelete: (s: ScheduledEntry, date: string, scope: ScopeKind) => void
+}) {
+  const s = props.schedule
+  const startM = s?.startDate ? String(s.startDate).match(/^(\d{4})-(\d{2})-(\d{2})/) : null
+  const [phase, setPhase] = useState<"form" | "scope-save" | "scope-del">("form")
+  const [kind, setKind] = useState<"income" | "expense">(s?.kind ?? "expense")
+  const [nombre, setNombre] = useState(s?.description ?? "")
+  const [monto, setMonto] = useState(s ? String(Math.abs(Number(s.amount) || 0)) : "")
+  const [categoria, setCategoria] = useState(s?.category ?? "Other / Varios")
+  const [freq, setFreq] = useState<"weekly" | "biweekly" | "monthly">(
+    s?.frequency === "biweekly" ? "biweekly" : s?.frequency === "monthly" ? "monthly" : "weekly",
+  )
+  const [weekday, setWeekday] = useState(
+    startM ? new Date(Number(startM[1]), Number(startM[2]) - 1, Number(startM[3]), 12).getDay() : 4,
+  )
+  const [monthDay, setMonthDay] = useState(startM && s?.frequency === "monthly" ? String(Number(startM[3])) : "")
+  const [desde, setDesde] = useState(s ? String(s.startDate).slice(0, 10) : todayKey())
+  const [hasta, setHasta] = useState(s?.endDate ? String(s.endDate).slice(0, 10) : "")
+
+  const cats = kind === "income" ? [INCOME_CATEGORY] : [...EXPENSE_CATEGORIES]
+  const valido = nombre.trim().length > 0 && Number(monto) > 0
+
+  function vals(): RecVals {
+    return {
+      kind,
+      description: nombre.trim(),
+      amount: r2(Math.abs(Number(monto) || 0)),
+      category: categoria,
+      frequency: freq,
+      weekday,
+      monthDay: monthDay.trim(),
+      start: desde,
+      end: hasta,
+    }
+  }
+
+  const chip = (active: boolean) =>
+    cn(
+      "rounded-full border px-2.5 py-1 text-[11px] font-bold",
+      active ? "border-amber-400/70 bg-amber-400/10 text-amber-300" : "border-neutral-700 text-neutral-400",
+    )
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70" onClick={props.onClose}>
+      <div
+        className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-3xl border-t border-neutral-700 bg-neutral-950 p-4 pb-8"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {phase === "form" ? (
+          <>
+            <p className="mb-3 text-[10px] font-bold tracking-wide text-neutral-500">
+              {s ? "EDITAR RECURRENTE" : "NUEVO RECURRENTE"}
+            </p>
+
+            <div className="mb-3 flex gap-2">
+              {(
+                [
+                  { id: "expense", label: "GASTO" },
+                  { id: "income", label: "INGRESO" },
+                ] as const
+              ).map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  onClick={() => {
+                    setKind(o.id)
+                    setCategoria(o.id === "income" ? INCOME_CATEGORY : "Other / Varios")
+                  }}
+                  className={cn(
+                    "flex-1 rounded-2xl border py-2.5 text-xs font-extrabold",
+                    kind === o.id
+                      ? o.id === "income"
+                        ? "border-emerald-400/70 bg-emerald-400/10 text-emerald-300"
+                        : "border-rose-400/70 bg-rose-400/10 text-rose-300"
+                      : "border-neutral-700 text-neutral-500",
+                  )}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+
+            <p className="mb-1 text-[10px] font-bold text-neutral-500">NOMBRE</p>
+            <input
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+              placeholder="Ej: CD Aventure LLC"
+              className="mb-3 w-full rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2.5 text-sm text-white placeholder:text-neutral-600"
+            />
+
+            <p className="mb-1 text-[10px] font-bold text-neutral-500">MONTO</p>
+            <input
+              value={monto}
+              onChange={(e) => setMonto(e.target.value)}
+              type="number"
+              step="0.01"
+              inputMode="decimal"
+              placeholder="0.00"
+              className="mb-3 w-full rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2.5 font-mono text-sm text-white placeholder:text-neutral-600"
+            />
+
+            <p className="mb-1.5 text-[10px] font-bold text-neutral-500">CATEGORÍA</p>
+            <div className="mb-3 flex flex-wrap gap-1.5">
+              {cats.map((c) => (
+                <button key={c} type="button" onClick={() => setCategoria(c)} className={chip(categoria === c)}>
+                  {c}
+                </button>
+              ))}
+            </div>
+
+            <p className="mb-1.5 text-[10px] font-bold text-neutral-500">FRECUENCIA</p>
+            <div className="mb-3 flex gap-1.5">
+              {(
+                [
+                  { id: "weekly", label: "Semanal" },
+                  { id: "biweekly", label: "Quincenal" },
+                  { id: "monthly", label: "Mensual" },
+                ] as const
+              ).map((o) => (
+                <button key={o.id} type="button" onClick={() => setFreq(o.id)} className={cn(chip(freq === o.id), "flex-1")}>
+                  {o.label}
+                </button>
+              ))}
+            </div>
+
+            {freq === "monthly" ? (
+              <>
+                <p className="mb-1 text-[10px] font-bold text-neutral-500">DÍA DEL MES</p>
+                <input
+                  value={monthDay}
+                  onChange={(e) => setMonthDay(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))}
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="Ej: 19"
+                  className="mb-3 w-full rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2.5 font-mono text-sm text-white placeholder:text-neutral-600"
+                />
+              </>
+            ) : (
+              <>
+                <p className="mb-1.5 text-[10px] font-bold text-neutral-500">DÍA DE LA SEMANA</p>
+                <div className="mb-3 flex gap-1.5">
+                  {[1, 2, 3, 4, 5, 6, 0].map((d) => (
+                    <button
+                      key={d}
+                      type="button"
+                      onClick={() => setWeekday(d)}
+                      className={cn(chip(weekday === d), "flex-1 px-0")}
+                    >
+                      {DIAS[d]}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            <div className="mb-4 flex gap-2">
+              <div className="flex-1">
+                <p className="mb-1 text-[10px] font-bold text-neutral-500">DESDE</p>
+                <input
+                  value={desde}
+                  onChange={(e) => setDesde(e.target.value)}
+                  type="date"
+                  className="w-full rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2.5 text-sm text-white"
+                />
+              </div>
+              <div className="flex-1">
+                <p className="mb-1 text-[10px] font-bold text-neutral-500">HASTA (OPCIONAL)</p>
+                <input
+                  value={hasta}
+                  onChange={(e) => setHasta(e.target.value)}
+                  type="date"
+                  className="w-full rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2.5 text-sm text-white"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              {s && (
+                <button
+                  type="button"
+                  onClick={() => setPhase("scope-del")}
+                  className="rounded-2xl border border-rose-500/50 px-4 py-3 text-sm font-extrabold text-rose-300"
+                >
+                  Borrar
+                </button>
+              )}
+              <button
+                type="button"
+                disabled={!valido}
+                onClick={() => {
+                  if (!s) {
+                    props.onCreate(vals())
+                    props.onClose()
+                  } else {
+                    setPhase("scope-save")
+                  }
+                }}
+                className={cn(
+                  "flex flex-1 items-center justify-center gap-2 rounded-2xl py-3 text-sm font-extrabold",
+                  valido ? "bg-amber-400 text-black" : "bg-neutral-800 text-neutral-600",
+                )}
+              >
+                <Check className="size-4" /> Guardar
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p className="mb-1 text-[10px] font-bold tracking-wide text-neutral-500">
+              {phase === "scope-save" ? "GUARDAR CAMBIO" : "BORRAR RECURRENTE"}
+            </p>
+            <p className="mb-3 truncate text-sm font-bold text-white">{nombre.trim() || s?.description}</p>
+            <p className="mb-3 text-xs text-neutral-400">¿Alcance?</p>
+            <div className="mb-2 flex flex-col gap-2">
+              {(
+                [
+                  { id: "once", label: "Solo esta vez" },
+                  { id: "future", label: "Esta y las futuras" },
+                  { id: "all", label: "Todas" },
+                ] as const
+              ).map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  onClick={() => {
+                    if (!s || !props.date) return
+                    if (phase === "scope-save") props.onSave(s, props.date, vals(), o.id)
+                    else props.onDelete(s, props.date, o.id)
+                    props.onClose()
+                  }}
+                  className="rounded-2xl border border-neutral-700 py-3 text-sm font-extrabold text-neutral-200 active:bg-neutral-800"
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setPhase("form")}
+              className="w-full py-2 text-center text-xs font-bold text-neutral-500"
+            >
+              Atrás
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  )
 }
 
 export function DineroProyeccion(props: {
@@ -148,7 +481,138 @@ export function DineroProyeccion(props: {
   const [horizon] = useState<Horizon>(90)
   const [verDias, setVerDias] = useState(false)
   // Recurrentes y descartes: se releen al montar y cuando el sync trae cambios.
-  const { schedules, dismissed, setDismissed } = useForecastInputs()
+  const { schedules, overrides, dismissed, setDismissed } = useForecastInputs()
+  const [sheet, setSheet] = useState<
+    { mode: "create" } | { mode: "edit"; schedule: ScheduledEntry; date: string } | null
+  >(null)
+
+  // Fijos de Miguel: se crean solos una vez (si no existen ya).
+  useEffect(() => {
+    try {
+      const cur = readList<ScheduledEntry>(FINANCE_SCHEDULES_KEY)
+      const norm = (s: string) => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "")
+      const next = [...cur]
+      let changed = false
+      if (!next.some((s) => norm(s.description).includes("cdaventure"))) {
+        const d0 = nextWeekday(todayKey(), 4) // jueves
+        next.push({
+          id: newScheduleId(),
+          kind: "expense",
+          description: "CD Aventure LLC",
+          category: "Car leasing",
+          amount: 924,
+          startDate: d0,
+          frequency: "weekly",
+          nextDate: d0,
+          active: true,
+        })
+        changed = true
+      }
+      if (!next.some((s) => norm(s.description).includes("frantzpierre"))) {
+        const d0 = nextMonthDay(todayKey(), 19)
+        next.push({
+          id: newScheduleId(),
+          kind: "expense",
+          description: "Frantz Pierre",
+          category: "Rent / Renta",
+          amount: 1500,
+          startDate: d0,
+          frequency: "monthly",
+          nextDate: d0,
+          active: true,
+        })
+        changed = true
+      }
+      if (changed) saveSchedules(next)
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function handleCreate(v: RecVals) {
+    const base = /^\d{4}-\d{2}-\d{2}/.test(v.start) ? v.start.slice(0, 10) : todayKey()
+    const start =
+      v.frequency === "monthly" ? nextMonthDay(base, Number(v.monthDay) || 1) : nextWeekday(base, v.weekday)
+    const sched: ScheduledEntry = {
+      id: newScheduleId(),
+      kind: v.kind,
+      description: v.description,
+      category: v.category,
+      amount: v.amount,
+      startDate: start,
+      endDate: /^\d{4}-\d{2}-\d{2}/.test(v.end) ? v.end.slice(0, 10) : undefined,
+      frequency: v.frequency,
+      nextDate: start,
+      active: true,
+    }
+    saveSchedules([...readList<ScheduledEntry>(FINANCE_SCHEDULES_KEY), sched])
+  }
+
+  function handleSave(s: ScheduledEntry, date: string, v: RecVals, scope: ScopeKind) {
+    const cur = readList<ScheduledEntry>(FINANCE_SCHEDULES_KEY)
+    if (scope === "all") {
+      saveSchedules(
+        cur.map((x) =>
+          x.id === s.id
+            ? {
+                ...x,
+                kind: v.kind,
+                description: v.description,
+                category: v.category,
+                amount: v.amount,
+                frequency: v.frequency,
+                endDate: /^\d{4}-\d{2}-\d{2}/.test(v.end) ? v.end.slice(0, 10) : undefined,
+              }
+            : x,
+        ),
+      )
+      return
+    }
+    if (scope === "future") {
+      const nid = newScheduleId()
+      const origEnd = /^\d{4}-\d{2}-\d{2}/.test(String(s.endDate || "")) ? String(s.endDate).slice(0, 10) : undefined
+      const next: ScheduledEntry[] = cur.map((x) =>
+        x.id === s.id ? { ...x, endDate: addDaysIso(date, -1) } : x,
+      )
+      next.push({
+        ...s,
+        id: nid,
+        kind: v.kind,
+        description: v.description,
+        category: v.category,
+        amount: v.amount,
+        frequency: v.frequency,
+        startDate: date,
+        nextDate: date,
+        endDate: origEnd,
+        active: true,
+      })
+      saveSchedules(next)
+      return
+    }
+    // Solo esta vez: excepción puntual.
+    const ovs = readList<ScheduleOverride>(SCHEDULE_OVERRIDES_KEY).filter(
+      (o) => !(o.scheduleId === s.id && o.date === date),
+    )
+    ovs.push({ scheduleId: s.id, date, amount: v.amount, label: v.description })
+    saveOverrides(ovs)
+  }
+
+  function handleDelete(s: ScheduledEntry, date: string, scope: ScopeKind) {
+    const cur = readList<ScheduledEntry>(FINANCE_SCHEDULES_KEY)
+    if (scope === "all") {
+      saveSchedules(cur.filter((x) => x.id !== s.id))
+      return
+    }
+    if (scope === "future") {
+      saveSchedules(cur.map((x) => (x.id === s.id ? { ...x, endDate: addDaysIso(date, -1) } : x)))
+      return
+    }
+    const ovs = readList<ScheduleOverride>(SCHEDULE_OVERRIDES_KEY).filter(
+      (o) => !(o.scheduleId === s.id && o.date === date),
+    )
+    ovs.push({ scheduleId: s.id, date, skip: true })
+    saveOverrides(ovs)
+  }
 
   const today = todayKey()
   const horizonDays = horizon === "mes" ? daysToEndOfMonth(today) : horizon
@@ -171,8 +635,9 @@ export function DineroProyeccion(props: {
         today,
         horizonDays,
         dismissedPaid: dismissed,
+        overrides,
       }),
-    [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, horizonDays, dismissed],
+    [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, horizonDays, dismissed, overrides],
   )
 
   const descartar = (key: string) => {
@@ -323,7 +788,21 @@ export function DineroProyeccion(props: {
         onAddEntry={props.onAddEntry}
         verDias={verDias}
         setVerDias={setVerDias}
+        schedules={schedules}
+        onNewRecurrente={() => setSheet({ mode: "create" })}
+        onOpenRecurrente={(schedule, date) => setSheet({ mode: "edit", schedule, date })}
       />
+
+      {sheet && (
+        <RecurrenteSheet
+          schedule={sheet.mode === "edit" ? sheet.schedule : null}
+          date={sheet.mode === "edit" ? sheet.date : null}
+          onClose={() => setSheet(null)}
+          onCreate={handleCreate}
+          onSave={handleSave}
+          onDelete={handleDelete}
+        />
+      )}
     </>
   )
 }
@@ -371,6 +850,9 @@ function ProjectionRegister(props: {
   onAddEntry?: (dateIso: string) => void
   verDias: boolean
   setVerDias: (v: boolean) => void
+  schedules: ScheduledEntry[]
+  onOpenRecurrente: (schedule: ScheduledEntry, date: string) => void
+  onNewRecurrente: () => void
 }) {
   const { fc, today, verDias } = props
 
@@ -437,13 +919,22 @@ function ProjectionRegister(props: {
         <p className="text-[11px] font-bold uppercase tracking-wide text-neutral-400">
           Registro proyectado · {totalDias} días
         </p>
-        <button
-          type="button"
-          onClick={() => props.setVerDias(true)}
-          className="rounded-md border border-neutral-700 px-2 py-0.5 text-[10px] font-bold text-neutral-300"
-        >
-          Lista
-        </button>
+        <div className="flex gap-1.5">
+          <button
+            type="button"
+            onClick={() => props.onNewRecurrente()}
+            className="rounded-md border border-amber-400/50 px-2 py-0.5 text-[10px] font-bold text-amber-300"
+          >
+            + Recurrente
+          </button>
+          <button
+            type="button"
+            onClick={() => props.setVerDias(true)}
+            className="rounded-md border border-neutral-700 px-2 py-0.5 text-[10px] font-bold text-neutral-300"
+          >
+            Lista
+          </button>
+        </div>
       </div>
 
 
@@ -465,6 +956,10 @@ function ProjectionRegister(props: {
           const editable = !!ln?.entry && !!props.onEditEntry && !!props.onPatchEntry
           const rojo = r.balProy < 0
           const primeroDelDia = i === 0 || rows[i - 1].line?.date !== fecha
+          const recSched =
+            ln && ln.kind === "rec" && ln.scheduleId
+              ? props.schedules.find((x) => x.id === ln.scheduleId) ?? null
+              : null
 
           const cells = (
             <>
@@ -480,7 +975,7 @@ function ProjectionRegister(props: {
                 <span
                   className={cn(
                     "truncate text-[12px] font-semibold",
-                    ln ? (rojo ? "text-rose-200" : "text-neutral-100") : "text-neutral-600",
+                    ln ? (rojo ? "text-rose-200" : ln.kind === "rec" ? "text-neutral-400" : "text-neutral-100") : "text-neutral-600",
                   )}
                 >
                   {ln ? descripcionDe(ln) : "sin movimiento"}
@@ -522,7 +1017,7 @@ function ProjectionRegister(props: {
             </>
           )
 
-          // Día con asiento → clic abre el editor completo. Día vacío → alta con esa fecha.
+          // Día con asiento → clic abre el editor completo. Recurrente → editor con alcance. Día vacío → alta con esa fecha.
           if (ln) {
             return (
               <div key={ln.id} className={cn(cols, "items-center border-b border-neutral-900/80 py-1.5", rojo && "bg-rose-500/5")}>
@@ -530,6 +1025,14 @@ function ProjectionRegister(props: {
                   <button
                     type="button"
                     onClick={() => props.onEditEntry?.(ln.entry!)}
+                    className="flex w-full items-center gap-1 text-left active:bg-neutral-900/60"
+                  >
+                    {cells}
+                  </button>
+                ) : recSched ? (
+                  <button
+                    type="button"
+                    onClick={() => props.onOpenRecurrente(recSched, ln.date)}
                     className="flex w-full items-center gap-1 text-left active:bg-neutral-900/60"
                   >
                     {cells}
