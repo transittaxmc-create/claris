@@ -10,7 +10,7 @@ export type PlaceKind = "airport" | "business" | "residence"
 export type LocationPoint = {
   kind: PlaceKind
   icon: string // ✈️ | 🚉 | 🏥 | 🏨 | 🏫 | ⛽ | 🍽️ | 🛒 | 🏢 | 🏠
-  categoryLabel: string // "Aeropuerto" | "Estación" | "Hospital" | "Negocio" | "Residencia" etc.
+  categoryLabel: string // "Airport" | "Station" | "Hospital" | "Business" | "Residence" etc.
   banner: "blue" | "green" // Blue for business/POI, Green for residence
   businessName: string // filled for POIs, empty for residence
   address: string // full formatted address
@@ -31,7 +31,7 @@ export const GPS_ACCURACY_THRESHOLD = 50 // meters
 export class GpsAccuracyError extends Error {
   accuracy: number
   constructor(accuracy: number) {
-    super(`Precisión insuficiente: ±${accuracy}m (se requieren ≤ ${GPS_ACCURACY_THRESHOLD}m)`)
+    super(`Insufficient accuracy: ±${accuracy}m (needs ≤ ${GPS_ACCURACY_THRESHOLD}m)`)
     this.name = "GpsAccuracyError"
     this.accuracy = accuracy
   }
@@ -90,7 +90,7 @@ function classify(data: any): { kind: PlaceKind; icon: string; categoryLabel: st
     /airport|aeropuerto/i.test(name) ||
     /airport|aeropuerto/i.test(display)
   ) {
-    return { kind: "airport", icon: "✈️", categoryLabel: name || "Aeropuerto", banner: "blue", businessName: "" }
+    return { kind: "airport", icon: "✈️", categoryLabel: name || "Airport", banner: "blue", businessName: "" }
   }
 
   // 🚉 Estación — muestra el nombre
@@ -99,7 +99,7 @@ function classify(data: any): { kind: PlaceKind; icon: string; categoryLabel: st
     cls === "public_transport" ||
     /station|subway|metro|terminal/i.test(type + name)
   ) {
-    return { kind: "business", icon: "🚉", categoryLabel: name || "Estación", banner: "blue", businessName: "" }
+    return { kind: "business", icon: "🚉", categoryLabel: name || "Station", banner: "blue", businessName: "" }
   }
 
   // 🏥 Hospital / Clínica — muestra el nombre
@@ -117,22 +117,22 @@ function classify(data: any): { kind: PlaceKind; icon: string; categoryLabel: st
 
   // 🏫 Escuela / Universidad — muestra el nombre
   if (/school|university|college|academy|escuela/i.test(type + name)) {
-    return { kind: "business", icon: "🏫", categoryLabel: name || "Escuela", banner: "blue", businessName: "" }
+    return { kind: "business", icon: "🏫", categoryLabel: name || "School", banner: "blue", businessName: "" }
   }
 
   // ⛽ Gasolinera — muestra el nombre
   if (/fuel|gas_station|petrol/i.test(type + name)) {
-    return { kind: "business", icon: "⛽", categoryLabel: name || "Gasolinera", banner: "blue", businessName: "" }
+    return { kind: "business", icon: "⛽", categoryLabel: name || "Gas station", banner: "blue", businessName: "" }
   }
 
   // 🍽️ Restaurante / Café — muestra el nombre
   if (/restaurant|cafe|fast_food|food_court|diner|pizz/i.test(type + name)) {
-    return { kind: "business", icon: "🍽️", categoryLabel: name || "Restaurante", banner: "blue", businessName: "" }
+    return { kind: "business", icon: "🍽️", categoryLabel: name || "Restaurant", banner: "blue", businessName: "" }
   }
 
   // 🛒 Comercio / Tienda — muestra el nombre
   if (cls === "shop" || /supermarket|mall|store|market|shop/i.test(type + name)) {
-    return { kind: "business", icon: "🛒", categoryLabel: name || "Tienda", banner: "blue", businessName: "" }
+    return { kind: "business", icon: "🛒", categoryLabel: name || "Store", banner: "blue", businessName: "" }
   }
 
   // 🏢 Negocio / Oficina general — muestra el nombre (nunca "Negocio")
@@ -148,13 +148,13 @@ function classify(data: any): { kind: PlaceKind; icon: string; categoryLabel: st
   }
 
   // 🏠 Residencia (default — solo cuando es residencia de verdad)
-  return { kind: "residence", icon: "🏠", categoryLabel: "Residencia", banner: "green", businessName: "" }
+  return { kind: "residence", icon: "🏠", categoryLabel: "Residence", banner: "green", businessName: "" }
 }
 
 function getPosition(): Promise<GeolocationPosition> {
   return new Promise((resolve, reject) => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
-      reject(new Error("Geolocalización no disponible"))
+      reject(new Error("Geolocation unavailable"))
       return
     }
     navigator.geolocation.getCurrentPosition(resolve, reject, {
@@ -168,11 +168,11 @@ function getPosition(): Promise<GeolocationPosition> {
 async function reverseGeocode(lat: number, lng: number): Promise<any> {
   const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&addressdetails=1&namedetails=1`
   const res = await fetch(url, { headers: { Accept: "application/json" } })
-  if (!res.ok) throw new Error("No se pudo resolver la dirección")
+  if (!res.ok) throw new Error("Couldn't resolve the address")
   return res.json()
 }
 
-// Se exporta con nombre de test para poder cubrir todas sus ramas en
+// Se exporta con nombre de test para poder cubrir all sus ramas en
 // scripts/_test-classify.mjs, sin depender de la red ni del navegador.
 export const __testClassify = classify
 
@@ -264,7 +264,7 @@ export function loadHeaderPlace(): HeaderPlace | null {
 function getPositionCached(): Promise<GeolocationPosition> {
   return new Promise((resolve, reject) => {
     if (typeof navigator === "undefined" || !navigator.geolocation) {
-      reject(new Error("Geolocalización no disponible"))
+      reject(new Error("Geolocation unavailable"))
       return
     }
     // maximumAge: reutiliza una fijada hace ≤5 min → más rápido y con menos
