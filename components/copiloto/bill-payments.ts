@@ -38,7 +38,7 @@ export function billPaidTotal(e: Expense): number {
   return r2(billPayments(e).reduce((s, p) => s + (Number(p.amount) || 0), 0))
 }
 
-/** Lo que resta por pagar. */
+/** Lo que resta payable. */
 export function billRemaining(e: Expense): number {
   return r2((Number(e.amount) || 0) - billPaidTotal(e))
 }
@@ -237,7 +237,7 @@ export function offerReceiptBillMatch(
   const bill = findBillForReceipt(expenses, receipt)
   if (!bill) return null
   const ok = window.confirm(
-    `¿Este recibo de ${receipt.vendor} (${money(Math.abs(receipt.amount))}) es pago de la factura "${bill.vendor}"?\n\nRestan ${money(billRemaining(bill))}.`,
+    `This receipt from ${receipt.vendor} (${money(Math.abs(receipt.amount))}) es pago de la factura "${bill.vendor}"?\n\nRestan ${money(billRemaining(bill))}.`,
   )
   if (!ok) return null
   return {
