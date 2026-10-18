@@ -66,7 +66,7 @@ export function AccountSettings(props: {
         aria-expanded={open}
         className="flex w-full items-center justify-between px-3 py-2.5 text-left"
       >
-        <span className="text-[11px] font-extrabold uppercase tracking-[.08em] text-[#9a9cb0]">Ajustes de la cuenta</span>
+        <span className="text-[11px] font-extrabold uppercase tracking-[.08em] text-[#9a9cb0]">Account settings</span>
         <ChevronDown className={cn("size-4 text-[#9a9cb0] transition-transform", open && "rotate-180")} />
       </button>
 
@@ -80,21 +80,21 @@ export function AccountSettings(props: {
 
           {/* ★ Principal */}
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[12px] text-[#f2f3f7]">Cuenta principal</span>
+            <span className="text-[12px] text-[#f2f3f7]">Primary account</span>
             {r.isMain ? (
               <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-[#f5b84c]">
-                <Star className="size-3 fill-[#f5b84c]" /> Es la principal
+                <Star className="size-3 fill-[#f5b84c]" /> It's the primary
               </span>
             ) : (
               <button
                 type="button"
                 onClick={() => {
                   props.onSetMain(r.id)
-                  flash("Ahora es la cuenta principal ★")
+                  flash("Now the primary account ★")
                 }}
                 className="inline-flex items-center gap-1 rounded-lg border border-[#f5b84c]/50 bg-[#f5b84c]/10 px-2.5 py-1 text-[11px] font-bold text-[#f5b84c] active:scale-95"
               >
-                <Star className="size-3" /> Hacer principal
+                <Star className="size-3" /> Make primary
               </button>
             )}
           </div>
@@ -102,7 +102,7 @@ export function AccountSettings(props: {
           {/* Día de pago */}
           <div>
             <label htmlFor={`due-${r.id}`} className="text-[12px] text-[#f2f3f7]">
-              Día de pago {r.kind === "card" ? "(entra en la proyección)" : "(opcional)"}
+              Due day {r.kind === "card" ? "(goes into the projection)" : "(optional)"}
             </label>
             <div className="mt-1 flex gap-2">
               <input
@@ -121,21 +121,21 @@ export function AccountSettings(props: {
                 disabled={!due.ok}
                 onClick={() => {
                   props.onSaveDueDay(r.id, due.value)
-                  flash(due.value ? `Día de pago: ${due.value}` : "Día de pago quitado")
+                  flash(due.value ? `Due day: ${due.value}` : "Due day removed")
                 }}
                 className={saveCls}
               >
-                Guardar
+                Save
               </button>
             </div>
-            {!due.ok && <p className="mt-1 text-[10px] text-rose-300">Escribe un día entre 1 y 31.</p>}
+            {!due.ok && <p className="mt-1 text-[10px] text-rose-300">Enter a day between 1 and 31.</p>}
           </div>
 
           {/* Saldo manual (solo cuentas manuales: Venmo, Square, efectivo…) */}
           {r.source === "manual" && (
             <div>
               <label htmlFor={`bal-${r.id}`} className="text-[12px] text-[#f2f3f7]">
-                {r.kind === "card" ? "Deuda actual" : "Saldo actual"} (manual)
+                {r.kind === "card" ? "Current debt" : "Current balance"} (manual)
               </label>
               <div className="mt-1 flex gap-2">
                 <input
@@ -153,11 +153,11 @@ export function AccountSettings(props: {
                   disabled={!saldoValido}
                   onClick={() => {
                     props.onSaveManualBalance(r.id, Number(manualBal))
-                    flash(`Saldo guardado: ${money(Number(manualBal))}`)
+                    flash(`Balance saved: ${money(Number(manualBal))}`)
                   }}
                   className={saveCls}
                 >
-                  Guardar
+                  Save
                 </button>
               </div>
             </div>
@@ -166,7 +166,7 @@ export function AccountSettings(props: {
           {/* Otros fondos: solo en la principal; suman al balance inicial del proyectado */}
           {r.isMain && props.otherFunds.length > 0 && (
             <div>
-              <p className="text-[12px] text-[#f2f3f7]">Otros fondos (suman al proyectado)</p>
+              <p className="text-[12px] text-[#f2f3f7]">Other funds (add to projected)</p>
               <div className="mt-1 space-y-1">
                 {props.otherFunds.map((o) => (
                   <label
@@ -191,18 +191,18 @@ export function AccountSettings(props: {
             </div>
           )}
 
-          {/* Borrar cuenta manual (las del banco no se borran desde aquí; las fijas tampoco) */}
+          {/* Delete account manual (las del banco no se borran desde aquí; las fijas tampoco) */}
           {r.source === "manual" && !r.pinned && (
             <button
               type="button"
               onClick={() => {
-                if (window.confirm(`¿Borrar la cuenta "${r.name}"? Sus asientos del libro no se borran.`)) {
+                if (window.confirm(`Delete the account "${r.name}"? Its ledger entries are not deleted.`)) {
                   props.onDeleteManual(r.id)
                 }
               }}
               className="inline-flex items-center gap-1 rounded-lg border border-rose-900/50 bg-rose-950/30 px-2.5 py-1.5 text-[11px] font-bold text-rose-300 active:scale-95"
             >
-              <Trash2 className="size-3.5" /> Borrar cuenta
+              <Trash2 className="size-3.5" /> Delete account
             </button>
           )}
         </div>
