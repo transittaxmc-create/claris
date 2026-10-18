@@ -53,6 +53,7 @@ import {
   type StorageInfo,
 } from "./storage"
 import {
+  deleteCloudDoc,
   isValidSyncCode,
   mergeTrips,
   MIN_SYNC_CODE_LENGTH,
@@ -482,7 +483,12 @@ export function CopilotoApp() {
     setTab("REGISTER")
   }
 
-  function resetAll() {
+  async function resetAll() {
+    // RESET TOTAL: primero se borra el documento CIFRADO de la nube (Supabase
+    // sync_docs) con el código de sync activo — así al probar la sync (y el
+    // feed de Plaid) todo arranca con datos frescos, sin historia vieja.
+    const code = loadSyncCode()
+    if (code) await deleteCloudDoc(code)
     clearAllData()
     tripsRef.current = []
     expensesRef.current = []

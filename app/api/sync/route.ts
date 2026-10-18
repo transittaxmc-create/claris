@@ -135,3 +135,39 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "error_del_servidor" }, { status: 502 })
   }
 }
+
+async function deletePayload(config: BackendConfig, key: string): Promise<void> {
+  if (config.kind === "supabase") {
+    const res = await fetch(`${config.url}/rest/v1/sync_docs?key=eq.${key}`, {
+      method: "DELETE",
+      headers: { apikey: config.token, Authorization: `Bearer ${config.token}` },
+      cache: "no-store",
+    })
+    if (!res.ok) throw new Error(`supabase ${res.status}`)
+    return
+  }
+  const res = await fetch(`${config.url}/del/${KEY_PREFIX}${key}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${config.token}` },
+    cache: "no-store",
+  })
+  if (!res.ok) throw new Error(`kv ${res.status}`)
+}
+
+// RESET TOTAL: borra el documento cifrado de la nube por su hash. El usuario
+// lo invoca desde DATA → "Borrar todos los datos" para probar la sync (y el
+// feed de Plaid) con datos frescos. Borrar una key inexistente es un no-op.
+export async function DELETE(request: Request) {
+  const config = storageConfig()
+  if (!config) return notConfigured()
+
+  const key = new URL(request.url).searchParams.get("key")
+  if (!isValidKey(key)) return NextResponse.json({ error: "key_invalida" }, { status: 400 })
+
+  try {
+    await deletePayload(config, key)
+    return NextResponse.json({ ok: true }, { status: 200 })
+  } catch {
+    return NextResponse.json({ error: "error_del_servidor" }, { status: 502 })
+  }
+}

@@ -355,6 +355,22 @@ export async function pushRemote(
   }
 }
 
+/** Borra el documento cifrado de la nube (reset total desde DATA): al volver
+ *  a sincronizar, todo — libro, gastos y feed de Plaid — arranca fresco. */
+export async function deleteCloudDoc(code: string): Promise<{ ok: boolean; status: number; message: string }> {
+  try {
+    const key = await syncKeyId(code)
+    const res = await fetch(`/api/sync?key=${key}`, { method: "DELETE", cache: "no-store" })
+    if (res.status === 501) {
+      return { ok: false, status: 501, message: "El servidor no tiene sync configurado" }
+    }
+    if (!res.ok) return { ok: false, status: res.status, message: await readError(res) }
+    return { ok: true, status: 200, message: "ok" }
+  } catch (err) {
+    return { ok: false, status: 0, message: err instanceof Error ? err.message : "Sin conexión" }
+  }
+}
+
 // Baja -> combina con lo local -> sube el resultado combinado.
 // Devuelve la lista combinada para que la app la use como estado nuevo.
 // Los gastos viajan en el mismo documento cifrado (parámetros opcionales, así
