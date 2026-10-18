@@ -5,7 +5,7 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'Copiloto V7',
   applicationName: 'Copiloto',
-  description: 'Registro de viajes y ganancias',
+  description: 'Trip and earnings log',
   generator: 'v0.app',
   // Permite añadir la app a la pantalla de inicio y abrirla a pantalla completa
   // (sin la barra del navegador): así se ve igual que desde el preview.
