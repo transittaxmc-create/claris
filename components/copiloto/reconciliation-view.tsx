@@ -11,10 +11,10 @@ import type { ReconReport, ReconFinding } from "./reconciliation-check"
 
 const TYPE_LABEL: Record<ReconFinding["type"], string> = {
   diferencia: "Diferencia",
-  "sin-clasificar": "Sin clasificar",
-  "pendiente-banco": "Pendiente en banco",
+  "sin-clasificar": "Unclassified",
+  "pendiente-banco": "Pending at bank",
   duplicado: "Duplicado",
-  "transfer-sin-pareja": "Transfer sin pareja",
+  "transfer-sin-pareja": "Unmatched transfer",
 }
 
 export function ReconciliationSection(props: {
@@ -28,8 +28,8 @@ export function ReconciliationSection(props: {
 }) {
   const { report, loading } = props
   const findings = (report?.accounts || []).flatMap((a) => a.findings)
-  // Diseño MONEY: "CIERRE DEL DÍA · mm-dd" + insignia de pendientes.
-  const hoy = (report?.date || new Date().toISOString().slice(0, 10)).slice(5)
+  // Diseño MONEY: "CIERRE DEL DAY · mm-dd" + insignia de pendientes.
+  const today = (report?.date || new Date().toISOString().slice(0, 10)).slice(5)
   const hora = report?.ranAt
     ? new Date(report.ranAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
     : null
@@ -37,7 +37,7 @@ export function ReconciliationSection(props: {
   return (
     <div className="pt-1">
       <div className="mb-1 flex items-center justify-between gap-2 px-1">
-        <p className="text-[13px] font-extrabold tracking-[.08em] text-[#2fbf71]">CIERRE DEL DÍA · {hoy}</p>
+        <p className="text-[13px] font-extrabold tracking-[.08em] text-[#2fbf71]">DAY CLOSE · {hoy}</p>
         {report && report.ok && (
           <span
             className={cn(
@@ -45,13 +45,13 @@ export function ReconciliationSection(props: {
               findings.length > 0 ? "bg-[#f5b84c] text-[#3a2a00]" : "bg-[#2fbf71] text-[#06281a]",
             )}
           >
-            {findings.length > 0 ? `${findings.length} por revisar` : "TODO CUADRA"}
+            {findings.length > 0 ? `${findings.length} to review` : "ALL MATCHED"}
           </span>
         )}
       </div>
       <div className="mb-2 flex items-center justify-between gap-2 px-1">
         <p className="text-[11px] text-[#66687c]">
-          {hora ? `Verificado a las ${hora}` : "Sin verificar hoy"} · Tú revisas al final del día
+          {hora ? `Verified at ${hora}` : "Not verified today"} · You review at the end of the day
         </p>
         <button
           type="button"
@@ -60,23 +60,23 @@ export function ReconciliationSection(props: {
           className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#262633] bg-[#16161f] px-2.5 py-1.5 text-[10px] font-bold text-[#f2f3f7] active:scale-95 disabled:opacity-50"
         >
           <RefreshCw className={cn("size-3", loading && "animate-spin")} />
-          {loading ? "Verificando…" : "Verificar ahora"}
+          {loading ? "Verificando…" : "Verify now"}
         </button>
       </div>
 
       {!report && !loading && (
         <p className="rounded-[14px] border border-[#262633] bg-[#16161f] p-3 text-[11px] text-[#9a9cb0]">
-          Aún no se verifica hoy. Toca «Verificar ahora».
+          Not verified today yet. Tap "Verify now".
         </p>
       )}
 
       {report && !report.ok && (
         <div className="rounded-2xl border-2 border-rose-500/60 bg-rose-950/40 p-3">
           <p className="flex items-center gap-1.5 text-[12px] font-extrabold text-rose-300">
-            <AlertTriangle className="size-4" /> No se pudo verificar hoy: {report.error || "sin datos del banco"}
+            <AlertTriangle className="size-4" /> Couldn't verify today: {report.error || "no bank data"}
           </p>
           <p className="mt-1 text-[11px] text-rose-200/70">
-            Revisa la conexión del banco (SYNC) e intenta de nuevo. No se marcó nada como cuadrado.
+            Check the bank connection (SYNC) and try again. Nothing was marked as matched.
           </p>
         </div>
       )}
@@ -88,7 +88,7 @@ export function ReconciliationSection(props: {
               <ShieldCheck className="size-3.5 text-emerald-400" />
               {report.summary.cuadradas}/{report.summary.total} cuentas cuadradas
               {report.summary.diferenciaTotal > 0.009 && (
-                <span className="text-rose-300">· {money(report.summary.diferenciaTotal)} en diferencias</span>
+                <span className="text-rose-300">· {money(report.summary.diferenciaTotal)} in differences</span>
               )}
             </span>
             {findings.length > 0 && (
@@ -102,12 +102,12 @@ export function ReconciliationSection(props: {
             )}
           </div>
           <p className="mb-2 px-1 text-[10px] text-[#66687c]">
-            Verificado {report.date} · nada se aplica sin tu aprobación
+            Verified {report.date} · nothing is applied without your approval
           </p>
 
           {findings.length === 0 ? (
             <p className="rounded-[14px] border border-[rgba(47,191,113,.5)] bg-[#16161f] p-3 text-[12px] font-bold text-[#2fbf71]">
-              ✅ Todo cuadra. Sin hallazgos hoy.
+              ✅ Todo cuadra. No findings today.
             </p>
           ) : (
             <div className="space-y-2">
@@ -124,7 +124,7 @@ export function ReconciliationSection(props: {
                       />
                       <span className="truncate">{a.accountName}</span>
                       <span className="shrink-0 text-[9px] font-bold uppercase text-neutral-500">
-                        {a.kind === "manual" ? "manual" : a.kind === "card" ? "tarjeta" : "banco"}
+                        {a.kind === "manual" ? "manual" : a.kind === "card" ? "card" : "bank"}
                       </span>
                     </p>
                     <div className="space-y-1.5">
@@ -168,7 +168,7 @@ export function ReconciliationSection(props: {
                                 onClick={() => props.onEdit(f)}
                                 className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl border border-[#262633] bg-[#16161f] py-2.5 text-[13px] font-semibold text-[#f2f3f7] active:scale-95"
                               >
-                                <Pencil className="size-3.5" /> Corregir
+                                <Pencil className="size-3.5" /> Fix
                               </button>
                             )}
                             <button
@@ -176,7 +176,7 @@ export function ReconciliationSection(props: {
                               onClick={() => props.onReject(f)}
                               aria-label="Rechazar"
                               className="inline-flex items-center justify-center rounded-xl border border-[#262633] bg-[#16161f] px-3 py-2.5 text-[#9a9cb0] active:scale-95"
-                              title="Rechazar (no se propone por 7 días)"
+                              title="Reject (not suggested for 7 days)"
                             >
                               <X className="size-3.5" />
                             </button>
