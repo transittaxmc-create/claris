@@ -45,7 +45,7 @@ function addDays(dateStr: string, n: number): string {
   return `${dt.getFullYear()}-${p(dt.getMonth() + 1)}-${p(dt.getDate())}`
 }
 
-const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+const MESES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 const MESES_LARGO = [
   "enero", "febrero", "marzo", "abril", "mayo", "junio",
   "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
@@ -104,12 +104,12 @@ function VendorCorrectSheet({
         className="max-h-[80vh] w-full max-w-md overflow-y-auto rounded-t-3xl border-t border-neutral-700 bg-neutral-950 p-4 pb-8"
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="mb-1 text-[10px] font-bold tracking-wide text-neutral-500">CORREGIR CATEGORÍA</p>
+        <p className="mb-1 text-[10px] font-bold tracking-wide text-neutral-500">FIX CATEGORY</p>
         <p className="mb-1 truncate text-sm font-bold text-white">{vendor}</p>
         <p className="mb-3 font-mono text-xs text-neutral-400">
-          {weekLabel(week)} · {txs.length} movs · {money(total)}
+          {weekLabel(week)} · {txs.length} txns · {money(total)}
         </p>
-        <p className="mb-1.5 text-[10px] font-bold text-neutral-500">CATEGORÍA</p>
+        <p className="mb-1.5 text-[10px] font-bold text-neutral-500">CATEGORY</p>
         <div className="mb-3 flex flex-wrap gap-1.5">
           {ALL_CATS.map((c) => (
             <button
@@ -127,7 +127,7 @@ function VendorCorrectSheet({
             </button>
           ))}
         </div>
-        <p className="mb-1.5 text-[10px] font-bold text-neutral-500">CLASIFICACIÓN</p>
+        <p className="mb-1.5 text-[10px] font-bold text-neutral-500">CLASSIFICATION</p>
         <div className="mb-4 flex gap-2">
           {(
             [
@@ -160,7 +160,7 @@ function VendorCorrectSheet({
           }}
           className="flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-400 py-3 text-sm font-extrabold text-black"
         >
-          <Check className="size-4" /> Guardar
+          <Check className="size-4" /> Save
         </button>
       </div>
     </div>
@@ -300,14 +300,14 @@ export function BankTxReport() {
         REPORTE SEMANAL
         {!loading && (
           <span className="ml-auto text-[10px] font-normal text-neutral-500">
-            {pendingCount} semana{pendingCount === 1 ? "" : "s"} por revisar
+            {pendingCount} week{pendingCount === 1 ? "" : "s"} to review
           </span>
         )}
       </p>
 
       {loading && <p className="py-4 text-center text-xs text-neutral-500">Trayendo movimientos…</p>}
       {error && !loading && (
-        <p className="py-4 text-center text-xs text-rose-400">No se pudo traer el banco. Revisa la conexión.</p>
+        <p className="py-4 text-center text-xs text-rose-400">Couldn't fetch the bank. Check the connection.</p>
       )}
 
       {!loading && !error && months.length > 0 && (
@@ -363,7 +363,7 @@ export function BankTxReport() {
                   )}
                 >
                   <Check className="size-3" />
-                  {confirming ? "Toca para borrar" : "Verificar"}
+                  {confirming ? "Tap to delete" : "Verify"}
                 </button>
               </div>
               <div className="divide-y divide-neutral-800/60">
@@ -401,7 +401,7 @@ export function BankTxReport() {
 
       {!loading && !error && weeksInMonth.length === 0 && (
         <p className="py-4 text-center text-xs text-neutral-500">
-          {weeks.length === 0 ? "Todo verificado." : "Sin semanas en este mes."}
+          {weeks.length === 0 ? "All verified." : "No weeks this month."}
         </p>
       )}
 
