@@ -694,7 +694,7 @@ export function AIScreen({
             }}
             placeholder="Write here… (Enter sends, Shift+Enter new line)"
             disabled={loading}
-            className="max-h-28 min-h-[52px] flex-1 resize-none rounded-2xl border border-neutral-700 bg-neutral-900 px-3.5 py-3 text-[14px] leading-snug text-white placeholder-neutral-500 outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/40 disabled:opacity-50"
+            className="max-h-28 min-h-[52px] flex-1 resize-none rounded-2xl border border-neutral-700 bg-neutral-900 px-3.5 py-3 text-[16px] leading-snug text-white placeholder-neutral-500 outline-none focus:border-yellow-400 focus:ring-1 focus:ring-yellow-400/40 disabled:opacity-50"
           />
           <button
             type="submit"
