@@ -528,12 +528,12 @@ export function EntryScreen({
             <div className="ml-auto h-px flex-1 bg-neutral-800" />
           </div>
 
-          {/* Row 1: EARNINGS + EXTRA CASH */}
+          {/* Row 1: FARE + EXTRA CASH */}
           <div className="flex gap-2">
             <MoneyInput
               size="sm"
-              label="EARNINGS"
-              color="text-blue-400"
+              label="FARE"
+              color="text-green-400"
               value={draft.earnings}
               onChange={(n) => set("earnings", n)}
             />
@@ -551,7 +551,7 @@ export function EntryScreen({
             <MoneyInput
               size="sm"
               label="TIPS"
-              color="text-yellow-400"
+              color="text-green-400"
               value={draft.tips}
               onChange={(n) => set("tips", n)}
             />
@@ -565,7 +565,7 @@ export function EntryScreen({
             <MoneyInput
               size="sm"
               label="FEE"
-              color="text-rose-400"
+              color="text-red-500"
               value={draft.platformFee}
               onChange={(n) => set("platformFee", n)}
             />
