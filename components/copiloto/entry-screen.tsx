@@ -238,6 +238,7 @@ export function EntryScreen({
       [which]: "",
       [which === "pickup" ? "pickupLoc" : "dropoffLoc"]: undefined,
     }))
+    if (which === "pickup" && !shift.shiftActive) shift.stopGpsWatch()
     if (lowAccuracy?.which === which) {
       setLowAccuracy(null)
     }
@@ -265,8 +266,12 @@ export function EntryScreen({
   // E-ZPass automático: con el viaje activo (pickup capturado), cada fix del
   // GPS se cruza con las plazas 2026. Peaje nuevo → se suma a toll y se anota
   // "[HH:MM] Estación - $X.XX" en notas. No duplica en el mismo viaje.
+  // El GPS continuo arranca con el viaje aunque no se haya presionado START.
   const gpsFix = shift.gps
   const tripActive = draft.pickupLoc != null
+  useEffect(() => {
+    if (tripActive) shift.ensureGpsWatch()
+  }, [tripActive])
   useEffect(() => {
     if (!gpsFix || !tripActive) return
     const now = new Date()
@@ -360,6 +365,8 @@ export function EntryScreen({
 
     setDraft(newTrip())
     tollHit.current.clear()
+    // Si el turno no está corriendo, el GPS era solo para peajes: apagarlo.
+    if (!shift.shiftActive) shift.stopGpsWatch()
   }
 
   const today = new Date()
