@@ -101,6 +101,7 @@ export function RegistersHome(props: {
   onSyncBank?: () => void
   /** Cuentas marcadas como "otros fondos" (suman al balance inicial del proyectado). */
   otherFunds?: string[]
+  onToggleOtherFund?: (id: string) => void
   /** "Probablemente pagado" confirmado: el movimiento pasa a real. */
   onMarkPaid?: (e: CashFlowEntry, paidDate: string) => void
   /** Edición inline en el registro proyectado (monto/fecha/descripción). */
@@ -235,6 +236,14 @@ export function RegistersHome(props: {
       main={r.isMain}
       count={movCount[r.id] ?? 0}
       onClick={() => props.onOpenAccount(r.id)}
+      fundChecked={(props.otherFunds || []).includes(r.id)}
+      onToggleFund={
+        // La principal ★ es la base (sin check); las demás cuentas de banco con
+        // balance positivo pueden sumarse al opening de proyecciones.
+        !r.isMain && r.kind === "bank" && (balances[r.id] ?? 0) > 0 && props.onToggleOtherFund
+          ? () => props.onToggleOtherFund?.(r.id)
+          : undefined
+      }
     />
   )
 
