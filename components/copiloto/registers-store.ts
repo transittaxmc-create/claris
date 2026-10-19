@@ -77,6 +77,7 @@ function saveState(s: StoredState) {
 const SEED_MANUAL: Array<{ id: string; name: string }> = [
   { id: "manual:venmo", name: "Venmo" },
   { id: "manual:square-checking", name: "Square Checking" },
+  { id: "manual:uber-pro-card", name: "Uber Pro Card" },
 ]
 
 function normName(n: string) {
@@ -189,7 +190,12 @@ export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAcc
       manualBalance: null,
     })
   }
+  const snapshotNames = regs.map((r) => normName(r.name))
   for (const m of st.manual) {
+    // No duplicar: si el snapshot ya trae la cuenta (ej. Uber Pro Card por Plaid
+    // como "Uber Pro Card …9298"), la manual seed se omite.
+    const mn = normName(m.name)
+    if (snapshotNames.some((sn) => sn === mn || sn.includes(mn) || mn.includes(sn))) continue
     regs.push({ ...m, dueDay: st.dueDays[m.id] ?? m.dueDay ?? null, isMain: false })
   }
 
