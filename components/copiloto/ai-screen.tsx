@@ -170,44 +170,48 @@ export function AIScreen({
     setMessages((prev) => [...prev, userMsg])
     setLoading(true)
     try {
-      const response = await fetch("/api/ai-chat", {
+      // Usar el endpoint de scan probado (devuelve vendor, amount, date, category).
+      const m = dataUrl.match(/^data:(image\/[a-z]+);base64,(.+)$/)
+      if (!m) throw new Error("bad image")
+      const scanRes = await fetch("/api/scan-receipt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messages: [{ role: "user", content: "Analiza esta foto" }],
-            context: {},
-            image: dataUrl,
-          }),
-        })
-        const data = await response.json()
-        if (response.ok && data.reply) {
-          let appliedNote = ""
-          const schedules = data.structured?.schedules
-          if (Array.isArray(schedules) && schedules.length > 0 && onApplySchedules) {
-            const applied = onApplySchedules(schedules)
-            appliedNote = `\n\n✅ GUARDADO: ${applied} pago${applied === 1 ? "" : "s"} agregado${applied === 1 ? "" : "s"} a Proyecciones.`
-          }
-          const assistantMsg: Message = {
-            id: `a-${Date.now()}`,
-            role: "assistant",
-            content: data.reply + appliedNote,
-            time: new Date().toLocaleTimeString(),
-          }
-          setMessages((prev) => [...prev, assistantMsg])
-        } else {
-          setMessages((prev) => [
-            ...prev,
-            { id: `a-${Date.now()}`, role: "assistant", content: "No pude leer la foto. Intenta de nuevo.", time: new Date().toLocaleTimeString() },
-          ])
-        }
-      } catch {
-        setMessages((prev) => [
-          ...prev,
-          { id: `a-${Date.now()}`, role: "assistant", content: "Error procesando la foto.", time: new Date().toLocaleTimeString() },
-        ])
-      } finally {
-        setLoading(false)
+        body: JSON.stringify({ image: m[2], mimeType: m[1] }),
+      })
+      const scan = await scanRes.json()
+      if (!scanRes.ok || !scan || typeof scan.amount !== "number" || !(scan.amount > 0)) {
+        throw new Error(scan?.error || "no data")
       }
+      const sched = {
+        kind: "expense" as const,
+        description: String(scan.vendor || "Scanned bill"),
+        category: String(scan.category || "Other"),
+        amount: Number(scan.amount),
+        startDate: String(scan.date || new Date().toISOString().slice(0, 10)).slice(0, 10),
+        frequency: "once" as const,
+        nextDate: String(scan.date || new Date().toISOString().slice(0, 10)).slice(0, 10),
+        active: true,
+      }
+      let appliedNote = ""
+      if (onApplySchedules) {
+        onApplySchedules([sched])
+        appliedNote = `\n\n✅ GUARDADO: ${sched.description} $${sched.amount.toFixed(2)} para el ${sched.startDate} en Proyecciones.`
+      }
+      const assistantMsg: Message = {
+        id: `a-${Date.now()}`,
+        role: "assistant",
+        content: `Leí la foto: ${sched.description} — $${sched.amount.toFixed(2)} (${sched.category}), fecha ${sched.startDate}.` + appliedNote,
+        time: new Date().toLocaleTimeString(),
+      }
+      setMessages((prev) => [...prev, assistantMsg])
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { id: `a-${Date.now()}`, role: "assistant", content: "No pude leer la foto. Intenta de nuevo.", time: new Date().toLocaleTimeString() },
+      ])
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleBankFile(e: React.ChangeEvent<HTMLInputElement>) {
