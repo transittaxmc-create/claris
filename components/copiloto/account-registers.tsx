@@ -496,6 +496,9 @@ export function RegisterDetail(props: {
   // Fila expandida (muestra Edit/Delete) y monto en edición inline.
   const [expandedKey, setExpandedKey] = useState<string | null>(null)
   const [editingAmountId, setEditingAmountId] = useState<string | null>(null)
+  // Scroll-to-top: ref del contenedor y estado de si está scrolleado.
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [showTop, setShowTop] = useState(false)
   // AI TRACKING de due dates: próxima factura por pagar y ¿alcanza el balance?
   const proximaFactura = (() => {
     const bills = (props.entries || []).filter(
@@ -713,7 +716,11 @@ export function RegisterDetail(props: {
           <span className="text-right text-neutral-400">Amount</span>
           <span className="text-right text-emerald-400">Balance</span>
         </div>
-        <div className="max-h-[min(58vh,480px)] min-h-[220px] overflow-y-auto overscroll-contain">
+        <div
+          ref={scrollRef}
+          onScroll={(e) => setShowTop((e.target as HTMLDivElement).scrollTop > 200)}
+          className="relative max-h-[min(58vh,480px)] min-h-[220px] overflow-y-auto overscroll-contain"
+        >
           {statementLines.length === 0 && (
             <p className="px-3 py-8 text-center text-[12px] text-neutral-500">No activity</p>
           )}
@@ -849,6 +856,16 @@ export function RegisterDetail(props: {
               </div>
             )
           })}
+          {showTop && (
+            <button
+              type="button"
+              onClick={() => scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" })}
+              title="Scroll to top"
+              className="sticky bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full border border-neutral-700 bg-neutral-900/90 px-3 py-1.5 text-[11px] font-bold text-white shadow-lg active:scale-95"
+            >
+              ↑ Top
+            </button>
+          )}
         </div>
       </div>
     </div>
