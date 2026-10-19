@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils"
 import type { Trip } from "./types"
 import type { TollCharge } from "@/app/api/scan-toll-statement/route"
 import { gpsTollsFromTrips, auditTolls, auditReportText, type AuditStatus } from "./toll-audit"
+import { currentEzpassBill, fridayOfWeek } from "./ezpass-weekly"
+import { loadOpenBills, saveOpenBills, applyPayment } from "./open-bills-store"
 
 const STORE_KEY = "claris_toll_statement_charges_v1"
 
@@ -67,11 +69,30 @@ export function TollAuditScreen({ trips }: { trips: Trip[] }) {
   const [error, setError] = useState<string | null>(null)
   const [okMsg, setOkMsg] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [payAmt, setPayAmt] = useState("")
+  const [billTick, setBillTick] = useState(0)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const gpsTolls = useMemo(() => gpsTollsFromTrips(trips), [trips])
   const audit = useMemo(() => auditTolls(charges, gpsTolls), [charges, gpsTolls])
   const gpsTotal = useMemo(() => gpsTolls.reduce((s, g) => s + (g.amount || 0), 0), [gpsTolls])
+  const weeklyBill = useMemo(() => currentEzpassBill(), [gpsTolls, billTick])
+
+  function payBill(full: boolean) {
+    if (!weeklyBill || weeklyBill.remaining <= 0) return
+    const amount = full ? weeklyBill.remaining : Number(payAmt)
+    if (!Number.isFinite(amount) || amount <= 0) return
+    const today = new Date().toISOString().slice(0, 10)
+    const { bills: next } = applyPayment(loadOpenBills(), {
+      amount: Math.min(amount, weeklyBill.remaining),
+      date: today,
+      note: "E-ZPass weekly",
+      billId: `ezpass-weekly-${weeklyBill.friday}`,
+    })
+    saveOpenBills(next)
+    setPayAmt("")
+    setBillTick((t) => t + 1)
+  }
 
   function persist(next: TollCharge[]) {
     setCharges(next)
@@ -131,6 +152,57 @@ export function TollAuditScreen({ trips }: { trips: Trip[] }) {
       </div>
 
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-8">
+        {/* Weekly E-ZPass bill — due Friday */}
+        {weeklyBill && weeklyBill.total > 0 && (
+          <section className="rounded-2xl border border-yellow-800 bg-yellow-950/30 p-3">
+            <div className="mb-1 flex items-center justify-between">
+              <span className="text-[11px] font-bold tracking-wide text-yellow-300">E-ZPASS · DUE FRIDAY {weeklyBill.friday.slice(5)}</span>
+              <span className={cn(
+                "rounded-full px-2 py-0.5 text-[10px] font-black uppercase",
+                weeklyBill.status === "paid" ? "bg-emerald-900 text-emerald-300" : weeklyBill.status === "partial" ? "bg-yellow-900 text-yellow-300" : "bg-neutral-800 text-neutral-300"
+              )}>
+                {weeklyBill.status}
+              </span>
+            </div>
+            <div className="flex items-end justify-between">
+              <div>
+                <p className="text-[10px] text-neutral-500">Week total</p>
+                <p className="font-mono text-xl font-black text-white">${weeklyBill.total.toFixed(2)}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] text-neutral-500">Remaining</p>
+                <p className="font-mono text-xl font-black text-yellow-300">${weeklyBill.remaining.toFixed(2)}</p>
+              </div>
+            </div>
+            {weeklyBill.remaining > 0 && (
+              <div className="mt-2 flex gap-2">
+                <input
+                  value={payAmt}
+                  onChange={(e) => setPayAmt(e.target.value.replace(/[^0-9.]/g, ""))}
+                  placeholder="Partial $"
+                  inputMode="decimal"
+                  className="w-24 rounded-lg border border-neutral-700 bg-black px-2 py-1.5 font-mono text-sm text-white placeholder:text-neutral-600"
+                />
+                <button
+                  type="button"
+                  onClick={() => payBill(false)}
+                  disabled={!Number(payAmt) || Number(payAmt) <= 0}
+                  className="rounded-lg border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-40"
+                >
+                  Pay partial
+                </button>
+                <button
+                  type="button"
+                  onClick={() => payBill(true)}
+                  className="flex-1 rounded-lg bg-yellow-400 px-3 py-1.5 text-[11px] font-black text-black"
+                >
+                  Pay ${weeklyBill.remaining.toFixed(2)}
+                </button>
+              </div>
+            )}
+          </section>
+        )}
+
         {/* GPS log (automatic) */}
         <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
           <div className="mb-2 flex items-center justify-between">
