@@ -163,33 +163,7 @@ export function AccountSettings(props: {
             </div>
           )}
 
-          {/* Otros fondos: solo en la principal; suman al balance inicial del proyectado */}
-          {r.isMain && props.otherFunds.length > 0 && (
-            <div>
-              <p className="text-[12px] text-[#f2f3f7]">Other funds (add to projected)</p>
-              <div className="mt-1 space-y-1">
-                {props.otherFunds.map((o) => (
-                  <label
-                    key={o.reg.id}
-                    className="flex cursor-pointer items-center justify-between gap-2 rounded-lg border border-[#262633] bg-[#16161f] px-2.5 py-1.5"
-                  >
-                    <span className="flex min-w-0 items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={o.checked}
-                        onChange={() => props.onToggleOtherFund(o.reg.id)}
-                        className="size-4 accent-[#5b8cff]"
-                      />
-                      <span className="truncate text-[12px] text-[#f2f3f7]">{accountDisplayName(o.reg.name).title}</span>
-                    </span>
-                    <span className="shrink-0 font-mono text-[11px] text-[#9a9cb0]">
-                      {o.balance === null ? "—" : money(o.balance)}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Otros fondos: ahora viven como checkmarks en la lista de MONEY (2026-10-19) */}
 
           {/* Delete account manual (las del banco no se borran desde aquí; las fijas tampoco) */}
           {r.source === "manual" && !r.pinned && (
