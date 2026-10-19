@@ -53,7 +53,10 @@ function sameAccount(a: string, b: string): boolean {
 // "uber pro card": los depósitos que llegan de la tarjeta Uber Pro (Miguel,
 // 2026-10-19) — el ingreso real fue el payout en la tarjeta, la llegada NO
 // es un ingreso nuevo.
-const TRANSFER_DETAIL_RE = /transfer|zelle|p2p|wire|money moved|cashout|uber pro card/i
+// "branch*"/"branch miguel": lo mismo para la tarjeta Branch (Aventus paga en
+// la tarjeta Branch; Miguel 2026-10-19). OJO: con asterisco o "miguel" para no
+// confundir con "bank branch" (sucursal bancaria = depósito real en efectivo).
+const TRANSFER_DETAIL_RE = /transfer|zelle|p2p|wire|money moved|cashout|uber pro card|branch\*|branch miguel/i
 
 // Plataformas que PAGAN directo al banco aunque el label diga "transfer credit".
 // Quien paga es la plataforma: SÍ es ingreso real, NO es transferencia.
