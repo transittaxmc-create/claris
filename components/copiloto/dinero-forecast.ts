@@ -120,8 +120,8 @@ export interface Forecast {
 }
 
 export const FREQ_LABEL: Record<ScheduleFrequency, string> = {
-  once: "once",
-  daily: "daily",
+  once: "One time",
+  daily: "Daily",
   weekly: "Weekly",
   biweekly: "Every 2 weeks",
   monthly: "Monthly",
