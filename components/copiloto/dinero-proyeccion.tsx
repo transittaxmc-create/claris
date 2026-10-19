@@ -239,7 +239,9 @@ function RecurrenteSheet(props: {
     startM ? new Date(Number(startM[1]), Number(startM[2]) - 1, Number(startM[3]), 12).getDay() : 4,
   )
   const [monthDay, setMonthDay] = useState(startM && s?.frequency === "monthly" ? String(Number(startM[3])) : "")
-  const [desde, setDesde] = useState(s ? String(s.startDate).slice(0, 10) : todayKey())
+  const [desde, setDesde] = useState(
+    s ? (props.date || String(s.startDate).slice(0, 10)) : todayKey()
+  )
   const [hasta, setHasta] = useState(s?.endDate ? String(s.endDate).slice(0, 10) : "")
 
   const cats = kind === "income" ? [INCOME_CATEGORY] : [...EXPENSE_CATEGORIES]
@@ -644,7 +646,33 @@ export function DineroProyeccion(props: {
       saveSchedules(next)
       return
     }
-    // Just this time: excepción puntual.
+    // Just this time: excepción puntual. Si la fecha del form cambió respecto a
+    // la ocurrencia, es un MOVE: se salta la fecha original y se crea un
+    // one-time en la fecha nueva.
+    const newDate = /^(\d{4})-(\d{2})-(\d{2})/.test(v.start || "") ? v.start.slice(0, 10) : date
+    if (newDate !== date) {
+      const ovs = readList<ScheduleOverride>(SCHEDULE_OVERRIDES_KEY).filter(
+        (o) => !(o.scheduleId === s.id && o.date === date),
+      )
+      ovs.push({ scheduleId: s.id, date, skip: true })
+      saveOverrides(ovs)
+      const nid = newScheduleId()
+      saveSchedules([
+        ...cur,
+        {
+          id: nid,
+          kind: v.kind,
+          description: v.description,
+          category: v.category,
+          amount: v.amount,
+          frequency: "once",
+          startDate: newDate,
+          nextDate: newDate,
+          active: true,
+        },
+      ])
+      return
+    }
     const ovs = readList<ScheduleOverride>(SCHEDULE_OVERRIDES_KEY).filter(
       (o) => !(o.scheduleId === s.id && o.date === date),
     )
