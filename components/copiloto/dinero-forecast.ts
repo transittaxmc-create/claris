@@ -464,8 +464,9 @@ export function buildForecast(input: ForecastInput): Forecast {
       // Excepción "solo esta vez": saltar o cambiar esta ocurrencia.
       const ov = (input.overrides || []).find((o) => o.scheduleId === s.id && o.date === d)
       if (ov?.skip) continue
+      // amount 0 = el día no se trabajó: la ocurrencia queda en $0 (visible).
       const effAmt =
-        ov && Number.isFinite(Number(ov.amount)) && Number(ov.amount) > 0 ? r2(Number(ov.amount)) : amt
+        ov && Number.isFinite(Number(ov.amount)) && Number(ov.amount) >= 0 ? r2(Number(ov.amount)) : amt
       const effLabel = ov?.label && String(ov.label).trim() ? String(ov.label).trim() : label
       // Ya está en el libro (misma factura creada desde Gastos/escáner): no duplicar.
       const dup = ledger.some(
