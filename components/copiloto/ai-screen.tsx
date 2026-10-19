@@ -117,6 +117,8 @@ export function AIScreen({
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [bankCsvName, setBankCsvName] = useState<string | null>(null)
+  // Schedules pendientes de aprobación (regla de gobernanza: no aplicar sin "sí").
+  const [pendingSchedules, setPendingSchedules] = useState<ScheduledEntry[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesScrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -418,6 +420,27 @@ export function AIScreen({
     const content = (textToSend || input).trim()
     if (!content || loading) return
 
+    // Aprobación de pendientes: "sí", "sí apruebo", "dale", "ok" → aplicar sin llamar al API.
+    const esAprobacion = /^(s[ií][\s,.]*|sí[\s,.]*apruebo|dale|ok|aprobado)/i.test(content)
+    if (esAprobacion && pendingSchedules.length > 0 && onApplySchedules) {
+      const now = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
+      const userMsg: Message = { id: `u-${Date.now()}`, role: "user", content, time: now }
+      const applied = onApplySchedules(pendingSchedules)
+      setPendingSchedules([])
+      setMessages((prev) => [
+        ...prev,
+        userMsg,
+        {
+          id: `a-${Date.now()}`,
+          role: "assistant",
+          content: `✅ Aplicado: ${applied} pago${applied === 1 ? "" : "s"} guardado${applied === 1 ? "" : "s"} en Proyecciones. ¿Algo más?`,
+          time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
+        },
+      ])
+      setInput("")
+      return
+    }
+
     const now = new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })
     const userMsg: Message = { id: `u-${Date.now()}`, role: "user", content, time: now }
 
@@ -445,8 +468,13 @@ export function AIScreen({
         }
         const schedules = data.structured?.schedules
         if (Array.isArray(schedules) && schedules.length > 0 && onApplySchedules) {
-          const applied = onApplySchedules(schedules)
-          appliedNote += `\n\n✅ FINANCE: ${applied} schedule${applied === 1 ? "" : "es"} created${applied === 1 ? "" : "s"}.`
+          // Gobernanza: si pide confirmación, guardar como pendiente (no aplicar todavía).
+          if (data.structured?.needsConfirmation) {
+            setPendingSchedules(schedules)
+          } else {
+            const applied = onApplySchedules(schedules)
+            appliedNote += `\n\n✅ FINANCE: ${applied} schedule${applied === 1 ? "" : "es"} created${applied === 1 ? "" : "s"}.`
+          }
         }
         const expenseUpdates = data.structured?.expenseUpdates
         if (Array.isArray(expenseUpdates) && expenseUpdates.length > 0 && onApplyExpenseUpdates) {
