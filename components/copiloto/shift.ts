@@ -367,6 +367,10 @@ export function useShift() {
     onBreak,
     onEnd,
     onRefreshGps: refreshGps,
+    // Para la detección de peajes: el GPS debe correr con viaje activo aunque
+    // no se haya presionado START.
+    ensureGpsWatch: startWatch,
+    stopGpsWatch: stopWatch,
   }
 }
 
