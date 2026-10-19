@@ -1,6 +1,6 @@
 "use client"
 
-import { Home, ClipboardList, Wallet, BarChart3, LayoutGrid, Receipt, Gauge, Sparkles, Boxes, BookOpen } from "lucide-react"
+import { Home, ClipboardList, Wallet, BarChart3, LayoutGrid, Receipt, Gauge, Sparkles, Boxes, BookOpen, Route } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export type Tab =
@@ -14,6 +14,7 @@ export type Tab =
   | "AI"
   | "DATA"
   | "SOBRES"
+  | "TOLLAUDIT"
   | "HELP"
 
 const ITEMS: { key: Tab; label: string; icon: typeof Home }[] = [
@@ -30,6 +31,7 @@ export const TABS_EN_MAS: { key: Tab; label: string; hint: string; icon: typeof 
   { key: "AI", label: "COPILOT AI", hint: "Questions, expenses and reconciliation", icon: Sparkles },
   { key: "DATA", label: "DATA & BACKUP", hint: "Backup, sync and reset", icon: Boxes },
   { key: "SOBRES", label: "ENVELOPES", hint: "Set aside money per bill before it's due", icon: Wallet },
+  { key: "TOLLAUDIT", label: "TOLL AUDIT", hint: "E-ZPass statement vs GPS log — catch duplicates", icon: Route },
   { key: "HELP", label: "HOW IT WORKS", hint: "Guide, dual register, reconciliation, Bill/Receipt", icon: BookOpen },
 ]
 
