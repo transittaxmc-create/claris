@@ -386,17 +386,41 @@ export function RegistersHome(props: {
                       {r.isMain && <Star className="size-3 shrink-0 fill-yellow-400 text-yellow-400" />}
                       <span className="truncate font-semibold text-neutral-200">{brand.short}</span>
                     </span>
-                    <span
-                      className={cn(
-                        "shrink-0 font-mono font-bold tabular-nums",
-                        bal === null || bal === undefined
-                          ? "text-neutral-500"
-                          : bal < 0
-                            ? "text-rose-400"
-                            : "text-emerald-400",
+                    <span className="flex shrink-0 items-center gap-2">
+                      {!r.isMain && r.kind === "bank" && bal !== null && bal !== undefined && bal > 0 && props.onToggleOtherFund && (
+                        <span
+                          role="switch"
+                          aria-checked={(props.otherFunds || []).includes(r.id)}
+                          aria-label={`Include ${brand.short} in projections`}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            props.onToggleOtherFund?.(r.id)
+                          }}
+                          className={cn(
+                            "flex h-5 w-9 items-center rounded-full px-0.5 transition-colors",
+                            (props.otherFunds || []).includes(r.id) ? "bg-[#5b8cff]" : "bg-[#2a2b3a]",
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "size-4 rounded-full bg-white shadow transition-transform",
+                              (props.otherFunds || []).includes(r.id) ? "translate-x-4" : "translate-x-0",
+                            )}
+                          />
+                        </span>
                       )}
-                    >
-                      {bal === null || bal === undefined ? "—" : money(bal)}
+                      <span
+                        className={cn(
+                          "font-mono font-bold tabular-nums",
+                          bal === null || bal === undefined
+                            ? "text-neutral-500"
+                            : bal < 0
+                              ? "text-rose-400"
+                              : "text-emerald-400",
+                        )}
+                      >
+                        {bal === null || bal === undefined ? "—" : money(bal)}
+                      </span>
                     </span>
                   </div>
                 )
