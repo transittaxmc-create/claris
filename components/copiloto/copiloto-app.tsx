@@ -561,7 +561,7 @@ export function CopilotoApp() {
 
   return (
     <div
-      className="flex h-[100dvh] flex-col bg-black text-white"
+      className="flex h-[100dvh] flex-col overflow-x-clip bg-black text-white"
       style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
     >
       {copiaVieja && !avisoCerrado && (
@@ -602,7 +602,7 @@ export function CopilotoApp() {
       )}
 
       <main className="min-h-0 flex-1 overflow-hidden">
-        <div className={tab === "AI" ? "h-full min-h-0 overflow-hidden" : "h-full overflow-y-auto"}>
+        <div className={tab === "AI" ? "h-full min-h-0 overflow-hidden overflow-x-clip" : "h-full overflow-y-auto overflow-x-clip"}>
           {tab === "ENTRY" && <EntryScreen onSave={saveNewFromEntry} trips={trips} shift={shift} />}
           {tab === "REGISTER" && (
             <RegisterScreen
