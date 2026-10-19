@@ -121,6 +121,63 @@ export function AIScreen({
   const messagesScrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const bankFileRef = useRef<HTMLInputElement>(null)
+  const photoFileRef = useRef<HTMLInputElement>(null)
+
+  // Subir foto al asistente: la analiza con Gemini y propone el bill/gasto para guardar.
+  async function handlePhotoFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ""
+    if (!file || loading) return
+    const reader = new FileReader()
+    reader.onload = async () => {
+      const dataUrl = String(reader.result || "")
+      if (!dataUrl.startsWith("data:image/")) return
+      const now = new Date().toLocaleTimeString()
+      const userMsg: Message = { id: `u-${Date.now()}`, role: "user", content: "📷 Foto enviada al asistente", time: now }
+      setMessages((prev) => [...prev, userMsg])
+      setLoading(true)
+      try {
+        const response = await fetch("/api/ai-chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: [{ role: "user", content: "Analiza esta foto" }],
+            context: {},
+            image: dataUrl,
+          }),
+        })
+        const data = await response.json()
+        if (response.ok && data.reply) {
+          let appliedNote = ""
+          const schedules = data.structured?.schedules
+          if (Array.isArray(schedules) && schedules.length > 0 && onApplySchedules) {
+            const applied = onApplySchedules(schedules)
+            appliedNote = `\n\n✅ GUARDADO: ${applied} pago${applied === 1 ? "" : "s"} agregado${applied === 1 ? "" : "s"} a Proyecciones.`
+          }
+          const assistantMsg: Message = {
+            id: `a-${Date.now()}`,
+            role: "assistant",
+            content: data.reply + appliedNote,
+            time: new Date().toLocaleTimeString(),
+          }
+          setMessages((prev) => [...prev, assistantMsg])
+        } else {
+          setMessages((prev) => [
+            ...prev,
+            { id: `a-${Date.now()}`, role: "assistant", content: "No pude leer la foto. Intenta de nuevo.", time: new Date().toLocaleTimeString() },
+          ])
+        }
+      } catch {
+        setMessages((prev) => [
+          ...prev,
+          { id: `a-${Date.now()}`, role: "assistant", content: "Error procesando la foto.", time: new Date().toLocaleTimeString() },
+        ])
+      } finally {
+        setLoading(false)
+      }
+    }
+    reader.readAsDataURL(file)
+  }
 
   async function handleBankFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -509,15 +566,33 @@ export function AIScreen({
           onChange={handleBankFile}
           className="hidden"
         />
-        <button
-          type="button"
-          onClick={() => bankFileRef.current?.click()}
-          disabled={loading}
-          className="mb-2 flex w-full items-center justify-center gap-1.5 rounded-xl border border-sky-500/40 bg-sky-950/40 py-2 text-[11px] font-bold text-sky-300 transition hover:bg-sky-900/40 disabled:opacity-50"
-        >
-          <Scale className="size-3.5" />
-          {bankCsvName ? `Bank: ${bankCsvName}` : "Reconcile bank (CSV)"}
-        </button>
+        <input
+          ref={photoFileRef}
+          type="file"
+          accept="image/*"
+          onChange={handlePhotoFile}
+          className="hidden"
+        />
+        <div className="mb-2 flex gap-2">
+          <button
+            type="button"
+            onClick={() => bankFileRef.current?.click()}
+            disabled={loading}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-sky-500/40 bg-sky-950/40 py-2 text-[11px] font-bold text-sky-300 transition hover:bg-sky-900/40 disabled:opacity-50"
+          >
+            <Scale className="size-3.5" />
+            {bankCsvName ? `Bank: ${bankCsvName}` : "Reconcile bank (CSV)"}
+          </button>
+          <button
+            type="button"
+            onClick={() => photoFileRef.current?.click()}
+            disabled={loading}
+            className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-violet-500/40 bg-violet-950/40 py-2 text-[11px] font-bold text-violet-300 transition hover:bg-violet-900/40 disabled:opacity-50"
+          >
+            <Receipt className="size-3.5" />
+            {loading ? "Reading..." : "Send photo"}
+          </button>
+        </div>
 
         <form
           onSubmit={(e) => {
