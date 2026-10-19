@@ -69,7 +69,7 @@ export function PendingDeposits() {
       <div className="rounded-[14px] border border-[#262633] bg-[#111119] p-3">
         <p className="mb-2 text-[10px] leading-snug text-[#9a9cb0]">
           What the platforms hold until you transfer it. Not in the projection — for reference
-          referencia. Manual: no se importa solo.
+          only. Balances are manual for now.
         </p>
         <div className="space-y-1.5">
           {PLATFORMS.map(({ key, label, platform }) => (
