@@ -237,6 +237,8 @@ export async function captureLocation(): Promise<LocationPoint> {
 export type HeaderPlace = {
   street: string
   city: string
+  /** Barrio/distrito (Nominatim: neighbourhood/suburb/city_district). Ej: "Midtown". */
+  neighborhood: string
   address: string
   icon: string
   accuracy: number
@@ -312,11 +314,19 @@ export async function refreshHeaderPlace(opts?: { fresh?: boolean }): Promise<He
     const road = a.road ?? a.pedestrian ?? a.footway ?? a.neighbourhood ?? ""
     const street = [houseNumber, road].filter(Boolean).join(" ")
     const city = a.city ?? a.town ?? a.village ?? a.suburb ?? a.hamlet ?? ""
+    const neighborhood = String(
+      a.neighbourhood ?? a.city_district ?? a.suburb ?? ""
+    )
     if (!street && !city) return null
 
     const place: HeaderPlace = {
       street,
       city,
+      // No mostrar el barrio si es igual a la calle o la ciudad.
+      neighborhood:
+        neighborhood && neighborhood !== street && neighborhood !== city
+          ? neighborhood
+          : "",
       address: data?.display_name ?? [street, city].filter(Boolean).join(", "),
       icon,
       accuracy: Math.round((accuracy ?? 0) * 10) / 10,
