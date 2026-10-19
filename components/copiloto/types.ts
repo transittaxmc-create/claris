@@ -344,7 +344,11 @@ export function tripDateInputValue(t: Trip): string {
 }
 
 export function grossOf(t: Trip): number {
-  return t.earnings + t.extraCash + t.tips + t.toll
+  // Regla de Miguel (2026-10-19): en Uber/Lyft el peaje ya viene incluido en
+  // lo que pagan — se registra en la casilla TOLLS para control, pero NO se
+  // suma al gross (sería contarlo dos veces). En los demás, sí se suma.
+  const tollCounts = t.platform !== "Uber" && t.platform !== "Lyft"
+  return t.earnings + t.extraCash + t.tips + (tollCounts ? t.toll : 0)
 }
 
 export function netOf(t: Trip): number {
