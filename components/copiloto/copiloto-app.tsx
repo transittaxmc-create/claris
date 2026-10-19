@@ -15,6 +15,7 @@ import { RegisterScreen } from "./register-screen"
 import { ReportsScreen } from "./reports-screen"
 import { SobresScreen } from "./sobres-screen"
 import { TollAuditScreen } from "./toll-audit-screen"
+import { syncEzpassWeekly } from "./ezpass-weekly"
 import { TripEditSheet } from "./trip-edit-sheet"
 import { ReceiptScanner } from "./receipt-scanner"
 import { useShift } from "./shift"
@@ -210,6 +211,16 @@ export function CopilotoApp() {
       cancelled = true
     }
   }, [])
+
+  // E-ZPass semanal: los peajes del día se totalizan y se acumulan en el bill
+  // del viernes (idempotente: solo aplica deltas). Corre al hidratar y con cada
+  // cambio de trips.
+  useEffect(() => {
+    if (!hydrated) return
+    try {
+      syncEzpassWeekly(tripsRef.current || [])
+    } catch {}
+  }, [hydrated, trips])
 
   useEffect(() => {
     if (!hydrated) return
