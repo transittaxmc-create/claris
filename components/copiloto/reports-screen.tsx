@@ -14,6 +14,8 @@ import {
 } from "./types"
 import { expectedOf, receivedOf, reconStateOf } from "./reconciliation"
 import { BankTxReport } from "./bank-tx-report"
+import { MileageReport } from "./mileage-report"
+import { milesByHalfYear } from "./mileage-log"
 import {
   ScheduleCDraft,
   computeScheduleC,
@@ -112,7 +114,15 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
   const [preset, setPreset] = useState<Preset>("month")
   const [customFrom, setCustomFrom] = useState(() => iso(new Date()))
   const [customTo, setCustomTo] = useState(() => iso(new Date()))
-  const [scOpts, setScOpts] = useState<ScheduleCOpts>(DEFAULT_SCHEDULE_C_OPTS)
+  const [scOpts, setScOpts] = useState<ScheduleCOpts>(() => {
+    // Las millas se llenan solas del registro IRS; Miguel puede corregirlas.
+    try {
+      const y = new Date().getFullYear()
+      const { h1, h2 } = milesByHalfYear(y)
+      if (h1 > 0 || h2 > 0) return { ...DEFAULT_SCHEDULE_C_OPTS, milesH1: h1, milesH2: h2 }
+    } catch {}
+    return DEFAULT_SCHEDULE_C_OPTS
+  })
 
   const { from, to } = rangeFor(preset, customFrom, customTo)
 
@@ -479,6 +489,8 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
         <BankTxReport />
 
         <ScheduleCDraft trips={trips} expenses={expenses} from={from} to={to} opts={scOpts} onOpts={setScOpts} />
+
+        <MileageReport />
 
         <div className="flex flex-col gap-2 pb-4">
           <button
