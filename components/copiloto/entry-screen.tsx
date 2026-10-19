@@ -382,7 +382,7 @@ export function EntryScreen({
         </span>
       </div>
 
-      {/* Slim strip: shift timer + gross today — always visible, no scroll needed */}
+      {/* Slim strip: shift timer + miles — always visible, no scroll needed */}
       <div className="flex shrink-0 items-center gap-2.5 border-b border-neutral-800/60 bg-black px-4 py-2.5 sm:px-8">
         <span className={cn("size-2 shrink-0 rounded-full", timer.running ? "bg-green-400" : "bg-neutral-600")} />
         <span className="font-mono text-base font-bold tabular-nums text-neutral-100">
@@ -431,17 +431,28 @@ export function EntryScreen({
             </button>
           </>
         )}
+      </div>
+
+      {/* TODAY + REGISTER — juntos en una línea, bien cuadrado */}
+      <div className="flex shrink-0 items-stretch border-b border-neutral-800/60 bg-black sm:px-8">
         <button
           type="button"
           onClick={toggleGross}
           title={showGross ? "Tap to hide the amount" : "Tap to show the amount"}
-          className="ml-auto flex min-w-0 items-baseline gap-1.5"
+          className="flex flex-1 items-center justify-between gap-2 px-4 py-1.5"
         >
-          <span className="shrink-0 text-[10px] font-bold tracking-[0.1em] text-emerald-300/70">GROSS TODAY</span>
-          <span className="text-xl font-black tabular-nums text-emerald-300">
+          <span className="text-[10px] font-bold tracking-[0.15em] text-emerald-300/70">TODAY</span>
+          <span className="font-mono text-base font-black tabular-nums text-emerald-300">
             {showGross ? `$${grossIncomeToday.toFixed(2)}` : "••••••"}
           </span>
         </button>
+        <div className="w-px bg-neutral-800/60" />
+        <div className="flex flex-1 items-center justify-between gap-2 px-4 py-1.5">
+          <span className="text-[10px] font-bold tracking-[0.15em] text-sky-300/70">REGISTER</span>
+          <span className="font-mono text-base font-black tabular-nums text-sky-300">
+            ${trips.reduce((total, trip) => total + grossOf(trip), 0).toFixed(2)}
+          </span>
+        </div>
       </div>
 
       {/* Scrollable body */}
@@ -610,16 +621,6 @@ export function EntryScreen({
           )}
         </section>
 
-        {/* Resumen discreto al final: REGISTER */}
-        <div className="sm:col-span-2">
-          <div className="flex items-center justify-between rounded-lg border border-sky-900/50 bg-sky-950/20 px-2.5 py-1.5">
-            <div className="min-w-0">
-              <p className="text-[9px] font-bold tracking-[0.1em] text-sky-300/70">REGISTER</p>
-              <p className="text-sm font-black tabular-nums text-sky-300">${trips.reduce((total, trip) => total + grossOf(trip), 0).toFixed(2)}</p>
-            </div>
-            <span className="shrink-0 text-[9px] text-neutral-500">all</span>
-          </div>
-        </div>
       </div>
 
       {/* Sticky record button con calidad y feedback */}
