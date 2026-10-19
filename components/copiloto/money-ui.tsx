@@ -56,6 +56,9 @@ export function MoneyAccountCard(props: {
   main?: boolean
   count?: number
   onClick: () => void
+  /** Checkmark "otros fondos": suma el balance al opening de proyecciones. */
+  fundChecked?: boolean
+  onToggleFund?: () => void
 }) {
   const brand = bankBrandOf(props.rawName || props.name, props.institution)
   const main = !!props.main
@@ -78,6 +81,28 @@ export function MoneyAccountCard(props: {
       {typeof props.count === "number" && (
         <span className={cn("absolute right-3 top-2.5 text-[10px] font-bold text-[#66687c]", MONEY_FONT_MONO)}>
           {props.count} mov.
+        </span>
+      )}
+      {props.onToggleFund && (
+        <span
+          role="switch"
+          aria-checked={!!props.fundChecked}
+          aria-label="Include in projections"
+          onClick={(e) => {
+            e.stopPropagation()
+            props.onToggleFund?.()
+          }}
+          className={cn(
+            "absolute left-2.5 top-2.5 flex h-5 w-9 items-center rounded-full px-0.5 transition-colors",
+            props.fundChecked ? "bg-[#5b8cff]" : "bg-[#2a2b3a]",
+          )}
+        >
+          <span
+            className={cn(
+              "size-4 rounded-full bg-white shadow transition-transform",
+              props.fundChecked ? "translate-x-4" : "translate-x-0",
+            )}
+          />
         </span>
       )}
       {/* pr: deja sitio al contador "N mov." de la esquina */}
