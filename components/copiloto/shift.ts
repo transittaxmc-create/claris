@@ -56,7 +56,7 @@ export type ShiftState = {
 // Fix GPS: { lat, lng, acc } cuando hay señal, null cuando no.
 // (v1-dash-screen hace `gps ? gps.lat.toFixed(4) : "Locating…"`, así que gps
 // debe ser null —y no un objeto— cuando no hay fix.)
-type GpsFix = { lat: number; lng: number; acc: number | null }
+type GpsFix = { lat: number; lng: number; acc: number | null; heading: number | null }
 
 const EMPTY_SHIFT: ShiftState = {
   date: "",
@@ -223,7 +223,7 @@ export function useShift() {
     try {
       watchId.current = navigator.geolocation.watchPosition(
         (pos) => {
-          const { latitude, longitude, accuracy } = pos.coords
+          const { latitude, longitude, accuracy, heading } = pos.coords
           setShift((s) => {
             if (!s.active) return s
             let miles = s.miles
@@ -234,7 +234,7 @@ export function useShift() {
             lastPos.current = { lat: latitude, lon: longitude }
             return { ...s, miles }
           })
-          setGps({ lat: latitude, lng: longitude, acc: Number.isFinite(accuracy) ? accuracy : null })
+          setGps({ lat: latitude, lng: longitude, acc: Number.isFinite(accuracy) ? accuracy : null, heading: typeof heading === "number" && Number.isFinite(heading) ? heading : null })
         },
         () => {
           setGps(null)
@@ -270,6 +270,7 @@ export function useShift() {
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
           acc: Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : null,
+          heading: typeof pos.coords.heading === "number" && Number.isFinite(pos.coords.heading) ? pos.coords.heading : null,
         })
         showToast("📍 GPS listo")
       },
