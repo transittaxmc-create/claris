@@ -2,8 +2,10 @@
 // LIBRO MAYOR (Cash Flow Register)
 // ============================================================================
 
-import type { CashFlowEntry, CashFlowOrigin, Expense, Trip } from "./types"
+import type { CashFlowEntry, CashFlowOrigin, Expense, Trip, ScheduledEntry, ScheduleOverride } from "./types"
 import { netOf, tripDateOf, migrateCategory } from "./types"
+import { FINANCE_SCHEDULES_KEY } from "./finance-sync"
+import { SCHEDULE_OVERRIDES_KEY } from "./dinero-forecast"
 
 export const LEDGER_KEY = "claris_cash_flow_entries"
 
@@ -209,6 +211,24 @@ export function reconciliarCobrosAlLibro(
     const pref = prefijoCobroDia(dia)
     lista = lista.filter((e) => !String(e.id).startsWith(pref))
   }
+
+  // Los recurrentes diarios de ingreso (ej. el depósito de $400) se generan
+  // dinámicamente en el forecast, no están en el libro: hay que saltarlos con
+  // un override para que no dupliquen el cobro reconciliado.
+  try {
+    const schedRaw = localStorage.getItem(FINANCE_SCHEDULES_KEY)
+    const schedules: ScheduledEntry[] = schedRaw ? JSON.parse(schedRaw) : []
+    const ovRaw = localStorage.getItem(SCHEDULE_OVERRIDES_KEY)
+    const overrides: ScheduleOverride[] = ovRaw ? JSON.parse(ovRaw) : []
+    let ovChanged = false
+    for (const s of schedules) {
+      if (!s || s.kind !== "income" || s.frequency !== "daily") continue
+      if (overrides.some((o) => o.scheduleId === s.id && o.date === dia && o.skip)) continue
+      overrides.push({ scheduleId: s.id, date: dia, skip: true })
+      ovChanged = true
+    }
+    if (ovChanged) localStorage.setItem(SCHEDULE_OVERRIDES_KEY, JSON.stringify(overrides))
+  } catch {}
 
   try {
     localStorage.setItem(LEDGER_KEY, JSON.stringify(lista))
