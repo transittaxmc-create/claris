@@ -1,4 +1,4 @@
-import { type Trip, type Platform, type Reconciliation, type LocationPoint, normalizePlatformName, type Expense, stampExpense } from "./types"
+import { type Trip, type Platform, type Reconciliation, type LocationPoint, normalizePlatformName, grossOf, type Expense, stampExpense } from "./types"
 import { round2, reconciliationMatches } from "./reconciliation"
 import { parseTombstones, pruneTombstones, type Tombstones } from "@/lib/sync"
 
@@ -136,7 +136,7 @@ export function entryToTrip(e: RawEntry): Trip {
 
 export function tripToEntry(t: Trip): RawEntry {
   const base: RawEntry = t.raw ? { ...t.raw } : {}
-  const gross = t.earnings + t.extraCash + t.tips + t.toll
+  const gross = grossOf(t)
   const net = gross - t.platformFee
 
   // La reconciliación conserva lo que ya existiera en el objeto original
