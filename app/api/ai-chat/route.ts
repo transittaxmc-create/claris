@@ -153,7 +153,7 @@ TU MISIÓN:
     const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? ""
     const bankMode = String(lastUser).trimStart().startsWith("[CONCILIACIÓN BANCARIA]")
     const expenseMode = String(lastUser).trimStart().startsWith("[ANÁLISIS DE GASTOS]")
-    const scheduleMode = /\b(program|programa|programar|programe|programado|programada|schedule|scheduled)\b/i.test(String(lastUser))
+    const scheduleMode = /\b(program|programa|programar|programe|programado|programada|schedule|scheduled|bill|factura|recibo|receipt|registra|registrar|agrega|agregar|añade|añadir|crea|crear|pago|payment)\b/i.test(String(lastUser))
 
     let generationConfig: Record<string, unknown> = {
       temperature: 0.35,
