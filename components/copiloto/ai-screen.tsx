@@ -128,18 +128,51 @@ export function AIScreen({
     const file = e.target.files?.[0]
     e.target.value = ""
     if (!file || loading) return
-    const reader = new FileReader()
-    reader.onload = async () => {
-      const dataUrl = String(reader.result || "")
-      if (!dataUrl.startsWith("data:image/")) return
-      const now = new Date().toLocaleTimeString()
-      const userMsg: Message = { id: `u-${Date.now()}`, role: "user", content: "📷 Foto enviada al asistente", time: now }
-      setMessages((prev) => [...prev, userMsg])
-      setLoading(true)
-      try {
-        const response = await fetch("/api/ai-chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+    // Comprimir como el scanner (máx 1600px, JPEG 0.82) para no saturar el API.
+    const comprimir = (f: File): Promise<string> =>
+      new Promise((resolve, reject) => {
+        const img = new Image()
+        const url = URL.createObjectURL(f)
+        img.onload = () => {
+          try {
+            const maxDim = 1600
+            const scale = Math.min(1, maxDim / Math.max(img.width, img.height))
+            const c = document.createElement("canvas")
+            c.width = Math.round(img.width * scale)
+            c.height = Math.round(img.height * scale)
+            c.getContext("2d")?.drawImage(img, 0, 0, c.width, c.height)
+            URL.revokeObjectURL(url)
+            resolve(c.toDataURL("image/jpeg", 0.82))
+          } catch (err) {
+            URL.revokeObjectURL(url)
+            reject(err)
+          }
+        }
+        img.onerror = () => {
+          URL.revokeObjectURL(url)
+          reject(new Error("No se pudo leer la imagen"))
+        }
+        img.src = url
+      })
+    let dataUrl: string
+    try {
+      dataUrl = await comprimir(file)
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { id: `a-${Date.now()}`, role: "assistant", content: "No pude comprimir la foto.", time: new Date().toLocaleTimeString() },
+      ])
+      return
+    }
+    if (!dataUrl.startsWith("data:image/")) return
+    const now = new Date().toLocaleTimeString()
+    const userMsg: Message = { id: `u-${Date.now()}`, role: "user", content: "📷 Foto enviada al asistente", time: now }
+    setMessages((prev) => [...prev, userMsg])
+    setLoading(true)
+    try {
+      const response = await fetch("/api/ai-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: [{ role: "user", content: "Analiza esta foto" }],
             context: {},
@@ -175,8 +208,6 @@ export function AIScreen({
       } finally {
         setLoading(false)
       }
-    }
-    reader.readAsDataURL(file)
   }
 
   async function handleBankFile(e: React.ChangeEvent<HTMLInputElement>) {
