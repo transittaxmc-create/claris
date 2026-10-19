@@ -35,26 +35,30 @@ export async function POST(req: Request) {
 
     console.log(`[scan-receipt] Recibida imagen: ${resolvedMime}, base64 len: ${cleanBase64.length}`)
 
-    const prompt = `Eres un experto contable que analiza tickets, recibos y facturas para conductores y repartidores de Uber, Lyft y transporte.
-Analiza detenidamente la imagen del recibo adjunto y extrae con máxima precisión los siguientes campos en formato JSON estricto:
+    const prompt = `You are an expert accountant who analyzes tickets, receipts and invoices for Uber, Lyft and transportation drivers.
+Carefully analyze the attached receipt image and extract the following fields with maximum precision in strict JSON format:
 
-1. vendor: Nombre comercial claro del vendedor, establecimiento o empresa (ej: "Shell", "Chevron", "McDonald's", "AutoZone", "E-ZPass", "Car Wash Express"). Evita razones sociales crípticas si el nombre de marca comercial está visible.
-2. date: Fecha del ticket en formato exactamente YYYY-MM-DD. Si solo ves día y mes, asume el año 2026.
-3. amount: Total pagado final (gran total después de impuestos y propinas si aplica) como número flotante (ej: 42.75). No incluyas símbolos de moneda ni comas.
-4. category: Clasifica OBLIGATORIAMENTE en UNA de estas categorías exactas del sistema:
+1. vendor: Clear business name of the seller, establishment or company (e.g.: "Shell", "Chevron", "McDonald's", "AutoZone", "E-ZPass", "Car Wash Express"). Avoid cryptic legal names if the commercial brand name is visible.
+2. date: Ticket date in exactly YYYY-MM-DD format. If you only see day and month, assume year 2026.
+3. amount: Final total paid (grand total after taxes and tips if applicable) as a float (e.g.: 42.75). No currency symbols or commas.
+4. category: Classify MANDATORILY into ONE of these exact system categories:
 ${EXPENSE_CATEGORIES.map((c) => `   - "${c}"`).join("\n")}
-   Reglas de categorización:
-   * Gasolineras, estaciones de servicio, diesel, combustible -> "Gasolina / Combustible"
-   * Talleres, cambio de aceite, llantas, refacciones, repuestos -> "Mantenimiento / Vehículo"
-   * Peajes, autopistas, tags de peaje (E-ZPass, SunPass, etc.) -> "Peajes"
-   * Restaurantes, cafeterías, comida rápida, supermercados, snacks -> "Alimentación / Comida"
-   * Lavaderos de auto, car wash, aspirado, detallado -> "Lavado de Auto"
-   * Seguros, pólizas, ITV, registro vehicular, licencias -> "Seguros / Permisos"
-   * Si no encaja en ninguna anterior -> "Varios"
-5. notes: Resumen conciso de los ítems o detalles principales (ej: "Gasolina Regular 12.4 gal @ $3.29", "Hamburguesa y café", "Cambio de aceite sintético").
-6. confidence: Número decimal de 0.0 a 1.0 indicando tu grado de certeza y nitidez de la lectura.
+   Classification rules:
+   * Gas stations, diesel, fuel -> "Fuel"
+   * Auto shops, oil change, tires, parts, repairs -> "Vehicle maintenance"
+   * Tolls, highways, toll tags (E-ZPass, SunPass, etc.) -> "Tolls"
+   * Restaurants, cafes, fast food, groceries, snacks -> "Food"
+   * Car wash, detailing, vacuum -> "Car wash"
+   * Insurance, policies, vehicle registration, licenses -> "Insurance"
+   * Bank charges, fees -> "Bank fees"
+   * Mobile phone, top-ups -> "Phone"
+   * Parking meters, garages -> "Parking"
+   * Work supplies, accessories -> "Supplies"
+   * If it fits none of the above -> "Other"
+5. notes: Concise summary of the main items or details (e.g.: "Regular gas 12.4 gal @ $3.29", "Burger and coffee", "Synthetic oil change").
+6. confidence: Decimal number from 0.0 to 1.0 indicating your certainty and reading sharpness.
 
-Responde ÚNICAMENTE un objeto JSON válido con esas claves exactas.`
+Respond with ONLY a valid JSON object with those exact keys.`
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent`
 
