@@ -14,6 +14,7 @@ import { FinanceScreen } from "./finance-screen"
 import { RegisterScreen } from "./register-screen"
 import { ReportsScreen } from "./reports-screen"
 import { SobresScreen } from "./sobres-screen"
+import { TollAuditScreen } from "./toll-audit-screen"
 import { TripEditSheet } from "./trip-edit-sheet"
 import { ReceiptScanner } from "./receipt-scanner"
 import { useShift } from "./shift"
@@ -663,6 +664,7 @@ export function CopilotoApp() {
           )}
           {tab === "REPORTS" && <ReportsScreen trips={trips} expenses={expenses} />}
           {tab === "SOBRES" && <SobresScreen />}
+          {tab === "TOLLAUDIT" && <TollAuditScreen trips={trips} />}
           {tab === "HELP" && <HowItWorksScreen />}
           {tab !== "ENTRY" &&
             tab !== "REGISTER" &&
@@ -750,7 +752,7 @@ export function CopilotoApp() {
             <div className="mt-4 space-y-4 px-4">
               {(
                 [
-                  { title: "Operations", keys: ["EXPENSES", "DASH", "V1DASH", "SOBRES"] as const },
+                  { title: "Operations", keys: ["EXPENSES", "DASH", "V1DASH", "SOBRES", "TOLLAUDIT"] as const },
                   { title: "Inteligencia y datos", keys: ["AI", "DATA"] as const },
                   { title: "Ayuda", keys: ["HELP"] as const },
                 ] as const
