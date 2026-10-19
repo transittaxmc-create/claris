@@ -5,6 +5,10 @@
 // ============================================================================
 
 import { EXPENSE_CATEGORIES, migrateCategory } from "./types"
+import { looksLikeTransfer } from "./transfer-matcher"
+
+/** Categoría para el mismo dólar movido entre cuentas: nunca es ingreso. */
+export const TRANSFER_CATEGORY = "Internal transfer"
 
 export type BankTxInput = {
   date: string
@@ -140,6 +144,13 @@ export function categorizeOne(tx: BankTxInput, learned: LearnedMap): Categorized
   const l = learned[key]
   if (l) {
     return { ...tx, id, vendor, category: l.category, classification: l.classification, learned: true, uncategorized: false }
+  }
+  // 1b. Transfers (regla de Miguel): el mismo dólar movido entre cuentas NO es
+  // un ingreso nuevo. Se detecta por el label, antes de cualquier regla de
+  // ingreso — "UBER PRO CARD" en otro banco es la llegada de la transferencia,
+  // el ingreso real fue el payout en la tarjeta.
+  if (looksLikeTransfer(tx.detail || "")) {
+    return { ...tx, id, vendor, category: TRANSFER_CATEGORY, classification: "personal", learned: false, uncategorized: false }
   }
   // 2. Reglas por palabra clave.
   const cat = ruleCategory(vendor, tx.amount)
