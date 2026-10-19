@@ -374,6 +374,7 @@ export function newTrip(): Trip {
     dropoff: "",
     time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }),
     ref: "",
+    notes: "",
     status: "pending",
   }
 }
