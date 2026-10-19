@@ -269,6 +269,32 @@ function RecurrenteSheet(props: {
               {s ? "EDIT RECURRING" : "NEW RECURRING"}
             </p>
 
+            {/* Acciones rápidas para este día: no trabajó → saltarlo o ponerlo en $0. */}
+            {s && props.date && (
+              <div className="mb-3 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    props.onDelete(s, props.date as string, "once")
+                    props.onClose()
+                  }}
+                  className="rounded-xl border border-neutral-700 py-2 text-[11px] font-extrabold text-neutral-300 active:bg-neutral-800"
+                >
+                  Skip this day
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    props.onSave(s, props.date as string, { ...vals(), amount: 0 }, "once")
+                    props.onClose()
+                  }}
+                  className="rounded-xl border border-neutral-700 py-2 text-[11px] font-extrabold text-neutral-300 active:bg-neutral-800"
+                >
+                  $0 this day
+                </button>
+              </div>
+            )}
+
             <div className="mb-3 flex gap-2">
               {(
                 [
