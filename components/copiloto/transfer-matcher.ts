@@ -55,8 +55,17 @@ function sameAccount(a: string, b: string): boolean {
 // es un ingreso nuevo.
 const TRANSFER_DETAIL_RE = /transfer|zelle|p2p|wire|money moved|cashout|uber pro card/i
 
+// Plataformas que PAGAN directo al banco aunque el label diga "transfer credit".
+// Quien paga es la plataforma: SÍ es ingreso real, NO es transferencia.
+// (Empower — dicho por Miguel 2026-10-19: otra plataforma como Uber, sin tarjeta.)
+const REAL_PAYER_RE = /empower/i
+
 export function looksLikeTransfer(detail: string): boolean {
-  return TRANSFER_DETAIL_RE.test(String(detail || ""))
+  const d = String(detail || "")
+  // El que paga manda: si es una plataforma real, no es transferencia aunque
+  // el banco lo describa como "transfer credit".
+  if (REAL_PAYER_RE.test(d)) return false
+  return TRANSFER_DETAIL_RE.test(d)
 }
 
 /**
