@@ -175,6 +175,18 @@ export function TripEditSheet({
             </label>
           </div>
 
+          {/* Notes — E-ZPass deja aquí el desglose de peajes */}
+          <label className="flex flex-col gap-1">
+            <span className="text-[10px] font-bold tracking-wide text-neutral-400">NOTES</span>
+            <textarea
+              value={draft.notes || ""}
+              onChange={(e) => setDraft((d) => (d ? { ...d, notes: e.target.value } : d))}
+              rows={2}
+              placeholder="Toll breakdown…"
+              className="w-full resize-none rounded-lg border border-neutral-700 bg-neutral-950 px-2.5 py-2 text-sm text-white outline-none placeholder:text-neutral-600"
+            />
+          </label>
+
           {/* Reconciliación: qué se esperaba cobrar contra qué llegó de verdad */}
           <section className={cn("rounded-2xl border p-3", tone.border, tone.bg)}>
             <div className="mb-2 flex items-center justify-between">
