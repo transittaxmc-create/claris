@@ -50,7 +50,10 @@ function sameAccount(a: string, b: string): boolean {
 // Una compra (7-Eleven, gasolina, mercado...) o un ingreso real NO son
 // transferencias: reportarlas como "sin pareja" duplica hallazgos en el
 // CIERRE DEL DIA con informacion falsa. El emparejamiento (pares) no cambia.
-const TRANSFER_DETAIL_RE = /transfer|zelle|p2p|wire|money moved|cashout/i
+// "uber pro card": los depósitos que llegan de la tarjeta Uber Pro (Miguel,
+// 2026-10-19) — el ingreso real fue el payout en la tarjeta, la llegada NO
+// es un ingreso nuevo.
+const TRANSFER_DETAIL_RE = /transfer|zelle|p2p|wire|money moved|cashout|uber pro card/i
 
 export function looksLikeTransfer(detail: string): boolean {
   return TRANSFER_DETAIL_RE.test(String(detail || ""))
