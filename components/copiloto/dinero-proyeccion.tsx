@@ -5,10 +5,11 @@
 // componente solo lee recurrentes / descartes y pinta el resultado.
 
 import { useEffect, useMemo, useState } from "react"
-import { AlertTriangle, Check, CreditCard, Pencil, Receipt, Repeat, TrendingUp, X } from "lucide-react"
+import { AlertTriangle, Check, CreditCard, MoreHorizontal, Pencil, Receipt, Repeat, TrendingUp, X } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { money, migrateCategory, EXPENSE_CATEGORIES, type CashFlowEntry, type ScheduledEntry } from "./types"
 import { INCOME_CATEGORY } from "./auto-categorize"
+import { PendingDeposits } from "./pending-deposits"
 import { accountDisplayName, type DueItem, type RegisterAccount } from "./registers-store"
 import {
   FREQ_LABEL,
@@ -815,6 +816,31 @@ export function DineroProyeccion(props: {
   )
 }
 
+/** Menú ••• del register: PENDING DEPOSITS en un sheet, sin invadir el flujo. */
+function DepositsSheet({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70" onClick={onClose}>
+      <div
+        className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-t-3xl border-t border-neutral-700 bg-neutral-950 p-4 pb-8"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-3 flex items-center justify-between">
+          <p className="text-[10px] font-bold tracking-wide text-neutral-500">MORE</p>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="rounded-md border border-neutral-700 p-1 text-neutral-300"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+        <PendingDeposits />
+      </div>
+    </div>
+  )
+}
+
 function LineRow(props: { line: ForecastLine; today: string; showDate: boolean; onEdit?: (e: CashFlowEntry) => void }) {
   const { line: ln } = props
   const editable = !!ln.entry && !!props.onEdit
@@ -848,7 +874,15 @@ function LineRow(props: { line: ForecastLine; today: string; showDate: boolean; 
 // se pone débil; el saldo proyectado en rojo marca el quiebre.
 // ---------------------------------------------------------------------------
 
-type ProjRow = { line: ForecastLine | null; amount: number; balAcum: number; balProy: number }
+type ProjRow = {
+  line: ForecastLine | null
+  amount: number
+  balAcum: number
+  balProy: number
+  date: string
+  /** Fila de cuadre del register: apertura, cierre del día o cierre final. */
+  marker?: "open" | "dayclose" | "close"
+}
 
 function ProjectionRegister(props: {
   fc: Forecast
@@ -868,19 +902,49 @@ function ProjectionRegister(props: {
     let acum = r2(fc.start)
     let proy = r2(fc.start)
     const out: ProjRow[] = []
+    const firstDate = fc.days[0]?.date ?? today
+    // Apertura: el register arranca del balance real del banco, al centavo.
+    out.push({ line: null, amount: 0, balAcum: acum, balProy: proy, date: firstDate, marker: "open" })
     for (const d of fc.days) {
       for (const ln of d.lines) {
         proy = r2(proy + ln.amount)
         if (ln.kind === "proj" || ln.kind === "overdue") acum = r2(acum + ln.amount)
-        out.push({ line: ln, amount: ln.amount, balAcum: acum, balProy: proy })
+        out.push({ line: ln, amount: ln.amount, balAcum: acum, balProy: proy, date: ln.date })
       }
-      if (d.lines.length === 0) out.push({ line: null, amount: 0, balAcum: acum, balProy: proy })
+      if (d.lines.length === 0) {
+        out.push({ line: null, amount: 0, balAcum: acum, balProy: proy, date: d.date })
+      } else {
+        // Cierre del día: apertura + movimientos = cierre, sin huecos entre días.
+        out.push({ line: null, amount: 0, balAcum: acum, balProy: proy, date: d.date, marker: "dayclose" })
+      }
     }
+    // Cierre final: tiene que dar el balance proyectado.
+    out.push({
+      line: null,
+      amount: 0,
+      balAcum: acum,
+      balProy: proy,
+      date: fc.endDate ?? fc.days[fc.days.length - 1]?.date ?? today,
+      marker: "close",
+    })
     return out
   }, [fc])
 
   const totalDias = fc.days.length
   const negDays = useMemo(() => fc.days.filter((d) => d.balance < 0).length, [fc])
+  // PENDING DEPOSITS vive en el menú ••• (no invasivo): sheet con los balances.
+  const [showDeposits, setShowDeposits] = useState(false)
+  const depositsBtn = (
+    <button
+      type="button"
+      onClick={() => setShowDeposits(true)}
+      title="Pending deposits"
+      aria-label="Pending deposits"
+      className="rounded-md border border-neutral-700 px-2 py-0.5 text-neutral-300"
+    >
+      <MoreHorizontal className="size-3.5" />
+    </button>
+  )
   // Registro por FECHA | DESCRIPCIÓN | MONTO | SALDO ACUM. | BAL. PROYECTADO
   const cols = "grid grid-cols-[4.5rem_minmax(0,1fr)_4.75rem_5rem_5rem] gap-1"
 
@@ -898,13 +962,16 @@ function ProjectionRegister(props: {
           <p className="text-[11px] font-bold uppercase tracking-wide text-neutral-400">
             Movimientos · {fc.lines.length}
           </p>
-          <button
-            type="button"
-            onClick={() => props.setVerDias(false)}
-            className="rounded-md border border-neutral-700 px-2 py-0.5 text-[10px] font-bold text-neutral-300"
-          >
-            Register
-          </button>
+          <div className="flex gap-1.5">
+            {depositsBtn}
+            <button
+              type="button"
+              onClick={() => props.setVerDias(false)}
+              className="rounded-md border border-neutral-700 px-2 py-0.5 text-[10px] font-bold text-neutral-300"
+            >
+              Register
+            </button>
+          </div>
         </div>
 
         {fc.lines.length === 0 ? (
@@ -916,6 +983,7 @@ function ProjectionRegister(props: {
             ))}
           </div>
         )}
+        {showDeposits && <DepositsSheet onClose={() => setShowDeposits(false)} />}
       </div>
     )
   }
@@ -928,6 +996,7 @@ function ProjectionRegister(props: {
           Projected register · {totalDias} days
         </p>
         <div className="flex gap-1.5">
+          {depositsBtn}
           <button
             type="button"
             onClick={() => props.onNewRecurrente()}
@@ -960,10 +1029,51 @@ function ProjectionRegister(props: {
         )}
         {rows.map((r, i) => {
           const ln = r.line
-          const fecha = ln ? ln.date : fc.days[i]?.date || today
+          const fecha = r.date
           const editable = !!ln?.entry && !!props.onEditEntry && !!props.onPatchEntry
           const rojo = r.balProy < 0
-          const primeroDelDia = i === 0 || rows[i - 1].line?.date !== fecha
+          const primeroDelDia = i === 0 || rows[i - 1]?.date !== fecha
+
+          // Filas de cuadre: apertura, cierre del día y cierre final. No editables,
+          // mismo grid que el resto para que las columnas no se muevan.
+          if (r.marker) {
+            const isOpen = r.marker === "open"
+            const isClose = r.marker === "close"
+            return (
+              <div
+                key={`m:${r.marker}:${r.date}`}
+                className={cn(
+                  "border-b border-neutral-900/80 py-1",
+                  (isOpen || isClose) && "border-t-2 border-neutral-700 bg-neutral-900/30",
+                  r.marker === "dayclose" && "bg-black/20",
+                )}
+              >
+                <div className={cn(cols, "items-center")}>
+                  <span className="font-mono text-[10px] text-neutral-500">{fechaDia(r.date, today)}</span>
+                  <span
+                    className={cn(
+                      "font-bold uppercase tracking-wide",
+                      isOpen || isClose ? "text-[10px] text-neutral-300" : "text-[9px] text-neutral-600",
+                    )}
+                  >
+                    {isOpen ? "Opening balance" : isClose ? "Closing balance" : "Day close"}
+                  </span>
+                  <span />
+                  <span className="text-right font-mono text-[12px] font-bold tabular-nums text-neutral-300">
+                    {money(r.balAcum)}
+                  </span>
+                  <span
+                    className={cn(
+                      "text-right font-mono text-[12px] font-bold tabular-nums",
+                      r.balProy < 0 ? "text-rose-400" : "text-cyan-200",
+                    )}
+                  >
+                    {money(r.balProy)}
+                  </span>
+                </div>
+              </div>
+            )
+          }
           const recSched =
             ln && ln.kind === "rec" && ln.scheduleId
               ? props.schedules.find((x) => x.id === ln.scheduleId) ?? null
@@ -1075,6 +1185,7 @@ function ProjectionRegister(props: {
           {negDays > 0 ? <span className="font-bold text-rose-400">{negDays} in red</span> : "no dips"}
         </span>
       </p>
+      {showDeposits && <DepositsSheet onClose={() => setShowDeposits(false)} />}
     </div>
   )
 }
