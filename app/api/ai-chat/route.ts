@@ -249,7 +249,7 @@ TU MISIÓN:
       schedules?: Array<{ kind: "income" | "expense"; description: string; category?: string; amount: number; startDate: string; frequency: string; nextDate: string; active?: boolean }>
       needsConfirmation?: boolean
     } | null = null
-    if (bankMode || expenseMode || scheduleMode) {
+    if (bankMode || expenseMode || scheduleMode || imageMode) {
       try {
         const parsed = JSON.parse(rawText)
         reply = typeof parsed.reply === "string" && parsed.reply ? parsed.reply : rawText
@@ -260,7 +260,7 @@ TU MISIÓN:
             .filter((m: any) => m && typeof m.tripId === "string" && Number.isFinite(Number(m.bankAmount)))
             .map((m: any) => ({ tripId: m.tripId, amount: Number(m.bankAmount) }))
         }
-        if (scheduleMode) {
+        if (scheduleMode || imageMode) {
           const rawSchedules = Array.isArray(parsed.schedules) ? parsed.schedules : []
           structured.schedules = rawSchedules.filter((s: any) =>
             s && (s.kind === "income" || s.kind === "expense") && typeof s.description === "string" && Number.isFinite(Number(s.amount)) && Number(s.amount) > 0 &&
