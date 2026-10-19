@@ -152,7 +152,7 @@ type RecVals = {
   description: string
   amount: number
   category: string
-  frequency: "weekly" | "biweekly" | "monthly"
+  frequency: "once" | "daily" | "weekly" | "biweekly" | "monthly"
   weekday: number // 0=dom..6=sáb
   monthDay: string // 1..31
   start: string // yyyy-mm-dd
@@ -224,8 +224,16 @@ function RecurrenteSheet(props: {
   const [nombre, setNombre] = useState(s?.description ?? "")
   const [monto, setMonto] = useState(s ? String(Math.abs(Number(s.amount) || 0)) : "")
   const [categoria, setCategoria] = useState(s?.category ?? "Other")
-  const [freq, setFreq] = useState<"weekly" | "biweekly" | "monthly">(
-    s?.frequency === "biweekly" ? "biweekly" : s?.frequency === "monthly" ? "monthly" : "weekly",
+  const [freq, setFreq] = useState<"once" | "daily" | "weekly" | "biweekly" | "monthly">(
+    s?.frequency === "once"
+      ? "once"
+      : s?.frequency === "daily"
+        ? "daily"
+        : s?.frequency === "biweekly"
+          ? "biweekly"
+          : s?.frequency === "monthly"
+            ? "monthly"
+            : "weekly",
   )
   const [weekday, setWeekday] = useState(
     startM ? new Date(Number(startM[1]), Number(startM[2]) - 1, Number(startM[3]), 12).getDay() : 4,
@@ -266,7 +274,13 @@ function RecurrenteSheet(props: {
         {phase === "form" ? (
           <>
             <p className="mb-3 text-[10px] font-bold tracking-wide text-neutral-500">
-              {s ? "EDIT RECURRING" : "NEW RECURRING"}
+              {s
+                ? s.frequency === "once"
+                  ? "EDIT ONE-TIME"
+                  : "EDIT RECURRING"
+                : freq === "once"
+                  ? "NEW ONE-TIME"
+                  : "NEW RECURRING"}
             </p>
 
             {/* Acciones rápidas para este día: no trabajó → saltarlo o ponerlo en $0. */}
@@ -327,7 +341,7 @@ function RecurrenteSheet(props: {
             <input
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
-              placeholder="Ej: CD Aventure LLC"
+              placeholder="E.g.: CD Aventure LLC"
               className="mb-3 w-full rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2.5 text-sm text-white placeholder:text-neutral-600"
             />
 
@@ -351,13 +365,15 @@ function RecurrenteSheet(props: {
               ))}
             </div>
 
-            <p className="mb-1.5 text-[10px] font-bold text-neutral-500">FRECUENCIA</p>
-            <div className="mb-3 flex gap-1.5">
+            <p className="mb-1.5 text-[10px] font-bold text-neutral-500">FREQUENCY</p>
+            <div className="mb-3 flex flex-wrap gap-1.5">
               {(
                 [
-                  { id: "weekly", label: "Semanal" },
-                  { id: "biweekly", label: "Quincenal" },
-                  { id: "monthly", label: "Mensual" },
+                  { id: "once", label: "One time" },
+                  { id: "daily", label: "Daily" },
+                  { id: "weekly", label: "Weekly" },
+                  { id: "biweekly", label: "Every 2 weeks" },
+                  { id: "monthly", label: "Monthly" },
                 ] as const
               ).map((o) => (
                 <button key={o.id} type="button" onClick={() => setFreq(o.id)} className={cn(chip(freq === o.id), "flex-1")}>
@@ -366,7 +382,7 @@ function RecurrenteSheet(props: {
               ))}
             </div>
 
-            {freq === "monthly" ? (
+            {freq === "once" || freq === "daily" ? null : freq === "monthly" ? (
               <>
                 <p className="mb-1 text-[10px] font-bold text-neutral-500">DAY OF MONTH</p>
                 <input
@@ -374,7 +390,7 @@ function RecurrenteSheet(props: {
                   onChange={(e) => setMonthDay(e.target.value.replace(/[^0-9]/g, "").slice(0, 2))}
                   type="number"
                   inputMode="numeric"
-                  placeholder="Ej: 19"
+                  placeholder="E.g.: 19"
                   className="mb-3 w-full rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2.5 font-mono text-sm text-white placeholder:text-neutral-600"
                 />
               </>
@@ -397,8 +413,8 @@ function RecurrenteSheet(props: {
             )}
 
             <div className="mb-4 flex gap-2">
-              <div className="flex-1">
-                <p className="mb-1 text-[10px] font-bold text-neutral-500">FROM</p>
+              <div className="min-w-0 flex-1">
+                <p className="mb-1 text-[10px] font-bold text-neutral-500">{freq === "once" ? "DATE" : "FROM"}</p>
                 <input
                   value={desde}
                   onChange={(e) => setDesde(e.target.value)}
@@ -406,15 +422,17 @@ function RecurrenteSheet(props: {
                   className="w-full rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2.5 text-sm text-white"
                 />
               </div>
-              <div className="flex-1">
-                <p className="mb-1 text-[10px] font-bold text-neutral-500">UNTIL (OPCIONAL)</p>
-                <input
-                  value={hasta}
-                  onChange={(e) => setHasta(e.target.value)}
-                  type="date"
-                  className="w-full rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2.5 text-sm text-white"
-                />
-              </div>
+              {freq !== "once" && (
+                <div className="min-w-0 flex-1">
+                  <p className="mb-1 text-[10px] font-bold text-neutral-500">UNTIL (OPTIONAL)</p>
+                  <input
+                    value={hasta}
+                    onChange={(e) => setHasta(e.target.value)}
+                    type="date"
+                    className="w-full rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2.5 text-sm text-white"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="flex gap-2">
@@ -562,8 +580,13 @@ export function DineroProyeccion(props: {
 
   function handleCreate(v: RecVals) {
     const base = /^\d{4}-\d{2}-\d{2}/.test(v.start) ? v.start.slice(0, 10) : todayKey()
+    // once/daily: la fecha elegida tal cual; monthly: día del mes; resto: día de semana.
     const start =
-      v.frequency === "monthly" ? nextMonthDay(base, Number(v.monthDay) || 1) : nextWeekday(base, v.weekday)
+      v.frequency === "once" || v.frequency === "daily"
+        ? base
+        : v.frequency === "monthly"
+          ? nextMonthDay(base, Number(v.monthDay) || 1)
+          : nextWeekday(base, v.weekday)
     const sched: ScheduledEntry = {
       id: newScheduleId(),
       kind: v.kind,
