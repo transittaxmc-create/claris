@@ -28,6 +28,8 @@ export const SHIFT_KEY = "claris_v1dash_shift"
 export const SHIFT_LOG_KEY = "claris_v1dash_shift_logs"
 export const SHIFT_START_KEY = "claris_v1dash_shift_start"
 export const HOURLY_GOAL_KEY = "claris_hourly_goal"
+import { recordShiftClose } from "./mileage-log"
+
 export const WORKED_KEY = "claris_hours_worked"
 const KEEP_DAYS = 30
 const DEFAULT_HOURLY_GOAL = 60
@@ -317,6 +319,10 @@ export function useShift() {
       const logs = loadJson<Array<Record<string, unknown>>>(SHIFT_LOG_KEY) ?? []
       logs.push({ date: cur.date, clockIn: cur.clockIn, clockOut: t, activeHrs: Math.round(activeHrs * 100) / 100, miles: cur.miles })
       localStorage.setItem(SHIFT_LOG_KEY, JSON.stringify(logs.slice(-60)))
+    } catch {}
+    // Registro de millas para el IRS (Pub 463)
+    try {
+      recordShiftClose(cur.date, cur.clockIn, t, cur.miles)
     } catch {}
     setShift({ ...EMPTY_SHIFT, date: dayKey(new Date(t)) })
     releaseWake()
