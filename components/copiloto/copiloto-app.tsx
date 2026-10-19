@@ -19,6 +19,7 @@ import { ReceiptScanner } from "./receipt-scanner"
 import { useShift } from "./shift"
 import { guardarMovimiento, movimientoDeGasto } from "./cash-flow-store"
 import { applyDifferenceToTrip, applyBankMatchesToTrips, normalizeTripStatus } from "./reconciliation"
+import { recordTrip } from "./mileage-log"
 import { SEED_TRIPS, newTrip, stampExpense, applyExpenseUpdatesToExpenses, grossOf, netOf, tripDateOf, money, type Expense, type ExpenseDocType, type Trip, type ScheduledEntry } from "./types"
 import {
   addBillPayment,
@@ -241,6 +242,13 @@ export function CopilotoApp() {
     setTrips((prev) => [stamped, ...prev])
     setTab("REGISTER")
     queueDualSync(stamped)
+    // Registro de millas IRS: recogida → dejada con su plataforma
+    try {
+      recordTrip(
+        { pickup: stamped.pickup, dropoff: stamped.dropoff, platform: String(stamped.platform ?? ""), time: stamped.time },
+        tripDateOf(stamped),
+      )
+    } catch {}
   }
 
   function saveEdit(t: Trip) {
