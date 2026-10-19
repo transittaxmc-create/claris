@@ -143,13 +143,14 @@ export function TripEditSheet({
 
           {/* Amounts */}
           <div className="grid grid-cols-2 gap-3">
-            <MoneyInput size="sm" label="EARNINGS" value={draft.earnings} onChange={(n) => set("earnings", n)} />
-            <MoneyInput size="sm" label="EXTRA CASH" value={draft.extraCash} onChange={(n) => set("extraCash", n)} />
-            <MoneyInput size="sm" label="TIPS" value={draft.tips} onChange={(n) => set("tips", n)} />
-            <MoneyInput size="sm" label="TOLL" value={draft.toll} onChange={(n) => set("toll", n)} />
+            <MoneyInput size="sm" label="FARE" color="text-green-400" value={draft.earnings} onChange={(n) => set("earnings", n)} />
+            <MoneyInput size="sm" label="EXTRA CASH" color="text-green-400" value={draft.extraCash} onChange={(n) => set("extraCash", n)} />
+            <MoneyInput size="sm" label="TIPS" color="text-green-400" value={draft.tips} onChange={(n) => set("tips", n)} />
+            <MoneyInput size="sm" label="TOLL" color="text-amber-400" value={draft.toll} onChange={(n) => set("toll", n)} />
             <MoneyInput
               size="sm"
               label="PLATFORM FEE"
+              color="text-red-500"
               value={draft.platformFee}
               onChange={(n) => set("platformFee", n)}
             />
