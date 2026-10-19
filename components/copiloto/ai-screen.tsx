@@ -461,9 +461,11 @@ export function AIScreen({
       const data = await response.json()
       if (response.ok && data.reply) {
         let appliedNote = ""
+        let algoSeGuardo = false
         const matches = data.structured?.matches
         if (Array.isArray(matches) && matches.length > 0 && onApplyBankMatches) {
           const applied = onApplyBankMatches(matches)
+          if (applied > 0) algoSeGuardo = true
           appliedNote = `\n\n✅ UPDATED: ${applied} trip${applied === 1 ? "" : "s"} with the bank payment.`
         }
         const schedules = data.structured?.schedules
@@ -473,20 +475,28 @@ export function AIScreen({
             setPendingSchedules(schedules)
           } else {
             const applied = onApplySchedules(schedules)
+            if (applied > 0) algoSeGuardo = true
             appliedNote += `\n\n✅ FINANCE: ${applied} schedule${applied === 1 ? "" : "es"} created${applied === 1 ? "" : "s"}.`
           }
         }
         const expenseUpdates = data.structured?.expenseUpdates
         if (Array.isArray(expenseUpdates) && expenseUpdates.length > 0 && onApplyExpenseUpdates) {
           const applied = onApplyExpenseUpdates(expenseUpdates)
+          if (applied > 0) algoSeGuardo = true
           appliedNote += `\n\n🏷️ EXPENSES: ${applied} correction${applied === 1 ? "" : "es"} (category / Business-Personal).`
+        }
+        // VERIFICACIÓN: si el AI dice "guardado/registrado" pero nada se guardó, corregirlo.
+        let replyText = data.reply
+        const aiDiceGuardado = /registrad[oa]|guardad[oa]|listo|hecho/i.test(replyText)
+        if (aiDiceGuardado && !algoSeGuardo && pendingSchedules.length === 0) {
+          replyText += "\n\n⚠️ Nota: no se guardó nada todavía. Si ves este mensaje, dime qué falló."
         }
         setMessages((prev) => [
           ...prev,
           {
             id: `a-${Date.now()}`,
             role: "assistant",
-            content: data.reply + appliedNote,
+            content: replyText + appliedNote,
             time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
           },
         ])
