@@ -577,6 +577,15 @@ export function CashFlowRegister({
             bankOk={!bankError && bankAccounts.length > 0}
             onSyncBank={fetchBank}
             otherFunds={otherFunds}
+            onToggleOtherFund={(id) => {
+              setOtherFunds((prev) => {
+                const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+                try {
+                  localStorage.setItem(OTHER_FUNDS_KEY, JSON.stringify(next))
+                } catch {}
+                return next
+              })
+            }}
             onMarkPaid={handleMarkPaid}
             dues={dues}
             pairCount={transferReport.pairs.length}
