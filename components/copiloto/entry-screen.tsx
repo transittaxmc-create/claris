@@ -387,7 +387,7 @@ export function EntryScreen({
       <div className="flex items-start justify-between gap-3 px-4 pt-2 sm:px-8 sm:pt-3">
         <div className="min-w-0">
           <h1 className="truncate text-2xl font-bold text-white">{greeting}</h1>
-          {/* From the GPS: CALLE, CIUDAD */}
+          {/* From the GPS: BARRIO · CALLE, CIUDAD */}
           <p
             className="mt-0.5 flex items-center gap-1.5 text-sm"
             title={place?.address || undefined}
@@ -396,6 +396,10 @@ export function EntryScreen({
             <MapPin className="size-4 shrink-0 text-yellow-400" />
             {place ? (
               <span className="truncate text-neutral-500">
+                {place.neighborhood ? (
+                  <span className="font-semibold text-neutral-200">{place.neighborhood}</span>
+                ) : null}
+                {place.neighborhood && (place.street || place.city) ? <span> · </span> : null}
                 <span className="font-semibold text-neutral-200">{place.street || place.city}</span>
                 {place.street && place.city ? <span>, {place.city}</span> : null}
               </span>
