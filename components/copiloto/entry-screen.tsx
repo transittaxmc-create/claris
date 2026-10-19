@@ -191,14 +191,9 @@ export function EntryScreen({
   const [geoError, setGeoError] = useState<string | null>(null)
   const [lowAccuracy, setLowAccuracy] = useState<{ which: "pickup" | "dropoff"; accuracy: number; errorMsg: string } | null>(null)
   const [storageSaved, setStorageSaved] = useState(false)
-  // Gross today visible o oculto (tap en la tira): se recuerda la preferencia.
-  const [showGross, setShowGross] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem("claris_gross_visible") !== "0"
-    } catch {
-      return true
-    }
-  })
+  // Montos ocultos al abrir (privacidad ante el cliente): cada uno se muestra con un toque.
+  const [showGross, setShowGross] = useState(false)
+  const [showRegister, setShowRegister] = useState(false)
 
   const set = <K extends keyof Trip>(key: K, val: Trip[K]) =>
     setDraft((d) => ({ ...d, [key]: val }))
@@ -342,15 +337,11 @@ export function EntryScreen({
   const timerS = String(timer.elapsedSec % 60).padStart(2, "0")
 
   function toggleGross() {
-    setShowGross((v) => {
-      const next = !v
-      try {
-        localStorage.setItem("claris_gross_visible", next ? "1" : "0")
-      } catch {
-        /* noop */
-      }
-      return next
-    })
+    setShowGross((v) => !v)
+  }
+
+  function toggleRegister() {
+    setShowRegister((v) => !v)
   }
 
   return (
@@ -447,12 +438,17 @@ export function EntryScreen({
           </span>
         </button>
         <div className="w-px bg-neutral-800/60" />
-        <div className="flex flex-1 items-center justify-between gap-2 px-4 py-1.5">
+        <button
+          type="button"
+          onClick={toggleRegister}
+          title={showRegister ? "Tap to hide the amount" : "Tap to show the amount"}
+          className="flex flex-1 items-center justify-between gap-2 px-4 py-1.5"
+        >
           <span className="text-[10px] font-bold tracking-[0.15em] text-sky-300/70">REGISTER</span>
           <span className="font-mono text-base font-black tabular-nums text-sky-300">
-            ${trips.reduce((total, trip) => total + grossOf(trip), 0).toFixed(2)}
+            {showRegister ? `$${trips.reduce((total, trip) => total + grossOf(trip), 0).toFixed(2)}` : "••••••"}
           </span>
-        </div>
+        </button>
       </div>
 
       {/* Scrollable body */}
