@@ -14,6 +14,12 @@ import {
 } from "./types"
 import { expectedOf, receivedOf, reconStateOf } from "./reconciliation"
 import { BankTxReport } from "./bank-tx-report"
+import {
+  ScheduleCDraft,
+  computeScheduleC,
+  DEFAULT_SCHEDULE_C_OPTS,
+  type ScheduleCOpts,
+} from "./schedule-c-draft"
 
 type Preset = "week" | "lastWeek" | "month" | "lastMonth" | "last30" | "custom"
 
@@ -106,6 +112,7 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
   const [preset, setPreset] = useState<Preset>("month")
   const [customFrom, setCustomFrom] = useState(() => iso(new Date()))
   const [customTo, setCustomTo] = useState(() => iso(new Date()))
+  const [scOpts, setScOpts] = useState<ScheduleCOpts>(DEFAULT_SCHEDULE_C_OPTS)
 
   const { from, to } = rangeFor(preset, customFrom, customTo)
 
@@ -243,6 +250,20 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
       const t = Math.abs(v).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
       return `${v < 0 ? "-" : ""}$${t}`
     }
+    // Schedule C (DRAFT) — mismas cifras que la sección en pantalla
+    const sc = computeScheduleC(
+      trips.filter((x) => inRange(tripDateOf(x), from, to)).map((x) => ({ gross: grossOf(x), platformFee: Number(x.platformFee) || 0 })),
+      expenses.filter((x) => inRange(x.date, from, to)),
+      from,
+      to,
+      scOpts,
+    )
+    const scRows = sc.lines
+      .map(
+        (l) =>
+          `<tr${l.total ? ' class="total"' : ""}><td><b>${esc(l.line)}</b> ${esc(l.label)}${l.note ? `<br/><span style="color:#888;font-size:11px">${esc(l.note)}</span>` : ""}</td><td class="r">${moneyHtml(l.amount)}</td></tr>`,
+      )
+      .join("")
     const platformRows = data.byPlatform
       .map(
         (p) =>
@@ -308,6 +329,17 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
     <tr><td>Business (deductible)</td><td class="r">${moneyHtml(data.business)}</td></tr>
     <tr><td>Personal</td><td class="r">${moneyHtml(data.personal)}</td></tr>
     <tr><td>Unclassified</td><td class="r">${moneyHtml(data.unclassified)}</td></tr>
+  </table>
+  <h2>Schedule C — DRAFT (IRS 2025)</h2>
+  <p class="sub" style="margin-bottom:8px">Auto-filled from this statement. A CPA must review before filing.</p>
+  <table>
+    ${scRows}
+  </table>
+  <h2>Tax estimate (informational)</h2>
+  <table>
+    <tr><td>Self-employment tax (15.3%)</td><td class="r">${moneyHtml(sc.seTax)}</td></tr>
+    <tr><td>½ SE deductible</td><td class="r">${moneyHtml(sc.halfSE)}</td></tr>
+    <tr><td>QBI deduction (20%)</td><td class="r">${moneyHtml(sc.qbi)}</td></tr>
   </table>
   <h2>Collections reconciliation</h2>
   <table>
@@ -445,6 +477,8 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
         </section>
 
         <BankTxReport />
+
+        <ScheduleCDraft trips={trips} expenses={expenses} from={from} to={to} opts={scOpts} onOpts={setScOpts} />
 
         <div className="flex flex-col gap-2 pb-4">
           <button
