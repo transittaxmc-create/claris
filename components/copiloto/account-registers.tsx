@@ -520,7 +520,22 @@ export function RegisterDetail(props: {
 
   const statementLines: Line[] = (() => {
     const lines: Line[] = []
+    // Deduplicar: si una entrada local matchea una transacción del banco
+    // (misma fecha, mismo monto, descripción similar), mostrar solo la entrada.
+    const normDetail = (s: string) =>
+      String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 20)
+    const entryKeys = new Set(
+      (props.entries || []).map((e) => {
+        const amt = Math.abs(Number(e.amount) || 0)
+        const signed = e.type === "income" ? amt : -amt
+        return `${String(e.date || "").slice(0, 10)}|${signed.toFixed(2)}|${normDetail(e.description || e.category || "")}`
+      }),
+    )
     for (const t of props.bankTxs) {
+      const amt = Number(t.amount) || 0
+      const key = `${String(t.date || "").slice(0, 10)}|${amt.toFixed(2)}|${normDetail(t.detail || "")}`
+      // Si hay una entrada local que matchea, no mostrar la línea cruda del banco.
+      if (entryKeys.has(key)) continue
       lines.push({
         key: `bank:${t.date}:${t.detail}:${t.amount}:${t.daily_balance}`,
         date: String(t.date || "").slice(0, 10),
