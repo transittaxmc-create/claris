@@ -717,10 +717,14 @@ export function ExpensesScreen({
     }
 
     // Auto-push to Dual Register projections with pending due date
+    // (fire-and-forget con timeout: no debe frisar el SAVE si el otro servidor no responde).
     try {
-      await fetch('https://islandcity-register1.vercel.app/api/ingest/bill-scan', {
+      const ctrl = new AbortController()
+      const t = setTimeout(() => ctrl.abort(), 8000)
+      fetch('https://islandcity-register1.vercel.app/api/ingest/bill-scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: ctrl.signal,
         body: JSON.stringify({
           vendor: expense.vendor,
           amount: expense.amount,
@@ -731,7 +735,7 @@ export function ExpensesScreen({
           source: 'claris-expenses',
           externalId: expense.id
         })
-      })
+      }).finally(() => clearTimeout(t))
     } catch (e) {
       console.warn('[claris] Failed to push to Dual Register', e)
     }
