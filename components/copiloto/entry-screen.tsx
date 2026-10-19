@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { ChevronDown, MapPin, Coffee, Loader2, X, AlertTriangle, RotateCw, Edit2, DollarSign, Play, Pause, Square } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip, grossOf, tripDateOf } from "./types"
@@ -19,6 +19,7 @@ import {
   type HeaderPlace,
 } from "./geo"
 import { MoneyInput } from "./money-input"
+import { detectNewTolls, rateFor, formatTollNote, appendNote } from "./toll-detect"
 
 function LocationColumn({
   label,
@@ -194,6 +195,9 @@ export function EntryScreen({
   // Montos ocultos al abrir (privacidad ante el cliente): cada uno se muestra con un toque.
   const [showGross, setShowGross] = useState(false)
   const [showRegister, setShowRegister] = useState(false)
+  // E-ZPass: peajes ya cobrados en este viaje (no duplicar) + aviso visual
+  const tollHit = useRef<Set<string>>(new Set())
+  const [tollFlash, setTollFlash] = useState<string | null>(null)
 
   const set = <K extends keyof Trip>(key: K, val: Trip[K]) =>
     setDraft((d) => ({ ...d, [key]: val }))
@@ -209,6 +213,7 @@ export function EntryScreen({
         [which === "pickup" ? "pickupLoc" : "dropoffLoc"]: loc,
       }))
       saveTempLocation(which, loc)
+      if (which === "pickup") tollHit.current.clear() // viaje nuevo: detección E-ZPass armada
       if (lowAccuracy?.which === which) {
         setLowAccuracy(null)
       }
@@ -239,6 +244,7 @@ export function EntryScreen({
     try {
       localStorage.removeItem(which === "pickup" ? "CURRENT_PICKUP" : "CURRENT_DROP_OFF")
     } catch {}
+    if (which === "pickup") tollHit.current.clear()
   }
 
   function confirmManual(which: "pickup" | "dropoff") {
@@ -255,6 +261,36 @@ export function EntryScreen({
     const timer = window.setInterval(updateNow, 60_000)
     return () => window.clearInterval(timer)
   }, [])
+
+  // E-ZPass automático: con el viaje activo (pickup capturado), cada fix del
+  // GPS se cruza con las plazas 2026. Peaje nuevo → se suma a toll y se anota
+  // "[HH:MM] Estación - $X.XX" en notas. No duplica en el mismo viaje.
+  const gpsFix = shift.gps
+  const tripActive = draft.pickupLoc != null
+  useEffect(() => {
+    if (!gpsFix || !tripActive) return
+    const now = new Date()
+    const fresh = detectNewTolls(gpsFix.lat, gpsFix.lng, gpsFix.heading ?? null, tollHit.current, now)
+    if (fresh.length === 0) return
+    fresh.forEach((p) => tollHit.current.add(p.name))
+    setDraft((d) => {
+      let toll = d.toll || 0
+      let notes = d.notes || ""
+      const labels: string[] = []
+      for (const p of fresh) {
+        const { text, amount } = formatTollNote(p, now)
+        notes = appendNote(notes, text)
+        if (amount != null) toll = Math.round((toll + amount) * 100) / 100
+        labels.push(amount != null ? `${p.name} +$${amount.toFixed(2)}` : p.name)
+      }
+      return { ...d, toll, notes }
+    })
+    setTollFlash(`🛣️ ${fresh.map((p) => {
+      const r = rateFor(p, now)
+      return r != null ? `${p.name} +$${r.toFixed(2)}` : p.name
+    }).join(" · ")}`)
+    window.setTimeout(() => setTollFlash(null), 4000)
+  }, [gpsFix, tripActive])
 
   // Ubicación actual (CALLE + CIUDAD) para la cabecera. Se muestra al instante
   // si hay una cacheada y se refresca en segundo plano sin bloquear la pantalla.
@@ -323,6 +359,7 @@ export function EntryScreen({
     setTimeout(() => setStorageSaved(false), 2000)
 
     setDraft(newTrip())
+    tollHit.current.clear()
   }
 
   const today = new Date()
@@ -615,6 +652,25 @@ export function EntryScreen({
           {geoError && (
             <p className="mt-2 text-center text-[11px] font-semibold text-rose-400">{geoError}</p>
           )}
+        </section>
+
+        {/* BOX 4: NOTAS — el E-ZPass automático deja aquí el desglose */}
+        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3 sm:col-span-2">
+          <div className="mb-2 flex items-center gap-2">
+            <Edit2 className="size-4 text-neutral-400" />
+            <span className="text-[11px] font-bold tracking-wide text-neutral-400">NOTES</span>
+            <div className="ml-auto h-px flex-1 bg-neutral-800" />
+          </div>
+          {tollFlash && (
+            <p className="mb-2 rounded-lg bg-sky-950/60 px-2 py-1 text-[11px] font-semibold text-sky-300">{tollFlash}</p>
+          )}
+          <textarea
+            value={draft.notes || ""}
+            onChange={(e) => set("notes", e.target.value)}
+            rows={2}
+            placeholder="Toll breakdown appears here automatically…"
+            className="w-full resize-none rounded-xl border border-neutral-800 bg-black px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 focus:border-neutral-600 focus:outline-none"
+          />
         </section>
 
       </div>
