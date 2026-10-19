@@ -64,7 +64,7 @@ Respond with ONLY a valid JSON object with those exact keys.`
 
     // Timeout de 20s para la llamada a Google
     const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 20000)
+    const timer = setTimeout(() => controller.abort(), 28000)
 
     let response: Response
     try {
