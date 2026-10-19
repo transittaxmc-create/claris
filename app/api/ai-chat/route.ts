@@ -14,10 +14,13 @@ export async function POST(req: Request) {
       )
     }
 
-    const { messages, context } = await req.json()
+    const { messages, context, image } = await req.json()
     if (!Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: "Faltan los mensajes de conversación" }, { status: 400 })
     }
+
+    // Modo foto: extraer datos de un recibo/factura y devolver schedules estructurados.
+    const imageMode = typeof image === "string" && image.startsWith("data:image/")
 
     const platformInfo = context?.platformBreakdown
       ? Object.entries(context.platformBreakdown)
@@ -93,6 +96,38 @@ TU MISIÓN:
         parts: [{ text: "Entendido. Soy Claris AI Copiloto. Analizo tus viajes, gastos y reconciliación y te doy pasos claros. Nunca digo que no estoy programado." }],
       },
     ]
+
+    // Modo foto: la imagen va como inlineData con instrucción de extraer bill/gasto estructurado.
+    if (imageMode) {
+      const m = image.match(/^data:(image\/[a-z]+);base64,(.+)$/)
+      if (m) {
+        const today = new Date().toISOString().slice(0, 10)
+        contents.push({
+          role: "user",
+          parts: [
+            {
+              inlineData: { mimeType: m[1], data: m[2] },
+            },
+            {
+              text:
+                `[MODO FOTO] Analiza esta imagen (recibo, factura o confirmación de pago). ` +
+                `Responde SOLO JSON válido con estas claves exactas:\n` +
+                `{ "reply": "confirmación breve en español", ` +
+                `"schedules": [ { "kind": "expense", "description": "vendor", "category": "Phone|Fuel|Tolls|Food|Vehicle maintenance|Car leasing|Rent|Car wash|Insurance|Bank fees|Parking|Supplies|Other", ` +
+                `"amount": 0, "startDate": "YYYY-MM-DD", "frequency": "once", "nextDate": "YYYY-MM-DD", "active": true } ] }\n` +
+                `REGLAS: hoy es ${today}. Si la imagen muestra fecha futura de pago (ej. "Scheduled date"), usa esa fecha. ` +
+                `Si es confirmación de pago ya hecho, igual crea el schedule con frequency "once". No inventes montos. ` +
+                `Si no es un recibo/factura, devuelve { "reply": "no es un documento válido", "schedules": [] }.`,
+            },
+          ],
+        })
+        generationConfig = {
+          temperature: 0.1,
+          maxOutputTokens: 2000,
+          responseMimeType: "application/json",
+        }
+      }
+    }
 
     for (const m of messages) {
       contents.push({
