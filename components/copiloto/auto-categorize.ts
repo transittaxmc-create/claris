@@ -84,7 +84,7 @@ const PARKING = ["parking", "parqueo", "estacionamiento", "park ", "la z park"]
 const MAINT = ["autozone", "pep boys", "advance auto", "mechanic", "mecanico", "repair", "reparacion", "tire", "llanta", "oil change", "cambio de aceite", "jiffy", "brake", "freno", "firestone", "midas", "valvoline"]
 const SUPPLIES = ["amazon", "walmart", "target", "suppl", "suministro", "home depot", "lowes", "harbor freight"]
 const LEASINGW = ["leasing", "car lease"]
-const INCOME_WORDS = ["deposit", "deposito", "payroll", "nomina", "uber", "lyft", "empower", "gallant", "aki mobility", "texport", "ctg", "via ", "curb", "zelle", "venmo", "cash app", "pago recibido", "transfer in"]
+const INCOME_WORDS = ["deposit", "deposito", "payroll", "nomina", "uber", "lyft", "empower", "gallant", "aki mobility", "texport", "ctg", "aventus", "via ", "curb", "zelle", "venmo", "cash app", "pago recibido", "transfer in"]
 
 function hits(text: string, words: string[]): boolean {
   const t = ` ${text} `
