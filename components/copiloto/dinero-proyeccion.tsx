@@ -527,11 +527,17 @@ export function DineroProyeccion(props: {
   onAddEntry?: (dateIso: string) => void
   /** Confirmar "ya pagado": pasa el movimiento del libro a real (fecha del banco). */
   onMarkPaid?: (e: CashFlowEntry, paidDate: string) => void
+  /** Confirmar match con ajuste: marca pagado Y crea un asiento de ajuste por la
+   * diferencia (ej. fee de plataforma). El día queda cuadrado. */
+  onConfirmWithAdjustment?: (e: CashFlowEntry, paidDate: string, adjustmentAmount: number, reason: string) => void
 }) {
   // 90 days FIJOS: todo el register de proyecciones se recorre con scroll
   // dentro de su caja (se eliminaron el título 🔮 y el selector de horizonte).
   const [horizon] = useState<Horizon>(90)
   const [verDias, setVerDias] = useState(false)
+  // Ajuste de match: qué probablePaid se está ajustando + razón del ajuste.
+  const [adjustingKey, setAdjustingKey] = useState<string | null>(null)
+  const [adjustReason, setAdjustReason] = useState("")
   // Recurrentes y descartes: se releen al montar y cuando el sync trae cambios.
   const { schedules, overrides, dismissed, setDismissed } = useForecastInputs()
   const [sheet, setSheet] = useState<
@@ -819,15 +825,27 @@ export function DineroProyeccion(props: {
           </p>
           <p className="mb-2 text-[10px] text-neutral-400">Found at the bank: no longer subtracted. Confirm or dismiss.</p>
           <div className="space-y-1.5">
-            {fc.probablePaid.map((p) => (
+            {fc.probablePaid.map((p) => {
+              const entryAmt = Math.abs(Number(p.entry.amount) || 0)
+              const bankAmt = Math.abs(Number(p.tx.amount) || 0)
+              const diff = Math.round((bankAmt - entryAmt) * 100) / 100
+              const hasDiff = Math.abs(diff) > 0.011
+              const isAdjusting = adjustingKey === p.key
+              return (
               <div key={p.key} className="rounded-lg border border-neutral-800 bg-black/40 px-2 py-1.5 text-[11px]">
                 <div className="flex items-center justify-between gap-2">
                   <span className="min-w-0 truncate font-semibold text-neutral-200">{p.entry.description || "Movimiento"}</span>
-                  <span className="shrink-0 font-mono font-bold text-neutral-300">{money(Math.abs(Number(p.entry.amount) || 0))}</span>
+                  <span className="shrink-0 font-mono font-bold text-neutral-300">{money(entryAmt)}</span>
                 </div>
                 <p className="truncate text-[10px] text-neutral-500">
-                  Bank {fechaCorta(p.tx.date)} · {p.tx.detail} · {money(Math.abs(p.tx.amount))}
+                  Bank {fechaCorta(p.tx.date)} · {p.tx.detail} · {money(bankAmt)}
                 </p>
+                {hasDiff && (
+                  <p className="mt-0.5 text-[10px] font-bold text-amber-300">
+                    Difference: {money(Math.abs(diff))} {diff < 0 ? "short" : "over"}
+                  </p>
+                )}
+                {!isAdjusting ? (
                 <div className="mt-1 flex gap-1.5">
                   {props.onMarkPaid && (
                     <button
@@ -838,6 +856,15 @@ export function DineroProyeccion(props: {
                       <Check className="size-3" /> Yes, paid
                     </button>
                   )}
+                  {hasDiff && props.onConfirmWithAdjustment && (
+                    <button
+                      type="button"
+                      onClick={() => { setAdjustingKey(p.key); setAdjustReason("") }}
+                      className="inline-flex items-center gap-1 rounded-md bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-200"
+                    >
+                      Adjust {money(Math.abs(diff))}
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => descartar(p.key)}
@@ -846,8 +873,42 @@ export function DineroProyeccion(props: {
                     <X className="size-3" /> Not this one
                   </button>
                 </div>
+                ) : (
+                <div className="mt-1.5 rounded-md border border-amber-500/30 bg-amber-950/20 p-2">
+                  <p className="mb-1 text-[10px] font-bold text-amber-200">
+                    Adjustment {money(Math.abs(diff))} {diff < 0 ? "short" : "over"} — why?
+                  </p>
+                  <input
+                    value={adjustReason}
+                    onChange={(e) => setAdjustReason(e.target.value)}
+                    placeholder="E.g.: platform fee, percentage…"
+                    className="mb-1.5 w-full rounded-md border border-neutral-700 bg-neutral-900 px-2 py-1 text-[11px] text-white placeholder:text-neutral-600"
+                  />
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        props.onConfirmWithAdjustment?.(p.entry, String(p.tx.date).slice(0, 10), diff, adjustReason.trim() || "Adjustment")
+                        setAdjustingKey(null)
+                        setAdjustReason("")
+                      }}
+                      className="inline-flex items-center gap-1 rounded-md bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-200"
+                    >
+                      <Check className="size-3" /> Confirm
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setAdjustingKey(null); setAdjustReason("") }}
+                      className="inline-flex items-center gap-1 rounded-md bg-neutral-800 px-2 py-0.5 text-[10px] font-bold text-neutral-300"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+                )}
               </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
