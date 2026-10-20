@@ -343,7 +343,7 @@ function RecurrenteSheet(props: {
             <input
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
-              placeholder="E.g.: CD Aventure LLC"
+              placeholder="E.g.: CB LIVERY"
               className="mb-3 w-full rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2.5 text-sm text-white placeholder:text-neutral-600"
             />
 
@@ -539,18 +539,31 @@ export function DineroProyeccion(props: {
   >(null)
 
   // Fijos de Miguel: se crean solos una vez (si no existen ya).
+  // El leasing se nombra como dice el banco: "CB LIVERY". Si el teléfono
+  // trae el nombre viejo ("CD Aventure LLC" / "CB AVENTURE LLC"), se
+  // renombra solo en vez de crear otro (nunca duplicar el $924).
   useEffect(() => {
     try {
       const cur = readList<ScheduledEntry>(FINANCE_SCHEDULES_KEY)
       const norm = (s: string) => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "")
+      const esLeasing = (s: ScheduledEntry) => {
+        const n = norm(s.description)
+        return n.includes("cblivery") || n.includes("cdaventure") || n.includes("cbaventure")
+      }
       const next = [...cur]
       let changed = false
-      if (!next.some((s) => norm(s.description).includes("cdaventure"))) {
+      const idxLeasing = next.findIndex(esLeasing)
+      if (idxLeasing >= 0) {
+        if (next[idxLeasing].description !== "CB LIVERY") {
+          next[idxLeasing] = { ...next[idxLeasing], description: "CB LIVERY" }
+          changed = true
+        }
+      } else {
         const d0 = nextWeekday(todayKey(), 4) // jueves
         next.push({
           id: newScheduleId(),
           kind: "expense",
-          description: "CD Aventure LLC",
+          description: "CB LIVERY",
           category: "Car leasing",
           amount: 924,
           startDate: d0,
