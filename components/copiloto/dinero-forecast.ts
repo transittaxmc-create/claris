@@ -210,6 +210,18 @@ export function vendorMatch(a: unknown, b: unknown): boolean {
   return ta.some((x) => tb.some((y) => x === y || x.includes(y) || y.includes(x)))
 }
 
+/** Plataformas de ingreso: si el label menciona una, el banco debe mencionarla también.
+ * Más flexible que vendorMatch: no exige token ≥4 letras compartido. */
+const PLATFORM_NAMES = ["uber", "lyft", "empower", "gallant", "aventus", "curb", "via", "limosys", "aki mobility", "texport", "ctg", "paypal", "venmo", "cash app", "zelle", "branch"]
+export function platformMatch(bankDetail: unknown, label: unknown): boolean {
+  const d = String(bankDetail || "").toLowerCase()
+  const l = String(label || "").toLowerCase()
+  for (const p of PLATFORM_NAMES) {
+    if (l.includes(p) && d.includes(p)) return true
+  }
+  return false
+}
+
 export function amountClose(a: number, b: number, pct: number): boolean {
   const x = Math.abs(Number(a) || 0)
   const y = Math.abs(Number(b) || 0)
@@ -390,6 +402,10 @@ export function buildForecast(input: ForecastInput): Forecast {
   let beyondHorizonCount = 0
 
   // Busca el cargo/abono del banco que corresponde (cada uno se usa una sola vez).
+  // Para ingresos: si el match estricto falla, segundo intento flexible —
+  // los payouts de plataformas varían en monto (±8 %) y la descripción del
+  // banco rara vez comparte tokens con "Cobro Uber". Basta que ambos
+  // mencionen la plataforma.
   const findTx = (income: boolean, amount: number, date: string, label: string, window: number, pct: number): number => {
     let best = -1
     let bestGap = Infinity
@@ -405,6 +421,23 @@ export function buildForecast(input: ForecastInput): Forecast {
       if (gap < bestGap) {
         bestGap = gap
         best = i
+      }
+    }
+    if (best < 0 && income) {
+      const flexPct = Math.max(pct, 0.08)
+      for (let i = 0; i < bankTxs.length; i++) {
+        if (usedTx.has(i)) continue
+        const t = bankTxs[i]
+        const amt = Number(t.amount) || 0
+        if (amt <= 0) continue
+        const gap = Math.abs(diffDays(String(t.date).slice(0, 10), date))
+        if (gap > window) continue
+        if (!amountClose(amt, amount, flexPct)) continue
+        if (!platformMatch(t.detail, label)) continue
+        if (gap < bestGap) {
+          bestGap = gap
+          best = i
+        }
       }
     }
     return best
