@@ -161,6 +161,15 @@ export type Expense = {
   accountId?: string
   /** Pagos aplicados (solo facturas). La factura se cancela sola al completarse. */
   payments?: BillPayment[]
+  /** Match con el banco: cuando se encuentra la transacción bancaria que
+   * corresponde a este gasto/recibo/factura, se guarda aquí como prueba
+   * definitiva (no se borra; queda archivada para futuro). */
+  bankMatched?: {
+    date: string
+    detail: string
+    amount: number
+    matchedAt: string
+  }
   createdAt?: string
   updatedAt?: string
 }
