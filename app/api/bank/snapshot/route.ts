@@ -9,18 +9,25 @@ export const dynamic = 'force-dynamic'
 const UPSTREAM = 'https://islandcity-register1.vercel.app/api/bank/snapshot'
 
 export async function GET() {
+  // Timeout 12s: si el Dual Register se cuelga, el feed muestra OFFLINE
+  // en vez de frisar la pantalla (mismo patrón del fix del SAVE).
+  const ctrl = new AbortController()
+  const t = setTimeout(() => ctrl.abort(), 12000)
   try {
     const key = process.env.BANK_FEED_KEY
     if (!key) {
       return NextResponse.json({ error: 'bank feed not configured' }, { status: 503 })
     }
-    const r = await fetch(`${UPSTREAM}?key=${encodeURIComponent(key)}`, { cache: 'no-store' })
+    const r = await fetch(`${UPSTREAM}?key=${encodeURIComponent(key)}`, { cache: 'no-store', signal: ctrl.signal })
     const body = await r.text()
     return new NextResponse(body, {
       status: r.status,
       headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
     })
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'bank proxy failed' }, { status: 502 })
+    const msg = e?.name === 'AbortError' ? 'bank snapshot timeout' : (e?.message || 'bank proxy failed')
+    return NextResponse.json({ error: msg }, { status: 502 })
+  } finally {
+    clearTimeout(t)
   }
 }
