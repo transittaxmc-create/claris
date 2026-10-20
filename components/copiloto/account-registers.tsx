@@ -104,8 +104,6 @@ export function RegistersHome(props: {
   onToggleOtherFund?: (id: string) => void
   /** "Probablemente pagado" confirmado: el movimiento pasa a real. */
   onMarkPaid?: (e: CashFlowEntry, paidDate: string) => void
-  /** Match confirmado con ajuste: marca pagado y crea asiento de ajuste. */
-  onConfirmWithAdjustment?: (e: CashFlowEntry, paidDate: string, adjustmentAmount: number, reason: string) => void
   /** Edición inline en el registro proyectado (monto/fecha/descripción). */
   onPatchEntry?: (id: string, patch: Partial<CashFlowEntry>) => void
   /** Día vacío del registro proyectado → alta de asiento con esa fecha. */
@@ -364,7 +362,6 @@ export function RegistersHome(props: {
             onPatchEntry={props.onPatchEntry}
             onAddEntry={props.onAddEntry}
             onMarkPaid={props.onMarkPaid}
-            onConfirmWithAdjustment={props.onConfirmWithAdjustment}
           />
 
           {/* Balances reales por cuenta (referencia; el inicial es la cuenta ★ + otros fondos) */}
@@ -511,6 +508,8 @@ export function RegisterDetail(props: {
   // Scroll-to-top: ref del contenedor y estado de si está scrolleado.
   const scrollRef = useRef<HTMLDivElement>(null)
   const [showTop, setShowTop] = useState(false)
+  // Orden del register: lo más nuevo arriba por defecto (siempre al abrir).
+  const [newestFirst, setNewestFirst] = useState(true)
   // AI TRACKING de due dates: próxima factura por pagar y ¿alcanza el balance?
   const proximaFactura = (() => {
     const bills = (props.entries || []).filter(
@@ -608,6 +607,8 @@ export function RegisterDetail(props: {
     }
     return lines
   })()
+  // Orden visual: lo más nuevo arriba por defecto.
+  const displayLines = newestFirst ? statementLines : [...statementLines].reverse()
 
   return (
     <div className="flex min-h-0 flex-col gap-3 px-1">
@@ -723,7 +724,9 @@ export function RegisterDetail(props: {
       {/* Statement: Date | Detail | Amount | Balance — alineado, monto editable */}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-emerald-500/20 bg-neutral-950/80">
         <div className="grid shrink-0 grid-cols-[3.25rem_minmax(0,1fr)_4.75rem_4.75rem] gap-1 border-b border-neutral-800 bg-neutral-900/90 px-2.5 py-2 text-[10px] font-black uppercase tracking-wide">
-          <span className="text-neutral-400">Date</span>
+          <button type="button" onClick={() => setNewestFirst((v) => !v)} title={newestFirst ? "Oldest first" : "Newest first"} className="text-left text-neutral-400">
+            Date {newestFirst ? "↓" : "↑"}
+          </button>
           <span className="text-neutral-400">Detail</span>
           <span className="text-right text-neutral-400">Amount</span>
           <span className="text-right text-emerald-400">Balance</span>
@@ -733,10 +736,10 @@ export function RegisterDetail(props: {
           onScroll={(e) => setShowTop((e.target as HTMLDivElement).scrollTop > 200)}
           className="relative max-h-[min(58vh,480px)] min-h-[220px] overflow-y-auto overscroll-contain"
         >
-          {statementLines.length === 0 && (
+          {displayLines.length === 0 && (
             <p className="px-3 py-8 text-center text-[12px] text-neutral-500">No activity</p>
           )}
-          {statementLines.map((line) => {
+          {displayLines.map((line) => {
             const ent = line.entry
             const income = line.amount >= 0
             const esFactura = ent ? ent.status === "projected" : false
