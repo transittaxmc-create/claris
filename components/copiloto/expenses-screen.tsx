@@ -668,7 +668,7 @@ export function ExpensesScreen({
       window.alert("Elige el tipo: Bill (payable) o Receipt (already paid).")
       return
     }
-    const dup = findDuplicateExpense(draft, expenses)
+    const dup = findDuplicateExpense(expenses, draft)
     if (dup) {
       const msg =
         `⚠️ Posible duplicado:\n\n` +
