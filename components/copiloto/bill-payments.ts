@@ -75,7 +75,7 @@ export function removeBillPayment(e: Expense, paymentId: string): Expense {
 // Coincidencia de vendedor (difusa)
 // ---------------------------------------------------------------------------
 
-/** "CD AVENTURE LLC" ≈ "cd aventure" ≈ "CD AVENTURE LLC 12345". */
+/** "CB LIVERY" ≈ "cb livery" ≈ "CB LIVERY 12345". */
 export function vendorFuzzyMatch(a: unknown, b: unknown): boolean {
   const na = normalizeVendorName(a)
   const nb = normalizeVendorName(b)
