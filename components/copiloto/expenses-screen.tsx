@@ -339,6 +339,8 @@ export function ExpensesScreen({
 }) {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [search, setSearch] = useState("")
+  // Orden: lo más nuevo arriba por defecto (siempre al abrir).
+  const [newestFirst, setNewestFirst] = useState(true)
   const [category, setCategory] = useState("All")
   const [isScanning, setIsScanning] = useState(false)
   const [scanStatus, setScanStatus] = useState<string | null>(null)
@@ -590,12 +592,19 @@ export function ExpensesScreen({
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase()
-    return expenses.filter((e) => {
+    const list = expenses.filter((e) => {
       const matchesSearch = !term || (e.vendor ?? "").toLowerCase().includes(term)
       const matchesCategory = category === "All" || e.category === category
       return matchesSearch && matchesCategory
     })
-  }, [expenses, search, category])
+    // Lo más nuevo arriba por defecto; toggle para invertir.
+    list.sort((a, b) => {
+      const cmp = String(b.date || "").localeCompare(String(a.date || ""))
+      if (cmp !== 0) return cmp
+      return String(b.createdAt || "").localeCompare(String(a.createdAt || ""))
+    })
+    return newestFirst ? list : [...list].reverse()
+  }, [expenses, search, category, newestFirst])
 
   const total = useMemo(() => expenseTotal(expenses), [expenses])
   const filteredTotal = useMemo(() => expenseTotal(filtered), [filtered])
@@ -1162,6 +1171,14 @@ export function ExpensesScreen({
               </option>
             ))}
           </select>
+          <button
+            type="button"
+            onClick={() => setNewestFirst((v) => !v)}
+            title={newestFirst ? "Oldest first" : "Newest first"}
+            className="shrink-0 rounded-xl border border-neutral-800 bg-neutral-950 px-2 py-2 text-[11px] font-bold text-neutral-300"
+          >
+            {newestFirst ? "↓ New" : "↑ Old"}
+          </button>
         </div>
       </div>
 
