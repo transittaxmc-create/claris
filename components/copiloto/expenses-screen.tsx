@@ -63,13 +63,18 @@ function daysBetween(a: string, b: string): number {
   return Number.isFinite(ms) ? Math.abs(Math.round(ms / 86400000)) : 999
 }
 
-/** Busca el cargo bancario que corresponde a un recibo (mismo monto, fecha cercana).
+/** Busca el cargo bancario que corresponde a un gasto (mismo monto, fecha cercana).
+ * Cubre recibos Y facturas/bills: si el cargo ya salió en el banco, el gasto
+ * queda marcado como matched (prueba definitiva, archivada).
  * Si el gasto tiene cuenta indicada, solo se busca en ESA cuenta; si no,
  * se busca en all (comportamiento anterior para entradas viejas). */
 function bankMatchFor(expense: Expense, bankTxs: BankTxLite[]): BankTxLite | null {
   if (!bankTxs || bankTxs.length === 0) return null
+  // Recibos (ya pagados) y facturas/bills (por pagar): ambos pueden tener su
+  // cargo en el banco. Los manuales sin docType también se intentan.
   const esRecibo = expense.scanned || expense.isAiGenerated || expense.docType === "recibo"
-  if (!esRecibo) return null
+  const esFactura = expense.docType === "factura"
+  if (!esRecibo && !esFactura && expense.docType === "manual") return null
   const need = Math.abs(Number(expense.amount) || 0)
   if (need <= 0) return null
   const scopeId = expense.accountId || ""
@@ -216,12 +221,16 @@ function ExpenseRow({
             🏠 PERSONAL
           </span>
         )}
-        {bankMatch && (
+        {(bankMatch || expense.bankMatched) && (
           <span
             className="inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold text-emerald-300"
-            title={`${bankMatch.detail || "Bank"} · ${String(bankMatch.date).slice(0, 10)} · ${bankMatch.bank_account || ""}`}
+            title={
+              expense.bankMatched
+                ? `Matched ${expense.bankMatched.date} · ${expense.bankMatched.detail} · $${Math.abs(expense.bankMatched.amount).toFixed(2)}`
+                : `${bankMatch?.detail || "Bank"} · ${String(bankMatch?.date).slice(0, 10)} · ${bankMatch?.bank_account || ""}`
+            }
           >
-            🏦 IN BANK
+            🏦 IN BANK{expense.bankMatched ? " ✓" : ""}
           </span>
         )}
         {accountName && (
@@ -396,7 +405,7 @@ export function ExpensesScreen({
     return m
   }, [registers])
 
-  // Mapa gasto.id -> cargo bancario coincidente (solo recibos).
+  // Mapa gasto.id -> cargo bancario coincidente (recibos y facturas).
   const bankMatches = useMemo(() => {
     const m = new Map<string, BankTxLite>()
     if (bankTxs.length === 0) return m
@@ -406,6 +415,29 @@ export function ExpensesScreen({
     }
     return m
   }, [expenses, bankTxs])
+
+  // Persistir matches: cuando el cargo aparece en el banco, el gasto queda
+  // marcado como matched con los datos del banco (prueba archivada para futuro).
+  // Solo persiste los nuevos; el ref evita re-guardar en cada render.
+  const persistedMatches = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    for (const e of expenses) {
+      if (e.bankMatched || persistedMatches.current.has(e.id)) continue
+      const b = bankMatches.get(e.id)
+      if (!b) continue
+      persistedMatches.current.add(e.id)
+      onSave({
+        ...e,
+        bankMatched: {
+          date: String(b.date || "").slice(0, 10),
+          detail: b.detail || "Bank",
+          amount: Number(b.amount) || 0,
+          matchedAt: new Date().toISOString(),
+        },
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bankMatches])
 
   // ---- Sistema de pago de facturas por partes ----
   // Formulario compacto "Record payment" (monto + cuenta + fecha).
