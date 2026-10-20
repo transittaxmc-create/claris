@@ -118,17 +118,26 @@ export function RegistersHome(props: {
     if (vista === 1) props.onSyncBank?.()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vista])
-  // Swipe detection
+  // Swipe detection: SOLO cambia de vista si el gesto es claramente
+  // horizontal. Si el dedo se mueve más en vertical (scroll normal), NO
+  // se interpreta como swipe: antes, al hacer scroll en Proyectado, el
+  // rozamiento horizontal devolvía a la vista del register (CitiBank).
   const touchX = useRef<number | null>(null)
+  const touchY = useRef<number | null>(null)
   const [verTodos, setVerBalancesTodos] = useState(false)
   const onTouchStart = (e: React.TouchEvent) => {
     touchX.current = e.touches[0].clientX
+    touchY.current = e.touches[0].clientY
   }
   const onTouchEnd = (e: React.TouchEvent) => {
     if (touchX.current === null) return
     const dx = e.changedTouches[0].clientX - touchX.current
+    const dy = touchY.current === null ? 0 : e.changedTouches[0].clientY - touchY.current
     touchX.current = null
+    touchY.current = null
     if (Math.abs(dx) < 48) return
+    // El gesto es vertical (scroll): no cambiar de vista.
+    if (Math.abs(dy) > Math.abs(dx) * 0.75) return
     if (dx < 0 && vista === 0) setVista(1)
     else if (dx > 0 && vista === 1) setVista(0)
   }
