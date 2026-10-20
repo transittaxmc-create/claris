@@ -245,3 +245,35 @@
     line-height: 1.35;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   STEADY (Miguel 2026-10-20): la app no se mueve ni un pelito en iPhone.
+   Sin bouncing, sin shifts al teclear, sin corrimientos laterales.
+   --------------------------------------------------------------------------- */
+
+/* 1) iOS hace auto-zoom si el input tiene font < 16px → la página salta.
+   Todos los inputs a 16px mínimo: no hay zoom, no hay salto. */
+input, select, textarea {
+  font-size: 16px !important;
+}
+/* Los labels y textos pequeños pueden seguir chicos; solo los editables no. */
+input::placeholder, textarea::placeholder {
+  font-size: 14px;
+}
+
+/* 2) Sin bounce encadenado: el scroll se queda dentro de su contenedor,
+   no rebota la página entera (efecto "bouncing" de iOS). */
+.steady-scroll, [data-steady-scroll] {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 3) La página raíz nunca hace scroll horizontal ni rebota. */
+html, body {
+  overscroll-behavior: none;
+  overflow-x: clip;
+}
+/* Evita el "pull to refresh" accidental que mueve toda la página. */
+body {
+  overscroll-behavior-y: none;
+}
