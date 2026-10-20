@@ -459,6 +459,47 @@ export function CashFlowRegister({
     })
   }, [])
 
+  // Match confirmado con ajuste: marca el original como pagado y crea un
+  // asiento de ajuste por la diferencia (ej. fee de plataforma). El día
+  // queda cuadrado: proyectado = banco + ajuste.
+  const handleConfirmWithAdjustment = useCallback(
+    (entry: CashFlowEntry, paidDate: string, adjustmentAmount: number, reason: string) => {
+      const diff = Math.round(Number(adjustmentAmount || 0) * 100) / 100
+      if (Math.abs(diff) < 0.011) {
+        handleMarkPaid(entry, paidDate)
+        return
+      }
+      const now = new Date().toISOString()
+      const adj: CashFlowEntry = {
+        id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `adj-${Date.now()}`,
+        date: paidDate || entry.date,
+        description: `Adjustment: ${reason}`,
+        source: "manual",
+        sourceLabel: "Match adjustment",
+        type: diff < 0 ? "expense" : "income",
+        status: "actual",
+        amount: Math.abs(diff),
+        category: /fee/i.test(reason) ? "Bank fees" : "Adjustment",
+        notes: `Balances "${entry.description || "entry"}": bank vs projected diff ${diff < 0 ? "-" : "+"}$${Math.abs(diff).toFixed(2)}`,
+        createdAt: now,
+        isManuallyEdited: true,
+      }
+      setEntries((prev) => {
+        const next = prev.map((e) =>
+          e.id === entry.id
+            ? { ...e, status: "actual" as CashFlowStatus, date: paidDate || e.date, isManuallyEdited: true }
+            : e,
+        )
+        next.unshift(adj)
+        try {
+          localStorage.setItem(LEDGER_KEY, JSON.stringify(next))
+        } catch {}
+        return next
+      })
+    },
+    [handleMarkPaid],
+  )
+
   const handleSaveEntry = (finalEntry: CashFlowEntry) => {
     const exists = entries.some((e) => e.id === finalEntry.id)
     saveEntries(exists ? entries.map((e) => (e.id === finalEntry.id ? finalEntry : e)) : [finalEntry, ...entries])
@@ -587,6 +628,7 @@ export function CashFlowRegister({
               })
             }}
             onMarkPaid={handleMarkPaid}
+            onConfirmWithAdjustment={handleConfirmWithAdjustment}
             dues={dues}
             pairCount={transferReport.pairs.length}
             looseCount={transferReport.unmatchedOut.length + transferReport.unmatchedIn.length}
