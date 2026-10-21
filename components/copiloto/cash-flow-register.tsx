@@ -115,6 +115,7 @@ export function CashFlowRegister({
   const [bankTotal, setBankTotal] = useState<number | null>(null)
   const [bankLoading, setBankLoading] = useState(false)
   const [bankError, setBankError] = useState(false)
+  const [bankErrorMessage, setBankErrorMessage] = useState<string | null>(null)
   const [bankUpdatedAt, setBankUpdatedAt] = useState<string | null>(null)
 
   // Reconciliación diaria: reporte + aprobación de Miguel. Nada se aplica solo.
@@ -125,19 +126,21 @@ export function CashFlowRegister({
   const fetchBank = useCallback(async () => {
     setBankLoading(true)
     setBankError(false)
+    setBankErrorMessage(null)
     try {
       const r = await fetch(`/api/bank/snapshot?refresh=${Date.now()}`, {
         cache: "no-store",
         headers: { "Cache-Control": "no-cache" },
       })
-      if (!r.ok) throw new Error("bank feed failed")
-      const j = await r.json()
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(String(j?.error || `bank feed failed (${r.status})`))
       setBankTotal(typeof j.total_balance === "number" ? j.total_balance : null)
       setBankAccounts(Array.isArray(j.accounts) ? j.accounts : [])
       setBankTxs(Array.isArray(j.transactions) ? j.transactions : [])
       setBankUpdatedAt(typeof j.as_of === "string" ? j.as_of : new Date().toISOString())
-    } catch {
+    } catch (error) {
       setBankError(true)
+      setBankErrorMessage(error instanceof Error ? error.message : "bank feed failed")
     } finally {
       setBankLoading(false)
     }
@@ -594,8 +597,13 @@ export function CashFlowRegister({
               )}
             />
             <span className="tracking-wider text-[#0a7cff]">PLAID</span>
-            <span className="text-[#f2f3f7]">Bank feed</span>
-          </span>
+  <span className="text-[#f2f3f7]">Bank feed</span>
+  </span>
+  {bankErrorMessage && (
+    <span className="max-w-[220px] truncate text-[9px] text-rose-300" title={bankErrorMessage}>
+      {bankErrorMessage}
+    </span>
+  )}
           <span
             className={cn(
               "rounded border px-2 py-0.5 text-[9px]",
