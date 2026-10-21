@@ -119,24 +119,17 @@ export function RegistersHome(props: {
     })
   })()
 
-  // Orden: principal primero, luego con balance+movimientos, luego solo balance.
-  // Sin balance ni movimientos se ocultan (no se borran; reaparecen solos).
-  const ordered = [...registers]
-    .filter((r) => {
-      if (r.isMain) return true
-      const bal = balances[r.id] ?? 0
-      const mov = movCount[r.id] ?? 0
-      return bal !== 0 || mov > 0
-    })
-    .sort((a, b) => {
+  // Orden: principal primero, luego balance+movimientos, luego solo movimientos,
+  // luego solo balance. Todas se muestran (nada se borra ni se oculta).
+  const ordered = [...registers].sort((a, b) => {
       if (a.isMain && !b.isMain) return -1
       if (b.isMain && !a.isMain) return 1
       const aBal = balances[a.id] ?? 0
       const bBal = balances[b.id] ?? 0
       const aMov = movCount[a.id] ?? 0
       const bMov = movCount[b.id] ?? 0
-      const aScore = (aBal !== 0 && aMov > 0) ? 2 : (aBal !== 0 ? 1 : 0)
-      const bScore = (bBal !== 0 && bMov > 0) ? 2 : (bBal !== 0 ? 1 : 0)
+      const aScore = (aBal !== 0 && aMov > 0) ? 3 : (aMov > 0 ? 2 : (aBal !== 0 ? 1 : 0))
+      const bScore = (bBal !== 0 && bMov > 0) ? 3 : (bMov > 0 ? 2 : (bBal !== 0 ? 1 : 0))
       if (bScore !== aScore) return bScore - aScore
       return Math.abs(bBal) - Math.abs(aBal)
     })
