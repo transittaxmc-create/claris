@@ -119,9 +119,21 @@ export function RegistersHome(props: {
     })
   })()
 
-  // Orden: principal primero, luego balance+movimientos, luego solo movimientos,
-  // luego solo balance. Todas se muestran (nada se borra ni se oculta).
-  const ordered = [...registers].sort((a, b) => {
+  // Orden: principal primero, luego con balance+movimientos, luego solo balance.
+  // Sin balance ni movimientos se ocultan (no se borran; reaparecen solos).
+  // Orden (Miguel): 1° principal (…6393), 2° PayPal, 3° Uber. Resto por actividad.
+  // Todas visibles, nada se oculta ni se borra.
+  const topRank = (r: any): number => {
+    const n = String(r.name || "").toLowerCase()
+    if (r.isMain) return 0
+    if (n.includes("paypal")) return 1
+    if (n.includes("uber")) return 2
+    return 3
+  }
+  const ordered = [...registers]
+    .sort((a, b) => {
+      const ra = topRank(a), rb = topRank(b)
+      if (ra !== rb) return ra - rb
       if (a.isMain && !b.isMain) return -1
       if (b.isMain && !a.isMain) return 1
       const aBal = balances[a.id] ?? 0
