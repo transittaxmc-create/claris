@@ -1,4 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <circle cx="50" cy="50" r="48" fill="#000000"/>
-  <text x="50" y="62" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="700" fill="#FFFFFF" text-anchor="middle">Uber</text>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" role="img" aria-label="Uber"><circle cx="50" cy="50" r="50" fill="#000"/><text x="50" y="58" fill="#fff" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700" text-anchor="middle">Uber</text></svg>
