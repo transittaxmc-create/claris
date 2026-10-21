@@ -282,7 +282,11 @@ export function RegisterDetail(props: {
         entry: e,
       })
     }
-    out.sort((a, b) => String(b.date).localeCompare(String(a.date)))
+    out.sort((a, b) => {
+      const byDate = String(b.date).localeCompare(String(a.date))
+      if (byDate !== 0) return byDate
+      return String(b.key).localeCompare(String(a.key))
+    })
     return out
   }, [bankTxs, entries])
 
