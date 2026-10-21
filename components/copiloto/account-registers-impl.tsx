@@ -239,20 +239,29 @@ export function RegistersHome(props: {
 }
 
 export function RegisterDetail(props: {
-  reg: RegisterAccount
+  account: RegisterAccount
   balance: number | null
   entries: CashFlowEntry[]
   bankTxs: BankTx[]
+  otherFunds?: unknown
   onBack: () => void
   onEditEntry?: (e: CashFlowEntry) => void
   onDeleteEntry?: (id: string) => void
-  onAddEntry?: (type: "income" | "expense", status: "actual" | "projected") => void
+  onAddEntry?: (...args: any[]) => void
   onOpenScanner?: () => void
+  onSetDocKind?: (...args: any[]) => void
+  onInlineAmount?: (...args: any[]) => void
+  onSetMain?: (...args: any[]) => void
+  onSaveDueDay?: (...args: any[]) => void
+  onSaveManualBalance?: (...args: any[]) => void
+  onDeleteManual?: (...args: any[]) => void
+  [key: string]: any
 }) {
-  const { reg, balance, entries, bankTxs } = props
+  const reg = props.account
+  const { balance, entries, bankTxs } = props
   const lines = useMemo(() => {
     const out: { key: string; date: string; detail: string; amount: number; pending?: boolean; entry?: CashFlowEntry }[] = []
-    for (const t of bankTxs) {
+    for (const t of bankTxs || []) {
       out.push({
         key: `bank-${t.transaction_id || t.date + t.detail + t.amount}`,
         date: String(t.date || "").slice(0, 10),
@@ -261,7 +270,7 @@ export function RegisterDetail(props: {
         pending: Boolean(t.pending),
       })
     }
-    for (const e of entries) {
+    for (const e of entries || []) {
       const amt = Math.abs(Number(e.amount) || 0)
       out.push({
         key: `entry-${e.id}`,
@@ -287,7 +296,7 @@ export function RegisterDetail(props: {
         </p>
       </div>
       <div className="space-y-1">
-        {lines.slice(0, 100).map((line) => (
+        {lines.slice(0, 120).map((line) => (
           <button
             key={line.key}
             type="button"
@@ -311,13 +320,11 @@ export function RegisterDetail(props: {
 }
 
 export function AddAccountModal(props: {
-  open: boolean
   onClose: () => void
   onSave: (input: { name: string; kind: "bank" | "card"; limit?: number | null; dueDay?: number | null; balance?: number | null }) => void
 }) {
   const [name, setName] = useState("")
   const [kind, setKind] = useState<"bank" | "card">("bank")
-  if (!props.open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-3">
       <div className="w-full max-w-md rounded-2xl border border-[#262633] bg-[#111119] p-4">
@@ -355,6 +362,8 @@ export function TransfersReport(props: {
   report: TransferReport
   onBack: () => void
 }) {
+  const pairs = props.report?.pairs || []
+  const open = (props.report?.unmatchedOut?.length || 0) + (props.report?.unmatchedIn?.length || 0)
   return (
     <div className="flex flex-col gap-3">
       <button type="button" onClick={props.onBack} className="self-start text-[12px] font-bold text-[#5b8cff]">
@@ -362,8 +371,17 @@ export function TransfersReport(props: {
       </button>
       <p className="text-[14px] font-bold text-[#f2f3f7]">Transferencias</p>
       <p className="text-[12px] text-neutral-400">
-        {props.report.pairs?.length || 0} matched · {props.report.loose?.length || 0} open
+        {pairs.length} matched · {open} open
       </p>
+      <div className="space-y-1">
+        {pairs.slice(0, 50).map((p) => (
+          <div key={p.id} className="rounded-xl border border-[#262633] bg-[#16161f] px-3 py-2 text-[12px] text-neutral-200">
+            <p className="font-bold">{money(p.amount)}</p>
+            <p className="text-[11px] text-neutral-400">{p.originLabel}</p>
+            <p className="font-mono text-[10px] text-neutral-500">{p.outDate} → {p.inDate}</p>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
