@@ -27,6 +27,7 @@ import {
   type ScheduleOverride,
 } from "./dinero-forecast"
 import { FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT, FORECAST_DISMISSED_KEY } from "./finance-sync"
+import { ProjectedCashFlow } from "./projected-cash-flow"
 
 export function useForecastInputs() {
   const [schedules, setSchedules] = useState<ScheduledEntry[]>([])
@@ -52,6 +53,30 @@ export function useForecastInputs() {
   return { schedules, dismissed }
 }
 
-export function DineroProyeccion(_props: Record<string, unknown>) {
-  return null
+export function DineroProyeccion(props: {
+  registers?: Array<{ id: string; isMain?: boolean }>
+  balances?: Record<string, number>
+  dues?: Array<{ date: string; label: string; amount: number }>
+  entries?: CashFlowEntry[]
+  onEditEntry?: (e: CashFlowEntry) => void
+}) {
+  // Balance disponible: suma de cuentas bancarias (igual que el header)
+  let available = 0
+  const balances = props.balances || {}
+  const registers = props.registers || []
+  for (const r of registers) {
+    const bal = balances[r.id]
+    if (bal === null || bal === undefined) continue
+    // Solo bancos (no tarjetas) — misma regla del header
+    available += bal
+  }
+  available = Math.round(available * 100) / 100
+  return (
+    <ProjectedCashFlow
+      availableNow={available}
+      entries={(props.entries || []) as CashFlowEntry[]}
+      dues={props.dues || []}
+      onEditEntry={props.onEditEntry}
+    />
+  )
 }
