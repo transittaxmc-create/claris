@@ -18,8 +18,8 @@ export type PlatformMeta = {
 }
 
 export const PLATFORM_META: Record<Platform, PlatformMeta> = {
-  Uber: { logo: "/logos/uber.svg" },
-  Lyft: { logo: "/logos/lyft.svg" },
+  Uber: { logo: "/bank-logos/uber.svg" },
+  Lyft: { logo: "/bank-logos/lyft.svg" },
   Limosys: {},
   "Eco Ride": {
     logo: "/logos/eco-ride.jpg",
