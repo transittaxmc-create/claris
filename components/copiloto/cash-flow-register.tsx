@@ -142,6 +142,15 @@ export function CashFlowRegister({
 
   useEffect(() => {
     fetchBank()
+    const refresh = window.setInterval(fetchBank, 5 * 60 * 1000)
+    const onVisible = () => {
+      if (document.visibilityState === "visible") fetchBank()
+    }
+    document.addEventListener("visibilitychange", onVisible)
+    return () => {
+      window.clearInterval(refresh)
+      document.removeEventListener("visibilitychange", onVisible)
+    }
   }, [fetchBank])
 
   const loadLedger = useCallback(() => {

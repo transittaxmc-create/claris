@@ -119,10 +119,12 @@ export function RegistersHome(props: {
     })
   })()
 
+  // Mantiene el orden entregado por el feed bancario: Plaid devuelve primero
+  // las cuentas más recientes/activas. Solo la principal se fija arriba.
   const ordered = [...registers].sort((a, b) => {
     if (a.isMain && !b.isMain) return -1
     if (b.isMain && !a.isMain) return 1
-    return a.name.localeCompare(b.name)
+    return 0
   })
 
   return (

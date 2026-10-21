@@ -28,5 +28,30 @@ import {
 } from "./dinero-forecast"
 import { FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT, FORECAST_DISMISSED_KEY } from "./finance-sync"
 
-// FILE TOO LARGE - SEE LOCAL ARTIFACT - THIS IS A BROKEN STUB
-export function DineroProyeccion() { return null }
+export function useForecastInputs() {
+  const [schedules, setSchedules] = useState<ScheduledEntry[]>([])
+  const [dismissed, setDismissed] = useState<string[]>([])
+
+  useEffect(() => {
+    const read = () => {
+      try {
+        const rawSchedules = JSON.parse(localStorage.getItem(FINANCE_SCHEDULES_KEY) || "[]")
+        const rawDismissed = JSON.parse(localStorage.getItem(FORECAST_DISMISSED_KEY) || "[]")
+        setSchedules(Array.isArray(rawSchedules) ? rawSchedules : [])
+        setDismissed(Array.isArray(rawDismissed) ? rawDismissed.map(String) : [])
+      } catch {
+        setSchedules([])
+        setDismissed([])
+      }
+    }
+    read()
+    window.addEventListener(FINANCE_SYNCED_EVENT, read)
+    return () => window.removeEventListener(FINANCE_SYNCED_EVENT, read)
+  }, [])
+
+  return { schedules, dismissed }
+}
+
+export function DineroProyeccion(_props: Record<string, unknown>) {
+  return null
+}
