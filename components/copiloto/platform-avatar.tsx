@@ -23,7 +23,7 @@ export function PlatformAvatar({
   return (
     <span
       className={cn(
-        "flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-white/95 ring-1 ring-black/20",
+        "flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-900 ring-1 ring-white/10",
         className,
       )}
       style={{ width: size, height: size }}
