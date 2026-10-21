@@ -3,7 +3,7 @@
 /**
  * Shared PROJECTED REGISTER — forecast book (not per-account statement).
  * Bank available → recurring/proj income & expense → projected balance.
- * Newest days first in list order by date ascending within horizon.
+ * Newest days first so the latest movement is visible when the app opens.
  */
 
 import { useMemo } from "react"
@@ -151,7 +151,7 @@ export function ProjectedCashFlow(props: {
             No forecasts yet. Add a bill or schedule income.
           </p>
         )}
-        {groups.map((g) => (
+        {[...groups].reverse().map((g) => (
           <div key={g.date} className="rounded-xl border border-neutral-800/90 bg-neutral-950/60">
             <p className="border-b border-neutral-800/60 px-2.5 py-1.5 text-[11px] font-bold text-neutral-300">
               {weekdayLabel(g.date)}

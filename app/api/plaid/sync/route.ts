@@ -25,6 +25,7 @@ type OutAccount = {
   name: string
   current_balance: number
   institution: string | null
+  type: string | null
 }
 
 // Full bank snapshot from Plaid (posted + pending). Same envelope as /api/bank/snapshot.
@@ -77,6 +78,7 @@ export async function GET() {
           name,
           current_balance: current,
           institution: item.institution_name || a.official_name || null,
+          type: typeof a.type === "string" ? a.type : null,
         })
         // Checking/savings add; credit cards still count in available/owe logic client-side.
         if (a.type === "depository") total += current

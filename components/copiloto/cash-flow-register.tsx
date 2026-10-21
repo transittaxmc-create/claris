@@ -126,7 +126,10 @@ export function CashFlowRegister({
     setBankLoading(true)
     setBankError(false)
     try {
-      const r = await fetch("/api/bank/snapshot", { cache: "no-store" })
+      const r = await fetch(`/api/bank/snapshot?refresh=${Date.now()}`, {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      })
       if (!r.ok) throw new Error("bank feed failed")
       const j = await r.json()
       setBankTotal(typeof j.total_balance === "number" ? j.total_balance : null)
@@ -142,6 +145,15 @@ export function CashFlowRegister({
 
   useEffect(() => {
     fetchBank()
+    const refresh = window.setInterval(fetchBank, 5 * 60 * 1000)
+    const onVisible = () => {
+      if (document.visibilityState === "visible") fetchBank()
+    }
+    document.addEventListener("visibilitychange", onVisible)
+    return () => {
+      window.clearInterval(refresh)
+      document.removeEventListener("visibilitychange", onVisible)
+    }
   }, [fetchBank])
 
   const loadLedger = useCallback(() => {
