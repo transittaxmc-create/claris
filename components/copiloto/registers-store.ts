@@ -200,10 +200,10 @@ export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAcc
     regs.push({ ...m, dueDay: st.dueDays[m.id] ?? m.dueDay ?? null, isMain: false })
   }
 
-  // Principal: CitiBank …6393 (Miguel). Busca "6393" en cualquier parte del nombre.
-  const exactCiti = regs.find(
-    (r) => String(r.name).includes("6393"),
-  )
+  // Principal: CitiBank …6393 (Miguel). Múltiples criterios por si el nombre varía.
+  const exactCiti = regs.find((r) => String(r.name).includes("6393"))
+    || regs.find((r) => /citi/i.test(String(r.name)) && Math.abs((balById.get(r.id) ?? 0) - 784.99) < 1)
+    || regs.find((r) => /access account/i.test(String(r.name)))
   let mainId = st.mainId
   // CitiBank 6393 es siempre la Principal (Miguel). Se corrige en cada carga:
   // si existe en los datos, la ★ va ahí, sin importar lo que haya guardado.
