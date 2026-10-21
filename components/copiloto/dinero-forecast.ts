@@ -222,6 +222,15 @@ export function platformMatch(bankDetail: unknown, label: unknown): boolean {
   return false
 }
 
+/** ¿El detalle del banco parece un depósito/transferencia? (para el tercer
+ * intento de matching: "Uber cobro" → "PayPal transfer" aunque no compartan
+ * plataforma, si monto y fecha cuadran.) */
+const TRANSFER_WORDS = ["transfer", "deposit", "zelle", "paypal", "venmo", "payout", "credit", "ach", "wire"]
+export function transferLike(bankDetail: unknown): boolean {
+  const d = String(bankDetail || "").toLowerCase()
+  return TRANSFER_WORDS.some((w) => d.includes(w))
+}
+
 export function amountClose(a: number, b: number, pct: number): boolean {
   const x = Math.abs(Number(a) || 0)
   const y = Math.abs(Number(b) || 0)
@@ -434,6 +443,26 @@ export function buildForecast(input: ForecastInput): Forecast {
         if (gap > window) continue
         if (!amountClose(amt, amount, flexPct)) continue
         if (!platformMatch(t.detail, label)) continue
+        if (gap < bestGap) {
+          bestGap = gap
+          best = i
+        }
+      }
+    }
+    // Tercer intento: el depósito llegó por otra vía (ej. "Uber" vía "PayPal").
+    // Si el banco muestra una transferencia y monto/fecha cuadran, se propone.
+    // Miguel lo confirma o descarta en "Por confirmar".
+    if (best < 0 && income) {
+      const flexPct = Math.max(pct, 0.08)
+      for (let i = 0; i < bankTxs.length; i++) {
+        if (usedTx.has(i)) continue
+        const t = bankTxs[i]
+        const amt = Number(t.amount) || 0
+        if (amt <= 0) continue
+        const gap = Math.abs(diffDays(String(t.date).slice(0, 10), date))
+        if (gap > window) continue
+        if (!amountClose(amt, amount, flexPct)) continue
+        if (!transferLike(t.detail)) continue
         if (gap < bestGap) {
           bestGap = gap
           best = i
