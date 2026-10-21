@@ -119,13 +119,27 @@ export function RegistersHome(props: {
     })
   })()
 
-  // Mantiene el orden entregado por el feed bancario: Plaid devuelve primero
-  // las cuentas más recientes/activas. Solo la principal se fija arriba.
-  const ordered = [...registers].sort((a, b) => {
-    if (a.isMain && !b.isMain) return -1
-    if (b.isMain && !a.isMain) return 1
-    return 0
-  })
+  // Orden: principal primero, luego con balance+movimientos, luego solo balance.
+  // Sin balance ni movimientos se ocultan (no se borran; reaparecen solos).
+  const ordered = [...registers]
+    .filter((r) => {
+      if (r.isMain) return true
+      const bal = balances[r.id] ?? 0
+      const mov = movCount[r.id] ?? 0
+      return bal !== 0 || mov > 0
+    })
+    .sort((a, b) => {
+      if (a.isMain && !b.isMain) return -1
+      if (b.isMain && !a.isMain) return 1
+      const aBal = balances[a.id] ?? 0
+      const bBal = balances[b.id] ?? 0
+      const aMov = movCount[a.id] ?? 0
+      const bMov = movCount[b.id] ?? 0
+      const aScore = (aBal !== 0 && aMov > 0) ? 2 : (aBal !== 0 ? 1 : 0)
+      const bScore = (bBal !== 0 && bMov > 0) ? 2 : (bBal !== 0 ? 1 : 0)
+      if (bScore !== aScore) return bScore - aScore
+      return Math.abs(bBal) - Math.abs(aBal)
+    })
 
   return (
     <div className="flex flex-col gap-3 overflow-x-hidden">
