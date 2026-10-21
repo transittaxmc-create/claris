@@ -1,31 +1,54 @@
 // app/api/bank/snapshot/route.ts
-// Server-side proxy to the islandcity-register1 bank snapshot (shared Supabase).
-// BANK_FEED_KEY lives only in Vercel env — it never reaches the browser.
-// The DUAL REGISTER panel calls THIS route (same origin).
-import { NextResponse } from 'next/server'
+// Prefer direct Plaid when configured + linked; otherwise proxy to legacy feed.
+import { NextResponse } from "next/server"
+import { listPlaidItems, plaidConfigured } from "@/lib/plaid"
 
-export const dynamic = 'force-dynamic'
+export const dynamic = "force-dynamic"
 
-const UPSTREAM = 'https://islandcity-register1.vercel.app/api/bank/snapshot'
+const UPSTREAM = "https://islandcity-register1.vercel.app/api/bank/snapshot"
+
+async function fromPlaid(): Promise<Response | null> {
+  if (!plaidConfigured()) return null
+  const items = await listPlaidItems()
+  if (!items.length) return null
+  // Same-origin internal call keeps one code path for mapping.
+  const origin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"
+  try {
+    const r = await fetch(`${origin}/api/plaid/sync`, { cache: "no-store" })
+    if (!r.ok) return null
+    const body = await r.text()
+    return new NextResponse(body, {
+      status: 200,
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+    })
+  } catch {
+    return null
+  }
+}
 
 export async function GET() {
-  // Timeout 12s: si el Dual Register se cuelga, el feed muestra OFFLINE
-  // en vez de frisar la pantalla (mismo patrón del fix del SAVE).
+  const plaidRes = await fromPlaid()
+  if (plaidRes) return plaidRes
+
+  // Legacy proxy (BANK_FEED_KEY) — still works until Plaid is linked.
   const ctrl = new AbortController()
   const t = setTimeout(() => ctrl.abort(), 12000)
   try {
     const key = process.env.BANK_FEED_KEY
     if (!key) {
-      return NextResponse.json({ error: 'bank feed not configured' }, { status: 503 })
+      return NextResponse.json({ error: "bank feed not configured" }, { status: 503 })
     }
-    const r = await fetch(`${UPSTREAM}?key=${encodeURIComponent(key)}`, { cache: 'no-store', signal: ctrl.signal })
+    const r = await fetch(`${UPSTREAM}?key=${encodeURIComponent(key)}`, {
+      cache: "no-store",
+      signal: ctrl.signal,
+    })
     const body = await r.text()
     return new NextResponse(body, {
       status: r.status,
-      headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
+      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
     })
   } catch (e: any) {
-    const msg = e?.name === 'AbortError' ? 'bank snapshot timeout' : (e?.message || 'bank proxy failed')
+    const msg = e?.name === "AbortError" ? "bank snapshot timeout" : e?.message || "bank proxy failed"
     return NextResponse.json({ error: msg }, { status: 502 })
   } finally {
     clearTimeout(t)
