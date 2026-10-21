@@ -1,0 +1,7 @@
+const fs = require("fs")
+const path = require("path")
+const dir = path.join(__dirname, "..", "components", "copiloto")
+const parts = [1, 2, 3].map((i) => fs.readFileSync(path.join(dir, `account-registers.part${i}`), "utf8"))
+const out = path.join(dir, "account-registers-impl.tsx")
+fs.writeFileSync(out, parts.join(""))
+console.log("assembled", out, parts.reduce((a, b) => a + b.length, 0))
