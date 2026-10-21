@@ -60,11 +60,23 @@ export function DineroProyeccion(props: {
   entries?: CashFlowEntry[]
   onEditEntry?: (e: CashFlowEntry) => void
 }) {
+  // Balance disponible: suma de cuentas bancarias (igual que el header)
+  let available = 0
+  const balances = props.balances || {}
+  const registers = props.registers || []
+  for (const r of registers) {
+    const bal = balances[r.id]
+    if (bal === null || bal === undefined) continue
+    // Solo bancos (no tarjetas) — misma regla del header
+    available += bal
+  }
+  available = Math.round(available * 100) / 100
   return (
-    <div style={{ padding: 20, color: 'white' }}>
-      <p>TEST: Projections tab is rendering</p>
-      <p>Entries: {(props.entries || []).length}</p>
-      <p>Dues: {(props.dues || []).length}</p>
-    </div>
+    <ProjectedCashFlow
+      availableNow={available}
+      entries={(props.entries || []) as CashFlowEntry[]}
+      dues={props.dues || []}
+      onEditEntry={props.onEditEntry}
+    />
   )
 }
