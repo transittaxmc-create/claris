@@ -449,11 +449,10 @@ export function buildForecast(input: ForecastInput): Forecast {
         }
       }
     }
-    // Tercer intento: el depósito llegó por otra vía (ej. "Uber" vía "PayPal").
-    // Si el banco muestra una transferencia y monto/fecha cuadran, se propone.
-    // Miguel lo confirma o descarta en "Por confirmar".
+    // Tercer intento: el depósito llegó por otra vía o el monto varía más.
+    // Solo monto (±15%) y fecha: Miguel lo confirma o descarta en "Por confirmar".
     if (best < 0 && income) {
-      const flexPct = Math.max(pct, 0.08)
+      const loosePct = Math.max(pct, 0.15)
       for (let i = 0; i < bankTxs.length; i++) {
         if (usedTx.has(i)) continue
         const t = bankTxs[i]
@@ -461,8 +460,7 @@ export function buildForecast(input: ForecastInput): Forecast {
         if (amt <= 0) continue
         const gap = Math.abs(diffDays(String(t.date).slice(0, 10), date))
         if (gap > window) continue
-        if (!amountClose(amt, amount, flexPct)) continue
-        if (!transferLike(t.detail)) continue
+        if (!amountClose(amt, amount, loosePct)) continue
         if (gap < bestGap) {
           bestGap = gap
           best = i
