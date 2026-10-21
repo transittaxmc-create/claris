@@ -7,14 +7,14 @@ export const dynamic = "force-dynamic"
 
 const UPSTREAM = "https://islandcity-register1.vercel.app/api/bank/snapshot"
 
-async function fromPlaid(): Promise<Response | null> {
+async function fromPlaid(requestUrl: string): Promise<Response | null> {
   if (!plaidConfigured()) return null
   const items = await listPlaidItems()
   if (!items.length) return null
   // Same-origin internal call keeps one code path for mapping.
-  const origin = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"
+  const syncUrl = new URL("/api/plaid/sync", requestUrl)
   try {
-    const r = await fetch(`${origin}/api/plaid/sync`, { cache: "no-store" })
+    const r = await fetch(syncUrl, { cache: "no-store" })
     if (!r.ok) return null
     const body = await r.text()
     return new NextResponse(body, {
@@ -26,8 +26,8 @@ async function fromPlaid(): Promise<Response | null> {
   }
 }
 
-export async function GET() {
-  const plaidRes = await fromPlaid()
+export async function GET(request: Request) {
+  const plaidRes = await fromPlaid(request.url)
   if (plaidRes) return plaidRes
 
   // Legacy proxy (BANK_FEED_KEY) — still works until Plaid is linked.

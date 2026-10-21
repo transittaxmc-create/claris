@@ -3,7 +3,6 @@ import {
   listPlaidItems,
   plaidConfigured,
   plaidFetch,
-  updatePlaidCursor,
 } from "@/lib/plaid"
 
 export const dynamic = "force-dynamic"
@@ -82,42 +81,37 @@ export async function GET() {
         if (a.type === "depository") total += current
       }
 
-      // Transactions: /transactions/sync includes pending when available.
-      let cursor: string | null = item.cursor
+      // The UI expects a complete, current bank snapshot on every refresh.
+      // /transactions/sync returns only deltas after the saved cursor, which
+      // made the register appear empty/stale because deltas were not persisted.
+      // Fetch the full available window instead and let the UI replace its
+      // snapshot. Plaid's endpoint paginates with offset.
+      const endDate = new Date()
+      const startDate = new Date(endDate)
+      startDate.setFullYear(startDate.getFullYear() - 2)
+      const byId = new Map<string, any>()
+      let offset = 0
       let hasMore = true
-      const added: any[] = []
-      const modified: any[] = []
-      const removed: string[] = []
       let guard = 0
       while (hasMore && guard < 20) {
         guard += 1
         const page = await plaidFetch<{
-          added: any[]
-          modified: any[]
-          removed: { transaction_id: string }[]
-          next_cursor: string
-          has_more: boolean
-        }>("/transactions/sync", {
+          transactions: any[]
+          total_transactions: number
+        }>("/transactions/get", {
           access_token: item.access_token,
-          cursor: cursor || undefined,
+          start_date: startDate.toISOString().slice(0, 10),
+          end_date: endDate.toISOString().slice(0, 10),
           count: 500,
-          options: { include_personal_finance_category: true },
+          offset,
+          options: { include_personal_finance_category: true, include_pending: true },
         })
-        added.push(...(page.added || []))
-        modified.push(...(page.modified || []))
-        for (const r of page.removed || []) {
-          if (r?.transaction_id) removed.push(r.transaction_id)
+        for (const t of page.transactions || []) {
+          if (t?.transaction_id) byId.set(t.transaction_id, t)
         }
-        cursor = page.next_cursor
-        hasMore = Boolean(page.has_more)
+        offset += (page.transactions || []).length
+        hasMore = offset < Number(page.total_transactions || 0)
       }
-      if (cursor) await updatePlaidCursor(item.item_id, cursor)
-
-      const byId = new Map<string, any>()
-      for (const t of [...added, ...modified]) {
-        if (t?.transaction_id) byId.set(t.transaction_id, t)
-      }
-      for (const id of removed) byId.delete(id)
 
       for (const t of byId.values()) {
         // Plaid: positive amount = money out. Claris: expense negative, income positive.
