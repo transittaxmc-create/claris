@@ -200,9 +200,9 @@ export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAcc
     regs.push({ ...m, dueDay: st.dueDays[m.id] ?? m.dueDay ?? null, isMain: false })
   }
 
-  // Principal: máscara ···6393 (Miguel). Plaid la manda como "Access Account …6393".
+  // Principal: CitiBank …6393 (Miguel). Busca "6393" en cualquier parte del nombre.
   const exactCiti = regs.find(
-    (r) => r.kind === "bank" && last4Of(String(r.name)) === "6393",
+    (r) => String(r.name).includes("6393"),
   )
   let mainId = st.mainId
   // CitiBank 6393 es siempre la Principal (Miguel). Se corrige en cada carga:
