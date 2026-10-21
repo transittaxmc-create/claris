@@ -121,14 +121,15 @@ export function RegistersHome(props: {
 
   // Orden: principal primero, luego con balance+movimientos, luego solo balance.
   // Sin balance ni movimientos se ocultan (no se borran; reaparecen solos).
-  // Orden (Miguel): 1° principal (…6393), 2° PayPal, 3° Uber. Resto por actividad.
+  // Orden (Miguel): 1° …6393, 2° PayPal, 3° Uber, 4° Lyft. Resto por actividad.
   // Todas visibles, nada se oculta ni se borra.
   const topRank = (r: any): number => {
     const n = String(r.name || "").toLowerCase()
     if (r.isMain) return 0
     if (n.includes("paypal")) return 1
     if (n.includes("uber")) return 2
-    return 3
+    if (n.includes("lyft")) return 3
+    return 4
   }
   const ordered = [...registers]
     .sort((a, b) => {
