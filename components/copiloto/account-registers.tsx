@@ -104,8 +104,6 @@ export function RegistersHome(props: {
   onToggleOtherFund?: (id: string) => void
   /** "Probablemente pagado" confirmado: el movimiento pasa a real. */
   onMarkPaid?: (e: CashFlowEntry, paidDate: string) => void
-  /** Match confirmado con ajuste: marca pagado y crea asiento de ajuste. */
-  onConfirmWithAdjustment?: (e: CashFlowEntry, paidDate: string, adjustmentAmount: number, reason: string) => void
   /** Edición inline en el registro proyectado (monto/fecha/descripción). */
   onPatchEntry?: (id: string, patch: Partial<CashFlowEntry>) => void
   /** Día vacío del registro proyectado → alta de asiento con esa fecha. */
