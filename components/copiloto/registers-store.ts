@@ -78,6 +78,7 @@ const SEED_MANUAL: Array<{ id: string; name: string }> = [
   { id: "manual:venmo", name: "Venmo" },
   { id: "manual:square-checking", name: "Square Checking" },
   { id: "manual:uber-pro-card", name: "Uber Pro Card" },
+  { id: "manual:lyft", name: "Lyft" },
 ]
 
 function normName(n: string) {
@@ -199,13 +200,9 @@ export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAcc
     regs.push({ ...m, dueDay: st.dueDays[m.id] ?? m.dueDay ?? null, isMain: false })
   }
 
-  // Principal: CitiBank …6393 (Miguel). Busca "6393" en el nombre.
+  // Principal: máscara ···6393 (Miguel). Plaid la manda como "Access Account …6393".
   const exactCiti = regs.find(
-    (r) => r.kind === "bank" && String(r.name).includes("6393"),
-  )
-  // Segunda: PayPal (Miguel).
-  const paypal = regs.find(
-    (r) => /paypal/i.test(String(r.name)),
+    (r) => r.kind === "bank" && last4Of(String(r.name)) === "6393",
   )
   let mainId = st.mainId
   // CitiBank 6393 es siempre la Principal (Miguel). Se corrige en cada carga:
