@@ -16,16 +16,38 @@ async function fromSupabase(): Promise<Response | null> {
     const rows = await r.json()
     if (!rows?.length) return null
     const txns = rows[0]?.data?.transactions || []
+    // Leer balances frescos
+    let balMap: Record<string, number> = {}
+    try {
+      const bRes = await fetch(`${url}/rest/v1/app_state?id=eq.balances&select=data`, {
+        headers: { apikey: key, Authorization: `Bearer ${key}` },
+        cache: "no-store",
+      })
+      if (bRes.ok) {
+        const bRows = await bRes.json()
+        const bals = bRows[0]?.data?.balances || {}
+        for (const [k, v] of Object.entries(bals) as any) {
+          // Mapear por nombre de cuenta
+          balMap[v.name] = v.current
+          if (v.mask) balMap[`${v.name} …${v.mask}`] = v.current
+        }
+      }
+    } catch {}
     // Mapear al formato del snapshot
     const accounts: Record<string, any> = {}
+    let total = 0
     for (const t of txns) {
       const acct = t.account || t.bankRef || "unknown"
-      if (!accounts[acct]) accounts[acct] = { name: acct, current_balance: 0, transactions: [] }
+      if (!accounts[acct]) {
+        const bal = balMap[acct] ?? 0
+        accounts[acct] = { name: acct, current_balance: bal, transactions: [] }
+        total += bal
+      }
       accounts[acct].transactions.push(t)
     }
     return NextResponse.json({
       as_of: new Date().toISOString(),
-      total_balance: 0,
+      total_balance: total,
       accounts: Object.values(accounts),
       transactions: txns,
       source: "supabase",
