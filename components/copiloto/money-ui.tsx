@@ -26,7 +26,7 @@ export function BankLogo(props: { brand: BankBrand; name: string; size?: "sm" | 
       className={cn(
         "relative grid shrink-0 place-items-center overflow-hidden shadow-[0_0_0_1px_rgba(255,255,255,.08),0_2px_8px_rgba(0,0,0,.35)]",
         big ? "size-[42px] rounded-[11px]" : "size-[34px] rounded-[9px]",
-        showImg ? "bg-white" : "",
+        showImg ? "bg-transparent" : "",
       )}
       style={showImg ? undefined : { background: `linear-gradient(135deg, ${brand.c}, ${brand.a})` }}
     >
