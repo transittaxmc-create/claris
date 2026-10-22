@@ -1,5 +1,15 @@
 // app/api/bank/snapshot/route.ts
 // Prefer direct Plaid when configured + linked; otherwise proxy to legacy feed.
+//
+// FIX 2026-10-22 (root cause de "0 mov." en Copiloto):
+// fromSupabase() lee la tabla legacy `app_state` (id='register'), cuyos
+// movimientos usan `account` y `description` — NO `bank_account` ni `detail`.
+// El frontend (movementCounts, txsForAccount, bumpMove, reconciliación)
+// hace match por `t.bank_account`, así que nada coincidía: todas las cuentas
+// marcaban "0 mov." y los registers abrían vacíos aunque el sync trajera datos.
+// Este parche normaliza cada movimiento al formato BankTx que espera el
+// frontend: { date, bank_account, detail, category, amount (con signo),
+// daily_balance }. Los montos legacy ya vienen con signo (gasto negativo).
 import { NextResponse } from "next/server"
 import { listPlaidItems, plaidConfigured } from "@/lib/plaid"
 
@@ -15,7 +25,17 @@ async function fromSupabase(): Promise<Response | null> {
     if (!r.ok) return null
     const rows = await r.json()
     if (!rows?.length) return null
-    const txns = rows[0]?.data?.transactions || []
+    const rawTxns = rows[0]?.data?.transactions || []
+    // Normalizar al formato BankTx del frontend. Sin `bank_account` el match
+    // por cuenta falla y los registers salen vacíos ("0 mov.").
+    const txns = rawTxns.map((t: any) => ({
+      date: String(t.date || "").slice(0, 10),
+      bank_account: t.account || t.bankRef || "unknown",
+      detail: t.description || t.merchant || "",
+      category: t.category || null,
+      amount: Number(t.amount) || 0,
+      daily_balance: null,
+    }))
     // Leer balances frescos
     let balMap: Record<string, number> = {}
     try {
@@ -37,7 +57,7 @@ async function fromSupabase(): Promise<Response | null> {
     const accounts: Record<string, any> = {}
     let total = 0
     for (const t of txns) {
-      const acct = t.account || t.bankRef || "unknown"
+      const acct = t.bank_account || "unknown"
       if (!accounts[acct]) {
         const bal = balMap[acct] ?? 0
         accounts[acct] = { name: acct, current_balance: bal, transactions: [] }
@@ -73,9 +93,7 @@ async function fromPlaid(): Promise<Response | null> {
       status: 200,
       headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
     })
-  } catch {
-    return null
-  }
+  } catch { return null }
 }
 
 export async function GET() {
