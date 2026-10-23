@@ -12,9 +12,12 @@ import {
   todayKey,
   type ForecastBankTx,
   type ForecastLine,
-} from "./dinero-forecast"
-import { FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT } from "./finance-sync"
-import { useForecastInputs } from "./dinero-proyeccion"
+} from "./
+dinero-forecast"
+import { FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT } from "./
+finance-sync"
+import { useForecastInputs } from "./
+dinero-proyeccion"
 
 function readList<T>(key: string): T[] {
   try {
@@ -163,7 +166,7 @@ export function DineroProyeccionV2(props: {
             <div style={{fontSize:20,fontWeight:800,color:"#ff5d6c"}}>{fmtMoney(-fc.expenseTotal)}</div>
           </div>
           <div style={{textAlign:"right"}}>
-            <Gauge pct={healthPct}
+            <Gauge pct={healthPct} />
             <div style={{fontSize:11,fontWeight:800,color:healthColor,marginTop:2">HEALTH: {healthLbl}</div>
             <div style={{fontSize:10,color:"#8a8a96",marginTop:10,letterSpacing:.6">FINAL PROJECTED BALANCE<br/>({endDateLbl}):</div>
             <div style={{fontSize:24,fontWeight:800,color:"#fff"}}>${fc.end.toLocaleString("en-US",{minimumFractionDigits:2})}</div>
@@ -209,7 +212,7 @@ export function DineroProyeccionV2(props: {
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,margin:"14px 12px 0"}}>
         <div style={{background:"#14141c",border:"1px solid #23232f",borderRadius:14,padding:14}}>
           <div style={{fontSize:10,fontWeight:800,letterSpacing:1,color:"#9a9aa6",marginBottom:10">PROJECTED BALANCE</div>
-          <BalanceChart days={fc.days.map(d=>({date:d.date,balance:d.balance}))} start={fc.start}
+          <BalanceChart days={fc.days.map(d=>({date:d.date,balance:d.balance}))} start={fc.start} />
           <div style={{display:"flex",justifyContent:"space-between",fontSize:9,color:"#8a8a96",marginTop:6}}>
             <span>{todayLbl}</span><span>NOV 25</span>
           </div>
