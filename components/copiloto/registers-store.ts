@@ -194,16 +194,27 @@ export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAcc
   const snapshotNames = regs.map((r) => normName(r.name))
   for (const m of st.manual) {
     // No duplicar: si el snapshot ya trae la cuenta (ej. Uber Pro Card por Plaid
-    // como "Uber Pro Card …9298"), la manual seed se omite.
+    // como "Uber Pro Card …9298" o "Checking · 9298"), la manual seed se omite.
     const mn = normName(m.name)
-    if (snapshotNames.some((sn) => sn === mn || sn.includes(mn) || mn.includes(sn))) continue
+    const isUberSeed = m.id === "manual:uber-pro-card"
+    if (snapshotNames.some((sn) => {
+      if (sn === mn || sn.includes(mn) || mn.includes(sn)) return true
+      // Uber Pro Card: Plaid la trae como "Checking · 9298" (mismo mask)
+      if (isUberSeed && /9298/.test(sn)) return true
+      return false
+    })) continue
     regs.push({ ...m, dueDay: st.dueDays[m.id] ?? m.dueDay ?? null, isMain: false })
   }
 
   // Principal: CitiBank …6393 (Miguel). Múltiples criterios por si el nombre varía.
+  // Si hay varios "Access Account" (…6393 y …3830), se queda con el de mayor balance.
+  const accessAccounts = regs.filter((r) => /access account/i.test(String(r.name)))
+  const topAccess = accessAccounts.sort((a, b) =>
+    Math.abs(balById.get(b.id) ?? 0) - Math.abs(balById.get(a.id) ?? 0)
+  )[0]
   const exactCiti = regs.find((r) => String(r.name).includes("6393"))
-    || regs.find((r) => /citi/i.test(String(r.name)) && Math.abs((balById.get(r.id) ?? 0) - 784.99) < 1)
-    || regs.find((r) => /access account/i.test(String(r.name)))
+    || topAccess
+    || regs.find((r) => /citi/i.test(String(r.name)))
   let mainId = st.mainId
   // CitiBank 6393 es siempre la Principal (Miguel). Se corrige en cada carga:
   // si existe en los datos, la ★ va ahí, sin importar lo que haya guardado.

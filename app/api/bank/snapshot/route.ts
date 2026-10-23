@@ -97,11 +97,13 @@ async function fromPlaid(): Promise<Response | null> {
 }
 
 export async function GET() {
-  const plaidRes = await fromPlaid()
-  if (plaidRes) return plaidRes
-
+  // Supabase primero: tiene los datos completos del daily sync (7 cuentas).
+  // Plaid directo (via plaid_items) puede estar incompleto si no se conectaron todos los bancos en el app.
   const sbRes = await fromSupabase()
   if (sbRes) return sbRes
+
+  const plaidRes = await fromPlaid()
+  if (plaidRes) return plaidRes
 
   // Legacy proxy (BANK_FEED_KEY) — still works until Plaid is linked.
   const ctrl = new AbortController()
