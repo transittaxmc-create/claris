@@ -8,6 +8,7 @@ import { accountDisplayName, last4Of } from "./registers-store"
 import type { TransferReport } from "./transfer-matcher"
 import type { ReconReport, ReconFinding } from "./reconciliation-check"
 import { DineroProyeccion, useForecastInputs } from "./dinero-proyeccion"
+import { DineroProyeccionV2 } from "./dinero-proyeccion-v2"
 import { buildForecast, daysToEndOfMonth, startingBalance, todayKey } from "./dinero-forecast"
 import { movementCounts, bankBrandOf } from "./bank-brand"
 import { MoneyAccountCard, MoneyHeader, MoneySectionTitle, MoneyStrip, MoneyTabs } from "./money-ui"
@@ -259,7 +260,7 @@ export function RegistersHome(props: {
       )}
 
       {vista === 1 && (
-        <DineroProyeccion
+        <DineroProyeccionV2
           registers={registers}
           balances={balances}
           dues={dues}
@@ -267,11 +268,6 @@ export function RegistersHome(props: {
           bankTxs={props.bankTxs || []}
           bankOk={props.bankOk === true}
           otherFunds={props.otherFunds || []}
-          onEditEntry={props.onEditEntry}
-          onPatchEntry={props.onPatchEntry}
-          onAddEntry={props.onAddEntry}
-          onMarkPaid={props.onMarkPaid}
-          onConfirmWithAdjustment={props.onConfirmWithAdjustment}
         />
       )}
     </div>
