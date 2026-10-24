@@ -8,7 +8,8 @@ import { accountDisplayName, last4Of } from "./registers-store"
 import type { TransferReport } from "./transfer-matcher"
 import type { ReconReport, ReconFinding } from "./reconciliation-check"
 import { DineroProyeccion, useForecastInputs } from "./dinero-proyeccion"
-import { DineroProyeccionV2 } from "./dinero-proyeccion-v2"
+import { ProyeccionFoto1 } from "./proyeccion-foto1"
+import { ProyeccionFoto2 } from "./proyeccion-foto2"
 import { buildForecast, daysToEndOfMonth, startingBalance, todayKey } from "./dinero-forecast"
 import { movementCounts, bankBrandOf } from "./bank-brand"
 import { MoneyAccountCard, MoneyHeader, MoneySectionTitle, MoneyStrip, MoneyTabs } from "./money-ui"
@@ -147,8 +148,8 @@ export function RegistersHome(props: {
 
   return (
     <div className="flex flex-col gap-3 overflow-x-hidden">
-      <MoneyHeader page={vista as 0 | 1} onPage={setVista} />
-      <MoneyTabs page={vista as 0 | 1} onPage={setVista} registerLabel={`${mainName} Register`} />
+      <MoneyHeader page={vista as 0 | 1 | 2} onPage={setVista} />
+      <MoneyTabs page={vista as 0 | 1 | 2} onPage={setVista} registerLabel={`${mainName} Register`} />
       <MoneyStrip
         cells={[
           {
@@ -260,7 +261,19 @@ export function RegistersHome(props: {
       )}
 
       {vista === 1 && (
-        <DineroProyeccionV2
+        <ProyeccionFoto1
+          registers={registers}
+          balances={balances}
+          dues={dues}
+          entries={props.entries || []}
+          bankTxs={props.bankTxs || []}
+          bankOk={props.bankOk === true}
+          otherFunds={props.otherFunds || []}
+        />
+      )}
+
+      {vista === 2 && (
+        <ProyeccionFoto2
           registers={registers}
           balances={balances}
           dues={dues}

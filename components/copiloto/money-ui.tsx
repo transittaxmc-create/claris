@@ -164,7 +164,7 @@ export function MoneyStrip(props: {
 }
 
 /** Cabecera MONEY: logo $ + título + puntos de página. */
-export function MoneyHeader(props: { page: 0 | 1; onPage: (p: 0 | 1) => void; right?: ReactNode }) {
+export function MoneyHeader(props: { page: 0 | 1 | 2; onPage: (p: 0 | 1 | 2) => void; right?: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-2 px-1 pt-1">
       <div className="flex items-center gap-2.5">
@@ -175,12 +175,12 @@ export function MoneyHeader(props: { page: 0 | 1; onPage: (p: 0 | 1) => void; ri
       </div>
       <div className="flex items-center gap-2">
         <span className="flex items-center gap-1.5" aria-hidden>
-          {[0, 1].map((p) => (
+          {[0, 1, 2].map((p) => (
             <button
               key={p}
               type="button"
               tabIndex={-1}
-              onClick={() => props.onPage(p as 0 | 1)}
+              onClick={() => props.onPage(p as 0 | 1 | 2)}
               className={cn(
                 "h-2 rounded-full transition-all",
                 props.page === p ? "w-6 bg-gradient-to-r from-[#5b8cff] to-[#7c5cff]" : "w-2 bg-[#262633]",
@@ -194,9 +194,9 @@ export function MoneyHeader(props: { page: 0 | 1; onPage: (p: 0 | 1) => void; ri
   )
 }
 
-/** Pestañas Register / Projections con subrayado. */
-export function MoneyTabs(props: { page: 0 | 1; onPage: (p: 0 | 1) => void; registerLabel: string }) {
-  const tab = (p: 0 | 1, label: string, icon: ReactNode) => (
+/** Pestañas Register / Projections / Forecast con subrayado. */
+export function MoneyTabs(props: { page: 0 | 1 | 2; onPage: (p: 0 | 1 | 2) => void; registerLabel: string }) {
+  const tab = (p: 0 | 1 | 2, label: string, icon: ReactNode) => (
     <button
       type="button"
       role="tab"
@@ -230,6 +230,14 @@ export function MoneyTabs(props: { page: 0 | 1; onPage: (p: 0 | 1) => void; regi
         "Projections",
         <svg className="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
           <polyline points="3 12 7 12 10 4 14 20 17 12 21 12" />
+        </svg>,
+      )}
+      {tab(
+        2,
+        "Forecast",
+        <svg className="size-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+          <path d="M3 17l5-6 4 3 6-8" />
+          <path d="M14 6h4v4" />
         </svg>,
       )}
     </div>
