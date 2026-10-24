@@ -90,6 +90,14 @@ export function fmtDiaMes(iso: string): string {
   const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/)
   return m ? `${MESES_L[Number(m[2]) - 1]} ${Number(m[3])}` : "—"
 }
+const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+/** Día de la semana en inglés para una fecha ISO (sin correrse por zona horaria). */
+export function fmtWeekday(iso: string): string {
+  const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!m) return ""
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])))
+  return WEEKDAYS[d.getUTCDay()]
+}
 export function money2(n: number): string {
   return Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }

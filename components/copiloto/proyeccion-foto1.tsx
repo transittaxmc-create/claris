@@ -9,6 +9,7 @@ import {
   catIcon,
   fmtDiaMes,
   fmtFecha,
+  fmtWeekday,
   healthOf,
   lineCategory,
   money2,
@@ -146,12 +147,12 @@ export function ProyeccionFoto1(props: ProyProps) {
       <div>
         <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
           <colgroup>
-            <col style={{ width: "12%" }} /><col style={{ width: "24%" }} /><col style={{ width: "15%" }} />
-            <col style={{ width: "14%" }} /><col style={{ width: "17%" }} /><col style={{ width: "18%" }} />
+            <col style={{ width: "15%" }} /><col style={{ width: "22%" }} /><col style={{ width: "15%" }} />
+            <col style={{ width: "13%" }} /><col style={{ width: "16%" }} /><col style={{ width: "19%" }} />
           </colgroup>
           <thead>
             <tr>
-              <th style={th}>FECHA</th><th style={th}>DESCRIPCIÓN</th><th style={th}>CATEGORÍA</th>
+              <th style={{ ...th, paddingLeft: 12 }}>FECHA</th><th style={th}>DESCRIPCIÓN</th><th style={th}>CATEGORÍA</th>
               <th style={{ ...th, textAlign: "right" }}>BANK</th><th style={{ ...th, textAlign: "right" }}>MONTO</th>
               <th style={{ ...th, textAlign: "right" }}>SALDO ACUM.</th>
             </tr>
@@ -163,8 +164,8 @@ export function ProyeccionFoto1(props: ProyProps) {
         <div style={{ maxHeight: "46vh", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
           <colgroup>
-            <col style={{ width: "12%" }} /><col style={{ width: "24%" }} /><col style={{ width: "15%" }} />
-            <col style={{ width: "14%" }} /><col style={{ width: "17%" }} /><col style={{ width: "18%" }} />
+            <col style={{ width: "15%" }} /><col style={{ width: "22%" }} /><col style={{ width: "15%" }} />
+            <col style={{ width: "13%" }} /><col style={{ width: "16%" }} /><col style={{ width: "19%" }} />
           </colgroup>
           <tbody>
             {futuras.length === 0 && (
@@ -174,12 +175,17 @@ export function ProyeccionFoto1(props: ProyProps) {
               const cat = lineCategory(line, schedules)
               return (
                 <tr key={line.id + i} style={i === 0 ? { background: "rgba(201,162,39,.14)" } : undefined}>
-                  <td style={{ ...td, whiteSpace: "nowrap", fontWeight: 600 }}>{fmtFecha(line.date)}</td>
+                  <td style={{ ...td, whiteSpace: "nowrap", fontWeight: 600, paddingLeft: 12 }}>
+                    {fmtFecha(line.date)}
+                    <div style={{ fontSize: 8, color: SUB, fontWeight: 500, marginTop: 1 }}>{fmtWeekday(line.date)}</div>
+                  </td>
                   <td style={{ ...td, overflow: "hidden" }}>
-                    <span style={{ marginRight: 4 }}>{catIcon(cat, line.label)}</span>
                     <span style={{ fontWeight: 600 }}>{line.label}</span>
                   </td>
-                  <td style={{ ...td, color: "#c9cbd8", overflow: "hidden", textOverflow: "ellipsis" }}>{cat}</td>
+                  <td style={{ ...td, color: "#c9cbd8", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <span style={{ marginRight: 4 }}>{catIcon(cat, line.label)}</span>
+                    {cat}
+                  </td>
                   <td style={{ ...td, textAlign: "right", color: "#c9cbd8", whiteSpace: "nowrap", fontSize: 10.5 }}>
                     ${money2(fc.start)}
                   </td>
