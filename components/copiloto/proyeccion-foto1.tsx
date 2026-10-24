@@ -213,8 +213,8 @@ export function ProyeccionFoto1(props: ProyProps) {
       <div>
         <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
           <colgroup>
-            <col style={{ width: "15%" }} /><col style={{ width: "22%" }} /><col style={{ width: "15%" }} />
-            <col style={{ width: "13%" }} /><col style={{ width: "16%" }} /><col style={{ width: "19%" }} />
+            <col style={{ width: "15%" }} /><col style={{ width: "21%" }} /><col style={{ width: "14%" }} />
+            <col style={{ width: "13%" }} /><col style={{ width: "17%" }} /><col style={{ width: "20%" }} />
           </colgroup>
           <thead>
             <tr>
@@ -230,8 +230,8 @@ export function ProyeccionFoto1(props: ProyProps) {
         <div style={{ maxHeight: "46vh", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
           <colgroup>
-            <col style={{ width: "15%" }} /><col style={{ width: "22%" }} /><col style={{ width: "15%" }} />
-            <col style={{ width: "13%" }} /><col style={{ width: "16%" }} /><col style={{ width: "19%" }} />
+            <col style={{ width: "15%" }} /><col style={{ width: "21%" }} /><col style={{ width: "14%" }} />
+            <col style={{ width: "13%" }} /><col style={{ width: "17%" }} /><col style={{ width: "20%" }} />
           </colgroup>
           <tbody>
             {futuras.length === 0 && (
@@ -262,13 +262,13 @@ export function ProyeccionFoto1(props: ProyProps) {
                   <td style={{ ...td, textAlign: "right", color: "#c9cbd8", whiteSpace: "nowrap", fontSize: 10.5 }}>
                     ${money2(bankFor(line.date))}
                   </td>
-                  <td style={{ ...td, textAlign: "right", fontWeight: 800, color: line.amount >= 0 ? GREEN : RED, whiteSpace: "nowrap", fontSize: 11 }}>
+                  <td style={{ ...td, textAlign: "right", fontWeight: 600, color: line.amount >= 0 ? GREEN : RED, whiteSpace: "nowrap", fontSize: 12.5, paddingLeft: 2 }}>
                     {signed(line.amount)}
                   </td>
                   <td style={{ ...td, textAlign: "right", whiteSpace: "nowrap" }}>
                     <span style={{ color: SUB, fontSize: 10.5 }}>{fmtBal(before)}</span>
                     <br />
-                    <span style={{ color: saldoColor(after), fontSize: 11.5, fontWeight: 800 }}>→ {fmtBal(after)}</span>
+                    <span style={{ color: saldoColor(after), fontSize: 12.5, fontWeight: 600 }}>→ {fmtBal(after)}</span>
                   </td>
                 </tr>
               )
