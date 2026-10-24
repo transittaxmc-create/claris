@@ -185,11 +185,12 @@ export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAcc
     const name = String(a?.name || "").trim()
     if (!name) continue
     const id = accountIdFor(name)
-    // PayPal NUNCA se oculta: es la cuenta #2 del orden fijo de Miguel
-    // (Citibank, PayPal, Uber, Lyft). Quedó en la lista de ocultas del
-    // teléfono en la limpieza de duplicados de octubre y desapareció de
-    // MONEY (diagnóstico 2026-10-24).
-    if (st.hidden.includes(id) && !/paypal/i.test(name)) continue
+    // PayPal y Uber Pro NUNCA se ocultan: son las cuentas #2 y #3 del
+    // orden fijo de Miguel (Citibank, PayPal, Uber, Lyft) y Uber Pro se
+    // usa todos los días. Quedaron en la lista de ocultas del teléfono
+    // en la limpieza de duplicados de octubre y desaparecieron de MONEY
+    // (diagnóstico 2026-10-24).
+    if (st.hidden.includes(id) && !/paypal|uber/i.test(name)) continue
     regs.push({
       id,
       name,
