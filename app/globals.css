@@ -30,6 +30,12 @@
 
 /* Utilidad de v1 (JetBrains Mono) para el DASHBOARD clonado. */
 .font-mono-jet{font-family:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+.money-label{margin:10px 0 3px;color:#8a8a96;font-size:10px;letter-spacing:.7px}
+.money-amount{display:block;margin-bottom:10px;color:#fff;font-size:24px;font-weight:800}
+.money-amount.positive,.positive{color:#34d17b}
+.money-amount.negative,.negative{color:#ff5d6c}
+.money-breakdown{display:flex;gap:8px;margin:20px 0;color:#8a8a96;font-size:10px;line-height:1.5}
+.money-breakdown span{flex:1;padding:12px 8px;border-radius:8px;background:#1d3a2c;text-align:center}
 
 /* El DASHBOARD clonado de v1 usa sus tamaños de texto exactos: el resto de
    v6 agranda los textos de 8-10px por legibilidad, pero aquí se respeta el
