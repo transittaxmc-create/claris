@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react"
 import { cn } from "@/lib/utils"
-import { money, type CashFlowEntry } from "./types"
+import { money, EXPENSE_CATEGORIES, type CashFlowEntry } from "./types"
+import { fmtFecha, fmtWeekday, catIcon } from "./proyeccion-shared"
 import type { RegisterAccount, DueItem } from "./registers-store"
 import { accountDisplayName, last4Of } from "./registers-store"
 import type { TransferReport } from "./transfer-matcher"
@@ -35,17 +36,6 @@ function PendingBadge({ pending }: { pending?: boolean }) {
       Pending
     </span>
   )
-}
-
-function shortDate(iso: string): string {
-  if (!iso || iso.length < 10) return "—"
-  try {
-    const d = new Date(`${iso.slice(0, 10)}T12:00:00`)
-    if (Number.isNaN(d.getTime())) return iso.slice(5)
-    return d.toLocaleDateString("en-US", { day: "numeric", month: "short" })
-  } catch {
-    return iso.slice(5)
-  }
 }
 
 export function RegistersHome(props: {
@@ -287,6 +277,34 @@ export function RegistersHome(props: {
   )
 }
 
+function saldoColorBank(after: number, ref: number): string {
+  if (after < 0) return "#ff5d6c"
+  if (after >= ref) return "#2fbf71"
+  return "#f5b73f"
+}
+
+function topCats(
+  ls: { category: string | null; amount: number }[],
+  sign: 1 | -1,
+): [string, number][] {
+  const m = new Map<string, number>()
+  for (const l of ls) {
+    if (sign === 1 && l.amount <= 0) continue
+    if (sign === -1 && l.amount >= 0) continue
+    const c = l.category || "Other"
+    m.set(c, (m.get(c) || 0) + Math.abs(l.amount))
+  }
+  return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4)
+}
+
+const BANK_HDR = "px-1 pb-1 text-left text-[9px] font-bold uppercase tracking-wider text-neutral-500"
+
+/**
+ * Register de UNA cuenta (pedido de Miguel 2026-10-24): arriba un encabezado
+ * tipo STATEMENT (balance real + entradas/salidas del mes) y abajo el register
+ * con el formato del Registro Unificado — SOLO transacciones reales del banco
+ * de esa cuenta (sin proyecciones). Solo Citibank es editable.
+ */
 export function RegisterDetail(props: {
   account: RegisterAccount
   balance: number | null
@@ -295,6 +313,7 @@ export function RegisterDetail(props: {
   otherFunds?: unknown
   onBack: () => void
   onEditEntry?: (e: CashFlowEntry) => void
+  onEditBankTx?: (t: BankTx) => void
   onDeleteEntry?: (id: string) => void
   onAddEntry?: (...args: any[]) => void
   onOpenScanner?: () => void
@@ -308,33 +327,44 @@ export function RegisterDetail(props: {
 }) {
   const reg = props.account
   const { balance, entries, bankTxs } = props
+  const isCiti = /citi/i.test(reg.name) || /access/i.test(reg.name) || reg.isMain === true
+  const useBank = (bankTxs || []).length > 0
+
   const lines = useMemo(() => {
     const out: {
       key: string
       date: string
       detail: string
+      category: string | null
       amount: number
       pending?: boolean
+      tx?: BankTx
       entry?: CashFlowEntry
     }[] = []
-    for (const t of bankTxs || []) {
-      out.push({
-        key: `bank-${t.transaction_id || t.date + t.detail + t.amount}`,
-        date: String(t.date || "").slice(0, 10),
-        detail: t.detail || "Bank",
-        amount: Number(t.amount) || 0,
-        pending: Boolean(t.pending),
-      })
-    }
-    for (const e of entries || []) {
-      const amt = Math.abs(Number(e.amount) || 0)
-      out.push({
-        key: `entry-${e.id}`,
-        date: String(e.date || "").slice(0, 10),
-        detail: e.description || e.category || "Entry",
-        amount: e.type === "income" ? amt : -amt,
-        entry: e,
-      })
+    if (useBank) {
+      for (const t of bankTxs || []) {
+        out.push({
+          key: `bank-${t.transaction_id || t.date + t.detail + t.amount}`,
+          date: String(t.date || "").slice(0, 10),
+          detail: t.detail || "Bank",
+          category: t.category,
+          amount: Number(t.amount) || 0,
+          pending: Boolean(t.pending),
+          tx: t,
+        })
+      }
+    } else {
+      for (const e of entries || []) {
+        const amt = Math.abs(Number(e.amount) || 0)
+        out.push({
+          key: `entry-${e.id}`,
+          date: String(e.date || "").slice(0, 10),
+          detail: e.description || e.category || "Entry",
+          category: e.category || null,
+          amount: e.type === "income" ? amt : -amt,
+          entry: e,
+        })
+      }
     }
     out.sort((a, b) => {
       const byDate = String(b.date).localeCompare(String(a.date))
@@ -342,53 +372,390 @@ export function RegisterDetail(props: {
       return String(b.key).localeCompare(String(a.key))
     })
     return out
-  }, [bankTxs, entries])
+  }, [bankTxs, entries, useBank])
+
+  // Saldo corriendo: se camina hacia atrás desde el balance real actual.
+  const balNow = typeof balance === "number" ? balance : 0
+  let run = balNow
+  const rows = lines.map((l) => {
+    const after = run
+    const before = run - l.amount
+    run = before
+    return { ...l, after, before }
+  })
+  const bankByDate = new Map<string, number>()
+  for (const r of rows) {
+    if (!bankByDate.has(r.date)) bankByDate.set(r.date, r.after)
+  }
+
+  const today = todayKey()
+  const monthPrefix = today.slice(0, 7)
+  const monthLines = lines.filter((l) => l.date.startsWith(monthPrefix))
+  const inMonth = monthLines.filter((l) => l.amount > 0).reduce((s, l) => s + l.amount, 0)
+  const outMonth = monthLines.filter((l) => l.amount < 0).reduce((s, l) => s + Math.abs(l.amount), 0)
+  const monthLabel = fmtFecha(`${monthPrefix}-01`).split(" ")[0] || ""
+
+  const disp = accountDisplayName(reg.name)
 
   return (
     <div className="flex flex-col gap-3">
       <button type="button" onClick={props.onBack} className="self-start text-[12px] font-bold text-[#5b8cff]">
         ← Accounts
       </button>
+
+      {/* ===== Encabezado tipo STATEMENT ===== */}
       <div className="rounded-2xl border border-[#262633] bg-[#111119] p-3">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-neutral-400">
-          {accountDisplayName(reg.name).title}
-        </p>
-        <p
-          className={cn(
-            "mt-1 font-mono text-[22px] font-bold tabular-nums",
-            (balance ?? 0) < 0 ? "text-[#ff5d6c]" : "text-[#f2f3f7]",
-          )}
-        >
-          {balance == null ? "—" : money(balance)}
-        </p>
-      </div>
-      <div className="space-y-1">
-        {lines.slice(0, 120).map((line) => (
-          <button
-            key={line.key}
-            type="button"
-            onClick={() => line.entry && props.onEditEntry?.(line.entry)}
-            className="flex w-full items-center gap-2 rounded-xl border border-[#262633] bg-[#16161f] px-3 py-2 text-left"
-          >
-            <span className="w-12 shrink-0 font-mono text-[10px] text-neutral-500">{shortDate(line.date)}</span>
-            <span className="min-w-0 flex-1 truncate text-[12px] font-medium text-neutral-100">
-              {line.detail}
-              <PendingBadge pending={line.pending} />
-            </span>
-            <span
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="truncate text-[13px] font-extrabold uppercase tracking-wide text-neutral-100">{disp.title}</p>
+            {disp.subtitle && <p className="truncate text-[10px] text-neutral-500">{disp.subtitle}</p>}
+            <p className="mt-0.5 text-[9px] font-bold uppercase tracking-widest text-neutral-500">
+              Statement · {monthLabel} {monthPrefix.slice(0, 4)}
+            </p>
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-500">Balance</p>
+            <p
               className={cn(
-                "shrink-0 font-mono text-[12px] font-bold tabular-nums",
-                line.amount < 0 ? "text-[#ff5d6c]" : "text-[#2fbf71]",
+                "font-mono text-[20px] font-bold tabular-nums",
+                (balance ?? 0) < 0 ? "text-[#ff5d6c]" : "text-[#f2f3f7]",
               )}
             >
-              {money(line.amount)}
-            </span>
-          </button>
-        ))}
-        {lines.length === 0 && (
-          <p className="px-1 text-[12px] text-neutral-500">No movements yet. Press SYNC.</p>
+              {balance == null ? "—" : money(balance)}
+            </p>
+          </div>
+        </div>
+        <div className="mt-2 grid grid-cols-3 gap-2 border-t border-[#262633] pt-2">
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-500">Entradas</p>
+            <p className="font-mono text-[13px] font-bold tabular-nums text-[#2fbf71]">+{money(inMonth).replace("-", "")}</p>
+          </div>
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-500">Salidas</p>
+            <p className="font-mono text-[13px] font-bold tabular-nums text-[#ff5d6c]">-{money(outMonth).replace("-", "")}</p>
+          </div>
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-500">Movimientos</p>
+            <p className="font-mono text-[13px] font-bold tabular-nums text-neutral-100">{monthLines.length}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ===== Register (formato del Registro Unificado) ===== */}
+      <div>
+        <div className="flex px-0.5">
+          <span className={BANK_HDR} style={{ width: "15%" }}>Fecha</span>
+          <span className={BANK_HDR} style={{ width: "21%" }}>Descripción</span>
+          <span className={BANK_HDR} style={{ width: "14%" }}>Categoría</span>
+          <span className={BANK_HDR} style={{ width: "13%" }}>Bank</span>
+          <span className={BANK_HDR} style={{ width: "17%" }}>Monto</span>
+          <span className={BANK_HDR} style={{ width: "20%" }}>Saldo</span>
+        </div>
+        <div
+          style={{
+            maxHeight: "52vh",
+            overflowY: "auto",
+            overflowX: "hidden",
+            overscrollBehavior: "contain",
+            touchAction: "pan-y",
+          }}
+        >
+          {rows.slice(0, 200).map((r) => {
+            const editable = r.tx ? isCiti && !!props.onEditBankTx : !!r.entry && !!props.onEditEntry
+            return (
+              <div
+                key={r.key}
+                onClick={
+                  editable
+                    ? () => (r.tx ? props.onEditBankTx?.(r.tx as BankTx) : props.onEditEntry?.(r.entry as CashFlowEntry))
+                    : undefined
+                }
+                style={editable ? { cursor: "pointer" } : undefined}
+                className="flex w-full items-start border-b border-[#1d1d28] px-0.5 py-2 text-left"
+              >
+                <span style={{ width: "15%" }} className="pr-1">
+                  <span className="block text-[11.5px] font-bold uppercase leading-tight text-neutral-100">{fmtFecha(r.date)}</span>
+                  <span className="block text-[9px] leading-tight text-neutral-500">{fmtWeekday(r.date)}</span>
+                </span>
+                <span style={{ width: "21%" }} className="pr-1">
+                  <span className="block break-words text-[11.5px] font-semibold leading-tight text-neutral-100">
+                    {r.detail}
+                    <PendingBadge pending={r.pending} />
+                  </span>
+                </span>
+                <span style={{ width: "14%" }} className="pr-1">
+                  <span className="flex items-start gap-1">
+                    <span className="inline-block w-[19px] shrink-0 text-center text-[13px] leading-tight">{catIcon(r.category, r.detail)}</span>
+                    <span className="break-words text-[10.5px] leading-tight text-neutral-300">{r.category || "—"}</span>
+                  </span>
+                </span>
+                <span
+                  style={{ width: "13%" }}
+                  className="pr-1 pt-px font-mono text-[11px] tabular-nums text-neutral-300"
+                >
+                  {money(bankByDate.get(r.date) ?? r.after)}
+                </span>
+                <span
+                  style={{ width: "17%" }}
+                  className={cn(
+                    "pr-1 pt-px font-mono text-[12.5px] font-semibold tabular-nums",
+                    r.amount < 0 ? "text-[#ff5d6c]" : "text-[#2fbf71]",
+                  )}
+                >
+                  {r.amount < 0 ? "-" : "+"}${Math.abs(r.amount).toFixed(2)}
+                </span>
+                <span style={{ width: "20%" }} className="pt-px text-right font-mono tabular-nums">
+                  <span className="block text-[10px] leading-tight text-neutral-500">
+                    {r.before < 0 ? "-$" : "$"}{Math.abs(r.before).toFixed(2)}
+                  </span>
+                  <span
+                    className="block text-[12.5px] font-semibold leading-tight"
+                    style={{ color: saldoColorBank(r.after, balNow) }}
+                  >
+                    → {r.after < 0 ? "-$" : "$"}{Math.abs(r.after).toFixed(2)}
+                  </span>
+                </span>
+              </div>
+            )
+          })}
+          {rows.length === 0 && (
+            <p className="px-1 py-3 text-[12px] text-neutral-500">
+              {useBank ? "Sin movimientos del banco todavía." : "No movements yet. Press SYNC."}
+            </p>
+          )}
+        </div>
+        <div className="mt-1 flex items-center justify-between bg-[#1b1b26] px-2 py-1.5">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+            Hoy, {fmtFecha(today)} - Saldo actual
+          </span>
+          <span className="font-mono text-[11px] font-bold tabular-nums text-neutral-100">
+            {balance == null ? "—" : money(balance)}
+          </span>
+        </div>
+        {useBank && !isCiti && (
+          <p className="px-1 pt-1 text-[10px] text-neutral-600">Solo lectura — las transacciones del banco no se editan.</p>
+        )}
+        {rows.length > 200 && (
+          <p className="px-1 pt-1 text-[10px] text-neutral-600">Mostrando los 200 movimientos más recientes de {rows.length}.</p>
         )}
       </div>
+
+      {/* ===== Desglose del mes (transacciones reales) ===== */}
+      {monthLines.length > 0 && (
+        <div>
+          <p className="px-1 pb-1 text-[11px] font-bold uppercase tracking-widest text-neutral-400">
+            Desglose · {monthLabel}
+          </p>
+          <div className="rounded-2xl border border-[#262633] bg-[#111119] p-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <p className="pb-1 text-[9px] font-bold uppercase tracking-widest text-neutral-500">Entradas por categoría</p>
+                {topCats(monthLines, 1).map(([c, v]) => (
+                  <div key={c} className="flex items-center justify-between py-0.5">
+                    <span className="flex min-w-0 items-center gap-1 text-[11px] text-neutral-300">
+                      <span className="inline-block w-[19px] shrink-0 text-center">{catIcon(c, "")}</span>
+                      <span className="truncate">{c}</span>
+                    </span>
+                    <span className="font-mono text-[11px] font-semibold tabular-nums text-[#2fbf71]">+${v.toFixed(2)}</span>
+                  </div>
+                ))}
+                {topCats(monthLines, 1).length === 0 && <p className="text-[11px] text-neutral-600">—</p>}
+              </div>
+              <div>
+                <p className="pb-1 text-[9px] font-bold uppercase tracking-widest text-neutral-500">Salidas por categoría</p>
+                {topCats(monthLines, -1).map(([c, v]) => (
+                  <div key={c} className="flex items-center justify-between py-0.5">
+                    <span className="flex min-w-0 items-center gap-1 text-[11px] text-neutral-300">
+                      <span className="inline-block w-[19px] shrink-0 text-center">{catIcon(c, "")}</span>
+                      <span className="truncate">{c}</span>
+                    </span>
+                    <span className="font-mono text-[11px] font-semibold tabular-nums text-[#ff5d6c]">-${v.toFixed(2)}</span>
+                  </div>
+                ))}
+                {topCats(monthLines, -1).length === 0 && <p className="text-[11px] text-neutral-600">—</p>}
+              </div>
+            </div>
+            <div className="mt-2 flex items-center justify-between border-t border-[#262633] pt-2">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">Flujo neto del mes</span>
+              <span
+                className={cn(
+                  "font-mono text-[14px] font-bold tabular-nums",
+                  inMonth - outMonth < 0 ? "text-[#ff5d6c]" : "text-[#2fbf71]",
+                )}
+              >
+                {inMonth - outMonth < 0 ? "-$" : "+$"}{Math.abs(inMonth - outMonth).toFixed(2)}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Edición de una transacción bancaria de Citibank (página formal, mismo
+ * diseño que la de Proyecciones). Guarda vía /api/bank/edit-tx en Supabase.
+ */
+export function BankTxEdit(props: {
+  tx: BankTx
+  onBack: () => void
+  onSaved: () => void
+}) {
+  const tx = props.tx
+  const [tipo, setTipo] = useState<"gasto" | "ingreso">(tx.amount >= 0 ? "ingreso" : "gasto")
+  const [desc, setDesc] = useState(tx.detail || "")
+  const [cat, setCat] = useState(tx.category || "")
+  const [monto, setMonto] = useState(String(Math.abs(tx.amount || 0)))
+  const [fecha, setFecha] = useState(String(tx.date || "").slice(0, 10))
+  const [confirmDel, setConfirmDel] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState("")
+
+  const inputCls =
+    "w-full rounded-xl border border-[#2c2c3e] bg-[#17171f] px-3 py-2.5 text-[14px] text-neutral-100 outline-none focus:border-[#5b8cff]"
+  const labelCls = "mb-1 block text-[10px] font-bold uppercase tracking-widest text-neutral-500"
+
+  async function guardar() {
+    const amt = parseFloat(monto.replace(/[^0-9.]/g, ""))
+    if (!desc.trim()) return setErr("Falta la descripción.")
+    if (!amt || amt <= 0) return setErr("Falta el monto.")
+    if (!fecha) return setErr("Falta la fecha.")
+    setSaving(true)
+    setErr("")
+    try {
+      const r = await fetch("/api/bank/edit-tx", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          transaction_id: tx.transaction_id,
+          description: desc.trim(),
+          category: tipo === "ingreso" ? "Income" : cat || "Other",
+          amount: tipo === "ingreso" ? amt : -amt,
+          date: fecha,
+        }),
+      })
+      if (!r.ok) throw new Error("save failed")
+      props.onSaved()
+    } catch {
+      setErr("No se pudo guardar. Intenta de nuevo.")
+      setSaving(false)
+    }
+  }
+
+  async function eliminar() {
+    if (!confirmDel) return setConfirmDel(true)
+    setSaving(true)
+    try {
+      const r = await fetch("/api/bank/edit-tx", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ transaction_id: tx.transaction_id, delete: true }),
+      })
+      if (!r.ok) throw new Error("delete failed")
+      props.onSaved()
+    } catch {
+      setErr("No se pudo eliminar. Intenta de nuevo.")
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <button type="button" onClick={props.onBack} className="self-start text-[12px] font-bold text-[#5b8cff]">
+        ← Register
+      </button>
+      <p className="text-[15px] font-extrabold uppercase tracking-wide text-neutral-100">Editar transacción</p>
+
+      <div className="grid grid-cols-2 gap-1 rounded-xl border border-[#2c2c3e] bg-[#17171f] p-1">
+        {(["gasto", "ingreso"] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTipo(t)}
+            className={cn(
+              "rounded-lg py-2 text-[13px] font-bold",
+              tipo === t
+                ? t === "gasto"
+                  ? "bg-[#ff5d6c] text-white"
+                  : "bg-[#2fbf71] text-white"
+                : "text-neutral-400",
+            )}
+          >
+            {t === "gasto" ? "Gasto" : "Ingreso"}
+          </button>
+        ))}
+      </div>
+
+      <div>
+        <label className={labelCls}>Descripción</label>
+        <input className={inputCls} value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Nombre / detalle" />
+      </div>
+
+      {tipo === "gasto" && (
+        <div>
+          <label className={labelCls}>Categoría</label>
+          <div className="flex flex-wrap gap-1.5">
+            {EXPENSE_CATEGORIES.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setCat(c)}
+                className={cn(
+                  "rounded-full border px-2.5 py-1.5 text-[11px] font-semibold",
+                  cat === c
+                    ? "border-[#5b8cff] bg-[#5b8cff]/15 text-neutral-50"
+                    : "border-[#2c2c3e] bg-[#17171f] text-neutral-400",
+                )}
+              >
+                {catIcon(c, "")} {c}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div>
+        <label className={labelCls}>Monto</label>
+        <div className="relative">
+          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[15px] text-neutral-500">$</span>
+          <input
+            className={cn(inputCls, "pl-7 font-mono text-[16px] font-bold tabular-nums")}
+            value={monto}
+            onChange={(e) => setMonto(e.target.value)}
+            inputMode="decimal"
+            placeholder="0.00"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className={labelCls}>Fecha</label>
+        <input type="date" className={inputCls} value={fecha} onChange={(e) => setFecha(e.target.value)} />
+        {fecha && <p className="mt-1 text-[11px] text-neutral-500">{fmtWeekday(fecha)}</p>}
+      </div>
+
+      {err && <p className="text-[12px] font-semibold text-[#ff5d6c]">{err}</p>}
+
+      <button
+        type="button"
+        disabled={saving}
+        onClick={guardar}
+        className="mt-1 rounded-xl bg-[#2fbf71] py-3 text-[14px] font-extrabold uppercase tracking-wide text-white disabled:opacity-50"
+      >
+        {saving ? "Guardando…" : "Guardar"}
+      </button>
+      <button
+        type="button"
+        disabled={saving}
+        onClick={eliminar}
+        className={cn(
+          "rounded-xl border py-2.5 text-[12px] font-bold uppercase tracking-wide disabled:opacity-50",
+          confirmDel ? "border-[#ff5d6c] bg-[#ff5d6c] text-white" : "border-[#2c2c3e] text-[#ff5d6c]",
+        )}
+      >
+        {confirmDel ? "¿Seguro? Toca otra vez para eliminar" : "Eliminar"}
+      </button>
     </div>
   )
 }

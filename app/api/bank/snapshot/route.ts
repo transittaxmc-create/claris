@@ -35,6 +35,8 @@ async function fromSupabase(): Promise<Response | null> {
       category: t.category || null,
       amount: Number(t.amount) || 0,
       daily_balance: null,
+      transaction_id: t.bankRef || t.id || null,
+      pending: t.pending === true || t.status === "pending",
     }))
     // Leer balances frescos
     let balMap: Record<string, number> = {}

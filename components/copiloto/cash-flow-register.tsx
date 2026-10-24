@@ -51,6 +51,7 @@ import {
 import {
   RegistersHome,
   RegisterDetail,
+  BankTxEdit,
   AddAccountModal,
   TransfersReport,
   type BankTx,
@@ -98,6 +99,7 @@ export function CashFlowRegister({
   const [editingEntry, setEditingEntry] = useState<CashFlowEntry | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [viewingReceipt, setViewingReceipt] = useState<string | null>(null)
+  const [bankTxEdit, setBankTxEdit] = useState<BankTx | null>(null)
 
   const [view, setView] = useState<
     { kind: "home" } | { kind: "account"; id: string } | { kind: "transfers" }
@@ -664,7 +666,18 @@ export function CashFlowRegister({
           />
         )}
 
-        {view.kind === "account" && activeAccount && (
+        {view.kind === "account" && activeAccount && bankTxEdit && (
+          <BankTxEdit
+            tx={bankTxEdit}
+            onBack={() => setBankTxEdit(null)}
+            onSaved={() => {
+              setBankTxEdit(null)
+              fetchBank()
+            }}
+          />
+        )}
+
+        {view.kind === "account" && activeAccount && !bankTxEdit && (
           <RegisterDetail
             account={activeAccount}
             balance={balances[activeAccount.id] ?? null}
@@ -733,6 +746,7 @@ export function CashFlowRegister({
               setIsModalOpen(true)
             }}
             onScanDoc={(t) => props.onOpenScanner?.(t)}
+            onEditBankTx={(t) => setBankTxEdit(t)}
             onEditEntry={(e) => {
               setEditingEntry(e)
               setIsModalOpen(true)
