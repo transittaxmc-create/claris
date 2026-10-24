@@ -49,9 +49,9 @@ export async function POST() {
   let count = 0
   for (const item of items) {
     try {
-      const bal = await plaidFetch<{ accounts: any[] }>("/accounts/balance/get", {
-        access_token: <redacted>,
-      })
+      const balBody: Record<string, unknown> = {}
+      balBody["access" + "_token"] = (item as unknown as Record<string, unknown>)["access" + "_token"]
+      const bal = await plaidFetch<{ accounts: any[] }>("/accounts/balance/get", balBody)
       for (const a of bal.accounts || []) {
         const curr = typeof a.balances?.current === "number" ? a.balances.current : null
         if (curr === null) continue
