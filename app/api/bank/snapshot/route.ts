@@ -38,6 +38,7 @@ async function fromSupabase(): Promise<Response | null> {
     }))
     // Leer balances frescos
     let balMap: Record<string, number> = {}
+    let balOk = false
     try {
       const bRes = await fetch(`${url}/rest/v1/app_state?id=eq.balances&select=data`, {
         headers: { apikey: key, Authorization: `Bearer ${key}` },
@@ -47,10 +48,13 @@ async function fromSupabase(): Promise<Response | null> {
         const bRows = await bRes.json()
         const bals = bRows[0]?.data?.balances || {}
         for (const [k, v] of Object.entries(bals) as any) {
-          // Mapear por nombre de cuenta
-          balMap[v.name] = v.current
+          if (typeof v.current !== "number") continue
+          // Dos cuentas pueden compartir nombre (Access Account …3830 y …6393):
+          // el balance del bucket es la SUMA, si no se pierde dinero.
+          balMap[v.name] = (balMap[v.name] ?? 0) + v.current
           if (v.mask) balMap[`${v.name} …${v.mask}`] = v.current
         }
+        balOk = Object.keys(balMap).length > 0
       }
     } catch {}
     // Mapear al formato del snapshot
@@ -59,11 +63,25 @@ async function fromSupabase(): Promise<Response | null> {
     for (const t of txns) {
       const acct = t.bank_account || "unknown"
       if (!accounts[acct]) {
+        // Cuenta fantasma: tiene movimientos viejos pero ya no existe en
+        // los balances de Plaid (ej. Varo desconectado) — no se muestra.
+        if (balOk && !(acct in balMap)) continue
         const bal = balMap[acct] ?? 0
         accounts[acct] = { name: acct, current_balance: bal, transactions: [] }
         total += bal
       }
       accounts[acct].transactions.push(t)
+    }
+    // Cuentas con balance pero sin movimientos en el registro: incluirlas
+    // para que el total cuadre con Plaid.
+    if (balOk) {
+      for (const [name, bal] of Object.entries(balMap)) {
+        if (name.includes("…")) continue
+        if (!accounts[name]) {
+          accounts[name] = { name, current_balance: bal, transactions: [] }
+          total += bal
+        }
+      }
     }
     return NextResponse.json({
       as_of: new Date().toISOString(),

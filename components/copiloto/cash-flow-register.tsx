@@ -143,6 +143,17 @@ export function CashFlowRegister({
     }
   }, [])
 
+  // SYNC manual: primero jala los balances FRESCOS de Plaid y los guarda
+  // (ruta /api/bank/refresh), después relee el snapshot. Sin esto el botón
+  // solo releía lo que dejó el sync diario de las 7:45am.
+  const handleSyncBank = useCallback(async () => {
+    setBankLoading(true)
+    try {
+      await fetch("/api/bank/refresh", { method: "POST", cache: "no-store" })
+    } catch {}
+    await fetchBank()
+  }, [fetchBank])
+
   useEffect(() => {
     fetchBank()
     const refresh = window.setInterval(fetchBank, 5 * 60 * 1000)
@@ -628,7 +639,7 @@ export function CashFlowRegister({
             balances={balances}
             bankTxs={bankTxs}
             bankOk={!bankError && bankAccounts.length > 0}
-            onSyncBank={fetchBank}
+            onSyncBank={handleSyncBank}
             otherFunds={otherFunds}
             onToggleOtherFund={(id) => {
               setOtherFunds((prev) => {
