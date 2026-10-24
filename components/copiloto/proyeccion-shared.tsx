@@ -26,9 +26,11 @@ export interface ProyProps {
   otherFunds: string[]
 }
 
-/** Forecast fijo a 30 días (como las fotos) con las entradas actuales. */
+/** Forecast fijo a 30 días (como las fotos) con las entradas actuales.
+    También devuelve fcLong (90 días) para el register con scroll. */
 export function useForecast30(props: ProyProps): {
   fc: Forecast
+  fcLong: Forecast
   today: string
   schedules: ReturnType<typeof useForecastInputs>["schedules"]
 } {
@@ -54,7 +56,23 @@ export function useForecast30(props: ProyProps): {
       }),
     [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, dismissed, overrides],
   )
-  return { fc, today, schedules }
+  const fcLong = useMemo(
+    () =>
+      buildForecast({
+        startBalance: inicio.value,
+        entries: props.entries,
+        schedules,
+        dues: props.dues,
+        balances: props.balances,
+        bankTxs: props.bankOk ? props.bankTxs : [],
+        today,
+        horizonDays: 90,
+        dismissedPaid: dismissed,
+        overrides,
+      }),
+    [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, dismissed, overrides],
+  )
+  return { fc, fcLong, today, schedules }
 }
 
 export const MESES = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]

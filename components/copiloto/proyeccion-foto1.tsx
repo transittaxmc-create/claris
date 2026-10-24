@@ -51,14 +51,14 @@ function MiniChart({ points }: { points: number[] }) {
 }
 
 export function ProyeccionFoto1(props: ProyProps) {
-  const { fc, today, schedules } = useForecast30(props)
+  const { fc, fcLong, today, schedules } = useForecast30(props)
   const health = healthOf(fc)
   const net = fc.end - fc.start
 
-  // Transacciones futuras con saldo acumulado (como la foto: antes → después).
+  // Transacciones futuras (3 meses) con saldo acumulado, en caja con scroll.
   const futuras = useMemo(() => {
-    let bal = fc.start
-    return fc.lines
+    let bal = fcLong.start
+    return fcLong.lines
       .filter((l) => l.date >= today)
       .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
       .map((l: ForecastLine) => {
@@ -66,7 +66,7 @@ export function ProyeccionFoto1(props: ProyProps) {
         bal = Math.round((bal + l.amount) * 100) / 100
         return { line: l, before, after: bal }
       })
-  }, [fc, today])
+  }, [fcLong, today])
 
   // Desglose por categoría (top 2 ingresos / top 2 gastos, como la foto).
   const desglose = useMemo(() => {
@@ -139,11 +139,11 @@ export function ProyeccionFoto1(props: ProyProps) {
         </div>
       </div>
 
-      {/* REGISTRO UNIFICADO */}
+      {/* REGISTRO UNIFICADO — sin caja visible, ancho casi completo */}
       <div style={{ padding: "18px 14px 8px", fontSize: 12.5, fontWeight: 800, letterSpacing: 1.2, color: SUB }}>
         REGISTRO UNIFICADO
       </div>
-      <div style={{ margin: "0 12px", background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, overflow: "hidden" }}>
+      <div>
         <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
           <colgroup>
             <col style={{ width: "12%" }} /><col style={{ width: "24%" }} /><col style={{ width: "15%" }} />
@@ -157,9 +157,10 @@ export function ProyeccionFoto1(props: ProyProps) {
             </tr>
           </thead>
         </table>
-        <div style={{ background: BAND, padding: "8px 10px", fontSize: 11, fontWeight: 800, letterSpacing: 1, color: SUB }}>
+        <div style={{ background: BAND, padding: "8px 14px", fontSize: 11, fontWeight: 800, letterSpacing: 1, color: SUB }}>
           TRANSACCIONES FUTURAS / PRONÓSTICO
         </div>
+        <div style={{ maxHeight: "46vh", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
           <colgroup>
             <col style={{ width: "12%" }} /><col style={{ width: "24%" }} /><col style={{ width: "15%" }} />
@@ -193,9 +194,10 @@ export function ProyeccionFoto1(props: ProyProps) {
             })}
           </tbody>
         </table>
+        </div>
 
         {/* DESGLOSE DE PRONÓSTICO */}
-        <div style={{ padding: "14px 10px 10px", borderTop: `1px solid ${BORDER}` }}>
+        <div style={{ padding: "14px 14px 10px", borderTop: `1px solid ${BORDER}` }}>
           <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: SUB, marginBottom: 8 }}>DESGLOSE DE PRONÓSTICO</div>
           <div style={{ display: "flex", gap: 12 }}>
             <div style={{ width: "38%", minWidth: 0 }}>
@@ -233,7 +235,7 @@ export function ProyeccionFoto1(props: ProyProps) {
         </div>
 
         {/* HOY */}
-        <div style={{ background: BAND, padding: "10px", fontSize: 12.5, fontWeight: 800, letterSpacing: 0.4 }}>
+        <div style={{ background: BAND, padding: "10px 14px", fontSize: 12.5, fontWeight: 800, letterSpacing: 0.4 }}>
           HOY, {fmtFecha(today)} - SALDO ACTUAL: ${money2(fc.start)}
         </div>
       </div>
