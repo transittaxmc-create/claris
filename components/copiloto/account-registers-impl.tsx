@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils"
 import { money, EXPENSE_CATEGORIES, type CashFlowEntry } from "./types"
 import { fmtFecha, fmtWeekday, catIcon } from "./proyeccion-shared"
 import type { RegisterAccount, DueItem } from "./registers-store"
-import { accountDisplayName, last4Of } from "./registers-store"
+import { accountDisplayName, last4Of, accountIdFor } from "./registers-store"
 import type { TransferReport } from "./transfer-matcher"
 import type { ReconReport, ReconFinding } from "./reconciliation-check"
 import { DineroProyeccion, useForecastInputs } from "./dinero-proyeccion"
@@ -113,28 +113,46 @@ export function RegistersHome(props: {
     })
   })()
 
-  const topRank = (r: any): number => {
-    const n = String(r.name || "").toLowerCase()
-    if (r.isMain) return 0
-    if (n.includes("paypal")) return 1
-    if (n.includes("uber")) return 2
-    if (n.includes("lyft")) return 3
-    return 4
-  }
+  // Orden por USO (Miguel, 2026-10-24): la principal ★ siempre primero
+  // (es la base de las proyecciones); después, la que más se usa va
+  // adelante — uso = movimientos de los últimos 30 días, con la fecha
+  // del movimiento más reciente como desempate — y las de menos uso
+  // quedan atrás. Se reordena solo según el uso real.
+  const usage = (() => {
+    const map: Record<string, { recent: number; latest: string; total: number }> = {}
+    for (const r of registers) map[r.id] = { recent: 0, latest: "", total: 0 }
+    const corteDate = new Date(`${todayKey()}T12:00:00`)
+    corteDate.setDate(corteDate.getDate() - 30)
+    const corte = corteDate.toISOString().slice(0, 10)
+    const mainId = registers.find((r) => r.isMain)?.id
+    for (const t of props.bankOk ? props.bankTxs || [] : []) {
+      const m = map[accountIdFor(String(t.bank_account || ""))]
+      if (!m) continue
+      const d = String(t.date || "").slice(0, 10)
+      m.total += 1
+      if (d >= corte) m.recent += 1
+      if (d > m.latest) m.latest = d
+    }
+    for (const e of (props.entries || []) as { accountId?: string; date?: string }[]) {
+      const id = e?.accountId ? String(e.accountId) : mainId
+      const m = id ? map[id] : undefined
+      if (!m) continue
+      const d = String(e?.date || "").slice(0, 10)
+      m.total += 1
+      if (d >= corte) m.recent += 1
+      if (d > m.latest) m.latest = d
+    }
+    return map
+  })()
   const ordered = [...registers].sort((a, b) => {
-    const ra = topRank(a),
-      rb = topRank(b)
-    if (ra !== rb) return ra - rb
     if (a.isMain && !b.isMain) return -1
     if (b.isMain && !a.isMain) return 1
-    const aBal = balances[a.id] ?? 0
-    const bBal = balances[b.id] ?? 0
-    const aMov = movCount[a.id] ?? 0
-    const bMov = movCount[b.id] ?? 0
-    const aScore = aBal !== 0 && aMov > 0 ? 3 : aMov > 0 ? 2 : aBal !== 0 ? 1 : 0
-    const bScore = bBal !== 0 && bMov > 0 ? 3 : bMov > 0 ? 2 : bBal !== 0 ? 1 : 0
-    if (bScore !== aScore) return bScore - aScore
-    return Math.abs(bBal) - Math.abs(aBal)
+    const ua = usage[a.id] ?? { recent: 0, latest: "", total: 0 }
+    const ub = usage[b.id] ?? { recent: 0, latest: "", total: 0 }
+    if (ub.recent !== ua.recent) return ub.recent - ua.recent
+    if (ua.latest !== ub.latest) return ub.latest.localeCompare(ua.latest)
+    if (ub.total !== ua.total) return ub.total - ua.total
+    return Math.abs(balances[b.id] ?? 0) - Math.abs(balances[a.id] ?? 0)
   })
 
   return (

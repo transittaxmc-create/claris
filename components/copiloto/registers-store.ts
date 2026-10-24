@@ -85,6 +85,12 @@ const SEED_MANUAL: Array<{ id: string; name: string }> = [
   // los vuelve a traer, buildRegisters los deduplica contra el snapshot.
   { id: "manual:navy-federal", name: "Navy Federal" },
   { id: "manual:varo", name: "Varo" },
+  // Branch: Miguel creyó haberla vinculado a Plaid, pero NO está entre
+  // las instituciones conectadas (verificado 2026-10-24: solo Citibank,
+  // PayPal, Square y Uber). Existe como cuenta fija con su register y
+  // balance editable (Aventus Ride paga ahí); si se vincula de verdad,
+  // buildRegisters la deduplica contra el snapshot.
+  { id: "manual:branch", name: "Branch" },
 ]
 
 function normName(n: string) {
