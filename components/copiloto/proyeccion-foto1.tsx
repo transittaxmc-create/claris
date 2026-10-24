@@ -4,7 +4,7 @@
 // Va en la pestaña Proyecciones. Datos reales del forecast de 30 días.
 
 import { useMemo, useState, type CSSProperties } from "react"
-import { ProyeccionForm } from "./proyeccion-form"
+import { ProyeccionForm, ProyeccionEdit } from "./proyeccion-form"
 import {
   Gauge,
   catIcon,
@@ -55,6 +55,7 @@ function MiniChart({ points }: { points: number[] }) {
 export function ProyeccionFoto1(props: ProyProps) {
   const { fc, fcLong, today, schedules } = useForecast30(props)
   const [form, setForm] = useState<null | "income" | "expense">(null)
+  const [editing, setEditing] = useState<ForecastLine | null>(null)
   const health = healthOf(fc)
   const net = fc.end - fc.start
 
@@ -122,6 +123,16 @@ export function ProyeccionFoto1(props: ProyProps) {
 
   if (form) {
     return <ProyeccionForm initialKind={form} onClose={() => setForm(null)} />
+  }
+
+  if (editing) {
+    return (
+      <ProyeccionEdit
+        line={editing}
+        schedule={schedules.find((s) => s.id === editing.scheduleId)}
+        onClose={() => setEditing(null)}
+      />
+    )
   }
 
   // Saldo proyectado con claridad: verde = fuerte, amarillo = débil
@@ -229,7 +240,14 @@ export function ProyeccionFoto1(props: ProyProps) {
             {futuras.map(({ line, before, after }, i) => {
               const cat = lineCategory(line, schedules)
               return (
-                <tr key={line.id + i} style={i === 0 ? { background: "rgba(201,162,39,.14)" } : undefined}>
+                <tr
+                  key={line.id + i}
+                  onClick={() => (line.entry || line.scheduleId) && setEditing(line)}
+                  style={{
+                    ...(i === 0 ? { background: "rgba(201,162,39,.14)" } : undefined),
+                    ...((line.entry || line.scheduleId) ? { cursor: "pointer" } : undefined),
+                  }}
+                >
                   <td style={{ ...td, whiteSpace: "nowrap", fontWeight: 600, paddingLeft: 12 }}>
                     {fmtFecha(line.date)}
                     <div style={{ fontSize: 8, color: SUB, fontWeight: 500, marginTop: 1 }}>{fmtWeekday(line.date)}</div>
