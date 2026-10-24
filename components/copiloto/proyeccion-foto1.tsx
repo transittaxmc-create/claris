@@ -124,6 +124,11 @@ export function ProyeccionFoto1(props: ProyProps) {
     return <ProyeccionForm initialKind={form} onClose={() => setForm(null)} />
   }
 
+  // Saldo proyectado con claridad: verde = fuerte, amarillo = débil
+  // (bajo el balance de hoy), rojo = negativo.
+  const fmtBal = (v: number) => (v < 0 ? "-$" : "$") + money2(v)
+  const saldoColor = (v: number) => (v < 0 ? RED : v < fcLong.start ? "#f5b73f" : GREEN)
+
   return (
     <div style={{ paddingBottom: 28, color: INK, overflowX: "hidden", maxWidth: "100%" }}>
       {/* Encabezado como la foto */}
@@ -242,8 +247,10 @@ export function ProyeccionFoto1(props: ProyProps) {
                   <td style={{ ...td, textAlign: "right", fontWeight: 800, color: line.amount >= 0 ? GREEN : RED, whiteSpace: "nowrap", fontSize: 11 }}>
                     {signed(line.amount)}
                   </td>
-                  <td style={{ ...td, textAlign: "right", color: SUB, fontSize: 10.5, whiteSpace: "nowrap" }}>
-                    ${money2(before)}<br />→ ${money2(after)}
+                  <td style={{ ...td, textAlign: "right", whiteSpace: "nowrap" }}>
+                    <span style={{ color: SUB, fontSize: 10.5 }}>{fmtBal(before)}</span>
+                    <br />
+                    <span style={{ color: saldoColor(after), fontSize: 11.5, fontWeight: 800 }}>→ {fmtBal(after)}</span>
                   </td>
                 </tr>
               )
