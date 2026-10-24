@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import { cn } from "@/lib/utils"
 import { money, EXPENSE_CATEGORIES, type CashFlowEntry } from "./types"
 import { fmtFecha, fmtWeekday, catIcon } from "./proyeccion-shared"
@@ -297,7 +297,7 @@ function topCats(
   return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4)
 }
 
-const BANK_HDR = "px-1 pb-1 text-left text-[9px] font-bold uppercase tracking-wider text-neutral-500"
+const BANK_HDR = "overflow-hidden whitespace-nowrap px-1 pb-1 text-left text-[9px] font-bold uppercase tracking-wider text-neutral-500"
 
 /**
  * Register de UNA cuenta (pedido de Miguel 2026-10-24): arriba un encabezado
@@ -329,6 +329,43 @@ export function RegisterDetail(props: {
   const { balance, entries, bankTxs } = props
   const isCiti = /citi/i.test(reg.name) || /access/i.test(reg.name) || reg.isMain === true
   const useBank = (bankTxs || []).length > 0
+
+  // Detalle completo al apretar y sostener la descripción (idea de Miguel
+  // 2026-10-24): en el teléfono la descripción va recortada para que nada
+  // se monte; al sostener el dedo se abre un cuadrito con el texto entero
+  // y se cierra al soltar. En pantalla grande se ve completo (responsive).
+  const [peek, setPeek] = useState<{ text: string; meta: string; x: number; y: number } | null>(null)
+  const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const peekStart = useRef<{ x: number; y: number } | null>(null)
+  const suppressClick = useRef(false)
+
+  function peekDown(e: ReactPointerEvent, r: { detail: string; date: string; category: string | null; amount: number }) {
+    peekStart.current = { x: e.clientX, y: e.clientY }
+    if (peekTimer.current) clearTimeout(peekTimer.current)
+    peekTimer.current = setTimeout(() => {
+      setPeek({
+        text: r.detail,
+        meta: `${fmtFecha(r.date)} · ${r.category || "—"} · ${r.amount < 0 ? "-" : "+"}$${Math.abs(r.amount).toFixed(2)}`,
+        x: e.clientX,
+        y: e.clientY,
+      })
+    }, 180)
+  }
+  function peekMove(e: ReactPointerEvent) {
+    const s = peekStart.current
+    if (s && (Math.abs(e.clientX - s.x) > 8 || Math.abs(e.clientY - s.y) > 8)) {
+      if (peekTimer.current) clearTimeout(peekTimer.current)
+      setPeek(null)
+    }
+  }
+  function peekUp() {
+    if (peekTimer.current) clearTimeout(peekTimer.current)
+    if (peek) {
+      suppressClick.current = true
+      setTimeout(() => (suppressClick.current = false), 120)
+    }
+    setPeek(null)
+  }
 
   const lines = useMemo(() => {
     const out: {
@@ -467,44 +504,57 @@ export function RegisterDetail(props: {
                 key={r.key}
                 onClick={
                   editable
-                    ? () => (r.tx ? props.onEditBankTx?.(r.tx as BankTx) : props.onEditEntry?.(r.entry as CashFlowEntry))
+                    ? () => {
+                        if (suppressClick.current) return
+                        if (r.tx) props.onEditBankTx?.(r.tx as BankTx)
+                        else props.onEditEntry?.(r.entry as CashFlowEntry)
+                      }
                     : undefined
                 }
                 style={editable ? { cursor: "pointer" } : undefined}
                 className="flex w-full items-start border-b border-[#1d1d28] px-0.5 py-2 text-left"
               >
                 <span style={{ width: "15%" }} className="pr-1">
-                  <span className="block text-[11.5px] font-bold uppercase leading-tight text-neutral-100">{fmtFecha(r.date)}</span>
+                  <span className="block whitespace-nowrap text-[11.5px] font-bold uppercase leading-tight text-neutral-100">{fmtFecha(r.date)}</span>
                   <span className="block text-[9px] leading-tight text-neutral-500">{fmtWeekday(r.date)}</span>
                 </span>
-                <span style={{ width: "21%" }} className="pr-1">
-                  <span className="block break-words text-[11.5px] font-semibold leading-tight text-neutral-100">
+                <span
+                  style={{ width: "21%" }}
+                  className="min-w-0 pr-1"
+                  onPointerDown={(e) => peekDown(e, r)}
+                  onPointerMove={peekMove}
+                  onPointerUp={peekUp}
+                  onPointerLeave={peekUp}
+                  onPointerCancel={peekUp}
+                  onContextMenu={(e) => e.preventDefault()}
+                >
+                  <span className="block break-words text-[11.5px] font-semibold leading-tight text-neutral-100 line-clamp-2 md:line-clamp-none">
                     {r.detail}
                     <PendingBadge pending={r.pending} />
                   </span>
                 </span>
-                <span style={{ width: "14%" }} className="pr-1">
+                <span style={{ width: "14%" }} className="min-w-0 overflow-hidden pr-1">
                   <span className="flex items-start gap-1">
                     <span className="inline-block w-[19px] shrink-0 text-center text-[13px] leading-tight">{catIcon(r.category, r.detail)}</span>
-                    <span className="break-words text-[10.5px] leading-tight text-neutral-300">{r.category || "—"}</span>
+                    <span className="truncate text-[10.5px] leading-tight text-neutral-300 md:whitespace-normal md:break-words">{r.category || "—"}</span>
                   </span>
                 </span>
                 <span
                   style={{ width: "13%" }}
-                  className="pr-1 pt-px font-mono text-[11px] tabular-nums text-neutral-300"
+                  className="whitespace-nowrap pr-1 pt-px font-mono text-[11px] tabular-nums text-neutral-300"
                 >
                   {money(bankByDate.get(r.date) ?? r.after)}
                 </span>
                 <span
                   style={{ width: "17%" }}
                   className={cn(
-                    "pr-1 pt-px font-mono text-[12.5px] font-semibold tabular-nums",
+                    "whitespace-nowrap pr-1 pt-px font-mono text-[12px] font-semibold tabular-nums",
                     r.amount < 0 ? "text-[#ff5d6c]" : "text-[#2fbf71]",
                   )}
                 >
                   {r.amount < 0 ? "-" : "+"}${Math.abs(r.amount).toFixed(2)}
                 </span>
-                <span style={{ width: "20%" }} className="pt-px text-right font-mono tabular-nums">
+                <span style={{ width: "20%" }} className="whitespace-nowrap pt-px text-right font-mono tabular-nums">
                   <span className="block text-[10px] leading-tight text-neutral-500">
                     {r.before < 0 ? "-$" : "$"}{Math.abs(r.before).toFixed(2)}
                   </span>
@@ -524,6 +574,21 @@ export function RegisterDetail(props: {
             </p>
           )}
         </div>
+        {peek && (
+          <div
+            className="pointer-events-none fixed z-50 max-w-[272px] rounded-xl border border-[#3a3a52] bg-[#1d1d2b] p-2.5 shadow-2xl"
+            style={{
+              left: Math.max(8, Math.min(peek.x - 24, (typeof window !== "undefined" ? window.innerWidth : 360) - 284)),
+              top:
+                peek.y > (typeof window !== "undefined" ? window.innerHeight : 640) - 190
+                  ? Math.max(8, peek.y - 158)
+                  : peek.y + 16,
+            }}
+          >
+            <p className="break-words text-[12px] font-semibold leading-snug text-neutral-50">{peek.text}</p>
+            <p className="mt-1 text-[10px] font-medium text-neutral-400">{peek.meta}</p>
+          </div>
+        )}
         <div className="mt-1 flex items-center justify-between bg-[#1b1b26] px-2 py-1.5">
           <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
             Hoy, {fmtFecha(today)} - Saldo actual
