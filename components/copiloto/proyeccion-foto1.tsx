@@ -183,7 +183,7 @@ export function ProyeccionFoto1(props: ProyProps) {
                     <span style={{ fontWeight: 600 }}>{line.label}</span>
                   </td>
                   <td style={{ ...td, color: "#c9cbd8", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    <span style={{ marginRight: 4 }}>{catIcon(cat, line.label)}</span>
+                    <span style={{ display: "inline-block", width: 19, textAlign: "center", marginRight: 3, fontSize: 12 }}>{catIcon(cat, line.label)}</span>
                     {cat}
                   </td>
                   <td style={{ ...td, textAlign: "right", color: "#c9cbd8", whiteSpace: "nowrap", fontSize: 10.5 }}>

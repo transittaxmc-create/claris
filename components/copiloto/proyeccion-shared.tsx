@@ -146,17 +146,34 @@ export function Gauge({ health, size = 118 }: { health: ReturnType<typeof health
   )
 }
 
-/** Icono por categoría, como los de la foto (casa, antena, dinero, carro…). */
+/** Icono por categoría (con fallback por etiqueta). Todas llevan icono. */
 export function catIcon(category: string | null | undefined, label: string): string {
-  const s = `${category || ""} ${label || ""}`.toLowerCase()
-  if (/rent|housing|vivienda|local/.test(s)) return "🏠"
-  if (/t-?mobile|phone|tel[eé]fono|srv|servicio/.test(s)) return "📡"
-  if (/paycheck|income|ingreso|sueldo|salary/.test(s)) return "💵"
-  if (/insurance|seguro/.test(s)) return "🚗"
-  if (/car|auto|leasing|transport/.test(s)) return "🚗"
-  if (/grocer|food|alimento|whole/.test(s)) return "🛒"
-  if (/uber/.test(s)) return "⬛"
-  if (/lyft/.test(s)) return "🟪"
-  if (/gas|fuel|gasolina/.test(s)) return "⛽"
-  return "•"
+  const c = (category || "").toLowerCase().trim()
+  const byCat: [RegExp, string][] = [
+    [/income|paycheck|ingreso|sueldo|salary/, "💵"],
+    [/fuel|gas|gasolina/, "⛽"],
+    [/maintenance|mantenimiento/, "🔧"],
+    [/leasing|lease/, "🚗"],
+    [/rent|housing|vivienda|alquiler|local/, "🏠"],
+    [/toll|e-?zpass|peaje/, "🛣️"],
+    [/wash|lavado/, "🧽"],
+    [/insurance|seguro/, "🛡️"],
+    [/bank fee|fees|fee|banco/, "🏦"],
+    [/phone|t-?mobile|mobile|tel[eé]fono|srv/, "📱"],
+    [/parking|parqueo/, "🅿️"],
+    [/supplies|supply|insumos/, "🧰"],
+    [/grocer|market|mercado|whole/, "🛒"],
+    [/food|comida|alimento|restaurant/, "🍔"],
+    [/utilit|servicio/, "💡"],
+    [/subscription|suscrip/, "🔁"],
+    [/tax|impuesto/, "🧾"],
+    [/transfer|transferencia/, "🔄"],
+    [/uber/, "⬛"],
+    [/lyft/, "🟪"],
+    [/bill/, "📄"],
+  ]
+  for (const [re, icon] of byCat) if (re.test(c)) return icon
+  const s = (label || "").toLowerCase()
+  for (const [re, icon] of byCat) if (re.test(s)) return icon
+  return "📌"
 }
