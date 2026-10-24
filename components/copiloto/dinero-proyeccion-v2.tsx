@@ -5,7 +5,7 @@ import type { CashFlowEntry } from "./types"
 import type { DueItem, RegisterAccount } from "./registers-store"
 import type { ForecastBankTx } from "./dinero-forecast"
 
-const REGISTER_IMAGE = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_2777-Tnm5TzEf2voOBJLwDTMCoXqjqds9GE.jpeg"
+const REGISTER_IMAGE = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_2784-3f3YLYSfIX7JntnjaWQ0LKWuLugtn0.jpeg"
 const TRENDS_IMAGE = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_2776-U11IHRNlDvnKSgFQujOw0TrY8poeYH.jpeg"
 
 export function DineroProyeccionV2(props: {
