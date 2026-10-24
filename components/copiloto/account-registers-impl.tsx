@@ -16,6 +16,7 @@ import { movementCounts, bankBrandOf } from "./bank-brand"
 import { MoneyAccountCard, MoneyHeader, MoneySectionTitle, MoneyStrip, MoneyTabs } from "./money-ui"
 import { Plus, ArrowLeftRight } from "lucide-react"
 import { PlaidConnectButton } from "./plaid-connect"
+import { AccountSettings } from "./account-settings"
 
 export interface BankTx {
   date: string
@@ -493,6 +494,18 @@ export function RegisterDetail(props: {
           </div>
         </div>
       </div>
+
+      {/* ===== Ajustes de la cuenta (saldo manual editable, etc.) ===== */}
+      <AccountSettings
+        account={reg}
+        balance={balance}
+        otherFunds={(props.otherFunds as any) || []}
+        onToggleOtherFund={props.onToggleOtherFund ?? (() => {})}
+        onSetMain={props.onSetMain ?? (() => {})}
+        onSaveDueDay={props.onSaveDueDay ?? (() => {})}
+        onSaveManualBalance={props.onSaveManualBalance ?? (() => {})}
+        onDeleteManual={props.onDeleteManual ?? (() => {})}
+      />
 
       {/* ===== Register (formato del Registro Unificado) ===== */}
       <div>
