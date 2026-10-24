@@ -79,6 +79,12 @@ const SEED_MANUAL: Array<{ id: string; name: string }> = [
   { id: "manual:square-checking", name: "Square Checking" },
   { id: "manual:uber-pro-card", name: "Uber Pro Card" },
   { id: "manual:lyft", name: "Lyft" },
+  // Navy Federal y Varo: desconectados de Plaid desde 2026-10-20, pero
+  // Miguel pidió register para TODOS sus bancos (2026-10-24). Existen como
+  // cuentas fijas con su register (vacío hasta que se reconecten); si Plaid
+  // los vuelve a traer, buildRegisters los deduplica contra el snapshot.
+  { id: "manual:navy-federal", name: "Navy Federal" },
+  { id: "manual:varo", name: "Varo" },
 ]
 
 function normName(n: string) {
@@ -137,6 +143,7 @@ export function accountDisplayName(name: string): { title: string; subtitle: str
   const last4 = last4Of(raw)
   let bank = "Account"
   if (/citi/i.test(raw)) bank = "CitiBank"
+  else if (/navy/i.test(raw)) bank = "Navy Federal"
   else if (/access/i.test(raw)) bank = "Access"
   else if (/paypal/i.test(raw)) bank = "PayPal"
   else if (/checking/i.test(raw)) bank = "Checking"
