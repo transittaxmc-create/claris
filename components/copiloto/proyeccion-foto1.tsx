@@ -227,7 +227,7 @@ export function ProyeccionFoto1(props: ProyProps) {
         <div style={{ background: BAND, padding: "8px 14px", fontSize: 11, fontWeight: 800, letterSpacing: 1, color: SUB }}>
           TRANSACCIONES FUTURAS / PRONÓSTICO
         </div>
-        <div style={{ maxHeight: "46vh", overflowY: "auto", WebkitOverflowScrolling: "touch" }}>
+        <div style={{ maxHeight: "46vh", overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", touchAction: "pan-y" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
           <colgroup>
             <col style={{ width: "15%" }} /><col style={{ width: "21%" }} /><col style={{ width: "14%" }} />
