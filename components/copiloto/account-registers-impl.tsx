@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
+import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from "react"
 import { cn } from "@/lib/utils"
 import { money, EXPENSE_CATEGORIES, type CashFlowEntry } from "./types"
 import { fmtFecha, fmtWeekday, catIcon } from "./proyeccion-shared"
@@ -341,41 +341,46 @@ export function RegisterDetail(props: {
     return () => mq.removeEventListener("change", apply)
   }, [])
 
-  // Detalle completo al apretar y sostener la descripción (idea de Miguel
-  // 2026-10-24): en el teléfono la descripción va recortada para que nada
-  // se monte; al sostener el dedo se abre un cuadrito con el texto entero
-  // y se cierra al soltar. En pantalla grande se ve completo (responsive).
-  const [peek, setPeek] = useState<{ text: string; meta: string; x: number; y: number } | null>(null)
-  const peekTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const peekStart = useRef<{ x: number; y: number } | null>(null)
-  const suppressClick = useRef(false)
+  // Detalle por TOQUE (Miguel 2026-10-24): en el teléfono el register se
+  // congestionaba, así que Categoría y Bank no ocupan columna — tocar la
+  // descripción abre un cuadro con TODO el detalle (texto completo,
+  // categoría y balance del banco de ese día) y se cierra con otro toque.
+  // En pantalla grande se ven las 6 columnas completas, sin tocar nada.
+  const [peek, setPeek] = useState<{
+    key: string
+    text: string
+    category: string | null
+    bank: number
+    date: string
+    amount: number
+    x: number
+    y: number
+    tx?: BankTx
+    entry?: CashFlowEntry
+  } | null>(null)
 
-  function peekDown(e: ReactPointerEvent, r: { detail: string; date: string; category: string | null; amount: number }) {
-    peekStart.current = { x: e.clientX, y: e.clientY }
-    if (peekTimer.current) clearTimeout(peekTimer.current)
-    peekTimer.current = setTimeout(() => {
-      setPeek({
-        text: r.detail,
-        meta: `${fmtFecha(r.date)} · ${r.category || "—"} · ${r.amount < 0 ? "-" : "+"}$${Math.abs(r.amount).toFixed(2)}`,
-        x: e.clientX,
-        y: e.clientY,
-      })
-    }, 180)
-  }
-  function peekMove(e: ReactPointerEvent) {
-    const s = peekStart.current
-    if (s && (Math.abs(e.clientX - s.x) > 8 || Math.abs(e.clientY - s.y) > 8)) {
-      if (peekTimer.current) clearTimeout(peekTimer.current)
+  function togglePeek(
+    e: ReactMouseEvent,
+    r: { key: string; detail: string; date: string; category: string | null; amount: number; tx?: BankTx; entry?: CashFlowEntry },
+    bankVal: number,
+  ) {
+    e.stopPropagation()
+    if (peek && peek.key === r.key) {
       setPeek(null)
+      return
     }
-  }
-  function peekUp() {
-    if (peekTimer.current) clearTimeout(peekTimer.current)
-    if (peek) {
-      suppressClick.current = true
-      setTimeout(() => (suppressClick.current = false), 120)
-    }
-    setPeek(null)
+    setPeek({
+      key: r.key,
+      text: r.detail,
+      category: r.category,
+      bank: bankVal,
+      date: r.date,
+      amount: r.amount,
+      x: e.clientX,
+      y: e.clientY,
+      tx: r.tx,
+      entry: r.entry,
+    })
   }
 
   const lines = useMemo(() => {
@@ -491,14 +496,23 @@ export function RegisterDetail(props: {
 
       {/* ===== Register (formato del Registro Unificado) ===== */}
       <div>
-        <div className="flex px-0.5">
-          <span className={BANK_HDR} style={{ width: "14%" }}>Fecha</span>
-          <span className={BANK_HDR} style={{ width: "19%" }}>Descripción</span>
-          <span className={BANK_HDR} style={{ width: "16%" }}>Categoría</span>
-          <span className={BANK_HDR} style={{ width: "13%" }}>Bank</span>
-          <span className={BANK_HDR} style={{ width: "17%" }}>Monto</span>
-          <span className={BANK_HDR} style={{ width: "21%" }}>Saldo</span>
-        </div>
+        {wide ? (
+          <div className="flex px-0.5">
+            <span className={BANK_HDR} style={{ width: "14%" }}>Fecha</span>
+            <span className={BANK_HDR} style={{ width: "19%" }}>Descripción</span>
+            <span className={BANK_HDR} style={{ width: "16%" }}>Categoría</span>
+            <span className={BANK_HDR} style={{ width: "13%" }}>Bank</span>
+            <span className={BANK_HDR} style={{ width: "17%" }}>Monto</span>
+            <span className={BANK_HDR} style={{ width: "21%" }}>Saldo</span>
+          </div>
+        ) : (
+          <div className="flex px-0.5">
+            <span className={BANK_HDR} style={{ width: "15%" }}>Fecha</span>
+            <span className={BANK_HDR} style={{ width: "33%" }}>Descripción</span>
+            <span className={BANK_HDR} style={{ width: "22%" }}>Monto</span>
+            <span className={BANK_HDR} style={{ width: "30%" }}>Saldo</span>
+          </div>
+        )}
         <div
           style={{
             maxHeight: "52vh",
@@ -510,34 +524,29 @@ export function RegisterDetail(props: {
         >
           {rows.slice(0, 200).map((r) => {
             const editable = r.tx ? isCiti && !!props.onEditBankTx : !!r.entry && !!props.onEditEntry
+            const bankVal = bankByDate.get(r.date) ?? r.after
             return (
               <div
                 key={r.key}
                 onClick={
-                  editable
+                  wide && editable
                     ? () => {
-                        if (suppressClick.current) return
                         if (r.tx) props.onEditBankTx?.(r.tx as BankTx)
                         else props.onEditEntry?.(r.entry as CashFlowEntry)
                       }
                     : undefined
                 }
-                style={editable ? { cursor: "pointer" } : undefined}
+                style={wide && editable ? { cursor: "pointer" } : undefined}
                 className="flex w-full items-start border-b border-[#1d1d28] px-0.5 py-2 text-left"
               >
-                <span style={{ width: "14%" }} className="pr-1">
+                <span style={{ width: wide ? "14%" : "15%" }} className="pr-1">
                   <span className="block whitespace-nowrap text-[12px] font-bold uppercase leading-tight text-neutral-100">{fmtFecha(r.date)}</span>
                   <span className="block text-[9px] leading-tight text-neutral-500">{fmtWeekday(r.date)}</span>
                 </span>
                 <span
-                  style={{ width: "19%" }}
-                  className="min-w-0 overflow-hidden pr-1"
-                  onPointerDown={(e) => peekDown(e, r)}
-                  onPointerMove={peekMove}
-                  onPointerUp={peekUp}
-                  onPointerLeave={peekUp}
-                  onPointerCancel={peekUp}
-                  onContextMenu={(e) => e.preventDefault()}
+                  style={{ width: wide ? "19%" : "33%" }}
+                  className="min-w-0 cursor-pointer overflow-hidden pr-1"
+                  onClick={wide ? undefined : (e) => togglePeek(e, r, bankVal)}
                 >
                   <span
                     className="block break-words text-[12px] font-medium leading-tight text-neutral-100"
@@ -556,20 +565,24 @@ export function RegisterDetail(props: {
                   </span>
                   <PendingBadge pending={r.pending} />
                 </span>
-                <span style={{ width: "16%" }} className="min-w-0 overflow-hidden pr-1">
-                  <span className="flex items-start gap-1">
-                    <span className="inline-block w-[19px] shrink-0 text-center text-[13px] leading-tight">{catIcon(r.category, r.detail)}</span>
-                    <span className="truncate text-[11px] leading-tight text-neutral-300 md:whitespace-normal md:break-words">{r.category || "—"}</span>
+                {wide && (
+                  <span style={{ width: "16%" }} className="min-w-0 overflow-hidden pr-1">
+                    <span className="flex items-start gap-1">
+                      <span className="inline-block w-[19px] shrink-0 text-center text-[13px] leading-tight">{catIcon(r.category, r.detail)}</span>
+                      <span className="truncate text-[11px] leading-tight text-neutral-300 md:whitespace-normal md:break-words">{r.category || "—"}</span>
+                    </span>
                   </span>
-                </span>
+                )}
+                {wide && (
+                  <span
+                    style={{ width: "13%" }}
+                    className="whitespace-nowrap pr-1 pt-px font-mono text-[12.5px] font-medium tabular-nums text-neutral-200"
+                  >
+                    {money(bankVal)}
+                  </span>
+                )}
                 <span
-                  style={{ width: "13%" }}
-                  className="whitespace-nowrap pr-1 pt-px font-mono text-[12.5px] font-medium tabular-nums text-neutral-200"
-                >
-                  {money(bankByDate.get(r.date) ?? r.after)}
-                </span>
-                <span
-                  style={{ width: "17%" }}
+                  style={{ width: wide ? "17%" : "22%" }}
                   className={cn(
                     "whitespace-nowrap pr-1 pt-px font-mono text-[13.5px] font-medium tabular-nums",
                     r.amount < 0 ? "text-[#ff5d6c]" : "text-[#2fbf71]",
@@ -577,7 +590,7 @@ export function RegisterDetail(props: {
                 >
                   {r.amount < 0 ? "-" : "+"}${Math.abs(r.amount).toFixed(2)}
                 </span>
-                <span style={{ width: "21%" }} className="whitespace-nowrap pt-px text-right font-mono tabular-nums">
+                <span style={{ width: wide ? "21%" : "30%" }} className="whitespace-nowrap pt-px text-right font-mono tabular-nums">
                   <span className="block text-[11px] leading-tight text-neutral-500">
                     {r.before < 0 ? "-$" : "$"}{Math.abs(r.before).toFixed(2)}
                   </span>
@@ -598,19 +611,72 @@ export function RegisterDetail(props: {
           )}
         </div>
         {peek && (
-          <div
-            className="pointer-events-none fixed z-50 max-w-[272px] rounded-xl border border-[#3a3a52] bg-[#1d1d2b] p-2.5 shadow-2xl"
-            style={{
-              left: Math.max(8, Math.min(peek.x - 24, (typeof window !== "undefined" ? window.innerWidth : 360) - 284)),
-              top:
-                peek.y > (typeof window !== "undefined" ? window.innerHeight : 640) - 190
-                  ? Math.max(8, peek.y - 158)
-                  : peek.y + 16,
-            }}
-          >
-            <p className="break-words text-[12px] font-semibold leading-snug text-neutral-50">{peek.text}</p>
-            <p className="mt-1 text-[10px] font-medium text-neutral-400">{peek.meta}</p>
-          </div>
+          <>
+            <div className="fixed inset-0 z-40" onClick={() => setPeek(null)} />
+            <div
+              className="fixed z-50 w-[272px] max-w-[calc(100vw-16px)] rounded-xl border border-[#3a3a52] bg-[#1d1d2b] p-3 shadow-2xl"
+              style={{
+                left: Math.max(8, Math.min(peek.x - 24, (typeof window !== "undefined" ? window.innerWidth : 360) - 288)),
+                top:
+                  peek.y > (typeof window !== "undefined" ? window.innerHeight : 640) - 260
+                    ? Math.max(8, peek.y - 228)
+                    : peek.y + 16,
+              }}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-500">
+                  {fmtFecha(peek.date)} · {fmtWeekday(peek.date)}
+                </p>
+                <button
+                  type="button"
+                  aria-label="Cerrar"
+                  onClick={() => setPeek(null)}
+                  className="-mr-1 -mt-1 px-1 text-[13px] leading-none text-neutral-400"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="mt-0.5 break-words text-[12.5px] font-semibold leading-snug text-neutral-50">{peek.text}</p>
+              <div className="mt-2 space-y-1 border-t border-[#2c2c40] pt-2 text-[11.5px]">
+                <p className="flex items-center justify-between">
+                  <span className="text-neutral-500">Categoría</span>
+                  <span className="flex items-center gap-1 font-medium text-neutral-200">
+                    <span className="inline-block w-[19px] text-center">{catIcon(peek.category, peek.text)}</span>
+                    {peek.category || "—"}
+                  </span>
+                </p>
+                <p className="flex items-center justify-between">
+                  <span className="text-neutral-500">Bank (ese día)</span>
+                  <span className="font-mono font-medium tabular-nums text-neutral-200">{money(peek.bank)}</span>
+                </p>
+                <p className="flex items-center justify-between">
+                  <span className="text-neutral-500">Monto</span>
+                  <span
+                    className={cn(
+                      "font-mono font-semibold tabular-nums",
+                      peek.amount < 0 ? "text-[#ff5d6c]" : "text-[#2fbf71]",
+                    )}
+                  >
+                    {peek.amount < 0 ? "-" : "+"}${Math.abs(peek.amount).toFixed(2)}
+                  </span>
+                </p>
+              </div>
+              {((peek.tx && isCiti && props.onEditBankTx) || (peek.entry && props.onEditEntry)) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const p = peek
+                    setPeek(null)
+                    if (p.tx) props.onEditBankTx?.(p.tx as BankTx)
+                    else if (p.entry) props.onEditEntry?.(p.entry as CashFlowEntry)
+                  }}
+                  className="mt-2.5 w-full rounded-lg bg-[#26263a] py-1.5 text-[12px] font-bold text-[#5b8cff]"
+                >
+                  Editar
+                </button>
+              )}
+            </div>
+          </>
         )}
         <div className="mt-1 flex items-center justify-between bg-[#1b1b26] px-2 py-1.5">
           <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
