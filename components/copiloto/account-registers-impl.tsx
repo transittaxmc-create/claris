@@ -297,7 +297,7 @@ function topCats(
   return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4)
 }
 
-const BANK_HDR = "overflow-hidden whitespace-nowrap px-1 pb-1 text-left text-[8px] font-bold uppercase tracking-[0.02em] text-neutral-500"
+const BANK_HDR = "overflow-hidden whitespace-nowrap px-1 pb-1 text-left text-[10px] font-extrabold uppercase tracking-[0.01em] text-neutral-400"
 
 /**
  * Register de UNA cuenta (pedido de Miguel 2026-10-24): arriba un encabezado
@@ -465,7 +465,7 @@ export function RegisterDetail(props: {
             <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-500">Balance</p>
             <p
               className={cn(
-                "font-mono text-[20px] font-bold tabular-nums",
+                "font-mono text-[22px] font-bold tabular-nums",
                 (balance ?? 0) < 0 ? "text-[#ff5d6c]" : "text-[#f2f3f7]",
               )}
             >
@@ -476,15 +476,15 @@ export function RegisterDetail(props: {
         <div className="mt-2 grid grid-cols-3 gap-2 border-t border-[#262633] pt-2">
           <div>
             <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-500">Entradas</p>
-            <p className="font-mono text-[13px] font-bold tabular-nums text-[#2fbf71]">+{money(inMonth).replace("-", "")}</p>
+            <p className="font-mono text-[14px] font-semibold tabular-nums text-[#2fbf71]">+{money(inMonth).replace("-", "")}</p>
           </div>
           <div>
             <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-500">Salidas</p>
-            <p className="font-mono text-[13px] font-bold tabular-nums text-[#ff5d6c]">-{money(outMonth).replace("-", "")}</p>
+            <p className="font-mono text-[14px] font-semibold tabular-nums text-[#ff5d6c]">-{money(outMonth).replace("-", "")}</p>
           </div>
           <div>
             <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-500">Movimientos</p>
-            <p className="font-mono text-[13px] font-bold tabular-nums text-neutral-100">{monthLines.length}</p>
+            <p className="font-mono text-[14px] font-semibold tabular-nums text-neutral-100">{monthLines.length}</p>
           </div>
         </div>
       </div>
@@ -492,12 +492,12 @@ export function RegisterDetail(props: {
       {/* ===== Register (formato del Registro Unificado) ===== */}
       <div>
         <div className="flex px-0.5">
-          <span className={BANK_HDR} style={{ width: "15%" }}>Fecha</span>
-          <span className={BANK_HDR} style={{ width: "21%" }}>Descripción</span>
-          <span className={BANK_HDR} style={{ width: "14%" }}>Categoría</span>
+          <span className={BANK_HDR} style={{ width: "14%" }}>Fecha</span>
+          <span className={BANK_HDR} style={{ width: "19%" }}>Descripción</span>
+          <span className={BANK_HDR} style={{ width: "16%" }}>Categoría</span>
           <span className={BANK_HDR} style={{ width: "13%" }}>Bank</span>
           <span className={BANK_HDR} style={{ width: "17%" }}>Monto</span>
-          <span className={BANK_HDR} style={{ width: "20%" }}>Saldo</span>
+          <span className={BANK_HDR} style={{ width: "21%" }}>Saldo</span>
         </div>
         <div
           style={{
@@ -525,12 +525,12 @@ export function RegisterDetail(props: {
                 style={editable ? { cursor: "pointer" } : undefined}
                 className="flex w-full items-start border-b border-[#1d1d28] px-0.5 py-2 text-left"
               >
-                <span style={{ width: "15%" }} className="pr-1">
-                  <span className="block whitespace-nowrap text-[11.5px] font-bold uppercase leading-tight text-neutral-100">{fmtFecha(r.date)}</span>
+                <span style={{ width: "14%" }} className="pr-1">
+                  <span className="block whitespace-nowrap text-[12px] font-bold uppercase leading-tight text-neutral-100">{fmtFecha(r.date)}</span>
                   <span className="block text-[9px] leading-tight text-neutral-500">{fmtWeekday(r.date)}</span>
                 </span>
                 <span
-                  style={{ width: "21%" }}
+                  style={{ width: "19%" }}
                   className="min-w-0 overflow-hidden pr-1"
                   onPointerDown={(e) => peekDown(e, r)}
                   onPointerMove={peekMove}
@@ -540,7 +540,7 @@ export function RegisterDetail(props: {
                   onContextMenu={(e) => e.preventDefault()}
                 >
                   <span
-                    className="block break-words text-[11.5px] font-semibold leading-tight text-neutral-100"
+                    className="block break-words text-[12px] font-medium leading-tight text-neutral-100"
                     style={
                       wide
                         ? undefined
@@ -556,33 +556,33 @@ export function RegisterDetail(props: {
                   </span>
                   <PendingBadge pending={r.pending} />
                 </span>
-                <span style={{ width: "14%" }} className="min-w-0 overflow-hidden pr-1">
+                <span style={{ width: "16%" }} className="min-w-0 overflow-hidden pr-1">
                   <span className="flex items-start gap-1">
                     <span className="inline-block w-[19px] shrink-0 text-center text-[13px] leading-tight">{catIcon(r.category, r.detail)}</span>
-                    <span className="truncate text-[10.5px] leading-tight text-neutral-300 md:whitespace-normal md:break-words">{r.category || "—"}</span>
+                    <span className="truncate text-[11px] leading-tight text-neutral-300 md:whitespace-normal md:break-words">{r.category || "—"}</span>
                   </span>
                 </span>
                 <span
                   style={{ width: "13%" }}
-                  className="whitespace-nowrap pr-1 pt-px font-mono text-[11px] tabular-nums text-neutral-300"
+                  className="whitespace-nowrap pr-1 pt-px font-mono text-[12.5px] font-medium tabular-nums text-neutral-200"
                 >
                   {money(bankByDate.get(r.date) ?? r.after)}
                 </span>
                 <span
                   style={{ width: "17%" }}
                   className={cn(
-                    "whitespace-nowrap pr-1 pt-px font-mono text-[12px] font-semibold tabular-nums",
+                    "whitespace-nowrap pr-1 pt-px font-mono text-[13.5px] font-medium tabular-nums",
                     r.amount < 0 ? "text-[#ff5d6c]" : "text-[#2fbf71]",
                   )}
                 >
                   {r.amount < 0 ? "-" : "+"}${Math.abs(r.amount).toFixed(2)}
                 </span>
-                <span style={{ width: "20%" }} className="whitespace-nowrap pt-px text-right font-mono tabular-nums">
-                  <span className="block text-[10px] leading-tight text-neutral-500">
+                <span style={{ width: "21%" }} className="whitespace-nowrap pt-px text-right font-mono tabular-nums">
+                  <span className="block text-[11px] leading-tight text-neutral-500">
                     {r.before < 0 ? "-$" : "$"}{Math.abs(r.before).toFixed(2)}
                   </span>
                   <span
-                    className="block text-[12.5px] font-semibold leading-tight"
+                    className="block text-[13.5px] font-medium leading-tight"
                     style={{ color: saldoColorBank(r.after, balNow) }}
                   >
                     → {r.after < 0 ? "-$" : "$"}{Math.abs(r.after).toFixed(2)}
