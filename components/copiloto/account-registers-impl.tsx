@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react"
 import { cn } from "@/lib/utils"
 import { money, EXPENSE_CATEGORIES, type CashFlowEntry } from "./types"
 import { fmtFecha, fmtWeekday, catIcon } from "./proyeccion-shared"
@@ -297,7 +297,7 @@ function topCats(
   return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4)
 }
 
-const BANK_HDR = "overflow-hidden whitespace-nowrap px-1 pb-1 text-left text-[9px] font-bold uppercase tracking-wider text-neutral-500"
+const BANK_HDR = "overflow-hidden whitespace-nowrap px-1 pb-1 text-left text-[8px] font-bold uppercase tracking-[0.02em] text-neutral-500"
 
 /**
  * Register de UNA cuenta (pedido de Miguel 2026-10-24): arriba un encabezado
@@ -329,6 +329,17 @@ export function RegisterDetail(props: {
   const { balance, entries, bankTxs } = props
   const isCiti = /citi/i.test(reg.name) || /access/i.test(reg.name) || reg.isMain === true
   const useBank = (bankTxs || []).length > 0
+
+  // Pantalla ancha (computadora/monitor): la descripción se ve completa,
+  // sin recorte ni tener que apretar (responsive, idea de Miguel 2026-10-24).
+  const [wide, setWide] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)")
+    const apply = () => setWide(mq.matches)
+    apply()
+    mq.addEventListener("change", apply)
+    return () => mq.removeEventListener("change", apply)
+  }, [])
 
   // Detalle completo al apretar y sostener la descripción (idea de Miguel
   // 2026-10-24): en el teléfono la descripción va recortada para que nada
@@ -520,7 +531,7 @@ export function RegisterDetail(props: {
                 </span>
                 <span
                   style={{ width: "21%" }}
-                  className="min-w-0 pr-1"
+                  className="min-w-0 overflow-hidden pr-1"
                   onPointerDown={(e) => peekDown(e, r)}
                   onPointerMove={peekMove}
                   onPointerUp={peekUp}
@@ -528,10 +539,22 @@ export function RegisterDetail(props: {
                   onPointerCancel={peekUp}
                   onContextMenu={(e) => e.preventDefault()}
                 >
-                  <span className="block break-words text-[11.5px] font-semibold leading-tight text-neutral-100 line-clamp-2 md:line-clamp-none">
+                  <span
+                    className="block break-words text-[11.5px] font-semibold leading-tight text-neutral-100"
+                    style={
+                      wide
+                        ? undefined
+                        : {
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                            overflow: "hidden",
+                          }
+                    }
+                  >
                     {r.detail}
-                    <PendingBadge pending={r.pending} />
                   </span>
+                  <PendingBadge pending={r.pending} />
                 </span>
                 <span style={{ width: "14%" }} className="min-w-0 overflow-hidden pr-1">
                   <span className="flex items-start gap-1">
