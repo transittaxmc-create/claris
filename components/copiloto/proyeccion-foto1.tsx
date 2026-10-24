@@ -9,7 +9,6 @@ import {
   catIcon,
   fmtDiaMes,
   fmtFecha,
-  fmtFechaL,
   healthOf,
   lineCategory,
   money2,
@@ -23,7 +22,6 @@ const INK = "#f2f3f7"
 const SUB = "#9a9cb0"
 const GREEN = "#34d17b"
 const RED = "#ff5d6c"
-const BLUE = "#5b8cff"
 const CARD = "#14161d"
 const BORDER = "#262833"
 const BAND = "#1b1e27"
@@ -70,20 +68,6 @@ export function ProyeccionFoto1(props: ProyProps) {
       })
   }, [fc, today])
 
-  // Pasadas: movimientos del banco, lo más nuevo arriba, saldo hacia atrás.
-  const pasadas = useMemo(() => {
-    const txs = [...props.bankTxs]
-      .filter((t) => t.date <= today)
-      .sort((a, b) => (a.date > b.date ? -1 : a.date < b.date ? 1 : 0))
-      .slice(0, 15)
-    let bal = fc.start
-    return txs.map((t) => {
-      const after = bal
-      bal = Math.round((bal - t.amount) * 100) / 100
-      return { tx: t, after }
-    })
-  }, [props.bankTxs, today, fc.start])
-
   // Desglose por categoría (top 2 ingresos / top 2 gastos, como la foto).
   const desglose = useMemo(() => {
     const inc = new Map<string, number>(), exp = new Map<string, number>()
@@ -108,11 +92,11 @@ export function ProyeccionFoto1(props: ProyProps) {
   const td: CSSProperties = { padding: "9px 6px", borderBottom: "1px solid #1a1c24", verticalAlign: "top", fontSize: 11.5 }
 
   return (
-    <div style={{ paddingBottom: 28, color: INK }}>
+    <div style={{ paddingBottom: 28, color: INK, overflowX: "hidden", maxWidth: "100%" }}>
       {/* Encabezado como la foto */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 14px 10px" }}>
         <span style={{ fontSize: 17, color: SUB }}>⚙️</span>
-        <h2 style={{ fontSize: 13.5, fontWeight: 800, letterSpacing: 0.8, textAlign: "center", flex: 1 }}>
+        <h2 style={{ fontSize: 13.5, fontWeight: 800, letterSpacing: 0.8, textAlign: "center", flex: 1, minWidth: 0 }}>
           REGISTRO &amp; PRONÓSTICO DE FLUJO DE CAJA
         </h2>
         <span style={{ fontSize: 17, color: SUB }}>🔔</span>
@@ -162,13 +146,13 @@ export function ProyeccionFoto1(props: ProyProps) {
       <div style={{ margin: "0 12px", background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, overflow: "hidden" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
           <colgroup>
-            <col style={{ width: "13%" }} /><col style={{ width: "27%" }} /><col style={{ width: "17%" }} />
-            <col style={{ width: "15%" }} /><col style={{ width: "15%" }} /><col style={{ width: "13%" }} />
+            <col style={{ width: "12%" }} /><col style={{ width: "24%" }} /><col style={{ width: "15%" }} />
+            <col style={{ width: "14%" }} /><col style={{ width: "17%" }} /><col style={{ width: "18%" }} />
           </colgroup>
           <thead>
             <tr>
               <th style={th}>FECHA</th><th style={th}>DESCRIPCIÓN</th><th style={th}>CATEGORÍA</th>
-              <th style={th}>ESTADO</th><th style={{ ...th, textAlign: "right" }}>MONTO</th>
+              <th style={{ ...th, textAlign: "right" }}>BANK</th><th style={{ ...th, textAlign: "right" }}>MONTO</th>
               <th style={{ ...th, textAlign: "right" }}>SALDO ACUM.</th>
             </tr>
           </thead>
@@ -178,8 +162,8 @@ export function ProyeccionFoto1(props: ProyProps) {
         </div>
         <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
           <colgroup>
-            <col style={{ width: "13%" }} /><col style={{ width: "27%" }} /><col style={{ width: "17%" }} />
-            <col style={{ width: "15%" }} /><col style={{ width: "15%" }} /><col style={{ width: "13%" }} />
+            <col style={{ width: "12%" }} /><col style={{ width: "24%" }} /><col style={{ width: "15%" }} />
+            <col style={{ width: "14%" }} /><col style={{ width: "17%" }} /><col style={{ width: "18%" }} />
           </colgroup>
           <tbody>
             {futuras.length === 0 && (
@@ -190,13 +174,15 @@ export function ProyeccionFoto1(props: ProyProps) {
               return (
                 <tr key={line.id + i} style={i === 0 ? { background: "rgba(201,162,39,.14)" } : undefined}>
                   <td style={{ ...td, whiteSpace: "nowrap", fontWeight: 600 }}>{fmtFecha(line.date)}</td>
-                  <td style={td}>
+                  <td style={{ ...td, overflow: "hidden" }}>
                     <span style={{ marginRight: 4 }}>{catIcon(cat, line.label)}</span>
                     <span style={{ fontWeight: 600 }}>{line.label}</span>
                   </td>
-                  <td style={{ ...td, color: "#c9cbd8" }}>{cat}</td>
-                  <td style={{ ...td, color: BLUE, fontWeight: 600 }}>Scheduled</td>
-                  <td style={{ ...td, textAlign: "right", fontWeight: 800, color: line.amount >= 0 ? GREEN : RED, whiteSpace: "nowrap" }}>
+                  <td style={{ ...td, color: "#c9cbd8", overflow: "hidden", textOverflow: "ellipsis" }}>{cat}</td>
+                  <td style={{ ...td, textAlign: "right", color: "#c9cbd8", whiteSpace: "nowrap", fontSize: 10.5 }}>
+                    ${money2(fc.start)}
+                  </td>
+                  <td style={{ ...td, textAlign: "right", fontWeight: 800, color: line.amount >= 0 ? GREEN : RED, whiteSpace: "nowrap", fontSize: 11 }}>
                     {signed(line.amount)}
                   </td>
                   <td style={{ ...td, textAlign: "right", color: SUB, fontSize: 10.5, whiteSpace: "nowrap" }}>
@@ -219,27 +205,27 @@ export function ProyeccionFoto1(props: ProyProps) {
               </div>
             </div>
             <div style={{ flex: 1, minWidth: 0, fontSize: 11 }}>
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", gap: 10 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ color: SUB, fontSize: 10, marginBottom: 4 }}>Sources of Cash</div>
+                  <div style={{ color: SUB, fontSize: 10, marginBottom: 4, whiteSpace: "nowrap" }}>Sources of Cash</div>
                   {desglose.inc.map(([c, v]) => (
-                    <div key={c} style={{ display: "flex", justifyContent: "space-between", gap: 6, marginBottom: 3 }}>
-                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c}</span>
-                      <b style={{ color: GREEN }}>+${Math.round(v).toLocaleString()}</b>
+                    <div key={c} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 6, marginBottom: 3 }}>
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{c}</span>
+                      <b style={{ color: GREEN, whiteSpace: "nowrap" }}>+${Math.round(v).toLocaleString()}</b>
                     </div>
                   ))}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ color: SUB, fontSize: 10, marginBottom: 4 }}>Uses of Cash</div>
+                  <div style={{ color: SUB, fontSize: 10, marginBottom: 4, whiteSpace: "nowrap" }}>Uses of Cash</div>
                   {desglose.exp.map(([c, v]) => (
-                    <div key={c} style={{ display: "flex", justifyContent: "space-between", gap: 6, marginBottom: 3 }}>
-                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c}</span>
-                      <b style={{ color: RED }}>-${Math.round(v).toLocaleString()}</b>
+                    <div key={c} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 6, marginBottom: 3 }}>
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{c}</span>
+                      <b style={{ color: RED, whiteSpace: "nowrap" }}>-${Math.round(v).toLocaleString()}</b>
                     </div>
                   ))}
                 </div>
               </div>
-              <div style={{ textAlign: "right", marginTop: 6, fontSize: 11, color: SUB }}>
+              <div style={{ textAlign: "right", marginTop: 6, fontSize: 11, color: SUB, whiteSpace: "nowrap" }}>
                 FLUJO NETO: <b style={{ color: net >= 0 ? GREEN : RED }}>{signed(net)}</b>
               </div>
             </div>
@@ -250,37 +236,6 @@ export function ProyeccionFoto1(props: ProyProps) {
         <div style={{ background: BAND, padding: "10px", fontSize: 12.5, fontWeight: 800, letterSpacing: 0.4 }}>
           HOY, {fmtFecha(today)} - SALDO ACTUAL: ${money2(fc.start)}
         </div>
-        <div style={{ background: BAND, padding: "8px 10px", fontSize: 11, fontWeight: 800, letterSpacing: 1, color: SUB, borderTop: "1px solid #23252f" }}>
-          TRANSACCIONES PASADAS Y PENDIENTES
-        </div>
-        <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-          <colgroup>
-            <col style={{ width: "13%" }} /><col style={{ width: "27%" }} /><col style={{ width: "17%" }} />
-            <col style={{ width: "15%" }} /><col style={{ width: "15%" }} /><col style={{ width: "13%" }} />
-          </colgroup>
-          <tbody>
-            {pasadas.length === 0 && (
-              <tr><td colSpan={6} style={{ ...td, color: SUB }}>Sin movimientos recientes del banco.</td></tr>
-            )}
-            {pasadas.map(({ tx, after }, i) => (
-              <tr key={i}>
-                <td style={{ ...td, whiteSpace: "nowrap", fontWeight: 600 }}>{fmtFechaL(tx.date)}</td>
-                <td style={td}>
-                  <span style={{ marginRight: 4 }}>{catIcon(tx.bank_account, tx.detail)}</span>
-                  <span style={{ fontWeight: 600 }}>{tx.detail}</span>
-                </td>
-                <td style={{ ...td, color: "#c9cbd8" }}>{tx.bank_account || ""}</td>
-                <td style={{ ...td, color: GREEN, fontWeight: 600 }}>✓ Cleared</td>
-                <td style={{ ...td, textAlign: "right", fontWeight: 800, color: tx.amount >= 0 ? GREEN : RED, whiteSpace: "nowrap" }}>
-                  {signed(tx.amount)}
-                </td>
-                <td style={{ ...td, textAlign: "right", color: SUB, fontSize: 10.5, whiteSpace: "nowrap" }}>
-                  Bal:<br />${money2(after)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </div>
     </div>
   )
