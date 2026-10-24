@@ -3,7 +3,8 @@
 // FOTO 1 — REGISTRO & PRONÓSTICO DE FLUJO DE CAJA (clonada idéntica).
 // Va en la pestaña Proyecciones. Datos reales del forecast de 30 días.
 
-import { useMemo, type CSSProperties } from "react"
+import { useMemo, useState, type CSSProperties } from "react"
+import { ProyeccionForm } from "./proyeccion-form"
 import {
   Gauge,
   catIcon,
@@ -53,6 +54,7 @@ function MiniChart({ points }: { points: number[] }) {
 
 export function ProyeccionFoto1(props: ProyProps) {
   const { fc, fcLong, today, schedules } = useForecast30(props)
+  const [form, setForm] = useState<null | "income" | "expense">(null)
   const health = healthOf(fc)
   const net = fc.end - fc.start
 
@@ -91,6 +93,36 @@ export function ProyeccionFoto1(props: ProyProps) {
 
   const th: CSSProperties = { textAlign: "left", fontSize: 10, color: SUB, letterSpacing: 0.6, padding: "9px 6px", borderBottom: `1px solid ${BORDER}`, fontWeight: 700, whiteSpace: "nowrap" }
   const td: CSSProperties = { padding: "9px 6px", borderBottom: "1px solid #1a1c24", verticalAlign: "top", fontSize: 11.5 }
+
+  // Balance real del banco (Plaid) al cierre de cada fecha: desde hoy hacia
+  // atrás restando los movimientos reales. Fechas futuras = último real.
+  const bankFor = useMemo(() => {
+    const byDate = new Map<string, number>()
+    for (const t of props.bankTxs) {
+      const d = String(t.date || "").slice(0, 10)
+      if (d && d <= today) byDate.set(d, (byDate.get(d) || 0) + (Number(t.amount) || 0))
+    }
+    const dates = [...byDate.keys()].sort()
+    const endOfDay = new Map<string, number>()
+    let suffix = 0
+    for (let i = dates.length - 1; i >= 0; i--) {
+      endOfDay.set(dates[i], Math.round((fc.start - suffix) * 100) / 100)
+      suffix += byDate.get(dates[i]) || 0
+    }
+    return (date: string): number => {
+      if (date >= today) return fc.start
+      let best: string | null = null
+      for (const d of dates) {
+        if (d <= date) best = d
+        else break
+      }
+      return best ? (endOfDay.get(best) ?? fc.start) : fc.start
+    }
+  }, [props.bankTxs, today, fc.start])
+
+  if (form) {
+    return <ProyeccionForm initialKind={form} onClose={() => setForm(null)} />
+  }
 
   return (
     <div style={{ paddingBottom: 28, color: INK, overflowX: "hidden", maxWidth: "100%" }}>
@@ -140,6 +172,24 @@ export function ProyeccionFoto1(props: ProyProps) {
         </div>
       </div>
 
+      {/* Botones para entrar proyecciones (abren la página formal) */}
+      <div style={{ display: "flex", gap: 10, margin: "12px 12px 0" }}>
+        <button
+          type="button"
+          onClick={() => setForm("income")}
+          style={{ flex: 1, border: `1.5px solid ${GREEN}`, background: "rgba(52,209,123,.12)", color: GREEN, borderRadius: 12, padding: "12px 0", fontSize: 14, fontWeight: 800, cursor: "pointer" }}
+        >
+          ＋ Ingreso
+        </button>
+        <button
+          type="button"
+          onClick={() => setForm("expense")}
+          style={{ flex: 1, border: `1.5px solid ${RED}`, background: "rgba(255,93,108,.10)", color: RED, borderRadius: 12, padding: "12px 0", fontSize: 14, fontWeight: 800, cursor: "pointer" }}
+        >
+          ＋ Gasto
+        </button>
+      </div>
+
       {/* REGISTRO UNIFICADO — sin caja visible, ancho casi completo */}
       <div style={{ padding: "18px 14px 8px", fontSize: 12.5, fontWeight: 800, letterSpacing: 1.2, color: SUB }}>
         REGISTRO UNIFICADO
@@ -187,7 +237,7 @@ export function ProyeccionFoto1(props: ProyProps) {
                     {cat}
                   </td>
                   <td style={{ ...td, textAlign: "right", color: "#c9cbd8", whiteSpace: "nowrap", fontSize: 10.5 }}>
-                    ${money2(fc.start)}
+                    ${money2(bankFor(line.date))}
                   </td>
                   <td style={{ ...td, textAlign: "right", fontWeight: 800, color: line.amount >= 0 ? GREEN : RED, whiteSpace: "nowrap", fontSize: 11 }}>
                     {signed(line.amount)}
