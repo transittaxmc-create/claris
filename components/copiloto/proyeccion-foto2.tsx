@@ -5,6 +5,7 @@ import { Briefcase } from "lucide-react"
 import {
   Gauge,
   catIcon,
+  displayLabel,
   fmtFecha,
   healthOf,
   lineCategory,
@@ -62,13 +63,12 @@ export function ProyeccionFoto2(props: ProyProps) {
   const health = healthOf(healthFc)
   const CASH_FLOOR = CASH_FLOOR_DEFAULT
 
-  // Business buckets: Paycheck, Rent, Savings, Investments…
   const { sources, uses } = useMemo(() => {
     const inc = new Map<string, number>()
     const exp = new Map<string, number>()
     for (const l of scaledLines) {
       const raw = lineCategory(l, schedules)
-      const c = flowBucket(l.amount, raw, l.label)
+      const c = flowBucket(l.amount, raw, displayLabel(l.label))
       if (l.amount > 0) inc.set(c, (inc.get(c) || 0) + l.amount)
       else exp.set(c, (exp.get(c) || 0) + Math.abs(l.amount))
     }
@@ -303,9 +303,9 @@ export function ProyeccionFoto2(props: ProyProps) {
               }}
             >
               <span style={{ color: SUB, fontWeight: 700, fontSize: 11, width: 52, flexShrink: 0 }}>{fmtFecha(l.date)}</span>
-              <span style={{ fontSize: 15, flexShrink: 0 }}>{catIcon(cat, l.label)}</span>
+              <span style={{ fontSize: 15, flexShrink: 0 }}>{catIcon(cat, displayLabel(l.label))}</span>
               <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600 }}>
-                {l.label}
+                {displayLabel(l.label)}
               </span>
               <span style={{ color: BLUE, fontSize: 11, fontWeight: 600, flexShrink: 0 }}>Scheduled</span>
               <span
