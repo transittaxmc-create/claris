@@ -28,6 +28,8 @@ export interface BankTx {
   pending?: boolean
   transaction_id?: string
   pending_transaction_id?: string | null
+  /** Comentario de origen/destino (auditoría): lo escribe Miguel o la AI al reconciliar. */
+  notes?: string
 }
 
 function PendingBadge({ pending }: { pending?: boolean }) {
@@ -331,7 +333,7 @@ const BANK_HDR = "overflow-hidden whitespace-nowrap px-1 pb-1 text-left text-[10
  * Register de UNA cuenta (pedido de Miguel 2026-10-24): arriba un encabezado
  * tipo STATEMENT (balance real + entradas/salidas del mes) y abajo el register
  * con el formato del Registro Unificado — SOLO transacciones reales del banco
- * de esa cuenta (sin proyecciones). Solo Citibank es editable.
+ * de esa cuenta (sin proyecciones). Editable en todas las cuentas.
  */
 export function RegisterDetail(props: {
   account: RegisterAccount
@@ -355,7 +357,8 @@ export function RegisterDetail(props: {
 }) {
   const reg = props.account
   const { balance, entries, bankTxs } = props
-  const isCiti = /citi/i.test(reg.name) || /access/i.test(reg.name) || reg.isMain === true
+  // Register COMPLETAMENTE editable (Miguel, 2026-10-25): cualquier
+  // cuenta del banco se corrige desde aquí, no solo Citibank.
   const useBank = (bankTxs || []).length > 0
 
   // Pantalla ancha (computadora/monitor): la descripción se ve completa,
@@ -378,6 +381,7 @@ export function RegisterDetail(props: {
     key: string
     text: string
     category: string | null
+    notes?: string | null
     bank: number
     date: string
     amount: number
@@ -401,6 +405,7 @@ export function RegisterDetail(props: {
       key: r.key,
       text: r.detail,
       category: r.category,
+      notes: r.tx?.notes || r.entry?.notes || null,
       bank: bankVal,
       date: r.date,
       amount: r.amount,
@@ -563,7 +568,7 @@ export function RegisterDetail(props: {
           }}
         >
           {rows.slice(0, 200).map((r) => {
-            const editable = r.tx ? isCiti && !!props.onEditBankTx : !!r.entry && !!props.onEditEntry
+            const editable = r.tx ? !!props.onEditBankTx : !!r.entry && !!props.onEditEntry
             const bankVal = bankByDate.get(r.date) ?? r.after
             return (
               <div
@@ -685,6 +690,12 @@ export function RegisterDetail(props: {
                     {peek.category || "—"}
                   </span>
                 </p>
+                {peek.notes ? (
+                  <p className="flex items-start justify-between gap-2">
+                    <span className="shrink-0 text-neutral-500">Comentario</span>
+                    <span className="text-right font-medium text-neutral-200">{peek.notes}</span>
+                  </p>
+                ) : null}
                 <p className="flex items-center justify-between">
                   <span className="text-neutral-500">Bank (ese día)</span>
                   <span className="font-mono font-medium tabular-nums text-neutral-200">{money(peek.bank)}</span>
@@ -701,7 +712,7 @@ export function RegisterDetail(props: {
                   </span>
                 </p>
               </div>
-              {((peek.tx && isCiti && props.onEditBankTx) || (peek.entry && props.onEditEntry)) && (
+              {((peek.tx && props.onEditBankTx) || (peek.entry && props.onEditEntry)) && (
                 <button
                   type="button"
                   onClick={() => {
@@ -726,9 +737,6 @@ export function RegisterDetail(props: {
             {balance == null ? "—" : money(balance)}
           </span>
         </div>
-        {useBank && !isCiti && (
-          <p className="px-1 pt-1 text-[10px] text-neutral-600">Solo lectura — las transacciones del banco no se editan.</p>
-        )}
         {rows.length > 200 && (
           <p className="px-1 pt-1 text-[10px] text-neutral-600">Mostrando los 200 movimientos más recientes de {rows.length}.</p>
         )}
@@ -803,6 +811,7 @@ export function BankTxEdit(props: {
   const [monto, setMonto] = useState(String(Math.abs(tx.amount || 0)))
   const [fecha, setFecha] = useState(String(tx.date || "").slice(0, 10))
   const [confirmDel, setConfirmDel] = useState(false)
+  const [nota, setNota] = useState(tx.notes || "")
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState("")
 
@@ -824,7 +833,8 @@ export function BankTxEdit(props: {
         body: JSON.stringify({
           transaction_id: tx.transaction_id,
           description: desc.trim(),
-          category: tipo === "ingreso" ? "Income" : cat || "Other",
+          category: cat.trim() || (tipo === "ingreso" ? "Income" : "Other"),
+          notes: nota.trim(),
           amount: tipo === "ingreso" ? amt : -amt,
           date: fecha,
         }),
@@ -908,6 +918,24 @@ export function BankTxEdit(props: {
           </div>
         </div>
       )}
+
+      {tipo === "ingreso" && (
+        <div>
+          <label className={labelCls}>Categoría</label>
+          <input className={inputCls} value={cat} onChange={(e) => setCat(e.target.value)} placeholder="Income" />
+        </div>
+      )}
+
+      <div>
+        <label className={labelCls}>Comentario · origen / destino</label>
+        <textarea
+          className={inputCls}
+          value={nota}
+          onChange={(e) => setNota(e.target.value)}
+          rows={2}
+          placeholder="Ej.: Origen: Lyft → PayPal · Transferencia PayPal → Citibank"
+        />
+      </div>
 
       <div>
         <label className={labelCls}>Monto</label>

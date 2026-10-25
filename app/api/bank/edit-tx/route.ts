@@ -3,7 +3,8 @@ import { NextResponse } from "next/server"
 export const dynamic = "force-dynamic"
 
 /**
- * Edición de transacciones bancarias (solo Citibank, desde la app).
+ * Edición de transacciones bancarias (desde la app; TODAS las cuentas —
+ * Register completamente editable, Miguel 2026-10-25).
  * Modifica la fila en Supabase app_state 'register' (match por bankRef).
  * Nota: si Plaid manda una modificación de esa transacción en un sync
  * futuro, el valor de Plaid puede volver a imponerse — igual que en el
@@ -43,6 +44,7 @@ export async function POST(req: Request) {
     const t = { ...txns[idx] }
     if (typeof body.description === "string") t.description = body.description
     if (typeof body.category === "string") t.category = body.category
+    if (typeof body.notes === "string") t.notes = body.notes
     if (typeof body.date === "string" && body.date.length >= 10) t.date = body.date.slice(0, 10)
     if (typeof body.amount === "number" && Number.isFinite(body.amount)) {
       t.amount = Math.round(body.amount * 100) / 100

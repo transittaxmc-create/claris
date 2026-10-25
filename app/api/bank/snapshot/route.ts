@@ -37,6 +37,7 @@ async function fromSupabase(): Promise<Response | null> {
       bank_account: t.account || t.bankRef || "unknown",
       detail: t.description || t.merchant || "",
       category: t.category || null,
+      notes: typeof t.notes === "string" ? t.notes : "",
       amount: Number(t.amount) || 0,
       daily_balance: null,
       transaction_id: t.bankRef || t.id || null,
