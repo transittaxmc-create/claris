@@ -23,7 +23,13 @@ const RED = "#ff5d6c"
 const CARD = "#14161d"
 const BORDER = "#262833"
 
-/** Diagrama de flujo Sources → Uses (Sankey simplificado, como la foto). */
+/** Diagrama de flujo Sources → Uses (Sankey, como la foto original).
+ *  Redibujado con MÁS TONO (Miguel, 2026-10-25): bloques por fuente y
+ *  por uso con colores ricos (verdes variados / rojo→naranja→ámbar→
+ *  azul) y CINTAS RELLENAS que se reparten de cada fuente a cada uso
+ *  en proporción (algoritmo sankey de dos columnas), no líneas. */
+const SRC_COLORS = ["#2fbf71", "#3ecf6e", "#35b558", "#28a95c", "#1f8a4c"]
+const USE_COLORS = ["#e5484d", "#d9483b", "#e0653a", "#dd8433", "#c9a13b", "#4a7dd8"]
 function Sankey({
   sources,
   uses,
@@ -31,68 +37,91 @@ function Sankey({
   sources: [string, number][]
   uses: [string, number][]
 }) {
-  const W = 176, H = 218
-  const colW = 52, gap = 6
+  const W = 176, H = 224
+  const colW = 54, gap = 5
   const srcTotal = sources.reduce((a, [, v]) => a + v, 0) || 1
   const useTotal = uses.reduce((a, [, v]) => a + v, 0) || 1
   const maxTotal = Math.max(srcTotal, useTotal)
-  const scale = (H - gap * 4) / maxTotal
-  const srcX = 2, useX = W - colW - 2, midX = (srcX + colW + useX) / 2
+  const scale = (H - 4 - gap * (Math.max(sources.length, uses.length) - 1)) / maxTotal
+  const srcX = 1, useX = W - colW - 1, midX = (srcX + colW + useX) / 2
 
   let sy = 2
-  const srcBars = sources.map(([name, v]) => {
-    const h = Math.max(16, v * scale)
-    const bar = { name, v, y: sy, h }
+  const srcBars = sources.map(([name, v], i) => {
+    const h = Math.max(11, v * scale)
+    const bar = { name, v, y: sy, h, color: SRC_COLORS[i % SRC_COLORS.length] }
     sy += h + gap
     return bar
   })
   let uy = 2
-  const useBars = uses.map(([name, v]) => {
-    const h = Math.max(13, v * scale)
-    const bar = { name, v, y: uy, h }
+  const useBars = uses.map(([name, v], i) => {
+    const h = Math.max(10, v * scale)
+    const bar = { name, v, y: uy, h, color: USE_COLORS[i % USE_COLORS.length] }
     uy += h + gap
     return bar
   })
 
+  // Reparto proporcional fuente→uso (las dos columnas en orden).
+  type Seg = { y0: number; y1: number }
+  const srcSegs: (Seg & { color: string })[] = srcBars.map((b) => ({ y0: b.y, y1: b.y + b.h, color: b.color }))
+  const useSegs: Seg[] = useBars.map((b) => ({ y0: b.y, y1: b.y + b.h }))
+  const flows: { d: string; color: string; key: string }[] = []
+  {
+    let si = 0, ti = 0
+    let sRem = srcSegs.length ? srcSegs[0].y1 - srcSegs[0].y0 : 0
+    let tRem = useSegs.length ? useSegs[0].y1 - useSegs[0].y0 : 0
+    let sCur = srcSegs.length ? srcSegs[0].y0 : 0
+    let tCur = useSegs.length ? useSegs[0].y0 : 0
+    let guard = 0
+    while (si < srcSegs.length && ti < useSegs.length && guard++ < 200) {
+      const h = Math.min(sRem, tRem)
+      if (h > 0.4) {
+        const x1 = srcX + colW, x2 = useX
+        flows.push({
+          key: `fl${si}-${ti}`,
+          color: srcSegs[si].color,
+          d: `M${x1},${sCur.toFixed(1)} C ${midX},${sCur.toFixed(1)} ${midX},${tCur.toFixed(1)} ${x2},${tCur.toFixed(1)} L${x2},${(tCur + h).toFixed(1)} C ${midX},${(tCur + h).toFixed(1)} ${midX},${(sCur + h).toFixed(1)} ${x1},${(sCur + h).toFixed(1)} Z`,
+        })
+      }
+      sCur += h; tCur += h; sRem -= h; tRem -= h
+      if (sRem <= 0.01) { si++; if (si < srcSegs.length) { sCur = srcSegs[si].y0; sRem = srcSegs[si].y1 - srcSegs[si].y0 } }
+      if (tRem <= 0.01) { ti++; if (ti < useSegs.length) { tCur = useSegs[ti].y0; tRem = useSegs[ti].y1 - useSegs[ti].y0 } }
+    }
+  }
+
+  const barText = (x: number, b: { name: string; v: number; y: number; h: number }, sign: string) => (
+    <g>
+      {b.h >= 17 ? (
+        <>
+          <text x={x + colW / 2} y={b.y + b.h / 2 - 1.5} textAnchor="middle" fill="#ffffff" fontSize="7.5" fontWeight="800">
+            {b.name.toUpperCase().slice(0, 12)}
+          </text>
+          <text x={x + colW / 2} y={b.y + b.h / 2 + 8} textAnchor="middle" fill="rgba(255,255,255,.92)" fontSize="7.5" fontWeight="700">
+            {sign}${Math.round(b.v).toLocaleString()}
+          </text>
+        </>
+      ) : (
+        <text x={x + colW / 2} y={b.y + b.h / 2 + 2.6} textAnchor="middle" fill="#ffffff" fontSize="7" fontWeight="800">
+          {sign}${Math.round(b.v).toLocaleString()}
+        </text>
+      )}
+    </g>
+  )
+
   return (
     <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto", display: "block" }} aria-hidden>
-      {/* flujos */}
-      {srcBars.map((s, i) => {
-        const u = useBars[Math.min(i, useBars.length - 1)]
-        if (!u) return null
-        const y1 = s.y + s.h / 2, y2 = u.y + u.h / 2
-        return (
-          <path
-            key={"f" + i}
-            d={`M${srcX + colW},${y1} C ${midX},${y1} ${midX},${y2} ${useX},${y2}`}
-            fill="none"
-            stroke={i % 2 ? "rgba(52,209,123,.35)" : "rgba(52,209,123,.5)"}
-            strokeWidth={Math.max(3, s.h / 4)}
-          />
-        )
-      })}
-      {/* fuentes (verde) */}
+      {flows.map((f) => (
+        <path key={f.key} d={f.d} fill={f.color} opacity="0.42" />
+      ))}
       {srcBars.map((s, i) => (
         <g key={"s" + i}>
-          <rect x={srcX} y={s.y} width={colW} height={s.h} rx="4" fill="#2ea36b" />
-          <text x={srcX + colW / 2} y={s.y + s.h / 2 - 2} textAnchor="middle" fill="#eafff3" fontSize="7.5" fontWeight="800">
-            {s.name.toUpperCase().slice(0, 13)}
-          </text>
-          <text x={srcX + colW / 2} y={s.y + s.h / 2 + 8} textAnchor="middle" fill="#eafff3" fontSize="7.5" fontWeight="700">
-            +${Math.round(s.v).toLocaleString()}
-          </text>
+          <rect x={srcX} y={s.y} width={colW} height={s.h} rx="4" fill={s.color} />
+          {barText(srcX, s, "+")}
         </g>
       ))}
-      {/* usos (rojo) */}
       {useBars.map((u, i) => (
         <g key={"u" + i}>
-          <rect x={useX} y={u.y} width={colW} height={u.h} rx="4" fill={i < 3 ? "#d84a3a" : "#c97a2e"} />
-          <text x={useX + colW / 2} y={u.y + u.h / 2 - 2} textAnchor="middle" fill="#fff1ee" fontSize="7.5" fontWeight="800">
-            {u.name.toUpperCase().slice(0, 13)}
-          </text>
-          <text x={useX + colW / 2} y={u.y + u.h / 2 + 8} textAnchor="middle" fill="#fff1ee" fontSize="7.5" fontWeight="700">
-            -${Math.round(u.v).toLocaleString()}
-          </text>
+          <rect x={useX} y={u.y} width={colW} height={u.h} rx="4" fill={u.color} />
+          {barText(useX, u, "-")}
         </g>
       ))}
     </svg>
@@ -125,8 +154,15 @@ export function ProyeccionFoto2(props: ProyProps) {
       if (l.amount > 0) inc.set(c, (inc.get(c) || 0) + l.amount)
       else exp.set(c, (exp.get(c) || 0) + Math.abs(l.amount))
     }
-    const top = (m: Map<string, number>, n: number) => [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, n) as [string, number][]
-    return { sources: top(inc, 3), uses: top(exp, 4) }
+    // Más detalle (como la foto original): hasta 4 fuentes y 5 usos
+    // nombrados; el resto se agrupa en OTHER para no perder ni un dólar.
+    const top = (m: Map<string, number>, n: number) => {
+      const all = [...m.entries()].sort((a, b) => b[1] - a[1]) as [string, number][]
+      if (all.length <= n) return all
+      const rest = all.slice(n).reduce((a, [, v]) => a + v, 0)
+      return [...all.slice(0, n), ["Other", rest] as [string, number]]
+    }
+    return { sources: top(inc, 4), uses: top(exp, 5) }
   }, [fc, schedules])
 
   const events = useMemo(
@@ -152,7 +188,18 @@ export function ProyeccionFoto2(props: ProyProps) {
   const CX = (i: number) => 34 + (i / (pts.length - 1)) * (CW - 40)
   const CY = (v: number) => 8 + (1 - (v - cMin) / cRng) * (CH - 8 - CPB)
   const linePts = pts.map((v, i) => `${CX(i).toFixed(1)},${CY(v).toFixed(1)}`).join(" ")
-  const yTicks = [0, 0.33, 0.66, 1].map((f) => cMin + cRng * f)
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => cMin + cRng * f)
+  // Chips de la gráfica sin salirse del marco: si el punto está pegado
+  // abajo, el chip va ARRIBA del punto; si está pegado arriba, abajo.
+  const startChipY = CY(pts[0]) + 30 <= CH ? CY(pts[0]) + 7 : CY(pts[0]) - 30
+  const endChipY = CY(pts[pts.length - 1]) - 31 >= 0 ? CY(pts[pts.length - 1]) - 31 : CY(pts[pts.length - 1]) + 8
+  // Eje de fechas con 4 marcas (como la foto original: OCT 26 · NOV 05…)
+  const spanDays = Math.max(1, Math.round((Date.parse(fc.endDate) - Date.parse(today)) / 86400000))
+  const xLabels = [0, 0.33, 0.66, 1].map((f) => {
+    const d = new Date(Date.parse(today) + Math.round(spanDays * f) * 86400000)
+    const iso = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`
+    return { f, x: 34 + f * (CW - 40), label: fmtFecha(iso) }
+  })
 
   return (
     <div style={{ paddingBottom: 28, color: INK }}>
@@ -170,7 +217,7 @@ export function ProyeccionFoto2(props: ProyProps) {
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 12px" }}>
           <div>
             <div style={{ fontSize: 10.5, color: SUB, letterSpacing: 0.4, marginBottom: 3 }}>PROJECTED (30 DAYS):</div>
-            <div style={{ fontSize: 23, fontWeight: 800 }}>${money2(fc.end)}</div>
+            <div style={{ fontSize: 23, fontWeight: 800, color: fc.end < 0 ? RED : undefined }}>{fc.end < 0 ? "-$" : "$"}{money2(fc.end)}</div>
           </div>
           <div>
             <div style={{ fontSize: 10.5, color: SUB, letterSpacing: 0.4, marginBottom: 3 }}>CASH FLOW HEALTH</div>
@@ -199,30 +246,39 @@ export function ProyeccionFoto2(props: ProyProps) {
           <svg viewBox={`0 0 ${CW} ${CH}`} style={{ width: "100%", height: "auto", display: "block" }} aria-hidden>
             <defs>
               <linearGradient id="f2fill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stopColor="#34d17b" stopOpacity=".3" />
-                <stop offset="1" stopColor="#34d17b" stopOpacity="0" />
+                <stop offset="0" stopColor="#3ddc84" stopOpacity=".42" />
+                <stop offset="1" stopColor="#3ddc84" stopOpacity=".02" />
               </linearGradient>
             </defs>
+            {/* grid completo (como la foto original): horizontales + verticales */}
             {yTicks.map((v, i) => (
-              <g key={i}>
-                <line x1="34" y1={CY(v)} x2={CW - 6} y2={CY(v)} stroke="#23252f" strokeWidth="1" />
-                <text x="2" y={CY(v) + 3} fill={SUB} fontSize="8">${Math.round(v).toLocaleString()}</text>
+              <g key={"y" + i}>
+                <line x1="34" y1={CY(v)} x2={CW - 6} y2={CY(v)} stroke="#262833" strokeWidth="0.8" />
+                <text x="31" y={CY(v) + 3} textAnchor="end" fill={SUB} fontSize="8">${Math.round(v).toLocaleString()}</text>
               </g>
             ))}
+            {xLabels.map((l, i) => (
+              <line key={"x" + i} x1={l.x} y1="8" x2={l.x} y2={CH - CPB} stroke="#1d1f28" strokeWidth="0.8" />
+            ))}
+            {cMin < 0 && cMax > 0 && (
+              <line x1="34" y1={CY(0)} x2={CW - 6} y2={CY(0)} stroke="#454a5e" strokeWidth="1" strokeDasharray="4 3" />
+            )}
             <polygon points={`34,${CY(pts[0])} ${linePts} ${CX(pts.length - 1)},${CH - CPB} 34,${CH - CPB}`} fill="url(#f2fill)" />
-            <polyline points={linePts} fill="none" stroke="#34d17b" strokeWidth="2.2" />
-            <circle cx={CX(0)} cy={CY(pts[0])} r="4" fill="#5b8cff" />
-            <circle cx={CX(pts.length - 1)} cy={CY(pts[pts.length - 1])} r="4" fill="#34d17b" />
+            <polyline points={linePts} fill="none" stroke="rgba(61,220,132,.22)" strokeWidth="6.5" strokeLinejoin="round" strokeLinecap="round" />
+            <polyline points={linePts} fill="none" stroke="#3ddc84" strokeWidth="2.6" strokeLinejoin="round" strokeLinecap="round" />
+            <circle cx={CX(0)} cy={CY(pts[0])} r="4.4" fill="#5b8cff" stroke="#eef1ff" strokeWidth="1.4" />
+            <circle cx={CX(pts.length - 1)} cy={CY(pts[pts.length - 1])} r="4.4" fill="#3ddc84" stroke="#eafff3" strokeWidth="1.4" />
             <g fontSize="8" fontWeight="700">
-              <rect x={CX(0) - 2} y={CY(pts[0]) + 6} width="52" height="22" rx="5" fill="#1b1e27" stroke="#2c2f3c" />
-              <text x={CX(0) + 3} y={CY(pts[0]) + 15} fill={SUB}>TODAY:</text>
-              <text x={CX(0) + 3} y={CY(pts[0]) + 25} fill={GREEN}>${Math.round(pts[0]).toLocaleString()}</text>
-              <rect x={CX(pts.length - 1) - 52} y={CY(pts[pts.length - 1]) - 30} width="56" height="22" rx="5" fill="#1b1e27" stroke="#2c2f3c" />
-              <text x={CX(pts.length - 1) - 48} y={CY(pts[pts.length - 1]) - 21} fill={SUB}>{fmtFecha(fc.endDate)}:</text>
-              <text x={CX(pts.length - 1) - 48} y={CY(pts[pts.length - 1]) - 11} fill={GREEN}>${Math.round(pts[pts.length - 1]).toLocaleString()}</text>
+              <rect x={CX(0) - 2} y={startChipY} width="54" height="23" rx="6" fill="#20232e" stroke="#343847" />
+              <text x={CX(0) + 3} y={startChipY + 9} fill={SUB}>TODAY:</text>
+              <text x={CX(0) + 3} y={startChipY + 19} fill={GREEN}>${Math.round(pts[0]).toLocaleString()}</text>
+              <rect x={CX(pts.length - 1) - 54} y={endChipY} width="58" height="23" rx="6" fill="#20232e" stroke="#343847" />
+              <text x={CX(pts.length - 1) - 50} y={endChipY + 9} fill={SUB}>{fmtFecha(fc.endDate)}:</text>
+              <text x={CX(pts.length - 1) - 50} y={endChipY + 19} fill={GREEN}>${Math.round(pts[pts.length - 1]).toLocaleString()}</text>
             </g>
-            <text x="34" y={CH - 6} fill={SUB} fontSize="8">{fmtFecha(today)}</text>
-            <text x={CW - 40} y={CH - 6} fill={SUB} fontSize="8">{fmtFecha(fc.endDate)}</text>
+            {xLabels.map((l, i) => (
+              <text key={"d" + i} x={l.x} y={CH - 6} textAnchor={i === 0 ? "start" : i === xLabels.length - 1 ? "end" : "middle"} fill={SUB} fontSize="7.5">{l.label}</text>
+            ))}
           </svg>
           <div style={{ fontSize: 11, color: SUB, marginTop: 8, marginBottom: 2 }}>Scenario:</div>
           <ToggleRow color="#5b8cff" label="Base Case" icon="🔵" />
