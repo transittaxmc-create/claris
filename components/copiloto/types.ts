@@ -155,6 +155,10 @@ export type Expense = {
   /** Vino del escáner de recibos (lo usa el libro para la etiqueta "Escaneado"). */
   scanned?: boolean
   scheduled?: boolean
+  /** Bill de ciclo generado automáticamente desde un recurrente de
+   *  Proyecciones (cuentas liability por deuda, Miguel 2026-10-25): id del
+   *  ScheduledEntry dueño de esta deuda; la fecha del Expense = el ciclo. */
+  originScheduleId?: string
   classification?: ExpenseClassification
   docType?: ExpenseDocType
   /** Register/cuenta de donde salió el gasto (id de registers-store). */

@@ -39,6 +39,7 @@ import {
   type RegisterAccount,
 } from "./registers-store"
 import { matchTransfers, looksLikeTransfer, type TransferReport } from "./transfer-matcher"
+import { LiabilitiesEntryCard, LiabilitiesScreen } from "./liabilities-screen"
 import { AI_CLASS_LAST_KEY, aiApuntesForFindings } from "./ai-daily-classification"
 import {
   runReconciliationCheck,
@@ -102,7 +103,7 @@ export function CashFlowRegister({
   const [bankTxEdit, setBankTxEdit] = useState<BankTx | null>(null)
 
   const [view, setView] = useState<
-    { kind: "home" } | { kind: "account"; id: string } | { kind: "transfers" }
+    { kind: "home" } | { kind: "account"; id: string } | { kind: "transfers" } | { kind: "liabilities" }
   >({ kind: "home" })
   const [showAddAccount, setShowAddAccount] = useState(false)
   const [otherFunds, setOtherFunds] = useState<string[]>(() =>
@@ -664,6 +665,16 @@ export function CashFlowRegister({
             onAddAccount={() => setShowAddAccount(true)}
             onOpenTransfers={() => setView({ kind: "transfers" })}
           />
+        )}
+
+        {view.kind === "home" && (
+          <div className="mt-3 px-2">
+            <LiabilitiesEntryCard onOpen={() => setView({ kind: "liabilities" })} />
+          </div>
+        )}
+
+        {view.kind === "liabilities" && (
+          <LiabilitiesScreen bankTxs={bankTxs} onBack={() => setView({ kind: "home" })} />
         )}
 
         {view.kind === "account" && activeAccount && bankTxEdit && (
