@@ -384,6 +384,29 @@ export function ProyeccionEdit(props: {
     props.onClose()
   }
 
+  // Eliminar el recurrente COMPLETO (todas sus fechas) y sus overrides.
+  // Miguel pidió poder borrar los datos que él entra (2026-10-24): antes
+  // un recurrente solo se podía editar o saltar una fecha, nunca borrar.
+  const deleteSchedule = () => {
+    if (!props.schedule) return
+    if (!confirmDelete) {
+      setConfirmDelete(true)
+      return
+    }
+    const next = readList<ScheduledEntry>(FINANCE_SCHEDULES_KEY).filter((s) => s.id !== props.schedule!.id)
+    try {
+      localStorage.setItem(FINANCE_SCHEDULES_KEY, JSON.stringify(next))
+    } catch {}
+    const ovs = readList<ScheduleOverride>(SCHEDULE_OVERRIDES_KEY).filter(
+      (o) => o.scheduleId !== props.schedule!.id,
+    )
+    try {
+      localStorage.setItem(SCHEDULE_OVERRIDES_KEY, JSON.stringify(ovs))
+    } catch {}
+    notifySync()
+    props.onClose()
+  }
+
   const label: CSSProperties = { fontSize: 11, fontWeight: 800, letterSpacing: 1, color: SUB, margin: "18px 0 8px" }
   const input: CSSProperties = {
     width: "100%",
@@ -523,6 +546,13 @@ export function ProyeccionEdit(props: {
             </button>
             <button type="button" onClick={() => saveOverride(true)} style={{ ...ghostBtn, color: RED, borderColor: BORDER }}>
               Saltar esta fecha
+            </button>
+            <button
+              type="button"
+              onClick={deleteSchedule}
+              style={{ ...ghostBtn, borderColor: confirmDelete ? RED : BORDER, color: confirmDelete ? RED : "#c9cbd8" }}
+            >
+              {confirmDelete ? "¿Seguro? Toca de nuevo para eliminar" : "Eliminar recurrente"}
             </button>
           </>
         )}

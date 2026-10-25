@@ -3,7 +3,7 @@
 // FOTO 1 — REGISTRO & PRONÓSTICO DE FLUJO DE CAJA (clonada idéntica).
 // Va en la pestaña Proyecciones. Datos reales del forecast de 30 días.
 
-import { useMemo, useState, type CSSProperties } from "react"
+import { useEffect, useMemo, useState, type CSSProperties } from "react"
 import { ProyeccionForm, ProyeccionEdit } from "./proyeccion-form"
 import {
   Gauge,
@@ -18,7 +18,10 @@ import {
   useForecast30,
   type ProyProps,
 } from "./proyeccion-shared"
-import type { ForecastLine } from "./dinero-forecast"
+import { platformMatch, vendorMatch, type ForecastLine, type ProbablePaid } from "./dinero-forecast"
+import { useForecastInputs } from "./dinero-proyeccion"
+import { FINANCE_LEDGER_KEY, FINANCE_SYNCED_EVENT } from "./finance-sync"
+import type { CashFlowEntry } from "./types"
 
 const INK = "#f2f3f7"
 const SUB = "#9a9cb0"
@@ -27,6 +30,25 @@ const RED = "#ff5d6c"
 const CARD = "#14161d"
 const BORDER = "#262833"
 const BAND = "#1b1e27"
+
+const btnOk: CSSProperties = { background: "#34d17b26", color: GREEN, border: "none", borderRadius: 8, padding: "5px 10px", fontSize: 10.5, fontWeight: 800, cursor: "pointer" }
+const btnAmber: CSSProperties = { background: "#f5b73f26", color: "#f5b73f", border: "none", borderRadius: 8, padding: "5px 10px", fontSize: 10.5, fontWeight: 800, cursor: "pointer" }
+const btnGhost: CSSProperties = { background: "#262833", color: "#c9cbd8", border: "none", borderRadius: 8, padding: "5px 10px", fontSize: 10.5, fontWeight: 800, cursor: "pointer" }
+
+function readLedger(): CashFlowEntry[] {
+  try {
+    const raw = localStorage.getItem(FINANCE_LEDGER_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+function notifySync() {
+  try {
+    window.dispatchEvent(new Event(FINANCE_SYNCED_EVENT))
+  } catch {}
+}
 
 function MiniChart({ points }: { points: number[] }) {
   if (points.length < 2) return null
@@ -56,6 +78,76 @@ export function ProyeccionFoto1(props: ProyProps) {
   const { fc, fcLong, today, schedules } = useForecast30(props)
   const [form, setForm] = useState<null | "income" | "expense">(null)
   const [editing, setEditing] = useState<ForecastLine | null>(null)
+
+  // ——— Cuentas por pagar: reconciliación automática (2026-10-24) ———
+  // El forecast cruza cada proyectado contra el banco (probablePaid).
+  // Match EXACTO al centavo — y en ingresos, con comercio o plataforma
+  // identificable — se marca pagado SOLO. Lo demás espera abajo en
+  // POR CONFIRMAR: nada se cierra por adivinanza.
+  const { dismissed, setDismissed } = useForecastInputs()
+  const [adjustingKey, setAdjustingKey] = useState<string | null>(null)
+  const [adjustReason, setAdjustReason] = useState("")
+
+  const esSeguro = (p: ProbablePaid): boolean => {
+    const diff = Math.abs(Math.abs(Number(p.tx.amount) || 0) - Math.abs(Number(p.entry.amount) || 0))
+    if (diff > 0.011) return false
+    if (p.entry.type === "expense") return true
+    return vendorMatch(p.tx.detail, p.entry.description) || platformMatch(p.tx.detail, p.entry.description)
+  }
+
+  const aplicarPagado = (p: ProbablePaid, ajuste?: { diff: number; reason: string }) => {
+    const paidDate = String(p.tx.date).slice(0, 10)
+    let next = readLedger().map((e) =>
+      e.id === p.entry.id
+        ? { ...e, status: "actual" as CashFlowEntry["status"], date: paidDate, isManuallyEdited: true }
+        : e,
+    )
+    if (ajuste && Math.abs(ajuste.diff) > 0.011) {
+      const diff = ajuste.diff
+      const adj = {
+        id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `adj-${Date.now()}`,
+        date: paidDate,
+        description: `Adjustment: ${ajuste.reason}`,
+        source: "manual",
+        sourceLabel: "Match adjustment",
+        type: diff < 0 ? "expense" : "income",
+        status: "actual",
+        amount: Math.abs(diff),
+        category: /fee/i.test(ajuste.reason) ? "Bank fees" : "Adjustment",
+        notes: `Balances "${p.entry.description || "entry"}": bank vs projected diff ${diff < 0 ? "-" : "+"}$${Math.abs(diff).toFixed(2)}`,
+        createdAt: new Date().toISOString(),
+        isManuallyEdited: true,
+      } as unknown as CashFlowEntry
+      next = [adj, ...next]
+    }
+    try {
+      localStorage.setItem(FINANCE_LEDGER_KEY, JSON.stringify(next))
+    } catch {}
+    notifySync()
+  }
+
+  // Auto-aplicar los matches seguros en cuanto el forecast los detecta.
+  const segurosKey = fcLong.probablePaid.filter(esSeguro).map((p) => p.key).join(",")
+  useEffect(() => {
+    const seguros = fcLong.probablePaid.filter(esSeguro)
+    if (seguros.length === 0) return
+    const byId = new Map(seguros.map((p) => [p.entry.id, p]))
+    let changed = false
+    const next = readLedger().map((e) => {
+      const p = byId.get(e.id)
+      if (!p || e.status !== "projected") return e
+      changed = true
+      return { ...e, status: "actual" as CashFlowEntry["status"], date: String(p.tx.date).slice(0, 10), isManuallyEdited: true }
+    })
+    if (!changed) return
+    try {
+      localStorage.setItem(FINANCE_LEDGER_KEY, JSON.stringify(next))
+    } catch {}
+    notifySync()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [segurosKey])
+
+  const porConfirmar = fcLong.probablePaid.filter((p) => !esSeguro(p) && !dismissed.includes(p.key))
   const health = healthOf(fc)
   const net = fc.end - fc.start
 
@@ -320,6 +412,100 @@ export function ProyeccionFoto1(props: ProyProps) {
           HOY, {fmtFecha(today)} - SALDO ACTUAL: ${money2(fc.start)}
         </div>
       </div>
+
+      {/* POR CONFIRMAR — apareció en el banco pero no cierra solo:
+          trae diferencia de monto o el comercio no es claro. */}
+      {porConfirmar.length > 0 && (
+        <div style={{ marginTop: 12, background: CARD, border: "1px solid #14532d", borderRadius: 16, padding: "12px 14px" }}>
+          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: GREEN }}>
+            POR CONFIRMAR · {porConfirmar.length}
+          </div>
+          <p style={{ fontSize: 10, color: SUB, margin: "3px 0 9px" }}>
+            Apareció en el banco pero con diferencia o sin comercio claro. Tú confirmas o descartas.
+          </p>
+          {porConfirmar.map((p) => {
+            const entryAmt = Math.abs(Number(p.entry.amount) || 0)
+            const bankAmt = Math.abs(Number(p.tx.amount) || 0)
+            const diff = Math.round((bankAmt - entryAmt) * 100) / 100
+            const hasDiff = Math.abs(diff) > 0.011
+            const isAdjusting = adjustingKey === p.key
+            return (
+              <div key={p.key} style={{ border: `1px solid ${BORDER}`, background: "#0b0d12", borderRadius: 10, padding: "8px 10px", marginBottom: 6 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                  <span style={{ fontSize: 11.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {p.entry.description || "Movimiento"}
+                  </span>
+                  <span style={{ fontSize: 11.5, fontWeight: 700 }}>${money2(entryAmt)}</span>
+                </div>
+                <div style={{ fontSize: 10, color: SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  Banco {fmtFecha(String(p.tx.date).slice(0, 10))} · {p.tx.detail} · ${money2(bankAmt)}
+                </div>
+                {hasDiff && (
+                  <div style={{ fontSize: 10, fontWeight: 700, color: "#f5b73f", marginTop: 2 }}>
+                    Diferencia: ${money2(Math.abs(diff))} {diff < 0 ? "de menos" : "de más"}
+                  </div>
+                )}
+                {!isAdjusting ? (
+                  <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                    <button type="button" onClick={() => aplicarPagado(p)} style={btnOk}>
+                      Sí, pagado
+                    </button>
+                    {hasDiff && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAdjustingKey(p.key)
+                          setAdjustReason("")
+                        }}
+                        style={btnAmber}
+                      >
+                        Ajustar ${money2(Math.abs(diff))}
+                      </button>
+                    )}
+                    <button type="button" onClick={() => setDismissed([...dismissed, p.key])} style={btnGhost}>
+                      No es este
+                    </button>
+                  </div>
+                ) : (
+                  <div style={{ marginTop: 6 }}>
+                    <input
+                      value={adjustReason}
+                      onChange={(e) => setAdjustReason(e.target.value)}
+                      placeholder="Motivo (ej.: fee de la plataforma)"
+                      style={{
+                        width: "100%",
+                        boxSizing: "border-box",
+                        background: "#14161d",
+                        border: `1px solid ${BORDER}`,
+                        borderRadius: 8,
+                        color: INK,
+                        fontSize: 11,
+                        padding: "6px 8px",
+                        outline: "none",
+                      }}
+                    />
+                    <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          aplicarPagado(p, { diff, reason: adjustReason.trim() || "Adjustment" })
+                          setAdjustingKey(null)
+                        }}
+                        style={btnOk}
+                      >
+                        Confirmar
+                      </button>
+                      <button type="button" onClick={() => setAdjustingKey(null)} style={btnGhost}>
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

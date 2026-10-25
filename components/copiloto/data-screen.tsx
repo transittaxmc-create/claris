@@ -8,6 +8,8 @@ import type { StorageInfo } from "./storage"
 import { MIN_SYNC_CODE_LENGTH } from "@/lib/sync"
 import { compareVersion, type VersionStatus } from "@/lib/version-check"
 import type { Trip } from "./types"
+import { FINANCE_LEDGER_KEY, FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT } from "./finance-sync"
+import { SCHEDULE_OVERRIDES_KEY } from "./dinero-forecast"
 
 function Row({ label, value, tone = "text-white" }: { label: string; value: string; tone?: string }) {
   return (
@@ -73,6 +75,41 @@ export function DataScreen({
 }) {
   const [codeDraft, setCodeDraft] = useState("")
   const [confirmReset, setConfirmReset] = useState(false)
+  const [confirmProj, setConfirmProj] = useState(false)
+  const [projCounts, setProjCounts] = useState<{ schedules: number; projected: number } | null>(null)
+
+  // Borrado SOLO de proyección (2026-10-24, pedido de Miguel): fuera los
+  // recurrentes y los proyectados aún no pagados — los datos que se ven en
+  // Proyecciones — para empezar a entrar datos vivos. Se conserva: banco,
+  // viajes, asientos reales (pagados) y los cobros reconciliados de
+  // EARNINGS (ids claris:cobro:*).
+  const contarProyeccion = () => {
+    try {
+      const sch = JSON.parse(localStorage.getItem(FINANCE_SCHEDULES_KEY) || "[]")
+      const led = JSON.parse(localStorage.getItem(FINANCE_LEDGER_KEY) || "[]")
+      const projected = (Array.isArray(led) ? led : []).filter(
+        (e: any) => e && e.status === "projected" && !String(e.id).startsWith("claris:cobro:"),
+      ).length
+      setProjCounts({ schedules: Array.isArray(sch) ? sch.length : 0, projected })
+    } catch {
+      setProjCounts({ schedules: 0, projected: 0 })
+    }
+    setConfirmProj(true)
+  }
+  const borrarProyeccion = () => {
+    try {
+      const led = JSON.parse(localStorage.getItem(FINANCE_LEDGER_KEY) || "[]")
+      const kept = (Array.isArray(led) ? led : []).filter(
+        (e: any) => !(e && e.status === "projected" && !String(e.id).startsWith("claris:cobro:")),
+      )
+      localStorage.setItem(FINANCE_LEDGER_KEY, JSON.stringify(kept))
+      localStorage.setItem(FINANCE_SCHEDULES_KEY, JSON.stringify([]))
+      localStorage.setItem(SCHEDULE_OVERRIDES_KEY, JSON.stringify([]))
+      window.dispatchEvent(new Event(FINANCE_SYNCED_EVENT))
+    } catch {}
+    setConfirmProj(false)
+    onRefreshInfo()
+  }
   const [confirmCache, setConfirmCache] = useState(false)
   // Versión que está sirviendo producción, para comparar con la de este teléfono.
   const [ultimaVersion, setUltimaVersion] = useState<string | null>(null)
@@ -385,6 +422,40 @@ export function DataScreen({
               className="w-full rounded-xl border border-amber-500/50 bg-amber-500/10 py-2.5 text-[11px] font-extrabold text-amber-300 active:scale-[0.99]"
             >
               CLEAR CACHE & SCREENS ONLY
+            </button>
+          )}
+
+          {/* Opción 1.5: solo los datos de proyección */}
+          <p className="mb-2 mt-3 border-t border-neutral-800 pt-2 text-[10px] leading-tight text-neutral-400">
+            <strong className="text-sky-300">Projection data only:</strong> deletes the recurring
+            entries and the not-yet-paid projected entries you see in Projections, so you can
+            start fresh entering your own live data. Keeps bank data, trips, paid entries and
+            reconciled earnings.
+          </p>
+          {confirmProj ? (
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={borrarProyeccion}
+                className="flex-1 rounded-xl bg-sky-600 py-2.5 text-[11px] font-extrabold text-white active:scale-[0.99]"
+              >
+                YES, DELETE {projCounts ? `${projCounts.schedules + projCounts.projected} PROJECTION ITEMS` : "PROJECTIONS"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmProj(false)}
+                className="flex-1 rounded-xl border border-neutral-700 py-2.5 text-[11px] font-bold text-neutral-300"
+              >
+                CANCEL
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={contarProyeccion}
+              className="w-full rounded-xl border border-sky-500/50 bg-sky-500/10 py-2.5 text-[11px] font-extrabold text-sky-300 active:scale-[0.99]"
+            >
+              DELETE PROJECTION DATA ONLY
             </button>
           )}
 
