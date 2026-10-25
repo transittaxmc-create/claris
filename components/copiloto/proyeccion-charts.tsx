@@ -59,7 +59,6 @@ export function balancePath(
   return out
 }
 
-/** Short week range: "OCT 25-31" or "OCT 28-NOV 3". */
 function weekRangeLabel(aIso: string, bIso: string): string {
   const ma = aIso.match(/^(\d{4})-(\d{2})-(\d{2})/)
   const mb = bIso.match(/^(\d{4})-(\d{2})-(\d{2})/)
@@ -108,14 +107,62 @@ export function weeklyFlows(lines: ForecastLine[], today: string) {
   return buckets
 }
 
+/** Business cash-flow buckets (Paycheck, Rent, Savings, Investments…). */
+export function flowBucket(
+  amount: number,
+  category: string | null | undefined,
+  label: string | null | undefined,
+): string {
+  const c = `${category || ""} ${label || ""}`.toLowerCase()
+  const isIn = amount >= 0
+
+  if (isIn) {
+    if (/paycheck|salary|sueldo|payroll|wages/.test(c)) return "Paycheck"
+    if (/side.?hustle|gig|uber|lyft|doordash|freelance|tips/.test(c)) return "Side Hustle"
+    if (/invest|dividend|interest|brokerage|stock|etf|crypto|yield/.test(c)) return "Investments"
+    if (/transfer.?in|from.?savings|from.?checking|deposit|payout|reimburse/.test(c)) return "Transfers In"
+    if (/refund|return|cash.?back/.test(c)) return "Refunds"
+    if (/income|ingreso/.test(c)) {
+      const lab = (label || category || "Income").trim()
+      if (lab && !/^income$/i.test(lab)) return lab.slice(0, 14)
+      return "Other Income"
+    }
+    const lab = (label || category || "Income").trim()
+    if (lab && !/^income$/i.test(lab)) return lab.slice(0, 14)
+    return "Other Income"
+  }
+
+  if (/sav(ing)?s|emergency.?fund|reserva|ahorro/.test(c)) return "Savings"
+  if (/invest|brokerage|stock|etf|401|ira|crypto|vanguard|fidelity/.test(c)) return "Investments"
+  if (/rent|mortgage|housing|vivienda|alquiler|landlord/.test(c)) return "Rent / Housing"
+  if (/car.?lease|auto.?lease|leasing|vehicle.?pay|car.?payment|auto.?loan/.test(c)) return "Car / Lease"
+  if (/insurance|seguro|geico|progressive/.test(c)) return "Insurance"
+  if (/t-?mobile|verizon|at&t|phone|mobile|celular|internet|wifi/.test(c)) return "Phone / Internet"
+  if (/fuel|gasolina|gas.?station|shell|exxon|chevron/.test(c)) return "Fuel"
+  if (/grocer|supermarket|whole.?foods|trader|market|mercado/.test(c)) return "Groceries"
+  if (/restaurant|food|comida|uber.?eats|doordash|mcdonald|dunkin|bagel/.test(c)) return "Food / Dining"
+  if (/utilit|electric|water|gas.?bill|national.?grid|eversource/.test(c)) return "Utilities"
+  if (/subscription|netflix|spotify|prime|gym|membership/.test(c)) return "Subscriptions"
+  if (/fee|bank.?fee|overdraft/.test(c)) return "Bank Fees"
+  if (/tax|irs|impuesto/.test(c)) return "Taxes"
+  if (/transfer.?out|to.?savings|to.?checking|venmo|zelle|paypal/.test(c)) return "Transfers Out"
+  if (/expense|gasto/.test(c)) {
+    const lab = (label || category || "Expense").trim()
+    if (lab && !/^expense$/i.test(lab)) return lab.slice(0, 14)
+    return "Other Expense"
+  }
+  const lab = (label || category || "Other").trim()
+  return lab.slice(0, 14) || "Other Expense"
+}
+
 const SRC_COLORS = ["#2fbf71", "#3ecf6e", "#35b558", "#28a95c"]
-const USE_COLORS = ["#e5484d", "#d9483b", "#e0653a", "#dd8433", "#c9a13b"]
+const USE_COLORS = ["#e5484d", "#d9483b", "#e0653a", "#dd8433", "#c9a13b", "#4a7dd8", "#8b5cf6"]
 
 export function Sankey({ sources, uses }: { sources: [string, number][]; uses: [string, number][] }) {
   const W = 352,
-    H = 320
+    H = 340
   const colW = 108,
-    gap = 8
+    gap = 7
   const srcTotal = sources.reduce((a, [, v]) => a + v, 0) || 1
   const useTotal = uses.reduce((a, [, v]) => a + v, 0) || 1
   const maxTotal = Math.max(srcTotal, useTotal)
@@ -126,14 +173,14 @@ export function Sankey({ sources, uses }: { sources: [string, number][]; uses: [
 
   let sy = 4
   const srcBars = sources.map(([name, v], i) => {
-    const h = Math.max(20, v * scale)
+    const h = Math.max(18, v * scale)
     const bar = { name, v, y: sy, h, color: SRC_COLORS[i % SRC_COLORS.length] }
     sy += h + gap
     return bar
   })
   let uy = 4
   const useBars = uses.map(([name, v], i) => {
-    const h = Math.max(18, v * scale)
+    const h = Math.max(16, v * scale)
     const bar = { name, v, y: uy, h, color: USE_COLORS[i % USE_COLORS.length] }
     uy += h + gap
     return bar
@@ -186,17 +233,17 @@ export function Sankey({ sources, uses }: { sources: [string, number][]; uses: [
 
   const barText = (x: number, b: { name: string; v: number; y: number; h: number }, sign: string) => (
     <g>
-      {b.h >= 34 ? (
+      {b.h >= 32 ? (
         <>
-          <text x={x + colW / 2} y={b.y + b.h / 2 - 2} textAnchor="middle" fill="#fff" fontSize="13" fontWeight="800">
-            {b.name.toUpperCase().slice(0, 11)}
+          <text x={x + colW / 2} y={b.y + b.h / 2 - 2} textAnchor="middle" fill="#fff" fontSize="12" fontWeight="800">
+            {b.name.toUpperCase().slice(0, 13)}
           </text>
-          <text x={x + colW / 2} y={b.y + b.h / 2 + 14} textAnchor="middle" fill="rgba(255,255,255,.92)" fontSize="13" fontWeight="700">
+          <text x={x + colW / 2} y={b.y + b.h / 2 + 13} textAnchor="middle" fill="rgba(255,255,255,.92)" fontSize="12" fontWeight="700">
             {sign}${Math.round(b.v).toLocaleString()}
           </text>
         </>
       ) : (
-        <text x={x + colW / 2} y={b.y + b.h / 2 + 4} textAnchor="middle" fill="#fff" fontSize="12.5" fontWeight="800">
+        <text x={x + colW / 2} y={b.y + b.h / 2 + 4} textAnchor="middle" fill="#fff" fontSize="11" fontWeight="800">
           {sign}${Math.round(b.v).toLocaleString()}
         </text>
       )}
