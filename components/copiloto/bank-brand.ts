@@ -39,6 +39,7 @@ const BRANDS: Record<string, BrandDef> = {
   // Sin logo SVG en el kit: inicial con su color de marca.
   navy: { match: /navy federal/i, short: "Navy Federal", logo: null, c: "#003A70", a: "#F2A900", fullTile: false },
   varo: { match: /varo/i, short: "Varo", logo: null, c: "#1F5EFF", a: "#00C2A8", fullTile: false },
+  branch: { match: /branch/i, short: "Branch", logo: null, c: "#0B3C2C", a: "#69C24C", fullTile: false },
   uber: { match: /uber/i, short: "Uber", logo: "/logos/uber.svg", c: "#000000", a: "#5B5B5B", fullTile: true },
   lyft: { match: /lyft/i, short: "Lyft", logo: "/logos/lyft.svg", c: "#FF00BF", a: "#FF6BDB", fullTile: true },
 }

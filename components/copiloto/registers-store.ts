@@ -12,6 +12,8 @@ export interface RegisterAccount {
   isMain: boolean
   source: "snapshot" | "manual"
   manualBalance: number | null
+  /** Últimos 4 de la cuenta cuando el feed los trae (para la tarjeta). */
+  mask?: string | null
   /** Cuentas manuales fijas (Venmo, Square Checking): siempre visibles. */
   pinned?: boolean
 }
@@ -20,6 +22,8 @@ interface SnapshotAccount {
   name?: string
   current_balance?: number
   institution?: string | null
+  /** Últimos 4 que el snapshot adjunta por cuenta (nombre + números). */
+  mask?: string | null
   /** Tipo Plaid cuando el feed lo trae ("depository" | "credit" | ...). */
   type?: string | null
 }
@@ -201,6 +205,7 @@ export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAcc
       id,
       name,
       institution: a?.institution ?? null,
+      mask: a?.mask ?? null,
       kind: looksLikeCard(name, a?.institution ?? null, a?.type ?? null) ? "card" : "bank",
       limit: null,
       dueDay: st.dueDays[id] ?? null,

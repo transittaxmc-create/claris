@@ -40,6 +40,7 @@ async function fromSupabase(): Promise<Response | null> {
     }))
     // Leer balances frescos
     let balMap: Record<string, number> = {}
+    let maskByName: Record<string, string> = {}
     let balOk = false
     try {
       const bRes = await fetch(`${url}/rest/v1/app_state?id=eq.balances&select=data`, {
@@ -49,12 +50,19 @@ async function fromSupabase(): Promise<Response | null> {
       if (bRes.ok) {
         const bRows = await bRes.json()
         const bals = bRows[0]?.data?.balances || {}
+        const bestAbs: Record<string, number> = {}
         for (const [k, v] of Object.entries(bals) as any) {
           if (typeof v.current !== "number") continue
           // Dos cuentas pueden compartir nombre (Access Account …3830 y …6393):
           // el balance del bucket es la SUMA, si no se pierde dinero.
           balMap[v.name] = (balMap[v.name] ?? 0) + v.current
           if (v.mask) balMap[`${v.name} …${v.mask}`] = v.current
+          // Máscara visible del bucket: la de mayor balance (en Access, la
+          // principal …6393) — para que la tarjeta enseñe nombre + 4 números.
+          if (v.mask && Math.abs(v.current) >= (bestAbs[v.name] ?? -1)) {
+            bestAbs[v.name] = Math.abs(v.current)
+            maskByName[v.name] = String(v.mask)
+          }
         }
         balOk = Object.keys(balMap).length > 0
       }
@@ -69,7 +77,7 @@ async function fromSupabase(): Promise<Response | null> {
         // los balances de Plaid (ej. Varo desconectado) — no se muestra.
         if (balOk && !(acct in balMap)) continue
         const bal = balMap[acct] ?? 0
-        accounts[acct] = { name: acct, current_balance: bal, transactions: [] }
+        accounts[acct] = { name: acct, current_balance: bal, mask: maskByName[acct] ?? null, transactions: [] }
         total += bal
       }
       accounts[acct].transactions.push(t)
@@ -80,7 +88,7 @@ async function fromSupabase(): Promise<Response | null> {
       for (const [name, bal] of Object.entries(balMap)) {
         if (name.includes("…")) continue
         if (!accounts[name]) {
-          accounts[name] = { name, current_balance: bal, transactions: [] }
+          accounts[name] = { name, current_balance: bal, mask: maskByName[name] ?? null, transactions: [] }
           total += bal
         }
       }

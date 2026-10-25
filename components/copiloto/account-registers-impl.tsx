@@ -220,7 +220,7 @@ export function RegistersHome(props: {
                   name={accountDisplayName(r.name).title}
                   rawName={r.name}
                   institution={r.institution}
-                  subtitle={`${last4Of(r.name) ? `•••• ${last4Of(r.name)}` : r.institution || r.name} · ${r.kind === "card" ? "Credit Card" : "Checking"}`}
+                  subtitle={`${last4Of(r.name) || r.mask ? `•••• ${last4Of(r.name) || r.mask}` : r.institution || r.name} · ${r.kind === "card" ? "Credit Card" : "Checking"}`}
                   balance={balances[r.id] ?? null}
                   main={r.isMain}
                   count={movCount[r.id] ?? 0}
