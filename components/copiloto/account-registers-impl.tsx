@@ -487,6 +487,8 @@ export function RegisterDetail(props: {
     items: { date: string; description: string; amount: number; pending?: boolean; keep: boolean }[]
     balanceSeen: number | null
     last4Seen: string | null
+    last4Conflict: string | null
+    fotos: number
     yaEnPlaid: number
     yaEscaneados: number
   } | null>(null)
@@ -520,42 +522,84 @@ export function RegisterDetail(props: {
     setPeek(null)
   }
 
-  const handleScanFile = async (file: File) => {
+  // Multi-foto (Miguel, 2026-10-25): una foto puede traer los movimientos
+  // y otra el balance. Se leen todas, se fusionan y entra UNA sola vista
+  // previa. La fusión respeta gemelos legítimos: por (fecha, monto) se
+  // toma la MAYOR cantidad vista en una sola foto — si dos fotos se
+  // solapan, el movimiento compartido cuenta una vez, no dos.
+  const handleScanFiles = async (files: File[]) => {
+    if (files.length === 0) return
     setScanBusy(true)
-    setScanMsg("Leyendo el screenshot…")
     setPreview(null)
     try {
-      const { base64, mimeType } = await resizeShotImage(file)
-      const res = await fetch("/api/scan-bank-shot", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: base64, mimeType, today: todayKey() }),
-      })
-      const json = await res.json()
-      if (!res.ok || !json.success) {
-        setScanMsg(`⚠️ ${json.error || "No se pudo leer el screenshot."}`)
+      type Ex = { date: string; description: string; amount: number; pending?: boolean }
+      const perPhoto: Ex[][] = []
+      let balanceSeen: number | null = null
+      const last4s: string[] = []
+      const errors: string[] = []
+      for (let i = 0; i < files.length; i++) {
+        setScanMsg(files.length > 1 ? `Leyendo foto ${i + 1} de ${files.length}…` : "Leyendo el screenshot…")
+        try {
+          const { base64, mimeType } = await resizeShotImage(files[i])
+          const res = await fetch("/api/scan-bank-shot", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ image: base64, mimeType, today: todayKey() }),
+          })
+          const json = await res.json()
+          if (!res.ok || !json.success) {
+            errors.push(`foto ${i + 1}: ${json.error || "no se pudo leer"}`)
+            perPhoto.push([])
+            continue
+          }
+          perPhoto.push((json.transactions || []) as Ex[])
+          if (typeof json.balance === "number") balanceSeen = json.balance
+          if (json.accountLast4) last4s.push(String(json.accountLast4))
+        } catch {
+          errors.push(`foto ${i + 1}: no se pudo leer`)
+          perPhoto.push([])
+        }
+      }
+      const keyOf = (t: Ex) => `${String(t.date).slice(0, 10)}|${Math.round((Number(t.amount) || 0) * 100)}`
+      const keys = new Set<string>()
+      for (const p of perPhoto) for (const t of p) keys.add(keyOf(t))
+      const merged: Ex[] = []
+      for (const k of keys) {
+        let best: Ex[] = []
+        for (const p of perPhoto) {
+          const g = p.filter((t) => keyOf(t) === k)
+          if (g.length > best.length) best = g
+        }
+        merged.push(...best)
+      }
+      merged.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+      if (merged.length === 0 && balanceSeen == null) {
+        setScanMsg(
+          errors.length
+            ? `⚠️ ${errors.join(" · ")}`
+            : "No se vieron movimientos ni balance en las fotos.",
+        )
         return
       }
-      const extracted = (json.transactions || []) as { date: string; description: string; amount: number; pending?: boolean }[]
-      if (extracted.length === 0) {
-        setScanMsg("No se vieron movimientos en esa foto.")
+      const { fresh, yaEnPlaid, yaEscaneados } = filterExtracted(merged, bankTxs || [], myShots)
+      if (fresh.length === 0 && balanceSeen == null) {
+        setScanMsg(`Todo lo de las fotos ya está en el register (${yaEnPlaid} por Plaid, ${yaEscaneados} escaneados). Nada duplicado.`)
         return
       }
-      const { fresh, yaEnPlaid, yaEscaneados } = filterExtracted(extracted, bankTxs || [], myShots)
-      if (fresh.length === 0) {
-        setScanMsg(`Todo lo de la foto ya está en el register (${yaEnPlaid} por Plaid, ${yaEscaneados} escaneados). Nada duplicado.`)
-        return
-      }
+      const last4Seen = last4s[0] || null
+      const last4Conflict = last4Seen ? last4s.find((x) => x !== last4Seen) || null : null
       setPreview({
         items: fresh.map((t) => ({ ...t, keep: true })),
-        balanceSeen: typeof json.balance === "number" ? json.balance : null,
-        last4Seen: json.accountLast4 || null,
+        balanceSeen,
+        last4Seen,
+        last4Conflict,
+        fotos: files.length,
         yaEnPlaid,
         yaEscaneados,
       })
-      setScanMsg(null)
+      setScanMsg(errors.length ? `⚠️ ${errors.join(" · ")}` : null)
     } catch {
-      setScanMsg("⚠️ No se pudo leer el screenshot. Intenta con una foto más clara.")
+      setScanMsg("⚠️ No se pudieron leer los screenshots. Intenta con fotos más claras.")
     } finally {
       setScanBusy(false)
     }
@@ -564,7 +608,7 @@ export function RegisterDetail(props: {
   const savePreview = () => {
     if (!preview) return
     const chosen = preview.items.filter((i) => i.keep)
-    if (chosen.length === 0) {
+    if (chosen.length === 0 && preview.balanceSeen == null) {
       setPreview(null)
       return
     }
@@ -600,7 +644,11 @@ export function RegisterDetail(props: {
       )
     }
     setPreview(null)
-    setScanMsg(`${nuevos.length} provisionales guardados. Cuando Plaid los baje, se reemplazan solos.`)
+    setScanMsg(
+      nuevos.length === 0
+        ? "Balance de la foto guardado en la nota de auditoría."
+        : `${nuevos.length} provisionales guardados. Cuando Plaid los baje, se reemplazan solos.`,
+    )
   }
 
   const lines = useMemo(() => {
@@ -781,8 +829,8 @@ export function RegisterDetail(props: {
             <div className="min-w-0">
               <p className="text-[12px] font-bold text-neutral-100">¿Plaid va atrasado?</p>
               <p className="text-[10.5px] leading-snug text-neutral-400">
-                Escanea el screenshot de tu banco: los movimientos entran provisionales y el balance se actualiza ya.
-                Cuando Plaid los baje, se reemplazan solos, sin duplicados.
+                Sube una o varias fotos de tu banco (los movimientos y el balance): entran provisionales, el balance
+                se calcula ya y en Proyecciones sale el correcto. Cuando Plaid los baje, se reemplazan solos, sin duplicados.
               </p>
             </div>
             <button
@@ -797,11 +845,12 @@ export function RegisterDetail(props: {
               ref={fileRef}
               type="file"
               accept="image/*"
+              multiple
               className="hidden"
               onChange={(e) => {
-                const f = e.target.files?.[0]
+                const fs = Array.from(e.target.files || [])
                 e.target.value = ""
-                if (f) void handleScanFile(f)
+                if (fs.length) void handleScanFiles(fs)
               }}
             />
           </div>
@@ -847,8 +896,14 @@ export function RegisterDetail(props: {
           {preview && (
             <div className="mt-2 border-t border-[#262633] pt-2">
               <p className="text-[11px] font-bold uppercase tracking-widest text-neutral-400">
-                Nuevos en la foto · {preview.items.filter((i) => i.keep).length} de {preview.items.length}
+                Nuevos en {preview.fotos === 1 ? "la foto" : `las ${preview.fotos} fotos`} ·{" "}
+                {preview.items.filter((i) => i.keep).length} de {preview.items.length}
               </p>
+              {preview.last4Conflict && (
+                <p className="mt-0.5 text-[11px] font-semibold text-amber-400">
+                  Ojo: las fotos traen cuentas distintas (·{preview.last4Seen} y ·{preview.last4Conflict}). Revisa antes de guardar.
+                </p>
+              )}
               {preview.balanceSeen != null && (
                 <p className="mt-0.5 text-[11px] text-neutral-400">
                   La foto dice balance: <span className="font-mono text-neutral-200">{money(preview.balanceSeen)}</span>
