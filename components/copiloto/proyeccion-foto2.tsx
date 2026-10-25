@@ -26,6 +26,7 @@ import {
   WeeklyBars,
   ScenarioToggle,
   CASH_FLOOR_DEFAULT,
+  flowBucket,
 } from "./proyeccion-charts"
 
 const INK = "#f2f3f7"
@@ -61,22 +62,24 @@ export function ProyeccionFoto2(props: ProyProps) {
   const health = healthOf(healthFc)
   const CASH_FLOOR = CASH_FLOOR_DEFAULT
 
+  // Business buckets: Paycheck, Rent, Savings, Investments…
   const { sources, uses } = useMemo(() => {
     const inc = new Map<string, number>()
     const exp = new Map<string, number>()
     for (const l of scaledLines) {
-      const c = lineCategory(l, schedules)
+      const raw = lineCategory(l, schedules)
+      const c = flowBucket(l.amount, raw, l.label)
       if (l.amount > 0) inc.set(c, (inc.get(c) || 0) + l.amount)
       else exp.set(c, (exp.get(c) || 0) + Math.abs(l.amount))
     }
     const top = (m: Map<string, number>, n: number) => {
       const all = [...m.entries()].sort((a, b) => b[1] - a[1]) as [string, number][]
       const total = all.reduce((a, [, v]) => a + v, 0) || 1
-      const kept = all.filter(([, v], i) => i < n && (i === 0 || v >= total * 0.035))
+      const kept = all.filter(([, v], i) => i < n && (i < 3 || v >= total * 0.02))
       const rest = all.filter((e) => !kept.includes(e)).reduce((a, [, v]) => a + v, 0)
-      return rest > 0 ? ([...kept, ["Other", rest]] as [string, number][]) : kept
+      return rest > 0.5 ? ([...kept, ["Other", rest]] as [string, number][]) : kept
     }
-    return { sources: top(inc, 4), uses: top(exp, 5) }
+    return { sources: top(inc, 5), uses: top(exp, 7) }
   }, [scaledLines, schedules])
 
   const weeks = useMemo(() => weeklyFlows(scaledLines, today), [scaledLines, today])
@@ -256,7 +259,9 @@ export function ProyeccionFoto2(props: ProyProps) {
         </div>
 
         <div style={card}>
-          <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 0.8, color: SUB, marginBottom: 6 }}>CASH FLOW BREAKDOWN</div>
+          <div style={{ fontSize: 10.5, fontWeight: 800, letterSpacing: 0.8, color: SUB, marginBottom: 6 }}>
+            CASH FLOW BREAKDOWN · BY CATEGORY
+          </div>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9.5, color: SUB, marginBottom: 4 }}>
             <span>Sources</span>
             <span>Uses</span>
