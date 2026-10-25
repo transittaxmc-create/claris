@@ -418,6 +418,13 @@ export function RegisterDetail(props: {
   // Register COMPLETAMENTE editable (Miguel, 2026-10-25): cualquier
   // cuenta del banco se corrige desde aquí, no solo Citibank.
   const useBank = (bankTxs || []).length > 0
+  // Lyft no tiene Plaid (Miguel, 2026-10-25): el escáner también va en su
+  // register. Los movimientos escaneados son su récord permanente — de
+  // ahí sale el dinero que luego llega a PayPal — y el balance se
+  // CALCULA (base manual + escaneados): es su dinero disponible en Lyft
+  // para transferir cuando él quiera.
+  const isLyft = reg.id === "manual:lyft"
+  const useScan = useBank || isLyft
 
   // Pantalla ancha (computadora/monitor): la descripción se ve completa,
   // sin recorte ni tener que apretar (responsive, idea de Miguel 2026-10-24).
@@ -647,7 +654,9 @@ export function RegisterDetail(props: {
     setScanMsg(
       nuevos.length === 0
         ? "Balance de la foto guardado en la nota de auditoría."
-        : `${nuevos.length} provisionales guardados. Cuando Plaid los baje, se reemplazan solos.`,
+        : useBank
+          ? `${nuevos.length} provisionales guardados. Cuando Plaid los baje, se reemplazan solos.`
+          : `${nuevos.length} movimientos de Lyft registrados. El balance ya se calculó con ellos.`,
     )
   }
 
@@ -699,6 +708,20 @@ export function RegisterDetail(props: {
           amount: e.type === "income" ? amt : -amt,
           entry: e,
         })
+      }
+      // Lyft: los movimientos escaneados viven en el mismo register como
+      // récord permanente (no hay Plaid que los reemplace).
+      if (isLyft) {
+        for (const s of myShots) {
+          out.push({
+            key: `shot-${s.id}`,
+            date: s.date,
+            detail: s.detail,
+            category: "Screenshot",
+            amount: s.amount,
+            shotId: s.id,
+          })
+        }
       }
     }
     // Orden de la lista: lo más nuevo arriba. Dentro del MISMO día mandan
@@ -770,10 +793,12 @@ export function RegisterDetail(props: {
             >
               {balance == null ? "—" : money(balance)}
             </p>
-            {useBank && myShots.length > 0 && balance != null && (
+            {useScan && myShots.length > 0 && balance != null && (
               <p className="mt-0.5 text-[10px] font-semibold text-sky-300">
-                Calculado con {myShots.length} provisional{myShots.length === 1 ? "" : "es"} de screenshot
-                {myAudit ? ` · Plaid: ${money(myAudit.plaidBalance)}` : ""}
+                {useBank
+                  ? `Calculado con ${myShots.length} provisional${myShots.length === 1 ? "" : "es"} de screenshot`
+                  : `Calculado con ${myShots.length} movimiento${myShots.length === 1 ? "" : "s"} escaneados de Lyft`}
+                {myAudit ? ` · ${useBank ? "Plaid" : "Base"}: ${money(myAudit.plaidBalance)}` : ""}
               </p>
             )}
           </div>
@@ -823,14 +848,15 @@ export function RegisterDetail(props: {
       />
 
       {/* ===== Plan B: escanear screenshot del banco ===== */}
-      {useBank && (
+      {useScan && (
         <div className="rounded-2xl border border-[#262633] bg-[#111119] p-3">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-[12px] font-bold text-neutral-100">¿Plaid va atrasado?</p>
+              <p className="text-[12px] font-bold text-neutral-100">{useBank ? "¿Plaid va atrasado?" : "Tu dinero en Lyft, al día"}</p>
               <p className="text-[10.5px] leading-snug text-neutral-400">
-                Sube una o varias fotos de tu banco (los movimientos y el balance): entran provisionales, el balance
-                se calcula ya y en Proyecciones sale el correcto. Cuando Plaid los baje, se reemplazan solos, sin duplicados.
+                {useBank
+                  ? "Sube una o varias fotos de tu banco (los movimientos y el balance): entran provisionales, el balance se calcula ya y en Proyecciones sale el correcto. Cuando Plaid los baje, se reemplazan solos, sin duplicados."
+                  : "Sube una o varias fotos de la app de Lyft (ganancias, payouts y el balance): quedan como tu récord — de aquí sale el dinero que luego llega a PayPal — y el balance se calcula con ellas: es tu dinero disponible en Lyft, como si estuviera en el banco, listo para transferir cuando quieras."}
               </p>
             </div>
             <button
@@ -877,8 +903,8 @@ export function RegisterDetail(props: {
                 </button>
               </div>
               <p className="mt-1 text-[11.5px] leading-snug text-neutral-300">
-                Banco (foto): <span className="font-mono font-semibold text-neutral-100">{money(myAudit.shotBalance)}</span>
-                {" · "}App (Plaid {money(myAudit.plaidBalance)} + provisionales {money(myAudit.shotsTotal)}):{" "}
+                {useBank ? "Banco" : "Lyft"} (foto): <span className="font-mono font-semibold text-neutral-100">{money(myAudit.shotBalance)}</span>
+                {" · "}App ({useBank ? "Plaid" : "Base"} {money(myAudit.plaidBalance)} + {useBank ? "provisionales" : "escaneados"} {money(myAudit.shotsTotal)}):{" "}
                 <span className="font-mono font-semibold text-neutral-100">
                   {money(Math.round((myAudit.plaidBalance + myAudit.shotsTotal) * 100) / 100)}
                 </span>
@@ -1179,14 +1205,16 @@ export function RegisterDetail(props: {
               {peek.shotId && (
                 <>
                   <p className="mt-2 border-t border-[#2c2c40] pt-2 text-[11px] leading-snug text-sky-300">
-                    Provisional de screenshot — se reemplaza solo cuando Plaid baje el movimiento real.
+                    {useBank
+                      ? "Provisional de screenshot — se reemplaza solo cuando Plaid baje el movimiento real."
+                      : "Registro escaneado de Lyft — queda como constancia del dinero que salió de Lyft (ej: hacia PayPal)."}
                   </p>
                   <button
                     type="button"
                     onClick={() => removeShot(peek.shotId as string)}
                     className="mt-2 w-full rounded-lg bg-[#3a1d24] py-1.5 text-[12px] font-bold text-[#ff5d6c]"
                   >
-                    Quitar provisional
+                    {useBank ? "Quitar provisional" : "Quitar registro"}
                   </button>
                 </>
               )}

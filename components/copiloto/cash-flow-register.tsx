@@ -237,14 +237,22 @@ export function CashFlowRegister({
     const allShots = loadShotTxs()
     for (const r of registers) {
       let b = accountBalance(r, bankAccounts as any)
-      if (b != null && r.source !== "manual" && allShots.length > 0) {
-        const exact = bankTxs.filter((t) => accountIdFor(String(t.bank_account || "")) === r.id)
-        const txs =
-          exact.length > 0
-            ? exact
-            : bankTxs.filter((t) => last4Of(String(t.bank_account || "")) === last4Of(r.name))
-        const adj = pendingShotsSum(allShots, r.id, txs)
-        if (adj) b = Math.round((b + adj) * 100) / 100
+      if (b != null && allShots.length > 0) {
+        if (r.source !== "manual") {
+          const exact = bankTxs.filter((t) => accountIdFor(String(t.bank_account || "")) === r.id)
+          const txs =
+            exact.length > 0
+              ? exact
+              : bankTxs.filter((t) => last4Of(String(t.bank_account || "")) === last4Of(r.name))
+          const adj = pendingShotsSum(allShots, r.id, txs)
+          if (adj) b = Math.round((b + adj) * 100) / 100
+        } else {
+          // Cuentas manuales con escáner (Lyft): el balance se CALCULA
+          // igual — base manual + movimientos escaneados. Sin feed, ningún
+          // escaneado se reemplaza: todos siguen vigentes.
+          const adj = pendingShotsSum(allShots, r.id, [])
+          if (adj) b = Math.round((b + adj) * 100) / 100
+        }
       }
       out[r.id] = b
     }
