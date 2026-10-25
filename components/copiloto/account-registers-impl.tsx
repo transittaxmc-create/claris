@@ -30,6 +30,8 @@ export interface BankTx {
   pending_transaction_id?: string | null
   /** Comentario de origen/destino (auditoría): lo escribe Miguel o la AI al reconciliar. */
   notes?: string
+  /** Hora real del movimiento que reporta el banco (Plaid datetime, UTC). */
+  ts?: string
 }
 
 function PendingBadge({ pending }: { pending?: boolean }) {
@@ -452,11 +454,19 @@ export function RegisterDetail(props: {
         })
       }
     }
-    out.sort((a, b) => {
-      const byDate = String(b.date).localeCompare(String(a.date))
-      if (byDate !== 0) return byDate
-      return String(b.key).localeCompare(String(a.key))
-    })
+    // Orden de la lista: lo más nuevo arriba. Dentro del MISMO día mandan
+    // dos reglas (pasadas estables, de menor a mayor peso): (1) la hora real
+    // que reporta el banco (Plaid `datetime` → `ts`) y (2) el flujo del
+    // dinero: en la vista, las SALIDAS van arriba de las ENTRADAS del día,
+    // porque el dinero que entra fondea el que sale (Lyft → PayPal →
+    // Citibank). Sin esto, al caminar hacia atrás desde el balance real la
+    // app inventaba saldos negativos que el banco nunca tuvo — PayPal jamás
+    // estuvo negativa; lo que faltaba era la hora, no un movimiento
+    // (auditoría desde el origen, Miguel 2026-10-25).
+    out.sort((a, b) => String(b.key).localeCompare(String(a.key)))
+    out.sort((a, b) => String(b.tx?.ts || "").localeCompare(String(a.tx?.ts || "")))
+    out.sort((a, b) => (a.amount < 0 ? 0 : 1) - (b.amount < 0 ? 0 : 1))
+    out.sort((a, b) => String(b.date).localeCompare(String(a.date)))
     return out
   }, [bankTxs, entries, useBank])
 
