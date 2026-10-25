@@ -17,7 +17,17 @@ import { MoneyAccountCard, MoneyHeader, MoneySectionTitle, MoneyStrip, MoneyTabs
 import { Plus, ArrowLeftRight } from "lucide-react"
 import { PlaidConnectButton } from "./plaid-connect"
 import { AccountSettings } from "./account-settings"
-import { filterExtracted, loadShotTxs, reconcileShots, saveShotTxs, type ShotTx } from "./screenshot-txs"
+import {
+  clearShotAudit,
+  filterExtracted,
+  loadShotAudits,
+  loadShotTxs,
+  reconcileShots,
+  saveShotAudit,
+  saveShotTxs,
+  type ShotAudit,
+  type ShotTx,
+} from "./screenshot-txs"
 
 export interface BankTx {
   date: string
@@ -481,9 +491,11 @@ export function RegisterDetail(props: {
     yaEscaneados: number
   } | null>(null)
   const fileRef = useRef<HTMLInputElement | null>(null)
+  const [audits, setAudits] = useState<Record<string, ShotAudit>>({})
 
   useEffect(() => {
     setShots(loadShotTxs())
+    setAudits(loadShotAudits())
   }, [])
 
   // Reemplazo automático: si un real de Plaid ya empareja un provisional
@@ -568,6 +580,23 @@ export function RegisterDetail(props: {
     const next = [...nuevos, ...shots]
     setShots(next)
     saveShotTxs(next)
+    // Auditoría del screenshot (protocolo de Miguel): el balance de la
+    // foto es el real; se guarda contra el de la app y la DIFERENCIA
+    // queda escrita en la nota del register hasta que cuadre al centavo.
+    if (preview.balanceSeen != null && typeof balance === "number") {
+      const chosenSum = Math.round(chosen.reduce((s, t) => s + t.amount, 0) * 100) / 100
+      const efectivo = Math.round((balNow + shotSum + chosenSum) * 100) / 100
+      setAudits(
+        saveShotAudit({
+          accountId: reg.id,
+          date: todayKey(),
+          shotBalance: preview.balanceSeen,
+          plaidBalance: balNow,
+          shotsTotal: Math.round((shotSum + chosenSum) * 100) / 100,
+          diff: Math.round((preview.balanceSeen - efectivo) * 100) / 100,
+        }),
+      )
+    }
     setPreview(null)
     setScanMsg(`${nuevos.length} provisionales guardados. Cuando Plaid los baje, se reemplazan solos.`)
   }
@@ -664,6 +693,7 @@ export function RegisterDetail(props: {
   const monthLabel = fmtFecha(`${monthPrefix}-01`).split(" ")[0] || ""
 
   const disp = accountDisplayName(reg.name)
+  const myAudit = audits[reg.id]
 
   return (
     <div className="flex flex-col gap-3">
@@ -761,6 +791,44 @@ export function RegisterDetail(props: {
             />
           </div>
           {scanMsg && <p className="mt-2 text-[11.5px] leading-snug text-neutral-300">{scanMsg}</p>}
+          {myAudit && (
+            <div
+              className="mt-2 rounded-xl border p-2.5"
+              style={{
+                borderColor: Math.abs(myAudit.diff) <= 0.005 ? "#14532d" : "#7c2d12",
+                background: Math.abs(myAudit.diff) <= 0.005 ? "rgba(47,191,113,.07)" : "rgba(245,183,63,.07)",
+              }}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">
+                  Nota de auditoría · screenshot {fmtFecha(myAudit.date)}
+                </p>
+                <button
+                  type="button"
+                  aria-label="Quitar nota"
+                  onClick={() => setAudits(clearShotAudit(reg.id))}
+                  className="-mr-1 -mt-1 px-1 text-[13px] leading-none text-neutral-500"
+                >
+                  ✕
+                </button>
+              </div>
+              <p className="mt-1 text-[11.5px] leading-snug text-neutral-300">
+                Banco (foto): <span className="font-mono font-semibold text-neutral-100">{money(myAudit.shotBalance)}</span>
+                {" · "}App (Plaid {money(myAudit.plaidBalance)} + provisionales {money(myAudit.shotsTotal)}):{" "}
+                <span className="font-mono font-semibold text-neutral-100">
+                  {money(Math.round((myAudit.plaidBalance + myAudit.shotsTotal) * 100) / 100)}
+                </span>
+              </p>
+              {Math.abs(myAudit.diff) <= 0.005 ? (
+                <p className="mt-0.5 text-[11.5px] font-bold text-[#2fbf71]">Diferencia: $0.00 — cuadra al centavo ✓</p>
+              ) : (
+                <p className="mt-0.5 text-[11.5px] font-bold text-[#f5b73f]">
+                  Diferencia por explicar: {myAudit.diff < 0 ? "-$" : "$"}
+                  {Math.abs(myAudit.diff).toFixed(2)} — es lo que falta por encontrar entre el banco y Plaid.
+                </p>
+              )}
+            </div>
+          )}
           {preview && (
             <div className="mt-2 border-t border-[#262633] pt-2">
               <p className="text-[11px] font-bold uppercase tracking-widest text-neutral-400">
@@ -771,7 +839,26 @@ export function RegisterDetail(props: {
                   La foto dice balance: <span className="font-mono text-neutral-200">{money(preview.balanceSeen)}</span>
                   {balance != null && (
                     <>
-                      {" "}· Con estos: <span className="font-mono text-sky-300">{money(balNow + shotSum + preview.items.filter((i) => i.keep).reduce((s, i) => s + i.amount, 0))}</span>
+                      {" "}· Con estos:{" "}
+                      <span className="font-mono text-sky-300">
+                        {money(balNow + shotSum + preview.items.filter((i) => i.keep).reduce((s, i) => s + i.amount, 0))}
+                      </span>
+                      {(() => {
+                        const d =
+                          Math.round(
+                            (preview.balanceSeen -
+                              (balNow + shotSum + preview.items.filter((i) => i.keep).reduce((s, i) => s + i.amount, 0))) *
+                              100,
+                          ) / 100
+                        return Math.abs(d) <= 0.005 ? (
+                          <span className="font-bold text-[#2fbf71]"> · Diferencia: $0.00 ✓</span>
+                        ) : (
+                          <span className="font-bold text-[#f5b73f]">
+                            {" "}· Diferencia: {d < 0 ? "-$" : "$"}
+                            {Math.abs(d).toFixed(2)} por explicar
+                          </span>
+                        )
+                      })()}
                     </>
                   )}
                 </p>

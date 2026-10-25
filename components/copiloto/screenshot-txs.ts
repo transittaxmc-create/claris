@@ -23,6 +23,55 @@ export interface ShotTx {
 }
 
 export const SHOT_TXS_KEY = "claris_screenshot_txs_v1"
+export const SHOT_AUDITS_KEY = "claris_shot_audits_v1"
+
+/**
+ * Auditoría del último screenshot de una cuenta (protocolo de Miguel,
+ * 2026-10-25): el balance de la FOTO es el real del banco. Se guarda junto
+ * al balance de la app con provisionales del mismo momento y la
+ * DIFERENCIA entre ambos. Si la diferencia no es $0.00, queda escrita en
+ * el register como nota visible hasta que cuadre al centavo — esa
+ * diferencia es exactamente lo que hay que buscar y explicar.
+ */
+export interface ShotAudit {
+  accountId: string
+  date: string
+  /** Balance que dice el screenshot (el real del banco). */
+  shotBalance: number
+  /** Balance de Plaid al momento del escaneo. */
+  plaidBalance: number
+  /** Suma de provisionales vigentes al guardar el escaneo. */
+  shotsTotal: number
+  /** shotBalance − (plaidBalance + shotsTotal). $0 = cuadra al centavo. */
+  diff: number
+}
+
+export function loadShotAudits(): Record<string, ShotAudit> {
+  try {
+    const raw = JSON.parse(localStorage.getItem(SHOT_AUDITS_KEY) || "{}")
+    return raw && typeof raw === "object" ? (raw as Record<string, ShotAudit>) : {}
+  } catch {
+    return {}
+  }
+}
+
+export function saveShotAudit(audit: ShotAudit): Record<string, ShotAudit> {
+  const all = loadShotAudits()
+  all[audit.accountId] = audit
+  try {
+    localStorage.setItem(SHOT_AUDITS_KEY, JSON.stringify(all))
+  } catch {}
+  return all
+}
+
+export function clearShotAudit(accountId: string): Record<string, ShotAudit> {
+  const all = loadShotAudits()
+  delete all[accountId]
+  try {
+    localStorage.setItem(SHOT_AUDITS_KEY, JSON.stringify(all))
+  } catch {}
+  return all
+}
 
 const r2 = (n: number) => Math.round((Number(n) || 0) * 100) / 100
 
