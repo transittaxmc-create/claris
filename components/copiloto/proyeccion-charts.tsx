@@ -117,7 +117,7 @@ export function flowBucket(
   const isIn = amount >= 0
 
   if (isIn) {
-    if (/paycheck|salary|sueldo|payroll|wages/.test(c)) return "Paycheck"
+    if (/paycheck|salary|sueldo|payroll|wages|ssa|social\s*security/.test(c)) return "Paycheck"
     if (/side.?hustle|gig|uber|lyft|doordash|freelance|tips/.test(c)) return "Side Hustle"
     if (/invest|dividend|interest|brokerage|stock|etf|crypto|yield/.test(c)) return "Investments"
     if (/transfer.?in|from.?savings|from.?checking|deposit|payout|reimburse/.test(c)) return "Transfers In"
