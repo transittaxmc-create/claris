@@ -390,6 +390,150 @@ export function applyDetection(
   return updated
 }
 
+// ---------------------------------------------------------------------------
+// Historial anual (1 ene – 31 dic): lo que alimenta el Financial Statement
+// ---------------------------------------------------------------------------
+
+export interface YearPaymentRow {
+  date: string
+  debtName: string
+  billDate: string
+  amount: number
+  /** banco | recibo | manual */
+  source: string
+  /** Cuenta desde donde salió (del id estable del cargo), si aplica. */
+  account: string
+  auto?: boolean
+  note?: string
+}
+
+export interface DebtYearHistory {
+  debtId: string
+  name: string
+  category: string
+  /** Suma de los bills cuya fecha cae en el año. */
+  billedYear: number
+  /** Suma de los pagos con fecha en el año. */
+  paidYear: number
+  /** Cuántos pagos se hicieron en el año. */
+  countYear: number
+  /** Lo que resta de los bills del año. */
+  remainingYear: number
+}
+
+export interface YearHistory {
+  year: string
+  perDebt: DebtYearHistory[]
+  payments: YearPaymentRow[]
+  totalBilled: number
+  totalPaid: number
+  totalCount: number
+}
+
+function accountOf(bankTxId?: string): string {
+  if (!bankTxId) return ""
+  const seg = String(bankTxId).split("|")
+  return seg.length >= 2 ? seg[1] : ""
+}
+
+/**
+ * El año completo por deuda: cada bill abierto en el año y cada pago
+ * aplicado — no importa de qué cuenta salió el pago — con sus totales.
+ * El bill cuadra: pagado completo = resta $0; si no, queda su balance.
+ */
+export function buildYearHistory(debts: DebtAccount[], year: string): YearHistory {
+  const perDebt: DebtYearHistory[] = []
+  const payments: YearPaymentRow[] = []
+  let totalBilled = 0
+  let totalPaid = 0
+  let totalCount = 0
+  for (const d of debts || []) {
+    const h: DebtYearHistory = {
+      debtId: d.id,
+      name: d.name,
+      category: d.category,
+      billedYear: 0,
+      paidYear: 0,
+      countYear: 0,
+      remainingYear: 0,
+    }
+    for (const c of d.bills) {
+      if (String(c.bill.date).startsWith(year)) {
+        h.billedYear = r2(h.billedYear + c.total)
+        h.remainingYear = r2(h.remainingYear + c.remaining)
+      }
+      for (const p of billPayments(c.bill)) {
+        if (!String(p.date).startsWith(year)) continue
+        h.paidYear = r2(h.paidYear + (Number(p.amount) || 0))
+        h.countYear++
+        payments.push({
+          date: String(p.date).slice(0, 10),
+          debtName: d.name,
+          billDate: String(c.bill.date).slice(0, 10),
+          amount: r2(Number(p.amount) || 0),
+          source: p.source,
+          account: accountOf(p.bankTxId),
+          auto: p.auto,
+          note: p.note,
+        })
+      }
+    }
+    if (h.billedYear > 0 || h.countYear > 0) {
+      perDebt.push(h)
+      totalBilled = r2(totalBilled + h.billedYear)
+      totalPaid = r2(totalPaid + h.paidYear)
+      totalCount += h.countYear
+    }
+  }
+  payments.sort((a, b) => b.date.localeCompare(a.date))
+  perDebt.sort((a, b) => b.paidYear - a.paidYear || b.billedYear - a.billedYear)
+  return { year, perDebt, payments, totalBilled, totalPaid, totalCount }
+}
+
+/** IDs estables de los cargos del banco ya aplicados a algún bill. */
+export function appliedBankTxIds(bills: Expense[]): Set<string> {
+  const out = new Set<string>()
+  for (const b of bills || []) for (const p of billPayments(b)) if (p.bankTxId) out.add(p.bankTxId)
+  return out
+}
+
+export interface CategoryYearSum {
+  category: string
+  total: number
+  count: number
+}
+
+const TRANSFER_CATS = new Set(["transferencia", "transfer", "transfers"])
+
+/**
+ * Gastos del año que NO son bill (ej. gasolina): salidas reales del banco
+ * sumadas por categoría, 1 ene – 31 dic. Fuera: transferencias internas y
+ * los cargos ya aplicados a un bill (esos viven en el historial de bills;
+ * contarlos aquí duplicaría el gasto en el Financial Statement).
+ */
+export function categoryYearSums(
+  bankTxs: (BankTxIn & { category?: string | null })[],
+  year: string,
+  applied: Set<string>,
+): CategoryYearSum[] {
+  const map = new Map<string, CategoryYearSum>()
+  for (const tx of bankTxs || []) {
+    if (!String(tx.date).startsWith(year)) continue
+    const amt = Number(tx.amount)
+    if (!Number.isFinite(amt) || amt >= -0.009) continue
+    if (applied.has(bankTxIdOf(tx))) continue
+    const raw = String(tx.category || "").trim()
+    const n = norm(raw)
+    if (TRANSFER_CATS.has(n)) continue
+    const label = !raw || n === "banco" ? "Sin categoría" : raw
+    const row = map.get(label) || { category: label, total: 0, count: 0 }
+    row.total = r2(row.total + Math.abs(amt))
+    row.count++
+    map.set(label, row)
+  }
+  return [...map.values()].sort((a, b) => b.total - a.total)
+}
+
 /** Aplica un cargo suelto (puente por categoría) como pago del bill. */
 export function applyCategoryProposal(
   bill: Expense,

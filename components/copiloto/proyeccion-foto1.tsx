@@ -18,9 +18,9 @@ import {
   useForecast30,
   type ProyProps,
 } from "./proyeccion-shared"
-import { platformMatch, vendorMatch, type ForecastLine, type ProbablePaid } from "./dinero-forecast"
+import { platformMatch, vendorMatch, SCHEDULE_OVERRIDES_KEY, type ForecastLine, type ProbablePaid } from "./dinero-forecast"
 import { useForecastInputs } from "./dinero-proyeccion"
-import { FINANCE_LEDGER_KEY, FINANCE_SYNCED_EVENT } from "./finance-sync"
+import { FINANCE_LEDGER_KEY, FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT } from "./finance-sync"
 import type { CashFlowEntry } from "./types"
 
 const INK = "#f2f3f7"
@@ -87,6 +87,39 @@ export function ProyeccionFoto1(props: ProyProps) {
   const { dismissed, setDismissed } = useForecastInputs()
   const [adjustingKey, setAdjustingKey] = useState<string | null>(null)
   const [adjustReason, setAdjustReason] = useState("")
+
+  // ——— Quitar TODO lo proyectado (pedido de Miguel, 2026-10-25) ———
+  // Lo proyectado se borra desde ESTA misma pantalla para empezar a
+  // programar desde cero con ＋ Ingreso / ＋ Gasto. Misma regla que el
+  // DELETE PROJECTION DATA ONLY de Data: fuera recurrentes + overrides +
+  // proyectados sin pagar; se quedan banco, viajes, pagos reales y los
+  // cobros reconciliados de EARNINGS (claris:cobro:*). El historial de
+  // POR PAGAR no se toca.
+  const [wipeCounts, setWipeCounts] = useState<{ schedules: number; projected: number } | null>(null)
+  const contarProyectado = () => {
+    try {
+      const sch = JSON.parse(localStorage.getItem(FINANCE_SCHEDULES_KEY) || "[]")
+      const led = readLedger()
+      const projected = led.filter(
+        (e) => e && e.status === "projected" && !String(e.id).startsWith("claris:cobro:"),
+      ).length
+      setWipeCounts({ schedules: Array.isArray(sch) ? sch.length : 0, projected })
+    } catch {
+      setWipeCounts({ schedules: 0, projected: 0 })
+    }
+  }
+  const quitarTodoProyectado = () => {
+    try {
+      const kept = readLedger().filter(
+        (e) => !(e && e.status === "projected" && !String(e.id).startsWith("claris:cobro:")),
+      )
+      localStorage.setItem(FINANCE_LEDGER_KEY, JSON.stringify(kept))
+      localStorage.setItem(FINANCE_SCHEDULES_KEY, JSON.stringify([]))
+      localStorage.setItem(SCHEDULE_OVERRIDES_KEY, JSON.stringify([]))
+    } catch {}
+    setWipeCounts(null)
+    notifySync()
+  }
 
   const esSeguro = (p: ProbablePaid): boolean => {
     const diff = Math.abs(Math.abs(Number(p.tx.amount) || 0) - Math.abs(Number(p.entry.amount) || 0))
@@ -297,6 +330,45 @@ export function ProyeccionFoto1(props: ProyProps) {
           ＋ Gasto
         </button>
       </div>
+
+      {/* Quitar todo lo proyectado: empezar a programar desde cero */}
+      {wipeCounts === null ? (
+        <div style={{ margin: "10px 12px 0" }}>
+          <button
+            type="button"
+            onClick={contarProyectado}
+            style={{ width: "100%", border: `1px solid ${BORDER}`, background: "transparent", color: SUB, borderRadius: 12, padding: "9px 0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+          >
+            Quitar todo lo proyectado
+          </button>
+        </div>
+      ) : (
+        <div style={{ margin: "10px 12px 0", background: CARD, border: "1px solid #7c2d12", borderRadius: 12, padding: "10px 12px" }}>
+          <p style={{ fontSize: 11.5, color: INK, margin: 0 }}>
+            Se borran <b>{wipeCounts.schedules} recurrentes</b> y <b>{wipeCounts.projected} proyectados sin pagar</b>.
+          </p>
+          <p style={{ fontSize: 10.5, color: SUB, margin: "4px 0 0" }}>
+            Se quedan: banco, viajes, pagos reales, cobros de Earnings y el historial de Por pagar. Después programas
+            los tuyos con ＋ Ingreso / ＋ Gasto — todo editable.
+          </p>
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <button
+              type="button"
+              onClick={quitarTodoProyectado}
+              style={{ flex: 1, background: "#b91c1c", color: "#fff", border: "none", borderRadius: 9, padding: "8px 0", fontSize: 12, fontWeight: 800, cursor: "pointer" }}
+            >
+              Sí, quitar todo
+            </button>
+            <button
+              type="button"
+              onClick={() => setWipeCounts(null)}
+              style={{ flex: 1, background: "#262833", color: "#c9cbd8", border: "none", borderRadius: 9, padding: "8px 0", fontSize: 12, fontWeight: 800, cursor: "pointer" }}
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* REGISTRO UNIFICADO — sin caja visible, ancho casi completo */}
       <div style={{ padding: "18px 14px 8px", fontSize: 12.5, fontWeight: 800, letterSpacing: 1.2, color: SUB }}>

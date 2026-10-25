@@ -27,11 +27,14 @@ import type { BankTx } from "./account-registers-impl"
 import {
   LIABILITY_DISMISSED_KEY,
   addBillPayment,
+  appliedBankTxIds,
   applyCategoryProposal,
   applyDetection,
   billPayments,
   buildDebts,
+  buildYearHistory,
   categoryProposals,
+  categoryYearSums,
   detectBillPayments,
   ensureCycleBills,
   isExactDetection,
@@ -100,6 +103,14 @@ function useLiabilityData(bankTxs: BankTx[]) {
     [schedules, ownBills, externalBills, today],
   )
   const totalOwed = useMemo(() => debts.reduce((s, d) => s + d.openRemaining, 0), [debts])
+
+  // Historial del año (1 ene – 31 dic) para el Financial Statement.
+  const year = today.slice(0, 4)
+  const yearHistory = useMemo(() => buildYearHistory(debts, year), [debts, year])
+  const catSums = useMemo(
+    () => categoryYearSums(bankTxs || [], year, appliedBankTxIds([...ownBills, ...externalBills])),
+    [bankTxs, year, ownBills, externalBills],
+  )
 
   const persistBill = (updated: Expense, bills: Expense[] = ownBills) => {
     const next = bills.map((b) => (b.id === updated.id ? updated : b))
@@ -185,6 +196,9 @@ function useLiabilityData(bankTxs: BankTx[]) {
     ready,
     debts,
     totalOwed,
+    year,
+    yearHistory,
+    catSums,
     ownBills,
     persistBill,
     detections: detections.filter((d) => !isExactDetection(ownBills, d)),
@@ -239,6 +253,7 @@ export function LiabilitiesEntryCard(props: { onOpen: () => void }) {
 
 export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void }) {
   const data = useLiabilityData(props.bankTxs)
+  const [tab, setTab] = useState<"pagar" | "historial">("pagar")
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [payDraft, setPayDraft] = useState<{ billId: string; amount: string; date: string } | null>(null)
   const selected: DebtAccount | null = data.debts.find((d) => d.id === selectedId) || null
@@ -295,7 +310,31 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
         )}
       </div>
 
-      {!selected && (data.detections.length > 0 || data.catProposals.length > 0) && (
+      {!selected && (
+        <div className="mx-1 mb-1 mt-1 flex rounded-[10px] border border-[#262633] bg-[#0a0a0f] p-0.5">
+          {(
+            [
+              ["pagar", "POR PAGAR"],
+              ["historial", `HISTORIAL ${data.year}`],
+            ] as const
+          ).map(([t, label]) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setTab(t)}
+              className="flex-1 rounded-[8px] py-1.5 text-[11px] font-extrabold tracking-wide active:scale-[.99]"
+              style={{
+                background: tab === t ? "#262633" : "transparent",
+                color: tab === t ? "#f2f3f7" : "#9a9cb0",
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {!selected && tab === "pagar" && (data.detections.length > 0 || data.catProposals.length > 0) && (
         <section className="mt-1 rounded-[14px] border border-[#3a2f14] bg-[#171307] px-3 py-2.5">
           <h3 className="text-[11px] font-extrabold tracking-[.08em] text-[#f5b84c]">POR CONFIRMAR</h3>
           <p className="mt-0.5 text-[11px] text-neutral-400">
@@ -366,6 +405,7 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
       )}
 
       {!selected &&
+        tab === "pagar" &&
         data.debts.map((d) => (
           <button
             key={d.id}
@@ -390,11 +430,123 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
             </span>
           </button>
         ))}
-      {!selected && data.ready && data.debts.length === 0 && (
+      {!selected && tab === "pagar" && data.ready && data.debts.length === 0 && (
         <p className="px-2 py-6 text-center text-[12.5px] text-neutral-400">
           Todavía no hay deudas programadas. Cuando programes un gasto recurrente en Proyecciones, su cuenta liability
           se abre aquí sola con su primer bill.
         </p>
+      )}
+
+      {!selected && tab === "historial" && (
+        <div className="mt-1">
+          {/* Resumen del año de bills */}
+          <div className="rounded-[14px] border border-[#262633] bg-[#101018] px-4 py-3">
+            <p className="text-[11px] font-extrabold tracking-[.08em] text-neutral-400">
+              BILLS · {data.year} (1 ENE – 31 DIC)
+            </p>
+            <div className="mt-2 grid grid-cols-3 text-center">
+              <div>
+                <p className="text-[10px] font-bold tracking-wider text-neutral-500">FACTURADO</p>
+                <p className="font-mono text-[14px] tabular-nums text-neutral-100">{money(data.yearHistory.totalBilled)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold tracking-wider text-neutral-500">PAGADO</p>
+                <p className="font-mono text-[14px] tabular-nums text-[#2fbf71]">{money(data.yearHistory.totalPaid)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-bold tracking-wider text-neutral-500">PAGOS</p>
+                <p className="font-mono text-[14px] tabular-nums text-neutral-100">{data.yearHistory.totalCount}</p>
+              </div>
+            </div>
+            <p className="mt-2 text-[11px] text-neutral-400">
+              Cada pago aplicado a su bill, no importa de qué cuenta salió. Esto alimenta el Financial Statement y la
+              deducción de taxes.
+            </p>
+          </div>
+
+          {/* Por deuda */}
+          {data.yearHistory.perDebt.map((h) => (
+            <button
+              key={h.debtId}
+              type="button"
+              onClick={() => setSelectedId(h.debtId)}
+              className="mt-2.5 flex w-full items-center justify-between rounded-[14px] border border-[#262633] bg-[#101018] px-4 py-3 text-left active:scale-[.99]"
+            >
+              <span>
+                <span className="block text-[13.5px] font-bold text-[#f2f3f7]">{h.name}</span>
+                <span className="mt-0.5 block text-[11px] text-neutral-400">
+                  {h.category} · Facturado {money(h.billedYear)} · {h.countYear} pagos
+                  {h.remainingYear > 0.009 ? ` · Resta ${money(h.remainingYear)}` : " · Al día"}
+                </span>
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="font-mono text-[15.5px] font-semibold tabular-nums text-[#2fbf71]">
+                  {money(h.paidYear)}
+                </span>
+                <ChevronRight className="size-4 text-neutral-500" />
+              </span>
+            </button>
+          ))}
+
+          {/* Cada pago del año */}
+          {data.yearHistory.payments.length > 0 && (
+            <div className="mt-3 rounded-[14px] border border-[#262633] bg-[#101018] px-4 py-3">
+              <p className="text-[11px] font-extrabold tracking-[.08em] text-neutral-400">
+                PAGOS DEL {data.year} · {data.yearHistory.payments.length}
+              </p>
+              {data.yearHistory.payments.map((p, i) => (
+                <p
+                  key={`${p.date}-${p.debtName}-${i}`}
+                  className="flex items-center justify-between border-t border-[#1a1c24] py-1.5 text-[12px] text-neutral-300 first:border-t-0"
+                >
+                  <span>
+                    {fmtFecha(p.date)} · {p.debtName}
+                    <span className="text-neutral-500">
+                      {" "}
+                      · {p.source === "banco" ? p.account || "Banco" : p.source === "recibo" ? "Recibo" : "Manual"}
+                      {p.note ? ` · ${p.note}` : ""}
+                      {p.auto ? " · auto" : ""}
+                    </span>
+                  </span>
+                  <span className="font-mono tabular-nums">{money(p.amount)}</span>
+                </p>
+              ))}
+            </div>
+          )}
+
+          {/* Gastos sin bill, por categoría */}
+          <div className="mt-3 rounded-[14px] border border-[#262633] bg-[#101018] px-4 py-3">
+            <p className="text-[11px] font-extrabold tracking-[.08em] text-neutral-400">
+              GASTOS POR CATEGORÍA · {data.year} (SIN BILL)
+            </p>
+            <p className="mt-0.5 text-[11px] text-neutral-400">
+              Salidas reales del banco sumadas por categoría — como la gasolina, que no es un bill. Sin transferencias
+              internas y sin duplicar los pagos ya aplicados a bills.
+            </p>
+            {data.catSums.length === 0 && (
+              <p className="py-3 text-center text-[12px] text-neutral-500">Sin gastos del banco en el año todavía.</p>
+            )}
+            {data.catSums.map((c) => (
+              <p
+                key={c.category}
+                className="flex items-center justify-between border-t border-[#1a1c24] py-1.5 text-[12.5px] text-neutral-200 first:border-t-0"
+              >
+                <span>
+                  {c.category} <span className="text-neutral-500">· {c.count} mov.</span>
+                </span>
+                <span className="font-mono tabular-nums">{money(c.total)}</span>
+              </p>
+            ))}
+            {data.catSums.length > 0 && (
+              <p className="flex items-center justify-between border-t border-[#262633] pt-2 text-[12.5px] font-bold text-neutral-100">
+                <span>Total gastos por categoría</span>
+                <span className="font-mono tabular-nums">
+                  {money(data.catSums.reduce((s, c) => s + c.total, 0))}
+                </span>
+              </p>
+            )}
+          </div>
+        </div>
       )}
 
       {selected && (
