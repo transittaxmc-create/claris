@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from "react"
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
 import { cn } from "@/lib/utils"
 import { money, EXPENSE_CATEGORIES, type CashFlowEntry } from "./types"
 import { fmtFecha, fmtWeekday, catIcon } from "./proyeccion-shared"
@@ -17,6 +17,7 @@ import { MoneyAccountCard, MoneyHeader, MoneySectionTitle, MoneyStrip, MoneyTabs
 import { Plus, ArrowLeftRight } from "lucide-react"
 import { PlaidConnectButton } from "./plaid-connect"
 import { AccountSettings } from "./account-settings"
+import { filterExtracted, loadShotTxs, reconcileShots, saveShotTxs, type ShotTx } from "./screenshot-txs"
 
 export interface BankTx {
   date: string
@@ -41,6 +42,51 @@ function PendingBadge({ pending }: { pending?: boolean }) {
       Pending
     </span>
   )
+}
+
+/** Etiqueta de movimiento provisional de screenshot (Plan B). */
+function ShotBadge() {
+  return (
+    <span className="ml-1 inline-block rounded bg-sky-500/15 px-1 py-px text-[9px] font-bold uppercase tracking-wide text-sky-300">
+      Screenshot
+    </span>
+  )
+}
+
+// Redimensiona la imagen del banco para el OCR (mismo patrón que BankAuditSheet).
+async function resizeShotImage(file: File, maxDim = 1400): Promise<{ base64: string; mimeType: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        let { width, height } = img
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width)
+            width = maxDim
+          } else {
+            width = Math.round((width * maxDim) / height)
+            height = maxDim
+          }
+        }
+        const canvas = document.createElement("canvas")
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext("2d")
+        if (!ctx) {
+          reject(new Error("No se pudo preparar la imagen"))
+          return
+        }
+        ctx.drawImage(img, 0, 0, width, height)
+        resolve({ base64: canvas.toDataURL("image/jpeg", 0.85), mimeType: "image/jpeg" })
+      }
+      img.onerror = () => reject(new Error("No se pudo leer la imagen"))
+      img.src = e.target?.result as string
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
 }
 
 export function RegistersHome(props: {
@@ -391,11 +437,12 @@ export function RegisterDetail(props: {
     y: number
     tx?: BankTx
     entry?: CashFlowEntry
+    shotId?: string
   } | null>(null)
 
   function togglePeek(
     e: ReactMouseEvent,
-    r: { key: string; detail: string; date: string; category: string | null; amount: number; tx?: BankTx; entry?: CashFlowEntry },
+    r: { key: string; detail: string; date: string; category: string | null; amount: number; tx?: BankTx; entry?: CashFlowEntry; shotId?: string },
     bankVal: number,
   ) {
     e.stopPropagation()
@@ -415,7 +462,114 @@ export function RegisterDetail(props: {
       y: e.clientY,
       tx: r.tx,
       entry: r.entry,
+      shotId: r.shotId,
     })
+  }
+
+  // ===== Plan B: provisionales de screenshot (Miguel, 2026-10-25) =====
+  // Mientras Plaid no baja el movimiento real, el screenshot del banco lo
+  // mantiene en el register y suma al balance mostrado. Cuando el real
+  // llega, el provisional se reemplaza solo (reconcileShots).
+  const [shots, setShots] = useState<ShotTx[]>([])
+  const [scanBusy, setScanBusy] = useState(false)
+  const [scanMsg, setScanMsg] = useState<string | null>(null)
+  const [preview, setPreview] = useState<{
+    items: { date: string; description: string; amount: number; pending?: boolean; keep: boolean }[]
+    balanceSeen: number | null
+    last4Seen: string | null
+    yaEnPlaid: number
+    yaEscaneados: number
+  } | null>(null)
+  const fileRef = useRef<HTMLInputElement | null>(null)
+
+  useEffect(() => {
+    setShots(loadShotTxs())
+  }, [])
+
+  // Reemplazo automático: si un real de Plaid ya empareja un provisional
+  // de ESTA cuenta, el provisional sale y queda solo el real.
+  useEffect(() => {
+    if (!useBank || shots.length === 0) return
+    const { kept, replaced } = reconcileShots(shots, reg.id, bankTxs || [])
+    if (replaced > 0) {
+      setShots(kept)
+      saveShotTxs(kept)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bankTxs, shots])
+
+  const myShots = useMemo(() => shots.filter((s) => s.accountId === reg.id), [shots, reg.id])
+  const shotSum = useMemo(() => Math.round(myShots.reduce((s, x) => s + x.amount, 0) * 100) / 100, [myShots])
+
+  const removeShot = (id: string) => {
+    const next = shots.filter((s) => s.id !== id)
+    setShots(next)
+    saveShotTxs(next)
+    setPeek(null)
+  }
+
+  const handleScanFile = async (file: File) => {
+    setScanBusy(true)
+    setScanMsg("Leyendo el screenshot…")
+    setPreview(null)
+    try {
+      const { base64, mimeType } = await resizeShotImage(file)
+      const res = await fetch("/api/scan-bank-shot", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ image: base64, mimeType, today: todayKey() }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.success) {
+        setScanMsg(`⚠️ ${json.error || "No se pudo leer el screenshot."}`)
+        return
+      }
+      const extracted = (json.transactions || []) as { date: string; description: string; amount: number; pending?: boolean }[]
+      if (extracted.length === 0) {
+        setScanMsg("No se vieron movimientos en esa foto.")
+        return
+      }
+      const { fresh, yaEnPlaid, yaEscaneados } = filterExtracted(extracted, bankTxs || [], myShots)
+      if (fresh.length === 0) {
+        setScanMsg(`Todo lo de la foto ya está en el register (${yaEnPlaid} por Plaid, ${yaEscaneados} escaneados). Nada duplicado.`)
+        return
+      }
+      setPreview({
+        items: fresh.map((t) => ({ ...t, keep: true })),
+        balanceSeen: typeof json.balance === "number" ? json.balance : null,
+        last4Seen: json.accountLast4 || null,
+        yaEnPlaid,
+        yaEscaneados,
+      })
+      setScanMsg(null)
+    } catch {
+      setScanMsg("⚠️ No se pudo leer el screenshot. Intenta con una foto más clara.")
+    } finally {
+      setScanBusy(false)
+    }
+  }
+
+  const savePreview = () => {
+    if (!preview) return
+    const chosen = preview.items.filter((i) => i.keep)
+    if (chosen.length === 0) {
+      setPreview(null)
+      return
+    }
+    const now = new Date().toISOString()
+    const nuevos: ShotTx[] = chosen.map((t, i) => ({
+      id: `shot-${Date.now()}-${i}`,
+      accountId: reg.id,
+      date: t.date,
+      detail: t.description,
+      amount: Math.round(t.amount * 100) / 100,
+      createdAt: now,
+    }))
+    const next = [...nuevos, ...shots]
+    setShots(next)
+    saveShotTxs(next)
+    setPreview(null)
+    setScanMsg(`${nuevos.length} provisionales guardados. Cuando Plaid los baje, se reemplazan solos.`)
   }
 
   const lines = useMemo(() => {
@@ -428,6 +582,7 @@ export function RegisterDetail(props: {
       pending?: boolean
       tx?: BankTx
       entry?: CashFlowEntry
+      shotId?: string
     }[] = []
     if (useBank) {
       for (const t of bankTxs || []) {
@@ -439,6 +594,19 @@ export function RegisterDetail(props: {
           amount: Number(t.amount) || 0,
           pending: Boolean(t.pending),
           tx: t,
+        })
+      }
+      // Provisionales de screenshot (Plan B): se mezclan en el register
+      // con su etiqueta; salen solos cuando Plaid baja el real.
+      for (const s of myShots) {
+        out.push({
+          key: `shot-${s.id}`,
+          date: s.date,
+          detail: s.detail,
+          category: "Screenshot",
+          amount: s.amount,
+          pending: true,
+          shotId: s.id,
         })
       }
     } else {
@@ -468,11 +636,15 @@ export function RegisterDetail(props: {
     out.sort((a, b) => (a.amount < 0 ? 0 : 1) - (b.amount < 0 ? 0 : 1))
     out.sort((a, b) => String(b.date).localeCompare(String(a.date)))
     return out
-  }, [bankTxs, entries, useBank])
+  }, [bankTxs, entries, useBank, myShots])
 
-  // Saldo corriendo: se camina hacia atrás desde el balance real actual.
+  // Saldo corriendo: se camina hacia atrás desde el balance actual. Con
+  // provisionales de screenshot, la caminata arranca del balance EFECTIVO
+  // (real de Plaid + provisionales): es el balance que el banco muestra
+  // hoy; al bajar por las filas, los provisionales se cancelan y el resto
+  // camina sobre el real, sin tocarlo.
   const balNow = typeof balance === "number" ? balance : 0
-  let run = balNow
+  let run = balNow + (useBank ? shotSum : 0)
   const rows = lines.map((l) => {
     const after = run
     const before = run - l.amount
@@ -519,6 +691,14 @@ export function RegisterDetail(props: {
             >
               {balance == null ? "—" : money(balance)}
             </p>
+            {useBank && myShots.length > 0 && balance != null && (
+              <p className="mt-0.5 font-mono text-[11px] font-semibold tabular-nums text-sky-300">
+                Con screenshots: {money(balNow + shotSum)}
+                <span className="ml-1 font-sans text-[9px] font-bold uppercase tracking-wide text-sky-400/80">
+                  {myShots.length} provisional{myShots.length === 1 ? "" : "es"}
+                </span>
+              </p>
+            )}
           </div>
         </div>
         <div className="mt-2 grid grid-cols-3 gap-2 border-t border-[#262633] pt-2">
@@ -548,6 +728,109 @@ export function RegisterDetail(props: {
         onSaveManualBalance={props.onSaveManualBalance ?? (() => {})}
         onDeleteManual={props.onDeleteManual ?? (() => {})}
       />
+
+      {/* ===== Plan B: escanear screenshot del banco ===== */}
+      {useBank && (
+        <div className="rounded-2xl border border-[#262633] bg-[#111119] p-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[12px] font-bold text-neutral-100">¿Plaid va atrasado?</p>
+              <p className="text-[10.5px] leading-snug text-neutral-400">
+                Escanea el screenshot de tu banco: los movimientos entran provisionales y el balance se actualiza ya.
+                Cuando Plaid los baje, se reemplazan solos, sin duplicados.
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={scanBusy}
+              onClick={() => fileRef.current?.click()}
+              className="shrink-0 rounded-xl bg-sky-600 px-3 py-2 text-[12px] font-extrabold text-white active:scale-95 disabled:opacity-50"
+            >
+              {scanBusy ? "Leyendo…" : "📷 Escanear"}
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0]
+                e.target.value = ""
+                if (f) void handleScanFile(f)
+              }}
+            />
+          </div>
+          {scanMsg && <p className="mt-2 text-[11.5px] leading-snug text-neutral-300">{scanMsg}</p>}
+          {preview && (
+            <div className="mt-2 border-t border-[#262633] pt-2">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-neutral-400">
+                Nuevos en la foto · {preview.items.filter((i) => i.keep).length} de {preview.items.length}
+              </p>
+              {preview.balanceSeen != null && (
+                <p className="mt-0.5 text-[11px] text-neutral-400">
+                  La foto dice balance: <span className="font-mono text-neutral-200">{money(preview.balanceSeen)}</span>
+                  {balance != null && (
+                    <>
+                      {" "}· Con estos: <span className="font-mono text-sky-300">{money(balNow + shotSum + preview.items.filter((i) => i.keep).reduce((s, i) => s + i.amount, 0))}</span>
+                    </>
+                  )}
+                </p>
+              )}
+              {preview.last4Seen && last4Of(reg.name) && preview.last4Seen !== last4Of(reg.name) && (
+                <p className="mt-0.5 text-[11px] font-semibold text-amber-400">
+                  Ojo: la foto parece de la cuenta ·{preview.last4Seen} y este register es ·{last4Of(reg.name)}.
+                </p>
+              )}
+              {(preview.yaEnPlaid > 0 || preview.yaEscaneados > 0) && (
+                <p className="mt-0.5 text-[11px] text-neutral-500">
+                  Se saltaron {preview.yaEnPlaid + preview.yaEscaneados} que ya están en el register (no se duplican).
+                </p>
+              )}
+              {preview.items.map((it, idx) => (
+                <label key={idx} className="flex cursor-pointer items-center justify-between gap-2 border-t border-[#1a1c24] py-1.5 text-[12px] text-neutral-200">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={it.keep}
+                      onChange={(e) =>
+                        setPreview((p) =>
+                          p ? { ...p, items: p.items.map((x, i) => (i === idx ? { ...x, keep: e.target.checked } : x)) } : p,
+                        )
+                      }
+                      className="size-4 shrink-0 accent-sky-500"
+                    />
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">{it.description}</span>
+                      <span className="block text-[10px] text-neutral-500">
+                        {fmtFecha(it.date)}{it.pending ? " · Pending" : ""}
+                      </span>
+                    </span>
+                  </span>
+                  <span className={cn("shrink-0 font-mono tabular-nums", it.amount < 0 ? "text-[#ff5d6c]" : "text-[#2fbf71]")}>
+                    {it.amount < 0 ? "-" : "+"}${Math.abs(it.amount).toFixed(2)}
+                  </span>
+                </label>
+              ))}
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={savePreview}
+                  className="flex-1 rounded-lg bg-[#2fbf71] py-2 text-[12px] font-extrabold text-black active:scale-[.99]"
+                >
+                  Guardar provisionales
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreview(null)}
+                  className="flex-1 rounded-lg border border-[#262633] py-2 text-[12px] font-bold text-neutral-300 active:scale-[.99]"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ===== Register (formato del Registro Unificado) ===== */}
       <div>
@@ -601,7 +884,7 @@ export function RegisterDetail(props: {
                 <span
                   style={{ width: wide ? "19%" : "33%" }}
                   className="min-w-0 cursor-pointer overflow-hidden pr-1"
-                  onClick={wide ? undefined : (e) => togglePeek(e, r, bankVal)}
+                  onClick={wide && !r.shotId ? undefined : (e) => togglePeek(e, r, bankVal)}
                 >
                   <span
                     className="block break-words text-[12px] font-medium leading-tight text-neutral-100"
@@ -618,7 +901,7 @@ export function RegisterDetail(props: {
                   >
                     {r.detail}
                   </span>
-                  <PendingBadge pending={r.pending} />
+                  {r.shotId ? <ShotBadge /> : <PendingBadge pending={r.pending} />}
                 </span>
                 {wide && (
                   <span style={{ width: "16%" }} className="min-w-0 overflow-hidden pr-1">
@@ -735,6 +1018,20 @@ export function RegisterDetail(props: {
                 >
                   Editar
                 </button>
+              )}
+              {peek.shotId && (
+                <>
+                  <p className="mt-2 border-t border-[#2c2c40] pt-2 text-[11px] leading-snug text-sky-300">
+                    Provisional de screenshot — se reemplaza solo cuando Plaid baje el movimiento real.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => removeShot(peek.shotId as string)}
+                    className="mt-2 w-full rounded-lg bg-[#3a1d24] py-1.5 text-[12px] font-bold text-[#ff5d6c]"
+                  >
+                    Quitar provisional
+                  </button>
+                </>
               )}
             </div>
           </>
