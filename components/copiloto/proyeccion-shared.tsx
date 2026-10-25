@@ -118,10 +118,26 @@ export function lineCategory(
   return line.amount > 0 ? "Income" : "Expense"
 }
 
-/** Salud del flujo según el cambio % del balance en 30 días. */
+/** Salud del flujo en 30 días.
+ *  Si el saldo inicial es muy bajo (< $50), el % vs start se dispara
+ *  (ej. $14 → $7,962 = +56,769%). En ese caso medimos cobertura
+ *  (ingreso vs gasto). El % mostrado se limita a ±999. */
 export function healthOf(fc: Forecast): { pct: number; label: string; labelEs: string; color: string } {
-  const pct = fc.start !== 0 ? Math.round(((fc.end - fc.start) / Math.abs(fc.start)) * 100) : 0
-  if (pct >= 20) return { pct, label: "STRONG", labelEs: "FUERTE", color: "#34d17b" }
+  const net = (Number(fc.end) || 0) - (Number(fc.start) || 0)
+  const start = Math.abs(Number(fc.start) || 0)
+  const expenses = Math.abs(Number(fc.expenseTotal) || 0)
+  const income = Math.abs(Number(fc.incomeTotal) || 0)
+  let pct: number
+  if (start >= 50) {
+    pct = Math.round((net / start) * 100)
+  } else if (expenses > 0) {
+    pct = Math.round(((income - expenses) / expenses) * 100)
+  } else {
+    pct = net >= 0 ? 100 : -50
+  }
+  pct = Math.max(-999, Math.min(999, pct))
+  if (fc.end < 0) return { pct, label: "WEAK", labelEs: "DÉBIL", color: "#ff5d6c" }
+  if (pct >= 20 || net >= 200) return { pct, label: "STRONG", labelEs: "FUERTE", color: "#34d17b" }
   if (pct >= 0) return { pct, label: "FAIR", labelEs: "REGULAR", color: "#f5b84c" }
   return { pct, label: "WEAK", labelEs: "DÉBIL", color: "#ff5d6c" }
 }
@@ -133,9 +149,8 @@ export function healthOf(fc: Forecast): { pct: number; label: string; labelEs: s
  *  forma de diamante con sombra y buje metálico. Resolución interna
  *  2× para que se vea nítido. */
 export function Gauge({ health, size = 118 }: { health: ReturnType<typeof healthOf>; size?: number }) {
-  // Aguja: -100% → 180° (izq), 0% → 90° (centro-arriba), +40%+ → 0° (der)
   const clamped = Math.max(-100, Math.min(60, health.pct))
-  const frac = (clamped + 100) / 160 // 0..1
+  const frac = (clamped + 100) / 160
   const ang = Math.PI * (1 - frac)
   const cx = 120, cy = 116, R = 92
   const pt = (deg: number, rr: number) => {
