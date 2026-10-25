@@ -127,60 +127,67 @@ export function healthOf(fc: Forecast): { pct: number; label: string; labelEs: s
 }
 
 /** Gauge semicircular rojo → amarillo → verde, como las fotos.
- *  Redibujado con MÁS TONO (Miguel, 2026-10-25, contra su foto
- *  original): el arco va SEGMENTADO en 27 piezas con el color
- *  graduado rojo→naranja→ámbar→verde (no 3 bloques planos), y la
- *  aguja es una flecha blanca afilada con su centro, como la foto. */
-const GAUGE_STOPS: [number, number, number][] = [
-  [229, 56, 59], // rojo
-  [240, 100, 35], // naranja
-  [245, 166, 35], // ámbar
-  [168, 197, 58], // verde-amarillo
-  [47, 191, 113], // verde
-]
-function gaugeColor(t: number): string {
-  const x = Math.max(0, Math.min(0.9999, t)) * (GAUGE_STOPS.length - 1)
-  const i = Math.floor(x), f = x - i
-  const a = GAUGE_STOPS[i], b = GAUGE_STOPS[i + 1]
-  const c = a.map((v, k) => Math.round(v + (b[k] - v) * f))
-  return `rgb(${c[0]},${c[1]},${c[2]})`
-}
+ *  Acabado PROFESIONAL (Miguel, 2026-10-25): arco con gradiente
+ *  continuo rojo→naranja→ámbar→verde y brillo superior, separadores
+ *  finos que marcan los segmentos sin romper el gradiente, aguja en
+ *  forma de diamante con sombra y buje metálico. Resolución interna
+ *  2× para que se vea nítido. */
 export function Gauge({ health, size = 118 }: { health: ReturnType<typeof healthOf>; size?: number }) {
   // Aguja: -100% → 180° (izq), 0% → 90° (centro-arriba), +40%+ → 0° (der)
   const clamped = Math.max(-100, Math.min(60, health.pct))
   const frac = (clamped + 100) / 160 // 0..1
   const ang = Math.PI * (1 - frac)
-  const cx = 60, cy = 58, R = 45
-  const SEG = 27
+  const cx = 120, cy = 116, R = 92
   const pt = (deg: number, rr: number) => {
     const a = (deg * Math.PI) / 180
-    return `${(cx + rr * Math.cos(a)).toFixed(2)},${(cy - rr * Math.sin(a)).toFixed(2)}`
+    return { x: cx + rr * Math.cos(a), y: cy - rr * Math.sin(a) }
   }
-  const segs = Array.from({ length: SEG }, (_, i) => {
-    const a0 = 180 - ((i + 0.14) / SEG) * 180
-    const a1 = 180 - ((i + 0.86) / SEG) * 180
-    return (
-      <path
-        key={i}
-        d={`M${pt(a0, R)} A${R},${R} 0 0,1 ${pt(a1, R)}`}
-        fill="none"
-        stroke={gaugeColor(i / (SEG - 1))}
-        strokeWidth="12.5"
-      />
-    )
+  const arc = (r: number) => {
+    const a = pt(180, r), b = pt(0, r)
+    return `M${a.x},${a.y} A${r},${r} 0 0,1 ${b.x},${b.y}`
+  }
+  const seps = Array.from({ length: 11 }, (_, i) => {
+    const deg = 180 - (i / 11) * 180
+    const p1 = pt(deg, R - 14), p2 = pt(deg, R + 14)
+    return <line key={i} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke="#14161d" strokeWidth="2.6" opacity="0.55" />
   })
-  // Aguja afilada: punta a R-9, base ancha junto al centro.
-  const tip = { x: cx + (R - 9) * Math.cos(ang), y: cy - (R - 9) * Math.sin(ang) }
+  const tip = pt((ang * 180) / Math.PI, R - 18)
   const perp = ang + Math.PI / 2
-  const b1 = { x: cx + 4.6 * Math.cos(perp), y: cy - 4.6 * Math.sin(perp) }
-  const b2 = { x: cx - 4.6 * Math.cos(perp), y: cy + 4.6 * Math.sin(perp) }
-  const tail = { x: cx - 9 * Math.cos(ang), y: cy + 9 * Math.sin(ang) }
+  const b1 = { x: cx + 7.5 * Math.cos(perp), y: cy - 7.5 * Math.sin(perp) }
+  const b2 = { x: cx - 7.5 * Math.cos(perp), y: cy + 7.5 * Math.sin(perp) }
+  const tail = { x: cx - 20 * Math.cos(ang), y: cy + 20 * Math.sin(ang) }
   return (
-    <svg viewBox="0 0 120 68" style={{ width: size, height: "auto", display: "block" }} aria-hidden>
-      {segs}
-      <polygon points={`${tip.x.toFixed(1)},${tip.y.toFixed(1)} ${b1.x.toFixed(1)},${b1.y.toFixed(1)} ${tail.x.toFixed(1)},${tail.y.toFixed(1)} ${b2.x.toFixed(1)},${b2.y.toFixed(1)}`} fill="#f5f6fa" stroke="rgba(0,0,0,.35)" strokeWidth="0.7" />
-      <circle cx={cx} cy={cy} r="6" fill="#f5f6fa" stroke="rgba(0,0,0,.3)" strokeWidth="0.8" />
-      <circle cx={cx} cy={cy} r="2.4" fill="#14161d" />
+    <svg viewBox="0 0 240 136" style={{ width: size, height: "auto", display: "block" }} aria-hidden>
+      <defs>
+        <linearGradient id="gaugeGrad" gradientUnits="userSpaceOnUse" x1="26" y1="0" x2="214" y2="0">
+          <stop offset="0" stopColor="#e5383b" />
+          <stop offset="0.27" stopColor="#f06423" />
+          <stop offset="0.5" stopColor="#f5a623" />
+          <stop offset="0.74" stopColor="#a8c53a" />
+          <stop offset="1" stopColor="#2fbf71" />
+        </linearGradient>
+        <linearGradient id="gaugeSheen" gradientUnits="userSpaceOnUse" x1="0" y1="10" x2="0" y2="116">
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0.20" />
+          <stop offset="0.55" stopColor="#ffffff" stopOpacity="0" />
+        </linearGradient>
+        <radialGradient id="gaugeHub" cx="0.38" cy="0.34" r="0.85">
+          <stop offset="0" stopColor="#fdfdff" />
+          <stop offset="0.7" stopColor="#d6d8e0" />
+          <stop offset="1" stopColor="#a9acb8" />
+        </radialGradient>
+        <filter id="gaugeShadow" x="-40%" y="-40%" width="180%" height="180%">
+          <feDropShadow dx="0" dy="2.4" stdDeviation="2.4" floodColor="#000000" floodOpacity="0.5" />
+        </filter>
+      </defs>
+      <path d={arc(R)} fill="none" stroke="#1c1e26" strokeWidth="27" strokeLinecap="round" />
+      <path d={arc(R)} fill="none" stroke="url(#gaugeGrad)" strokeWidth="25" strokeLinecap="round" />
+      <path d={arc(R)} fill="none" stroke="url(#gaugeSheen)" strokeWidth="25" strokeLinecap="round" />
+      {seps}
+      <g filter="url(#gaugeShadow)">
+        <polygon points={`${tip.x.toFixed(1)},${tip.y.toFixed(1)} ${b1.x.toFixed(1)},${b1.y.toFixed(1)} ${tail.x.toFixed(1)},${tail.y.toFixed(1)} ${b2.x.toFixed(1)},${b2.y.toFixed(1)}`} fill="#f7f8fb" />
+      </g>
+      <circle cx={cx} cy={cy} r="12" fill="url(#gaugeHub)" stroke="rgba(0,0,0,.4)" strokeWidth="1" />
+      <circle cx={cx} cy={cy} r="4.4" fill="#14161d" />
     </svg>
   )
 }
