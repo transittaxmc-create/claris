@@ -113,11 +113,8 @@ export function RegistersHome(props: {
     })
   })()
 
-  // Orden por USO (Miguel, 2026-10-24): la principal ★ siempre primero
-  // (es la base de las proyecciones); después, la que más se usa va
-  // adelante — uso = movimientos de los últimos 30 días, con la fecha
-  // del movimiento más reciente como desempate — y las de menos uso
-  // quedan atrás. Se reordena solo según el uso real.
+  // Uso por cuenta (para ordenar "las demás" después de las fijas):
+  // movimientos de los últimos 30 días + fecha del más reciente.
   const usage = (() => {
     const map: Record<string, { recent: number; latest: string; total: number }> = {}
     for (const r of registers) map[r.id] = { recent: 0, latest: "", total: 0 }
@@ -144,9 +141,21 @@ export function RegistersHome(props: {
     }
     return map
   })()
+  // Orden de Miguel (2026-10-24): Citibank ★ primero, y fijos PayPal,
+  // Uber y Lyft en ese orden — son las de uso diario. Las demás van
+  // después, ordenadas por uso (últimos 30 días + recencia).
+  const fixedRank = (r: RegisterAccount): number => {
+    if (r.isMain) return 0
+    const n = String(r.name || "").toLowerCase()
+    if (n.includes("paypal")) return 1
+    if (n.includes("uber")) return 2
+    if (n.includes("lyft")) return 3
+    return 4
+  }
   const ordered = [...registers].sort((a, b) => {
-    if (a.isMain && !b.isMain) return -1
-    if (b.isMain && !a.isMain) return 1
+    const ra = fixedRank(a)
+    const rb = fixedRank(b)
+    if (ra !== rb) return ra - rb
     const ua = usage[a.id] ?? { recent: 0, latest: "", total: 0 }
     const ub = usage[b.id] ?? { recent: 0, latest: "", total: 0 }
     if (ub.recent !== ua.recent) return ub.recent - ua.recent
