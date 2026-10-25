@@ -51,7 +51,19 @@ export interface ShotAudit {
 export function loadShotAudits(): Record<string, ShotAudit> {
   try {
     const raw = JSON.parse(localStorage.getItem(SHOT_AUDITS_KEY) || "{}")
-    return raw && typeof raw === "object" ? (raw as Record<string, ShotAudit>) : {}
+    const all = raw && typeof raw === "object" ? (raw as Record<string, ShotAudit>) : {}
+    // La nota del bucket combinado NO migra: era de las dos Access juntas
+    // y su "diferencia" de −$0.59 quedó RESUELTA y probada al centavo el
+    // 2026-10-25 (era el $0.59 de la ·3830). Si migrara, reaparecería como
+    // diferencia fantasma en la cuenta individual ·6393. Se retira; el
+    // próximo escaneo crea su nota correcta.
+    if (all[LEGACY_ACCESS_ID]) {
+      delete all[LEGACY_ACCESS_ID]
+      try {
+        localStorage.setItem(SHOT_AUDITS_KEY, JSON.stringify(all))
+      } catch {}
+    }
+    return all
   } catch {
     return {}
   }
@@ -77,10 +89,25 @@ export function clearShotAudit(accountId: string): Record<string, ShotAudit> {
 
 const r2 = (n: number) => Math.round((Number(n) || 0) * 100) / 100
 
+// Migración (2026-10-25): cuando las dos Access se separaron, los
+// escaneados guardados bajo el id viejo del bucket ("snap:access-account")
+// pasaron a la ·6393 — TODOS eran compras de su tarjeta ····7693, que es
+// la cuenta ·6393. Se re-etiquetan una sola vez, en silencio.
+const LEGACY_ACCESS_ID = "snap:access-account"
+const ACCESS_6393_ID = "snap:access-account-6393"
+
 export function loadShotTxs(): ShotTx[] {
   try {
     const raw = JSON.parse(localStorage.getItem(SHOT_TXS_KEY) || "[]")
-    return Array.isArray(raw) ? (raw as ShotTx[]) : []
+    const list = Array.isArray(raw) ? (raw as ShotTx[]) : []
+    if (list.some((s) => s.accountId === LEGACY_ACCESS_ID)) {
+      const fixed = list.map((s) => (s.accountId === LEGACY_ACCESS_ID ? { ...s, accountId: ACCESS_6393_ID } : s))
+      try {
+        localStorage.setItem(SHOT_TXS_KEY, JSON.stringify(fixed))
+      } catch {}
+      return fixed
+    }
+    return list
   } catch {
     return []
   }

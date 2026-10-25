@@ -666,7 +666,13 @@ export function CashFlowRegister({
             bankTxs={bankTxs}
             bankOk={!bankError && bankAccounts.length > 0}
             onSyncBank={fetchBank}
-            otherFunds={otherFunds}
+            otherFunds={otherFunds.filter((id) => {
+              // Proyección (Miguel, 2026-10-25): SOLO Citibank ★ + PayPal,
+              // Uber y Lyft cuentan. Lo demás es control individual y no
+              // entra, aunque haya quedado marcado de antes.
+              const r = registers.find((x) => x.id === id)
+              return r ? esFondoPermitido(r) : false
+            })}
             onToggleOtherFund={(id) => {
               setOtherFunds((prev) => {
                 const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
@@ -731,15 +737,16 @@ export function CashFlowRegister({
             otherFunds={
               activeAccount.isMain
                 ? (() => {
-                    // Miguel (2026-10-18): en fondos solo PayPal, Venmo y Square. Si hay
-                    // varios "PayPal", se muestra el vivo (mayor |balance|).
+                    // Miguel (2026-10-25): en fondos de proyección solo PayPal,
+                    // Uber y Lyft. Si hay duplicados por nombre, se muestra el
+                    // vivo (mayor |balance|).
                     const cands = registers.filter(
                       (r) => r.id !== activeAccount.id && r.kind === "bank" && esFondoPermitido(r),
                     )
                     const byBase = new Map<string, typeof cands>()
                     for (const r of cands) {
                       const nm = r.name || ""
-                      const base = /venmo/i.test(nm) ? "venmo" : /square/i.test(nm) ? "square" : "paypal"
+                      const base = /lyft/i.test(nm) ? "lyft" : /uber/i.test(nm) ? "uber" : "paypal"
                       byBase.set(base, [...(byBase.get(base) ?? []), r])
                     }
                     const picked: typeof cands = []

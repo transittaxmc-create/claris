@@ -141,11 +141,13 @@ export function last4Of(name: string): string | null {
 }
 
 /**
- * "Otros fondos" (Miguel, 2026-10-18): en la lista de fondos de la proyección
- * solo van PayPal, Venmo y Square. La principal ★ es la base y no se lista.
+ * "Otros fondos" (Miguel, 2026-10-25): para PROYECCIÓN solo cuentan
+ * Citibank (la principal ★, Access ·6393 — es la base y no se lista),
+ * PayPal, Uber y Lyft. Todas las demás cuentas son individuales, de
+ * control, y NUNCA entran a la proyección.
  */
 export function esFondoPermitido(r: { name?: string | null }): boolean {
-  return /paypal|venmo|square/i.test(String(r?.name || ""))
+  return /paypal|uber|lyft/i.test(String(r?.name || ""))
 }
 
 export function accountDisplayName(name: string): { title: string; subtitle: string | null } {
