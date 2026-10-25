@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { Briefcase } from "lucide-react"
 import {
   Gauge,
   catIcon,
@@ -155,7 +156,23 @@ export function ProyeccionFoto2(props: ProyProps) {
 
   return (
     <div style={{ paddingBottom: 28, color: INK }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "14px 14px 10px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 14px 10px" }}>
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 32,
+            height: 32,
+            borderRadius: 9,
+            background: "rgba(91,140,255,.14)",
+            border: "1px solid rgba(91,140,255,.35)",
+            flexShrink: 0,
+          }}
+          aria-hidden
+        >
+          <Briefcase size={16} color={BLUE} strokeWidth={2.25} />
+        </span>
         <h2 style={{ fontSize: 14.5, fontWeight: 800, letterSpacing: 1, margin: 0 }}>CASH FLOW PROJECTION & TRENDS</h2>
       </div>
 
