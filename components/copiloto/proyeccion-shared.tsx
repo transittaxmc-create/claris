@@ -105,6 +105,14 @@ export function signed(n: number): string {
   return (n < 0 ? "-$" : n > 0 ? "+$" : "$") + money2(n)
 }
 
+/** Display name for a schedule/entry label (normalize known names). */
+export function displayLabel(s: unknown): string {
+  const t = String(s ?? "").trim()
+  if (/social\s*security/i.test(t)) return "SSA"
+  if (/^ssa$/i.test(t)) return "SSA"
+  return t
+}
+
 /** Categoría de una línea proyectada: del entry, del schedule, o inferida. */
 export function lineCategory(
   line: ForecastLine,
@@ -142,12 +150,7 @@ export function healthOf(fc: Forecast): { pct: number; label: string; labelEs: s
   return { pct, label: "WEAK", labelEs: "DÉBIL", color: "#ff5d6c" }
 }
 
-/** Gauge semicircular rojo → amarillo → verde, como las fotos.
- *  Acabado PROFESIONAL (Miguel, 2026-10-25): arco con gradiente
- *  continuo rojo→naranja→ámbar→verde y brillo superior, separadores
- *  finos que marcan los segmentos sin romper el gradiente, aguja en
- *  forma de diamante con sombra y buje metálico. Resolución interna
- *  2× para que se vea nítido. */
+/** Gauge semicircular rojo → amarillo → verde, como las fotos. */
 export function Gauge({ health, size = 118 }: { health: ReturnType<typeof healthOf>; size?: number }) {
   const clamped = Math.max(-100, Math.min(60, health.pct))
   const frac = (clamped + 100) / 160
@@ -211,7 +214,7 @@ export function Gauge({ health, size = 118 }: { health: ReturnType<typeof health
 export function catIcon(category: string | null | undefined, label: string): string {
   const c = (category || "").toLowerCase().trim()
   const byCat: [RegExp, string][] = [
-    [/income|paycheck|ingreso|sueldo|salary/, "💵"],
+    [/income|paycheck|ingreso|sueldo|salary|ssa|social\s*security/, "💵"],
     [/fuel|gas|gasolina/, "⛽"],
     [/maintenance|mantenimiento/, "🔧"],
     [/leasing|lease/, "🚗"],
