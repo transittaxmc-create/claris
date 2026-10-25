@@ -30,7 +30,7 @@ const BRANDS: Record<string, BrandDef> = {
   discover: { match: /discover/i, short: "Discover", logo: "/bank-logos/discover.svg", c: "#FF6000", a: "#FFA24D", fullTile: false },
   apple: { match: /apple/i, short: "Apple Card", logo: "/bank-logos/apple-card.svg", c: "#A2AAAD", a: "#F5F5F7", fullTile: false },
   mercury: { match: /mercury/i, short: "Mercury", logo: "/bank-logos/mercury.svg", c: "#5266EB", a: "#1E1F2E", fullTile: true },
-  paypal: { match: /paypal/i, short: "PayPal", logo: "/bank-logos/paypal.svg", c: "#003087", a: "#009CDE", fullTile: false },
+  paypal: { match: /paypal/i, short: "PayPal", logo: "/bank-logos/paypal.svg", c: "#003087", a: "#009CDE", fullTile: true },
   venmo: { match: /venmo/i, short: "Venmo", logo: "/bank-logos/venmo.svg", c: "#008CFF", a: "#3DB2FF", fullTile: false },
   square: { match: /square/i, short: "Square", logo: "/bank-logos/square.svg", c: "#3E4348", a: "#9AA0A6", fullTile: false },
   tdbank: { match: /\btd\b|td bank/i, short: "TD Bank", logo: "/bank-logos/td-bank.svg", c: "#2DB928", a: "#1A7A17", fullTile: true },
