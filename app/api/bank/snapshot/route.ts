@@ -26,9 +26,13 @@ async function fromSupabase(): Promise<Response | null> {
     const rows = await r.json()
     if (!rows?.length) return null
     const rawTxns = rows[0]?.data?.transactions || []
+    // Filas que Plaid retiró (duplicados/reemplazadas): el sync las marca
+    // status="ignored" pero seguían mostrándose en los registers — ej. un
+    // +$15 duplicado en la Checking 0817 (2026-10-24). Fuera del snapshot.
+    const liveTxns = rawTxns.filter((t: any) => t?.status !== "ignored")
     // Normalizar al formato BankTx del frontend. Sin `bank_account` el match
     // por cuenta falla y los registers salen vacíos ("0 mov.").
-    const txns = rawTxns.map((t: any) => ({
+    const txns = liveTxns.map((t: any) => ({
       date: String(t.date || "").slice(0, 10),
       bank_account: t.account || t.bankRef || "unknown",
       detail: t.description || t.merchant || "",

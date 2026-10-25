@@ -93,7 +93,7 @@ export function RegistersHome(props: {
     registers,
     props.bankOk ? props.bankTxs || [] : [],
     (props.entries || []) as { accountId?: string }[],
-    (n) => n,
+    (n) => accountIdFor(n),
   )
 
   const { schedules, dismissed } = useForecastInputs()

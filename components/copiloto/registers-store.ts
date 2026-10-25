@@ -260,7 +260,12 @@ export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAcc
     if (r.isMain) return true
     if (r.pinned) return true
     if (r.source === "manual") return Math.abs(Number(r.manualBalance) || 0) >= 0.005
-    return Math.abs(balById.get(r.id) ?? 0) >= 0.005
+    // Cuentas del banco: se muestran SIEMPRE que el feed las traiga, así
+    // tengan $0 — la regla anterior (ocultar si el balance es < $0.005)
+    // hizo desaparecer a PayPal, Uber Pro y Square Checking en cuanto
+    // llegaron a $0 (2026-10-24). Las "fantasma" sin balance ni datos ya
+    // las filtra la ruta del snapshot.
+    return true
   })
 }
 
