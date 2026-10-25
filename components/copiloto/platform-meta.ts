@@ -44,8 +44,21 @@ export const PLATFORM_META: Record<Platform, PlatformMeta> = {
     badgeClass: "border-orange-400/60 text-orange-400",
     voucher: true,
   },
+  "Island City Transit": {
+    badge: "SQUARE",
+    badgeClass: "border-emerald-400/60 text-emerald-400",
+  },
   Cash: {},
   Other: {},
+}
+
+/** Where platform payouts typically land (cash-flow & reconciliation). */
+export const PLATFORM_DEPOSIT_ACCOUNT: Partial<Record<Platform, string>> = {
+  Uber: "Uber Card",
+  Lyft: "PayPal",
+  "Aventus Ride": "Branch",
+  "Island City Transit": "Square",
+  // CitiBank is the general clearing account for mixed / other deposits
 }
 
 // Plataformas que pagan con vale: el viaje se marca isVoucher al elegirlas.
