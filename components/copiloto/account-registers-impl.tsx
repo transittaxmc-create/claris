@@ -1,1 +1,4 @@
-PLACEHOLDER_WILL_FAIL
+"use client"
+
+// TEMP marker - will replace
+export {}
