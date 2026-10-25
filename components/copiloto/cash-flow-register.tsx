@@ -797,7 +797,6 @@ export function CashFlowRegister({
               } as CashFlowEntry)
               setIsModalOpen(true)
             }}
-            onScanDoc={(t) => props.onOpenScanner?.(t)}
             onEditBankTx={(t) => setBankTxEdit(t)}
             onEditEntry={(e) => {
               setEditingEntry(e)

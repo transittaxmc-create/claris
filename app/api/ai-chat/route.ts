@@ -19,6 +19,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Faltan los mensajes de conversación" }, { status: 400 })
     }
 
+    let generationConfig: Record<string, unknown> = {
+      temperature: 0.35,
+      maxOutputTokens: 1800,
+    }
+
     // Modo foto: extraer datos de un recibo/factura y devolver schedules estructurados.
     const imageMode = typeof image === "string" && image.startsWith("data:image/")
 
@@ -160,11 +165,6 @@ TU MISIÓN:
     const bankMode = String(lastUser).trimStart().startsWith("[CONCILIACIÓN BANCARIA]")
     const expenseMode = String(lastUser).trimStart().startsWith("[ANÁLISIS DE GASTOS]")
     const scheduleMode = /\b(program|programa|programar|programe|programado|programada|schedule|scheduled|bill|factura|recibo|receipt|registra|registrar|agrega|agregar|añade|añadir|crea|crear|pago|payment)\b/i.test(String(lastUser))
-
-    let generationConfig: Record<string, unknown> = {
-      temperature: 0.35,
-      maxOutputTokens: 1800,
-    }
     if (bankMode) {
       generationConfig = {
         temperature: 0.1,
