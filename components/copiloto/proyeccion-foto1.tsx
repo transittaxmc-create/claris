@@ -289,7 +289,7 @@ export function ProyeccionFoto1(props: ProyProps) {
             <div style={{ fontSize: 10.5, color: SUB, letterSpacing: 0.4, marginBottom: 3 }}>
               SALDO INICIAL HOY ({fmtFecha(today)}):
             </div>
-            <div style={{ fontSize: 25, fontWeight: 800, marginBottom: 13 }}>${money2(fc.start)}</div>
+            <div style={{ fontSize: 25, fontWeight: 800, marginBottom: 13 }}>{fc.start < 0 ? "-$" : "$"}{money2(fc.start)}</div>
             <div style={{ fontSize: 10.5, color: SUB, letterSpacing: 0.4, marginBottom: 3 }}>INGRESOS PROYECTADOS (30D):</div>
             <div style={{ fontSize: 19, fontWeight: 800, color: GREEN, marginBottom: 13 }}>{signed(fc.incomeTotal)}</div>
             <div style={{ fontSize: 10.5, color: SUB, letterSpacing: 0.4, marginBottom: 3 }}>GASTOS PROYECTADOS (30D):</div>
@@ -305,7 +305,11 @@ export function ProyeccionFoto1(props: ProyProps) {
             <div style={{ fontSize: 10.5, color: SUB, letterSpacing: 0.4, marginBottom: 3 }}>
               SALDO FINAL PRONOSTICADO ({fmtFecha(fc.endDate)}):
             </div>
-            <div style={{ fontSize: 25, fontWeight: 800, marginBottom: 6 }}>${money2(fc.end)}</div>
+            {/* El saldo final SÍ puede ser negativo (es proyectado) y
+                debe VERSE negativo: antes se imprimía con money2() que
+                usa Math.abs y botaba el signo — se veía +$8,247.32
+                cuando la cuenta daba −$8,247.32. */}
+            <div style={{ fontSize: 25, fontWeight: 800, marginBottom: 6, color: fc.end < 0 ? RED : undefined }}>{fc.end < 0 ? "-$" : "$"}{money2(fc.end)}</div>
             <div style={{ fontSize: 11.5, color: SUB }}>
               FLUJO NETO: <b style={{ color: net >= 0 ? GREEN : RED }}>{signed(net)}</b>
             </div>
