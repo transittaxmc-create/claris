@@ -340,6 +340,19 @@ export function RegisterScreen({
     onCloseDay()
   }
 
+  // Reconciliación automática del día (restaurada 2026-10-24, pedido de
+  // Miguel): lo que se va ganando HOY en EARNINGS entra solo a MONEY y
+  // REEMPLAZA el ingreso proyectado de hoy, sin esperar al botón. La
+  // función es idempotente (upsert por id + override de salto al
+  // recurrente diario), así que correrla con cada cambio de viajes solo
+  // actualiza los montos. El botón queda para reenviar un día a mano.
+  useEffect(() => {
+    const today = localDateKey(new Date())
+    const hayNetoHoy = trips.some((t) => tripDateOf(t) === today && (netOf(t) || 0) > 0)
+    if (!hayNetoHoy) return
+    reconciliarCobrosAlLibro(trips, today)
+  }, [trips])
+
   function reconciliarHaciaDinero() {
     const result = reconciliarCobrosAlLibro(trips, selectedDate)
     if (result.platforms === 0) {

@@ -4,7 +4,7 @@
 
 import type { CashFlowEntry, CashFlowOrigin, Expense, Trip, ScheduledEntry, ScheduleOverride } from "./types"
 import { netOf, tripDateOf, migrateCategory } from "./types"
-import { FINANCE_SCHEDULES_KEY } from "./finance-sync"
+import { FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT } from "./finance-sync"
 import { SCHEDULE_OVERRIDES_KEY } from "./dinero-forecast"
 
 export const LEDGER_KEY = "claris_cash_flow_entries"
@@ -232,6 +232,14 @@ export function reconciliarCobrosAlLibro(
 
   try {
     localStorage.setItem(LEDGER_KEY, JSON.stringify(lista))
+  } catch {}
+
+  // Avisar a las pantallas de DINERO que relean el libro y los overrides:
+  // sin este evento el envío quedaba escrito en localStorage pero
+  // Proyecciones seguía mostrando lo proyectado hasta el próximo sync —
+  // la desconexión que Miguel reportó el 2026-10-24.
+  try {
+    window.dispatchEvent(new Event(FINANCE_SYNCED_EVENT))
   } catch {}
 
   return {
