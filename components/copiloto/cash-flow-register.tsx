@@ -40,6 +40,7 @@ import {
 } from "./registers-store"
 import { matchTransfers, looksLikeTransfer, type TransferReport } from "./transfer-matcher"
 import { LiabilitiesEntryCard, LiabilitiesScreen } from "./liabilities-screen"
+import { SHOTS_CHANGED_EVENT, loadShotTxs, pendingShotsSum } from "./screenshot-txs"
 import { AI_CLASS_LAST_KEY, aiApuntesForFindings } from "./ai-daily-classification"
 import {
   runReconciliationCheck,
@@ -218,13 +219,38 @@ export function CashFlowRegister({
     [bankAccounts, showAddAccount, entries],
   )
 
+  // Plan B (Miguel, 2026-10-25): el balance de cada cuenta del banco se
+  // CALCULA — Plaid + los provisionales de screenshot que Plaid aún no
+  // trae. Nada se teclea: el número sale de sumar los movimientos, y es
+  // el mismo balance que alimenta MONEY, el register y el SALDO INICIAL
+  // de Proyecciones. Cuando Plaid baja el real, el provisional sale y el
+  // total no se mueve (continuidad al centavo).
+  const [shotsTick, setShotsTick] = useState(0)
+  useEffect(() => {
+    const onShots = () => setShotsTick((t) => t + 1)
+    window.addEventListener(SHOTS_CHANGED_EVENT, onShots)
+    return () => window.removeEventListener(SHOTS_CHANGED_EVENT, onShots)
+  }, [])
+
   const balances = useMemo(() => {
     const out: Record<string, number | null> = {}
+    const allShots = loadShotTxs()
     for (const r of registers) {
-      out[r.id] = accountBalance(r, bankAccounts as any)
+      let b = accountBalance(r, bankAccounts as any)
+      if (b != null && r.source !== "manual" && allShots.length > 0) {
+        const exact = bankTxs.filter((t) => accountIdFor(String(t.bank_account || "")) === r.id)
+        const txs =
+          exact.length > 0
+            ? exact
+            : bankTxs.filter((t) => last4Of(String(t.bank_account || "")) === last4Of(r.name))
+        const adj = pendingShotsSum(allShots, r.id, txs)
+        if (adj) b = Math.round((b + adj) * 100) / 100
+      }
+      out[r.id] = b
     }
     return out
-  }, [registers, bankAccounts])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [registers, bankAccounts, bankTxs, shotsTick])
 
   const dues = useMemo(() => upcomingDues(registers), [registers])
 

@@ -585,13 +585,15 @@ export function RegisterDetail(props: {
     // queda escrita en la nota del register hasta que cuadre al centavo.
     if (preview.balanceSeen != null && typeof balance === "number") {
       const chosenSum = Math.round(chosen.reduce((s, t) => s + t.amount, 0) * 100) / 100
-      const efectivo = Math.round((balNow + shotSum + chosenSum) * 100) / 100
+      // balNow YA incluye los provisionales vigentes (balance calculado);
+      // el de Plaid solo = balNow − provisionales.
+      const efectivo = Math.round((balNow + chosenSum) * 100) / 100
       setAudits(
         saveShotAudit({
           accountId: reg.id,
           date: todayKey(),
           shotBalance: preview.balanceSeen,
-          plaidBalance: balNow,
+          plaidBalance: Math.round((balNow - shotSum) * 100) / 100,
           shotsTotal: Math.round((shotSum + chosenSum) * 100) / 100,
           diff: Math.round((preview.balanceSeen - efectivo) * 100) / 100,
         }),
@@ -667,13 +669,12 @@ export function RegisterDetail(props: {
     return out
   }, [bankTxs, entries, useBank, myShots])
 
-  // Saldo corriendo: se camina hacia atrás desde el balance actual. Con
-  // provisionales de screenshot, la caminata arranca del balance EFECTIVO
-  // (real de Plaid + provisionales): es el balance que el banco muestra
-  // hoy; al bajar por las filas, los provisionales se cancelan y el resto
-  // camina sobre el real, sin tocarlo.
+  // Saldo corriendo: se camina hacia atrás desde el balance actual, que
+  // YA viene calculado (Plaid + provisionales vigentes de screenshot —
+  // ver balances en cash-flow-register). Aquí no se suma nada más: el
+  // número es uno solo en toda la app.
   const balNow = typeof balance === "number" ? balance : 0
-  let run = balNow + (useBank ? shotSum : 0)
+  let run = balNow
   const rows = lines.map((l) => {
     const after = run
     const before = run - l.amount
@@ -722,11 +723,9 @@ export function RegisterDetail(props: {
               {balance == null ? "—" : money(balance)}
             </p>
             {useBank && myShots.length > 0 && balance != null && (
-              <p className="mt-0.5 font-mono text-[11px] font-semibold tabular-nums text-sky-300">
-                Con screenshots: {money(balNow + shotSum)}
-                <span className="ml-1 font-sans text-[9px] font-bold uppercase tracking-wide text-sky-400/80">
-                  {myShots.length} provisional{myShots.length === 1 ? "" : "es"}
-                </span>
+              <p className="mt-0.5 text-[10px] font-semibold text-sky-300">
+                Calculado con {myShots.length} provisional{myShots.length === 1 ? "" : "es"} de screenshot
+                {myAudit ? ` · Plaid: ${money(myAudit.plaidBalance)}` : ""}
               </p>
             )}
           </div>
@@ -857,13 +856,13 @@ export function RegisterDetail(props: {
                     <>
                       {" "}· Con estos:{" "}
                       <span className="font-mono text-sky-300">
-                        {money(balNow + shotSum + preview.items.filter((i) => i.keep).reduce((s, i) => s + i.amount, 0))}
+                        {money(balNow + preview.items.filter((i) => i.keep).reduce((s, i) => s + i.amount, 0))}
                       </span>
                       {(() => {
                         const d =
                           Math.round(
                             (preview.balanceSeen -
-                              (balNow + shotSum + preview.items.filter((i) => i.keep).reduce((s, i) => s + i.amount, 0))) *
+                              (balNow + preview.items.filter((i) => i.keep).reduce((s, i) => s + i.amount, 0))) *
                               100,
                           ) / 100
                         return Math.abs(d) <= 0.005 ? (

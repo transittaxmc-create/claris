@@ -1,13 +1,15 @@
-// PLAN B (Miguel, 2026-10-25):
+// PLAN B (Miguel, 2026-10-25): movimientos PROVISIONALES leídos de un
+// screenshot del banco. Plaid no es en vivo (el banco le entrega por
+// tandas), así que mientras el real baja, el screenshot mantiene el
+// register y el balance al día. En cuanto Plaid trae el movimiento real,
+// el provisional se empareja y DESAPARECE — nunca hay duplicados:
 //
-// Como los bancos: hay un balance REAL (Available Now del screenshot) y un
-// balance de Plaid que llega con delay. Mientras no cuadren:
-//   - "Balance actual del banco" = siempre el de la FOTO (shotBalance).
-//   - Plaid se muestra aparte como pendiente de auditoría.
-//   - Los movimientos del screenshot son provisionales hasta que Plaid los
-//     traiga; entonces se matchean y desaparecen (sin duplicar).
-// Cuando diff = $0.00 al centavo, la nota de pantalla se oculta y el
-// episodio queda en historial interno (nunca se borra del todo).
+// - Al escanear: lo que ya está en Plaid (o ya se escaneó) no entra.
+// - Al abrir el register / llegar un SYNC: cada provisional que ya tenga
+//   su gemelo real (misma cuenta, monto exacto al centavo, fecha ±2 días)
+//   se borra solo y queda únicamente el de Plaid.
+// - El balance real de Plaid nunca se toca: la vista suma los
+//   provisionales APARTE ("Con screenshots: …").
 
 export interface ShotTx {
   id: string
@@ -22,36 +24,29 @@ export interface ShotTx {
 
 export const SHOT_TXS_KEY = "claris_screenshot_txs_v1"
 export const SHOT_AUDITS_KEY = "claris_shot_audits_v1"
-export const SHOT_AUDIT_HISTORY_KEY = "claris_shot_audit_history_v1"
+/** Avisa a las pantallas que los provisionales cambiaron (recalcular balances). */
+export const SHOTS_CHANGED_EVENT = "claris:shots-changed"
 
 /**
- * Auditoría activa de una cuenta. Si |diff| > $0.01 se muestra en pantalla.
- * Cuando cuadra, se mueve a historial y desaparece de la UI.
+ * Auditoría del último screenshot de una cuenta (protocolo de Miguel,
+ * 2026-10-25): el balance de la FOTO es el real del banco. Se guarda junto
+ * al balance de la app con provisionales del mismo momento y la
+ * DIFERENCIA entre ambos. Si la diferencia no es $0.00, queda escrita en
+ * el register como nota visible hasta que cuadre al centavo — esa
+ * diferencia es exactamente lo que hay que buscar y explicar.
  */
 export interface ShotAudit {
   accountId: string
   date: string
-  /** Balance de la FOTO = real del banco (Available Now). SOURCE OF TRUTH. */
+  /** Balance que dice el screenshot (el real del banco). */
   shotBalance: number
-  /** Balance de Plaid al momento del escaneo / último sync. */
+  /** Balance de Plaid al momento del escaneo. */
   plaidBalance: number
-  /** Suma de provisionales vigentes al guardar. */
+  /** Suma de provisionales vigentes al guardar el escaneo. */
   shotsTotal: number
   /** shotBalance − (plaidBalance + shotsTotal). $0 = cuadra al centavo. */
   diff: number
-  /** Nota legible para el cuadrito de auditoría. */
-  note?: string
-  /** true mientras |diff| > 0.01 — se muestra en pantalla. */
-  open?: boolean
-  resolvedAt?: string
 }
-
-export interface ShotAuditHistoryEntry extends ShotAudit {
-  closedAt: string
-  closeReason: "matched" | "manual" | "rescan"
-}
-
-const r2 = (n: number) => Math.round((Number(n) || 0) * 100) / 100
 
 export function loadShotAudits(): Record<string, ShotAudit> {
   try {
@@ -62,120 +57,25 @@ export function loadShotAudits(): Record<string, ShotAudit> {
   }
 }
 
-function loadHistory(): ShotAuditHistoryEntry[] {
-  try {
-    const raw = JSON.parse(localStorage.getItem(SHOT_AUDIT_HISTORY_KEY) || "[]")
-    return Array.isArray(raw) ? (raw as ShotAuditHistoryEntry[]) : []
-  } catch {
-    return []
-  }
-}
-
-function saveHistory(list: ShotAuditHistoryEntry[]) {
-  try {
-    // Cap at 200 entries
-    const trimmed = list.slice(-200)
-    localStorage.setItem(SHOT_AUDIT_HISTORY_KEY, JSON.stringify(trimmed))
-  } catch {}
-}
-
-export function loadShotAuditHistory(accountId?: string): ShotAuditHistoryEntry[] {
-  const all = loadHistory()
-  if (!accountId) return all
-  return all.filter((h) => h.accountId === accountId)
-}
-
-/** Guarda (o actualiza) la auditoría activa. open = |diff| > 0.01. */
 export function saveShotAudit(audit: ShotAudit): Record<string, ShotAudit> {
-  const diff = r2(audit.diff)
-  const open = Math.abs(diff) > 0.01
-  const note =
-    audit.note ||
-    (open
-      ? `Bank actual $${audit.shotBalance.toFixed(2)} · Plaid $${audit.plaidBalance.toFixed(2)} · Diff $${diff.toFixed(2)} (pending Plaid / screenshots).`
-      : `Cuadrado al centavo: banco $${audit.shotBalance.toFixed(2)}.`) 
-  const full: ShotAudit = {
-    ...audit,
-    diff,
-    open,
-    note,
-    resolvedAt: open ? undefined : new Date().toISOString(),
-  }
   const all = loadShotAudits()
-
-  // Si antes estaba abierta y ahora cuadra → historial y quitar de activos visibles.
-  const prev = all[audit.accountId]
-  if (prev && prev.open !== false && !open) {
-    const hist = loadHistory()
-    hist.push({
-      ...prev,
-      ...full,
-      open: false,
-      closedAt: new Date().toISOString(),
-      closeReason: "matched",
-    })
-    saveHistory(hist)
-  }
-
-  if (open) {
-    all[audit.accountId] = full
-  } else {
-    // Cuadrado: no ocupa espacio en pantalla (no queda en activos).
-    delete all[audit.accountId]
-  }
+  all[audit.accountId] = audit
   try {
     localStorage.setItem(SHOT_AUDITS_KEY, JSON.stringify(all))
   } catch {}
   return all
 }
 
-/**
- * Balance que debe mostrar "Balance actual del banco":
- * 1) Si hay auditoría activa o reciente con shotBalance → ese (la foto).
- * 2) Si no, null (el UI usa Plaid).
- */
-export function bankActualBalance(accountId: string): number | null {
-  const active = loadShotAudits()[accountId]
-  if (active && Number.isFinite(active.shotBalance)) return r2(active.shotBalance)
-  // Último del historial (por si ya cuadró pero queremos el último real conocido)
-  const hist = loadShotAuditHistory(accountId)
-  if (hist.length > 0) {
-    const last = hist[hist.length - 1]
-    if (Number.isFinite(last.shotBalance)) return r2(last.shotBalance)
-  }
-  return null
-}
-
-/** Nota visible solo si la auditoría está abierta (no cuadra). */
-export function openAuditNote(accountId: string): ShotAudit | null {
-  const a = loadShotAudits()[accountId]
-  if (!a || a.open === false) return null
-  if (Math.abs(r2(a.diff)) <= 0.01) return null
-  return a
-}
-
-export function clearShotAudit(
-  accountId: string,
-  reason: "matched" | "manual" | "rescan" = "manual",
-): Record<string, ShotAudit> {
+export function clearShotAudit(accountId: string): Record<string, ShotAudit> {
   const all = loadShotAudits()
-  const prev = all[accountId]
-  if (prev) {
-    const hist = loadHistory()
-    hist.push({
-      ...prev,
-      open: false,
-      closedAt: new Date().toISOString(),
-      closeReason: reason,
-    })
-    saveHistory(hist)
-  }
   delete all[accountId]
   try {
     localStorage.setItem(SHOT_AUDITS_KEY, JSON.stringify(all))
   } catch {}
   return all
 }
+
+const r2 = (n: number) => Math.round((Number(n) || 0) * 100) / 100
 
 export function loadShotTxs(): ShotTx[] {
   try {
@@ -190,6 +90,23 @@ export function saveShotTxs(list: ShotTx[]): void {
   try {
     localStorage.setItem(SHOT_TXS_KEY, JSON.stringify(list))
   } catch {}
+  try {
+    window.dispatchEvent(new Event(SHOTS_CHANGED_EVENT))
+  } catch {}
+}
+
+/**
+ * Provisionales de UNA cuenta que Plaid aún no trae (los que ya tienen su
+ * gemelo real quedan fuera). Es la base del balance CALCULADO de Miguel:
+ * balance de la cuenta = balance de Plaid + Σ provisionales vigentes.
+ * Nada se escribe a lo loco: el número sale de sumar movimientos reales.
+ */
+export function pendingShotsFor(shots: ShotTx[], accountId: string, bankTxs: BankTxLike[]): ShotTx[] {
+  return reconcileShots(shots, accountId, bankTxs).kept.filter((s) => s.accountId === accountId)
+}
+
+export function pendingShotsSum(shots: ShotTx[], accountId: string, bankTxs: BankTxLike[]): number {
+  return r2(pendingShotsFor(shots, accountId, bankTxs).reduce((s, x) => s + x.amount, 0))
 }
 
 function daysDiff(a: string, b: string): number {
@@ -204,6 +121,8 @@ export interface BankTxLike {
   amount: number
 }
 
+/** ¿Este movimiento (del screenshot) ya existe entre los reales? Empareja
+ *  uno a uno contra el pool: monto exacto al centavo y fecha a ±2 días. */
 function takeMatch(
   pool: { date: string; amount: number; used: boolean }[],
   date: string,
@@ -229,18 +148,15 @@ function takeMatch(
 }
 
 /**
- * Quita provisionales que ya bajaron por Plaid. Sin duplicados.
+ * Quita los provisionales que ya bajaron por Plaid. Devuelve la lista
+ * limpia y cuántos se reemplazaron. `bankTxs` = reales de ESA cuenta.
  */
 export function reconcileShots(
   shots: ShotTx[],
   accountId: string,
   bankTxs: BankTxLike[],
 ): { kept: ShotTx[]; replaced: number } {
-  const pool = (bankTxs || []).map((t) => ({
-    date: String(t.date).slice(0, 10),
-    amount: Number(t.amount) || 0,
-    used: false,
-  }))
+  const pool = (bankTxs || []).map((t) => ({ date: String(t.date).slice(0, 10), amount: Number(t.amount) || 0, used: false }))
   let replaced = 0
   const kept = (shots || []).filter((s) => {
     if (s.accountId !== accountId) return true
@@ -254,45 +170,16 @@ export function reconcileShots(
 }
 
 /**
- * Tras un SYNC de Plaid: recalcula diff con el plaidBalance fresco.
- * Si ya cuadra, cierra la nota (historial) y mantiene shotBalance como
- * último real conocido en history.
+ * Filtra lo recién escaneado: fuera lo que ya está en Plaid y lo que ya
+ * se había escaneado (mismo monto/fecha) — no entra dos veces.
  */
-export function refreshAuditAfterPlaid(
-  accountId: string,
-  plaidBalance: number,
-  shotsForAccount: ShotTx[],
-): ShotAudit | null {
-  const active = loadShotAudits()[accountId]
-  if (!active) return null
-  const shotsTotal = r2(
-    shotsForAccount.filter((s) => s.accountId === accountId).reduce((s, t) => s + (Number(t.amount) || 0), 0),
-  )
-  const diff = r2(active.shotBalance - (r2(plaidBalance) + shotsTotal))
-  return saveShotAudit({
-    ...active,
-    plaidBalance: r2(plaidBalance),
-    shotsTotal,
-    diff,
-    date: new Date().toISOString().slice(0, 10),
-  })[accountId] || null
-}
-
 export function filterExtracted(
   extracted: { date: string; description: string; amount: number; pending?: boolean }[],
   bankTxs: BankTxLike[],
   existingShots: ShotTx[],
 ): { fresh: typeof extracted; yaEnPlaid: number; yaEscaneados: number } {
-  const poolBank = (bankTxs || []).map((t) => ({
-    date: String(t.date).slice(0, 10),
-    amount: Number(t.amount) || 0,
-    used: false,
-  }))
-  const poolShots = (existingShots || []).map((s) => ({
-    date: s.date,
-    amount: s.amount,
-    used: false,
-  }))
+  const poolBank = (bankTxs || []).map((t) => ({ date: String(t.date).slice(0, 10), amount: Number(t.amount) || 0, used: false }))
+  const poolShots = (existingShots || []).map((s) => ({ date: s.date, amount: s.amount, used: false }))
   const fresh: typeof extracted = []
   let yaEnPlaid = 0
   let yaEscaneados = 0
