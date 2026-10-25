@@ -676,16 +676,18 @@ export function RegisterDetail(props: {
       const isSquareChecking = /square checking/i.test(reg.name)
       for (const t of bankTxs || []) {
         // Square (Miguel, 2026-10-25): los depósitos "Card payment" de
-        // Square Checking SON ventas que Square cobró a sus clientes —
-        // se etiquetan por su origen ("Venta · Square") para que el
-        // register diga de qué es ese dinero y quién lo mandó. Solo
-        // cambia lo que se MUESTRA; el dato de Plaid queda intacto.
+        // Square Checking SON las ventas que él hace por su cuenta de
+        // Square — la cuenta se llama ISLAND CITY TRANSIT y es ESA
+        // compañía la que le paga (Square solo cobró al cliente). Se
+        // etiquetan por su origen ("Venta · Island City Transit") para
+        // que el register diga de qué es ese dinero y de dónde viene.
+        // Solo cambia lo que se MUESTRA; el dato de Plaid queda intacto.
         const esVentaSquare =
           isSquareChecking && (Number(t.amount) || 0) > 0 && /^card payment$/i.test(String(t.detail || "").trim())
         out.push({
           key: `bank-${t.transaction_id || t.date + t.detail + t.amount}`,
           date: String(t.date || "").slice(0, 10),
-          detail: esVentaSquare ? "Venta · Square" : t.detail || "Bank",
+          detail: esVentaSquare ? "Venta · Island City Transit" : t.detail || "Bank",
           category: esVentaSquare ? "Venta" : t.category,
           amount: Number(t.amount) || 0,
           pending: Boolean(t.pending),
