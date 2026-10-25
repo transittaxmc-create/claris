@@ -741,8 +741,24 @@ export function RegisterDetail(props: {
             <p className="font-mono text-[14px] font-semibold tabular-nums text-[#ff5d6c]">-{money(outMonth).replace("-", "")}</p>
           </div>
           <div>
-            <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-500">Movimientos</p>
-            <p className="font-mono text-[14px] font-semibold tabular-nums text-neutral-100">{monthLines.length}</p>
+            <p className="text-[9px] font-bold uppercase leading-tight tracking-widest text-neutral-500">
+              Bank · Actual Balance
+            </p>
+            <p
+              className="font-mono text-[14px] font-semibold tabular-nums"
+              style={{
+                color: myAudit
+                  ? Math.abs(myAudit.diff) <= 0.005
+                    ? "#2fbf71"
+                    : "#f5b73f"
+                  : "#f2f3f7",
+              }}
+            >
+              {myAudit ? money(myAudit.shotBalance) : balance == null ? "—" : money(balance)}
+            </p>
+            <p className="text-[9px] leading-tight text-neutral-500">
+              {myAudit ? `Foto · ${fmtFecha(myAudit.date)}` : "Según Plaid"}
+            </p>
           </div>
         </div>
       </div>
