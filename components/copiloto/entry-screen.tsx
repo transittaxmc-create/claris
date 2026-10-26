@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils"
 import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip, grossOf, tripDateOf } from "./types"
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
 import { isVoucherPlatform } from "./platform-meta"
-import { timerReading } from "@/lib/production"
 import type { ShiftApi } from "./shift"
 import {
   captureLocation,
@@ -374,9 +373,6 @@ export function EntryScreen({
   const todayTrips = trips.filter((trip) => tripDateOf(trip) === todayKey)
   const grossIncomeToday = todayTrips.reduce((total, trip) => total + grossOf(trip), 0)
 
-  // Estado del turno para la tira fina (el punto verde usa timer.running).
-  const timer = timerReading({ now: shift.now, on: shift.working, startedAt: shift.measureStart })
-
   function toggleGross() {
     setShowGross((v) => !v)
   }
@@ -387,59 +383,66 @@ export function EntryScreen({
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      {/* Header: saludo + localización + fecha a la izquierda; GPS y los
-          controles del turno en una columna a la derecha, bajo el GPS */}
-      <div className="flex items-start justify-between gap-3 px-4 pb-2.5 pt-2 sm:px-8 sm:pt-3">
-        <div className="min-w-0">
-          <h1 className="truncate text-2xl font-bold text-white">{greeting}</h1>
-          {/* From the GPS: BARRIO · CALLE, CIUDAD */}
-          <p
-            className="mt-0.5 flex items-center gap-1.5 text-sm"
-            title={place?.address || undefined}
-            suppressHydrationWarning
-          >
-            <MapPin className="size-4 shrink-0 text-yellow-400" />
-            {place ? (
-              <span className="truncate text-neutral-500">
-                {place.neighborhood ? (
-                  <span className="font-semibold text-neutral-200">{place.neighborhood}</span>
-                ) : null}
-                {place.neighborhood && (place.street || place.city) ? <span> · </span> : null}
-                <span className="font-semibold text-neutral-200">{place.street || place.city}</span>
-                {place.street && place.city ? <span>, {place.city}</span> : null}
-              </span>
-            ) : (
-              <span className="truncate text-neutral-600">Looking up location…</span>
-            )}
-          </p>
-          {/* Fecha completa, pegada a la localización */}
-          <p className="mt-1 flex items-center gap-2" suppressHydrationWarning>
-            <span className={cn("size-2 shrink-0 rounded-full", timer.running ? "bg-green-400" : "bg-neutral-600")} />
-            <span className="whitespace-nowrap text-base font-bold text-neutral-100">
-              {today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+      {/* Header FIJO (shrink-0, nunca scrollea): saludo, localización, fecha
+          y una sola fila de controles del turno, todos de la misma altura */}
+      <div className="shrink-0 px-4 pb-2.5 pt-2 sm:px-8 sm:pt-3">
+        <h1 className="truncate text-2xl font-bold text-white">{greeting}</h1>
+        {/* From the GPS: BARRIO · CALLE, CIUDAD */}
+        <p
+          className="mt-0.5 flex items-center gap-1.5 text-sm"
+          title={place?.address || undefined}
+          suppressHydrationWarning
+        >
+          <MapPin className="size-4 shrink-0 text-yellow-400" />
+          {place ? (
+            <span className="truncate text-neutral-500">
+              {place.neighborhood ? (
+                <span className="font-semibold text-neutral-200">{place.neighborhood}</span>
+              ) : null}
+              {place.neighborhood && (place.street || place.city) ? <span> · </span> : null}
+              <span className="font-semibold text-neutral-200">{place.street || place.city}</span>
+              {place.street && place.city ? <span>, {place.city}</span> : null}
             </span>
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
-          <span className="flex items-center gap-1.5 rounded-full border border-green-500/40 bg-green-500/10 px-2.5 py-1 text-[10px] font-bold text-green-400">
-            <span className="size-1.5 rounded-full bg-green-400" />
-            GPS · High accuracy
-          </span>
+          ) : (
+            <span className="truncate text-neutral-600">Looking up location…</span>
+          )}
+        </p>
+        {/* Fecha completa, pegada a la localización */}
+        <p
+          className="mt-1 whitespace-nowrap text-base font-bold text-neutral-100"
+          suppressHydrationWarning
+        >
+          {today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+        </p>
+        {/* Fila de controles: estado + millas a la izquierda, botones a la
+            derecha — todo a h-8, una sola línea alineada */}
+        <div className="mt-2.5 flex items-center gap-2.5 border-t border-neutral-800/60 pt-2.5">
+          {shift.shiftActive ? (
+            <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-extrabold tracking-wider text-emerald-400">
+              <span className="size-1.5 rounded-full bg-emerald-400" />
+              {shift.isOnBreak ? "ON BREAK" : "ON SHIFT"}
+            </span>
+          ) : (
+            <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-extrabold tracking-wider text-neutral-500">
+              <span className="size-1.5 rounded-full bg-neutral-600" />
+              OFF SHIFT
+            </span>
+          )}
           {/* Contador de millas IRS — corre solo con el turno activo */}
           {shift.shiftActive && (
             <span
               title="Millas de negocio (IRS) — se guardan al cerrar el turno"
-              className="flex items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 font-mono text-[10px] font-bold tabular-nums text-sky-300"
+              className="flex h-8 shrink-0 items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 font-mono text-[11px] font-bold tabular-nums text-sky-300"
             >
               {shift.shiftMiles.toFixed(1)} mi
             </span>
           )}
-          <div className="flex w-24 flex-col items-stretch gap-1.5">
+          <div className="ml-auto flex shrink-0 items-center gap-2">
             {!shift.shiftActive ? (
               <button
                 type="button"
                 onClick={shift.onStart}
-                className="flex items-center justify-center gap-1 rounded-md border border-emerald-500/50 bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-300"
+                className="flex h-8 items-center justify-center gap-1 rounded-lg border border-emerald-500/50 bg-emerald-500/10 px-3.5 text-xs font-bold text-emerald-300"
               >
                 <Play className="size-3" /> START
               </button>
@@ -450,7 +453,7 @@ export function EntryScreen({
                   onClick={shift.onBreak}
                   title={shift.isOnBreak ? "Resume the shift" : "Pause the shift"}
                   className={cn(
-                    "flex items-center justify-center gap-1 rounded-md border px-2.5 py-1 text-xs font-bold",
+                    "flex h-8 items-center justify-center gap-1 rounded-lg border px-3.5 text-xs font-bold",
                     shift.isOnBreak
                       ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300"
                       : "border-amber-500/50 bg-amber-500/10 text-amber-300",
@@ -463,7 +466,7 @@ export function EntryScreen({
                   type="button"
                   onClick={shift.onEnd}
                   title="End the shift"
-                  className="flex items-center justify-center gap-1 rounded-md border border-rose-500/50 bg-rose-500/10 px-2.5 py-1 text-xs font-bold text-rose-300"
+                  className="flex h-8 items-center justify-center gap-1 rounded-lg border border-rose-500/50 bg-rose-500/10 px-3.5 text-xs font-bold text-rose-300"
                 >
                   <Square className="size-3" /> END
                 </button>
