@@ -6,11 +6,11 @@
 // una vez → libro (CashFlowEntry projected); recurrente → ScheduledEntry.
 
 import { useMemo, useState, type CSSProperties } from "react"
-import { EXPENSE_CATEGORIES, type CashFlowEntry, type ScheduledEntry } from "./types"
+import { CUSTOM_CATEGORIES_KEY, EXPENSE_CATEGORIES, type CashFlowEntry, type ScheduledEntry } from "./types"
 import { FINANCE_LEDGER_KEY, FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT } from "./finance-sync"
 import { etiquetaCombinada } from "./cash-flow-store"
 import { SCHEDULE_OVERRIDES_KEY, todayKey, type ForecastLine, type ScheduleOverride } from "./dinero-forecast"
-import { catIcon, fmtFecha, fmtWeekday } from "./proyeccion-shared"
+import { fmtFecha, fmtWeekday } from "./proyeccion-shared"
 
 const INK = "#f2f3f7"
 const SUB = "#9a9cb0"
@@ -42,6 +42,127 @@ function notifySync() {
   try {
     window.dispatchEvent(new Event(FINANCE_SYNCED_EVENT))
   } catch {}
+}
+
+// ——— Categoría con DROPDOWN (pedido de Miguel, 2026-10-26) ———
+// Igual que en Gastos: un dropdown en vez de todos los botoncitos (se
+// ve más organizado y ocupa menos espacio), y arriba la opción de
+// AÑADIR una categoría que no esté. La categoría nueva queda guardada
+// en claris_custom_categories — la misma lista de Gastos y el escáner —
+// y sube a Supabase con finance-cloud. Sirve para ingreso y gasto, en
+// el formulario de crear y en el de editar.
+function loadCustomCategories(): string[] {
+  try {
+    const raw = JSON.parse(localStorage.getItem(CUSTOM_CATEGORIES_KEY) || "[]")
+    return Array.isArray(raw) ? raw.filter((c) => typeof c === "string" && c.trim()) : []
+  } catch {
+    return []
+  }
+}
+
+function CategorySelect(props: {
+  kind: "income" | "expense"
+  value: string
+  onChange: (v: string) => void
+  fieldStyle: CSSProperties
+  labelStyle: CSSProperties
+}) {
+  const [custom, setCustom] = useState<string[]>(() => loadCustomCategories())
+  const [adding, setAdding] = useState(false)
+  const [newName, setNewName] = useState("")
+
+  const base: string[] = props.kind === "income" ? ["Income"] : [...EXPENSE_CATEGORIES]
+  const options = [...base]
+  for (const c of custom) {
+    if (!options.some((o) => o.toLowerCase() === c.toLowerCase())) options.push(c)
+  }
+  // El valor actual siempre aparece en la lista, aunque sea viejo.
+  if (props.value && !options.some((o) => o.toLowerCase() === props.value.toLowerCase())) {
+    options.push(props.value)
+  }
+
+  const addCategory = () => {
+    const name = newName.trim()
+    if (!name) return
+    const exists = [...base, ...EXPENSE_CATEGORIES, ...custom].some(
+      (c) => c.toLowerCase() === name.toLowerCase(),
+    )
+    if (!exists) {
+      const next = [...custom, name]
+      setCustom(next)
+      try {
+        localStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(next))
+      } catch {}
+      notifySync()
+    }
+    props.onChange(name)
+    setNewName("")
+    setAdding(false)
+  }
+
+  return (
+    <>
+      <div
+        style={{
+          ...props.labelStyle,
+          display: "flex",
+          alignItems: "baseline",
+          justifyContent: "space-between",
+        }}
+      >
+        <span>CATEGORÍA</span>
+        <button
+          type="button"
+          onClick={() => setAdding((v) => !v)}
+          style={{
+            background: "none",
+            border: "none",
+            color: "#5b8cff",
+            fontSize: 12,
+            fontWeight: 700,
+            cursor: "pointer",
+            padding: 0,
+          }}
+        >
+          + Añadir categoría
+        </button>
+      </div>
+      {adding && (
+        <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+          <input
+            autoFocus
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="Nombre de la categoría"
+            style={{ ...props.fieldStyle, flex: 1, minWidth: 0, padding: "11px 12px", fontSize: 14 }}
+          />
+          <button
+            type="button"
+            onClick={addCategory}
+            style={{
+              border: "none",
+              borderRadius: 12,
+              background: "#5b8cff",
+              color: "#fff",
+              fontSize: 13,
+              fontWeight: 800,
+              padding: "0 16px",
+              cursor: "pointer",
+            }}
+          >
+            Añadir
+          </button>
+        </div>
+      )}
+      <select value={props.value} onChange={(e) => props.onChange(e.target.value)} style={props.fieldStyle}>
+        {options.map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+      </select>
+    </>
+  )
 }
 
 export function ProyeccionForm(props: {
@@ -194,21 +315,8 @@ export function ProyeccionForm(props: {
           placeholder={kind === "income" ? "Ej. Cobro Uber, depósito…" : "Ej. Renta, CB Livery, AT&T…"}
         />
 
-        {/* Categoría */}
-        <div style={label}>CATEGORÍA</div>
-        {kind === "income" ? (
-          <div style={{ display: "flex" }}>
-            <span style={chip(true, GREEN)}>{catIcon("Income", "")} Income</span>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {EXPENSE_CATEGORIES.map((c) => (
-              <button key={c} type="button" onClick={() => setCategory(c)} style={chip(category === c)}>
-                {catIcon(c, "")} {c}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Categoría: dropdown + añadir la que no esté (como en Gastos) */}
+        <CategorySelect kind={kind} value={category} onChange={setCategory} fieldStyle={input} labelStyle={label} />
 
         {/* Monto */}
         <div style={label}>MONTO</div>
@@ -419,17 +527,6 @@ export function ProyeccionEdit(props: {
     padding: "13px 14px",
     outline: "none",
   }
-  const chip = (active: boolean): CSSProperties => ({
-    border: `1.5px solid ${active ? accent : BORDER}`,
-    background: active ? `${accent}22` : FIELD,
-    color: active ? accent : "#c9cbd8",
-    borderRadius: 999,
-    padding: "8px 12px",
-    fontSize: 12.5,
-    fontWeight: 700,
-    cursor: "pointer",
-    whiteSpace: "nowrap",
-  })
   const mainBtn: CSSProperties = {
     width: "100%",
     marginTop: 14,
@@ -486,20 +583,8 @@ export function ProyeccionEdit(props: {
         <div style={label}>DESCRIPCIÓN</div>
         <input style={input} value={description} onChange={(e) => setDescription(e.target.value)} />
 
-        <div style={label}>CATEGORÍA</div>
-        {kind === "income" ? (
-          <div style={{ display: "flex" }}>
-            <span style={chip(true)}>{catIcon("Income", "")} Income</span>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {EXPENSE_CATEGORIES.map((c) => (
-              <button key={c} type="button" onClick={() => setCategory(c)} style={chip(category === c)}>
-                {catIcon(c, "")} {c}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Categoría: dropdown + añadir la que no esté (como en Gastos) */}
+        <CategorySelect kind={kind} value={category} onChange={setCategory} fieldStyle={input} labelStyle={label} />
 
         <div style={label}>MONTO</div>
         <div style={{ position: "relative" }}>

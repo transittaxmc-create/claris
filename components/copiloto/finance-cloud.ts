@@ -41,6 +41,7 @@ export const FINANCE_CLOUD_KEYS = [
   "ic_expenses",
   "claris_toll_bills",
   "claris_finance_week_v1",
+  "claris_custom_categories",
 ] as const
 
 type CloudDoc = { v: number; updated_at?: string; keys: Record<string, string> }
