@@ -374,11 +374,8 @@ export function EntryScreen({
   const todayTrips = trips.filter((trip) => tripDateOf(trip) === todayKey)
   const grossIncomeToday = todayTrips.reduce((total, trip) => total + grossOf(trip), 0)
 
-  // Cronómetro del turno para la tira fina (mismo que el box STOPWATCH).
+  // Estado del turno para la tira fina (el punto verde usa timer.running).
   const timer = timerReading({ now: shift.now, on: shift.working, startedAt: shift.measureStart })
-  const timerH = String(Math.floor(timer.elapsedSec / 3600)).padStart(2, "0")
-  const timerM = String(Math.floor((timer.elapsedSec % 3600) / 60)).padStart(2, "0")
-  const timerS = String(timer.elapsedSec % 60).padStart(2, "0")
 
   function toggleGross() {
     setShowGross((v) => !v)
@@ -421,11 +418,11 @@ export function EntryScreen({
         </span>
       </div>
 
-      {/* Slim strip: shift timer + miles — always visible, no scroll needed */}
+      {/* Slim strip: fecha + millas + controles del turno — always visible, no scroll needed */}
       <div className="flex shrink-0 items-center gap-2.5 border-b border-neutral-800/60 bg-black px-4 py-2.5 sm:px-8">
         <span className={cn("size-2 shrink-0 rounded-full", timer.running ? "bg-green-400" : "bg-neutral-600")} />
-        <span className="font-mono text-base font-bold tabular-nums text-neutral-100">
-          {timerH}:{timerM}:{timerS}
+        <span className="text-base font-bold text-neutral-100" suppressHydrationWarning>
+          {today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
         </span>
         {/* Contador de millas IRS — corre solo con el turno activo */}
         {shift.shiftActive && (
