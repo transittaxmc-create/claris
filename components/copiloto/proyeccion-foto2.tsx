@@ -338,35 +338,6 @@ export function ProyeccionFoto2(props: ProyProps) {
     )
   }
 
-  /* ── Waterfall resumen: Start · +Income · −Housing · −Vehicle · −Other · End ──
-     Cada escalón es UNA barra de rango [base, tope]: flota sola, sin barra
-     invisible debajo (la invisible se pintaba como sombra y ensuciaba). */
-  const wf = useMemo(() => {
-    const housing = groups.uses
-      .filter((u) => /rent|housing|vivienda/i.test(u.name))
-      .reduce((a, u) => a + u.value, 0)
-    const vehicle = groups.uses
-      .filter((u) => /leasing|lease|car|vehicle|auto|fuel|gas/i.test(u.name))
-      .reduce((a, u) => a + u.value, 0)
-    const other = r2(expenseTotal - housing - vehicle)
-    type WBar = { name: string; range: [number, number]; fill: string; delta: number }
-    const bars: WBar[] = []
-    let run = fc.start
-    bars.push({ name: "Start", range: [Math.min(0, fc.start), Math.max(0, fc.start)], fill: "#6b7280", delta: fc.start })
-    const pushDelta = (name: string, d: number, fill: string) => {
-      const from = run
-      run = r2(run + d)
-      bars.push({ name, range: [Math.min(from, run), Math.max(from, run)], fill, delta: d })
-    }
-    if (incomeTotal > 0) pushDelta("Income", incomeTotal, GREEN)
-    if (housing > 0.5) pushDelta("Housing", -r2(housing), "#e0653a")
-    if (vehicle > 0.5) pushDelta("Vehicle", -r2(vehicle), "#e5484d")
-    if (other > 0.5) pushDelta("Other", -other, "#dd8433")
-    const endFlow = r2(fc.start + incomeTotal - expenseTotal)
-    bars.push({ name: "End", range: [Math.min(0, endFlow), Math.max(0, endFlow)], fill: endFlow < 0 ? RED : BLUE, delta: endFlow })
-    return bars
-  }, [groups, incomeTotal, expenseTotal, fc.start])
-
   /* ── Mensual divergente: 12 meses de proyección, mes a mes ── */
   const monthly = useMemo(() => {
     const linesY = scaleLines(fcYear.lines, scenario)
@@ -599,34 +570,6 @@ export function ProyeccionFoto2(props: ProyProps) {
             own accounts, not income or expenses, so it stays out of the flow above.
           </div>
         )}
-      </FadeCard>
-
-      {/* ── WATERFALL RESUMEN ── */}
-      <FadeCard delay={0.15} style={{ margin: "12px 12px 0", ...card }}>
-        <div style={cardTitle}>BRIDGE · START TO END</div>
-        <div style={{ width: "100%", height: 208 }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={wf} margin={{ top: 26, right: 8, bottom: 0, left: 2 }}>
-              <CartesianGrid stroke="rgba(255,255,255,.06)" vertical={false} />
-              <XAxis dataKey="name" tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: BORDER }} interval={0} />
-              <YAxis tickFormatter={fmtK} tick={AXIS_TICK} tickLine={false} axisLine={false} width={46} />
-              <Tooltip content={<ChartTip />} cursor={{ fill: "rgba(255,255,255,.04)" }} />
-              <ReferenceLine y={0} stroke="rgba(255,255,255,.25)" strokeDasharray="4 4" />
-              {/* Una sola barra por escalón, con rango [base, tope]: flota sola. */}
-              <Bar dataKey="range" name="Amount" radius={[4, 4, 4, 4]} isAnimationActive={false}>
-                {wf.map((b, i) => (
-                  <Cell key={i} fill={b.fill} />
-                ))}
-                <LabelList
-                  dataKey="delta"
-                  position="top"
-                  formatter={(v: any) => signedK(Number(v) || 0)}
-                  style={{ fill: INK, fontSize: 10.5, fontWeight: 700, ...HALO }}
-                />
-              </Bar>
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
       </FadeCard>
 
       {/* ── MENSUAL DIVERGENTE: la proyección del año, mes a mes ── */}
