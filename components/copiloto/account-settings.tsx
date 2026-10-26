@@ -37,8 +37,11 @@ export function AccountSettings(props: {
   const r = props.account
   const [open, setOpen] = useState(false)
   const [dueDay, setDueDay] = useState(r.dueDay ? String(r.dueDay) : "")
+  // El campo edita la BASE guardada (r.manualBalance), no el balance
+  // calculado en pantalla: en Lyft el total incluye los movimientos
+  // escaneados, y guardar ese total los duplicaría (Miguel, 2026-10-26).
   const [manualBal, setManualBal] = useState(
-    r.source === "manual" && props.balance !== null ? String(props.balance) : "",
+    r.source === "manual" && r.manualBalance != null ? String(r.manualBalance) : "",
   )
   const [aviso, setAviso] = useState<string | null>(null)
 
@@ -47,8 +50,8 @@ export function AccountSettings(props: {
     setDueDay(r.dueDay ? String(r.dueDay) : "")
   }, [r.id, r.dueDay])
   useEffect(() => {
-    setManualBal(r.source === "manual" && props.balance !== null ? String(props.balance) : "")
-  }, [r.id, r.source, props.balance])
+    setManualBal(r.source === "manual" && r.manualBalance != null ? String(r.manualBalance) : "")
+  }, [r.id, r.source, r.manualBalance])
 
   const flash = (msg: string) => {
     setAviso(msg)
@@ -131,7 +134,8 @@ export function AccountSettings(props: {
             {!due.ok && <p className="mt-1 text-[10px] text-rose-300">Enter a day between 1 and 31.</p>}
           </div>
 
-          {/* Saldo manual (solo cuentas manuales: Venmo, Square, efectivo…) */}
+          {/* Saldo manual (solo cuentas manuales: Venmo, Square, efectivo…).
+              Edita la BASE: el balance total se calcula desde ella. */}
           {r.source === "manual" && (
             <div>
               <label htmlFor={`bal-${r.id}`} className="text-[12px] text-[#f2f3f7]">
@@ -160,6 +164,11 @@ export function AccountSettings(props: {
                   Save
                 </button>
               </div>
+              {r.id === "manual:lyft" && (
+                <p className="mt-1 text-[10px] leading-snug text-[#9a9cb0]">
+                  Manual base — the total balance is calculated by adding your scanned Lyft movements.
+                </p>
+              )}
             </div>
           )}
 

@@ -505,8 +505,12 @@ export function EntryScreen({
         </button>
       </div>
 
-      {/* Body FIJO (regla de Miguel: nada scrollea, todo queda visible) */}
-      <div className="flex-1 space-y-1.5 overflow-hidden px-4 py-1.5 sm:grid sm:grid-cols-2 sm:content-start sm:gap-4 sm:px-8 sm:py-5">
+      {/* Body: la parte de ENTRADAS (plataforma, ECONOMY, LOCATIONS) cabe
+          completa sin scroll y el header y SAVE quedan fijos fuera de este
+          div. El scroll existe SOLO para bajar a las NOTES cuando se abren
+          (aclaración de Miguel, 2026-10-26: las notas pueden quedar abajo;
+          lo que nunca puede requerir scroll es entrar datos ni salvar). */}
+      <div className="flex-1 space-y-1.5 overflow-y-auto px-4 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:content-start sm:gap-4 sm:px-8 sm:py-5">
         {/* Platform + break */}
         <div className="flex items-center gap-2 sm:col-span-2">
           <div className="relative flex-1">

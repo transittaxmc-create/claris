@@ -667,9 +667,10 @@ export function CashFlowRegister({
             bankOk={!bankError && bankAccounts.length > 0}
             onSyncBank={fetchBank}
             otherFunds={otherFunds.filter((id) => {
-              // Proyección (Miguel, 2026-10-25): SOLO Citibank ★ + PayPal,
-              // Uber y Lyft cuentan. Lo demás es control individual y no
-              // entra, aunque haya quedado marcado de antes.
+              // Proyección (Miguel, 2026-10-25; Branch 2026-10-26): SOLO
+              // Citibank ★ + PayPal, Uber, Lyft y Branch cuentan. Lo demás
+              // es control individual y no entra, aunque haya quedado
+              // marcado de antes.
               const r = registers.find((x) => x.id === id)
               return r ? esFondoPermitido(r) : false
             })}
@@ -737,16 +738,24 @@ export function CashFlowRegister({
             otherFunds={
               activeAccount.isMain
                 ? (() => {
-                    // Miguel (2026-10-25): en fondos de proyección solo PayPal,
-                    // Uber y Lyft. Si hay duplicados por nombre, se muestra el
-                    // vivo (mayor |balance|).
+                    // Miguel (2026-10-25; Branch agregada 2026-10-26): en fondos
+                    // de proyección solo PayPal, Uber, Lyft y Branch. Si hay
+                    // duplicados por nombre, se muestra el vivo (mayor |balance|).
                     const cands = registers.filter(
                       (r) => r.id !== activeAccount.id && r.kind === "bank" && esFondoPermitido(r),
                     )
                     const byBase = new Map<string, typeof cands>()
                     for (const r of cands) {
                       const nm = r.name || ""
-                      const base = /lyft/i.test(nm) ? "lyft" : /uber/i.test(nm) ? "uber" : "paypal"
+                      const base = /lyft/i.test(nm)
+                        ? "lyft"
+                        : /uber/i.test(nm)
+                          ? "uber"
+                          : /branch/i.test(nm)
+                            ? "branch"
+                            : /paypal/i.test(nm)
+                              ? "paypal"
+                              : r.id
                       byBase.set(base, [...(byBase.get(base) ?? []), r])
                     }
                     const picked: typeof cands = []

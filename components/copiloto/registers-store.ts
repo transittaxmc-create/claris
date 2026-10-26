@@ -141,13 +141,16 @@ export function last4Of(name: string): string | null {
 }
 
 /**
- * "Otros fondos" (Miguel, 2026-10-25): para PROYECCIÓN solo cuentan
- * Citibank (la principal ★, Access ·6393 — es la base y no se lista),
- * PayPal, Uber y Lyft. Todas las demás cuentas son individuales, de
- * control, y NUNCA entran a la proyección.
+ * "Otros fondos" (Miguel, 2026-10-25; ampliado 2026-10-26): para
+ * PROYECCIÓN cuentan Citibank (la principal ★, Access ·6393 — es la
+ * base y no se lista), PayPal, Uber, Lyft y Branch. Branch y Lyft no
+ * se pueden conectar: son editables a mano, y el balance que Miguel
+ * ponga entra a la proyección con su switch; si no pone nada ($0),
+ * no cuenta nada — no hay nada pendiente. Todas las demás cuentas
+ * son individuales, de control, y NUNCA entran a la proyección.
  */
 export function esFondoPermitido(r: { name?: string | null }): boolean {
-  return /paypal|uber|lyft/i.test(String(r?.name || ""))
+  return /paypal|uber|lyft|branch/i.test(String(r?.name || ""))
 }
 
 export function accountDisplayName(name: string): { title: string; subtitle: string | null } {
