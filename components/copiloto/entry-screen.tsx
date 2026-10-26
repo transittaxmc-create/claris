@@ -503,8 +503,8 @@ export function EntryScreen({
         </button>
       </div>
 
-      {/* Scrollable body */}
-      <div className="flex-1 space-y-2 overflow-y-auto px-4 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:content-start sm:gap-4 sm:px-8 sm:py-5">
+      {/* Body FIJO (regla de Miguel: nada scrollea, todo queda visible) */}
+      <div className="flex-1 space-y-2 overflow-hidden px-4 py-2 sm:grid sm:grid-cols-2 sm:content-start sm:gap-4 sm:px-8 sm:py-5">
         {/* Platform + break */}
         <div className="flex items-center gap-2 sm:col-span-2">
           <div className="relative flex-1">
