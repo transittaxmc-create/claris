@@ -47,9 +47,9 @@ export function MoneyInput({
       </span>
       <div
         className={cn(
-          "flex min-h-[4.5rem] items-center gap-1 rounded-xl border bg-neutral-950 focus-within:border-neutral-500",
+          "flex items-center gap-1 rounded-xl border bg-neutral-950 focus-within:border-neutral-500",
           negative ? "border-rose-800/70" : "border-neutral-800",
-          lg ? "px-4 py-3.5" : "px-2.5 py-2",
+          lg ? "min-h-[4.5rem] px-4 py-3.5" : "min-h-[3.5rem] px-2.5 py-2",
         )}
       >
         <span className={cn("shrink-0 text-neutral-500", lg ? "text-sm" : "text-xs")}>$</span>

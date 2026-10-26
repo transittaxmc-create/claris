@@ -49,7 +49,7 @@ function LocationColumn({
   const button = accent === "green" ? "bg-green-500 hover:bg-green-400" : "bg-sky-400 hover:bg-sky-300"
 
   return (
-    <div className="flex min-w-0 flex-col gap-1.5">
+    <div className="flex min-w-0 flex-col gap-1">
       {/* Header con GPS badge */}
       <div className="flex items-center justify-between">
         <span className="text-[11px] font-bold tracking-wide text-neutral-400">{label}</span>
@@ -149,7 +149,7 @@ function LocationColumn({
             type="button"
             onClick={onCapture}
             disabled={disabled}
-            className={cn("flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-bold text-black active:scale-[0.98] disabled:cursor-wait disabled:opacity-60 transition", button)}
+            className={cn("flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-bold text-black active:scale-[0.98] disabled:cursor-wait disabled:opacity-60 transition", button)}
           >
             {busy ? <Loader2 className="size-4 animate-spin" /> : <MapPin className="size-4" />}
             {busy ? "BUSCANDO..." : `${label} NOW`}
@@ -194,6 +194,8 @@ export function EntryScreen({
   // Montos ocultos al abrir (privacidad ante el cliente): cada uno se muestra con un toque.
   const [showGross, setShowGross] = useState(false)
   const [showRegister, setShowRegister] = useState(false)
+  // NOTES colapsada por defecto: así todo TODAY cabe sin scroll.
+  const [notesOpen, setNotesOpen] = useState(false)
   // E-ZPass: peajes ya cobrados en este viaje (no duplicar) + aviso visual
   const tollHit = useRef<Set<string>>(new Set())
   const [tollFlash, setTollFlash] = useState<string | null>(null)
@@ -385,7 +387,7 @@ export function EntryScreen({
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* Header FIJO (shrink-0, nunca scrollea): saludo, localización, fecha
           y una sola fila de controles del turno, todos de la misma altura */}
-      <div className="shrink-0 px-4 pb-2.5 pt-2 sm:px-8 sm:pt-3">
+      <div className="shrink-0 px-4 pb-2 pt-2 sm:px-8 sm:pt-3">
         <h1 className="truncate text-2xl font-bold text-white">{greeting}</h1>
         {/* From the GPS: BARRIO · CALLE, CIUDAD */}
         <p
@@ -416,7 +418,7 @@ export function EntryScreen({
         </p>
         {/* Fila de controles: estado + millas a la izquierda, botones a la
             derecha — todo a h-8, una sola línea alineada */}
-        <div className="mt-2.5 flex items-center gap-2.5 border-t border-neutral-800/60 pt-2.5">
+        <div className="mt-2 flex items-center gap-2.5 border-t border-neutral-800/60 pt-2">
           {shift.shiftActive ? (
             <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-extrabold tracking-wider text-emerald-400">
               <span className="size-1.5 rounded-full bg-emerald-400" />
@@ -504,7 +506,7 @@ export function EntryScreen({
       </div>
 
       {/* Body FIJO (regla de Miguel: nada scrollea, todo queda visible) */}
-      <div className="flex-1 space-y-2 overflow-hidden px-4 py-2 sm:grid sm:grid-cols-2 sm:content-start sm:gap-4 sm:px-8 sm:py-5">
+      <div className="flex-1 space-y-1.5 overflow-hidden px-4 py-1.5 sm:grid sm:grid-cols-2 sm:content-start sm:gap-4 sm:px-8 sm:py-5">
         {/* Platform + break */}
         <div className="flex items-center gap-2 sm:col-span-2">
           <div className="relative flex-1">
@@ -513,7 +515,7 @@ export function EntryScreen({
               onClick={() => setPlatformOpen((o) => !o)}
               aria-haspopup="listbox"
               aria-expanded={platformOpen}
-              className="flex w-full items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-3"
+              className="flex w-full items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2"
             >
               <span className="flex min-w-0 items-center gap-2">
                 <PlatformAvatar platform={draft.platform} size={24} />
@@ -558,7 +560,7 @@ export function EntryScreen({
             type="button"
             onClick={() => setOnBreak((b) => !b)}
             className={cn(
-              "flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2.5 text-xs font-bold transition-colors",
+              "flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition-colors",
               onBreak
                 ? "border-orange-400 bg-orange-400/15 text-orange-400"
                 : "border-neutral-700 bg-neutral-900 text-neutral-300"
@@ -572,9 +574,9 @@ export function EntryScreen({
         {/* ============================================== */}
         {/* BOX 1: ECONOMÍA — money fields */}
         {/* ============================================== */}
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-2.5 sm:col-span-2">
+        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-2 sm:col-span-2">
           {/* Box header */}
-          <div className="mb-2 flex items-center gap-2">
+          <div className="mb-1.5 flex items-center gap-2">
             <DollarSign className="size-4 text-emerald-400" />
             <span className="text-[11px] font-bold tracking-wide text-neutral-400">ECONOMY</span>
             <div className="ml-auto h-px flex-1 bg-neutral-800" />
@@ -599,7 +601,7 @@ export function EntryScreen({
           </div>
 
           {/* Row 2: TIPS + TOLLS + FEE */}
-          <div className="mt-2 flex gap-2">
+          <div className="mt-1.5 flex gap-2">
             <MoneyInput
               size="sm"
               label="TIPS"
@@ -628,9 +630,9 @@ export function EntryScreen({
         {/* ============================================== */}
         {/* BOX 3: UBICACIONES — PICKUP + DROPOFF              */}
         {/* ============================================== */}
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3 sm:col-span-2">
+        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-2.5 sm:col-span-2">
           {/* Box header */}
-          <div className="mb-3 flex items-center gap-2">
+          <div className="mb-2 flex items-center gap-2">
             <MapPin className="size-4 text-green-400" />
             <span className="text-[11px] font-bold tracking-wide text-neutral-400">LOCATIONS</span>
             <div className="ml-auto h-px flex-1 bg-neutral-800" />
@@ -669,29 +671,40 @@ export function EntryScreen({
           )}
         </section>
 
-        {/* BOX 4: NOTAS — el E-ZPass automático deja aquí el desglose */}
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3 sm:col-span-2">
-          <div className="mb-2 flex items-center gap-2">
+        {/* BOX 4: NOTAS — colapsada por defecto para que TODO quepa sin
+            scroll; se abre tocando el encabezado. El aviso de peaje (tollFlash)
+            se ve siempre. */}
+        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-2.5 sm:col-span-2">
+          <button
+            type="button"
+            onClick={() => setNotesOpen((v) => !v)}
+            className="flex w-full items-center gap-2"
+            aria-expanded={notesOpen}
+          >
             <Edit2 className="size-4 text-neutral-400" />
             <span className="text-[11px] font-bold tracking-wide text-neutral-400">NOTES</span>
-            <div className="ml-auto h-px flex-1 bg-neutral-800" />
-          </div>
+            {draft.notes ? <span className="size-1.5 rounded-full bg-sky-400" /> : null}
+            <div className="ml-1 h-px flex-1 bg-neutral-800" />
+            <ChevronDown className={cn("size-4 shrink-0 text-neutral-500 transition-transform", notesOpen && "rotate-180")} />
+          </button>
           {tollFlash && (
-            <p className="mb-2 rounded-lg bg-sky-950/60 px-2 py-1 text-[11px] font-semibold text-sky-300">{tollFlash}</p>
+            <p className="mt-2 rounded-lg bg-sky-950/60 px-2 py-1 text-[11px] font-semibold text-sky-300">{tollFlash}</p>
           )}
-          <textarea
-            value={draft.notes || ""}
-            onChange={(e) => set("notes", e.target.value)}
-            rows={2}
-            placeholder="Toll breakdown appears here automatically…"
-            className="w-full resize-none rounded-xl border border-neutral-800 bg-black px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 focus:border-neutral-600 focus:outline-none"
-          />
+          {notesOpen && (
+            <textarea
+              value={draft.notes || ""}
+              onChange={(e) => set("notes", e.target.value)}
+              rows={2}
+              placeholder="Toll breakdown appears here automatically…"
+              className="mt-2 w-full resize-none rounded-xl border border-neutral-800 bg-black px-3 py-2 text-sm text-neutral-200 placeholder:text-neutral-600 focus:border-neutral-600 focus:outline-none"
+            />
+          )}
         </section>
 
       </div>
 
       {/* Sticky record button con calidad y feedback */}
-      <div className="shrink-0 border-t border-neutral-800 bg-black px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 sm:px-8 sm:py-5">
+      <div className="shrink-0 border-t border-neutral-800 bg-black px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2 sm:px-8 sm:py-5">
         <button
           type="button"
           onClick={handleSave}
