@@ -20,6 +20,7 @@ import { TripEditSheet } from "./trip-edit-sheet"
 import { ReceiptScanner } from "./receipt-scanner"
 import { useShift } from "./shift"
 import { guardarMovimiento, movimientoDeGasto } from "./cash-flow-store"
+import { startFinanceCloud } from "./finance-cloud"
 import { applyDifferenceToTrip, applyBankMatchesToTrips, normalizeTripStatus } from "./reconciliation"
 import { recordTrip } from "./mileage-log"
 import { SEED_TRIPS, newTrip, stampExpense, applyExpenseUpdatesToExpenses, grossOf, netOf, tripDateOf, money, type Expense, type ExpenseDocType, type Trip, type ScheduledEntry } from "./types"
@@ -114,6 +115,13 @@ export function CopilotoApp() {
   useEffect(() => {
     tripsRef.current = trips
   }, [trips])
+
+  // Proyecciones ↔ Supabase (Miguel, 2026-10-26): libro, recurrentes y
+  // demás datos de DINERO viven en la nube (app_state 'finance') para
+  // que se abran en cualquier teléfono; el localStorage es solo caché.
+  useEffect(() => {
+    startFinanceCloud()
+  }, [])
 
   useEffect(() => {
     const propio = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA
