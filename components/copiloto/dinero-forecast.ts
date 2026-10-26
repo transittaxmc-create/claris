@@ -64,6 +64,24 @@ export interface ProbablePaid {
   tx: ForecastBankTx
 }
 
+/** Un bill REAL (de POR PAGAR o escaneado en Gastos) que puede mandar sobre
+ * la ocurrencia de un recurrente: su monto (lo que RESTA) y su fecha de
+ * vencimiento son los que proyecta ese ciclo. Regla de Miguel (2026-10-25):
+ * la proyección de un bill no es un número fijo — depende de lo que diga
+ * el bill de ese mes. */
+export interface ForecastBill {
+  vendor: string
+  /** yyyy-mm-dd: vencimiento real del bill. */
+  date: string
+  /** Lo que resta por pagar (total − pagos aplicados). 0 = pagado. */
+  remaining: number
+  /** Recurrente dueño del bill, si está enlazado. */
+  scheduleId?: string
+  /** true = bill de ciclo auto-creado desde el recurrente (estimado);
+   * false = bill real (escaneado/externo): el real manda sobre el auto. */
+  auto?: boolean
+}
+
 export interface ForecastInput {
   startBalance: number
   entries: CashFlowEntry[]
@@ -79,6 +97,9 @@ export interface ForecastInput {
   dismissedPaid?: string[]
   /** Excepciones de "solo esta vez" sobre un recurring (edición o salto). */
   overrides?: ScheduleOverride[]
+  /** Bills reales/abiertos: si uno cae en el ciclo de un recurrente de
+   * gasto, la ocurrencia proyecta el RESTO del bill en SU fecha. */
+  bills?: ForecastBill[]
 }
 
 /** Excepción puntual a un recurring: "solo esta vez" (edición o no pagar). */
@@ -512,6 +533,13 @@ export function buildForecast(input: ForecastInput): Forecast {
     })
   }
 
+  // Bills reales (POR PAGAR / escaneados): cada uno alimenta UNA sola
+  // ocurrencia de su recurrente. Se prepara la lista una vez por forecast.
+  const billsIn: ForecastBill[] = (input.bills || []).filter(
+    (b) => b && isIsoDate(b.date) && Number.isFinite(Number(b.remaining)),
+  )
+  const usedBills = new Set<number>()
+
   // 2) Recurrentes (claris_scheduled_entries)
   let recurringCount = 0
   for (const s of input.schedules || []) {
@@ -520,7 +548,46 @@ export function buildForecast(input: ForecastInput): Forecast {
     const income = s.kind === "income"
     const label = s.description || s.category || (income ? "Income" : "Expense")
     const win = paidWindow(s.frequency)
-    for (const d of expandSchedule(s, today, endDate)) {
+    const occDates = expandSchedule(s, today, endDate)
+    // Asignación de bills a ocurrencias (solo gastos). Cada bill va a SU
+    // ciclo: primero los bills REALES a su ocurrencia más cercana (±31 días);
+    // después los de ciclo auto-creados a la suya, si sigue libre — un bill
+    // real siempre desplaza al placeholder de su ciclo, nunca a otro ciclo.
+    const billForOcc = new Map<string, ForecastBill>()
+    if (!income && billsIn.length > 0) {
+      const cands: { b: ForecastBill; bi: number }[] = []
+      billsIn.forEach((b, bi) => {
+        if (usedBills.has(bi)) return
+        const linked = b.scheduleId && b.scheduleId === s.id
+        if (!linked && !vendorMatch(b.vendor, label)) return
+        cands.push({ b, bi })
+      })
+      const assignBills = (list: { b: ForecastBill; bi: number }[], exactOnly: boolean) => {
+        for (const { b, bi } of list) {
+          if (usedBills.has(bi)) continue
+          let bestD: string | null = null
+          let bestGap = Infinity
+          for (const d of occDates) {
+            if (billForOcc.has(d)) continue
+            const gap = Math.abs(diffDays(String(b.date).slice(0, 10), d))
+            // El bill de ciclo auto SOLO puede caer en SU ocurrencia exacta:
+            // si un bill real ya la tomó, el placeholder se suprime — jamás
+            // se corre al ciclo siguiente.
+            if (exactOnly ? gap === 0 : gap <= 31 && gap < bestGap) {
+              bestGap = gap
+              bestD = d
+            }
+          }
+          if (bestD) {
+            billForOcc.set(bestD, b)
+            usedBills.add(bi)
+          }
+        }
+      }
+      assignBills(cands.filter((c) => !c.b.auto), false)
+      assignBills(cands.filter((c) => c.b.auto), true)
+    }
+    for (const d of occDates) {
       // Excepción "solo esta vez": saltar o cambiar esta ocurrencia.
       const ov = (input.overrides || []).find((o) => o.scheduleId === s.id && o.date === d)
       if (ov?.skip) continue
@@ -538,6 +605,46 @@ export function buildForecast(input: ForecastInput): Forecast {
       )
       if (dup) {
         duplicatesSkipped++
+        continue
+      }
+      // ¿Este ciclo tiene bill asignado? El bill manda (regla de Miguel,
+      // 2026-10-25): la ocurrencia proyecta lo que RESTA del bill, en la
+      // fecha del bill — no el monto fijo del recurrente.
+      const bill = billForOcc.get(d)
+      if (bill) {
+        const bDate = String(bill.date).slice(0, 10)
+        const remaining = r2(Number(bill.remaining) || 0)
+        // Si el libro ya proyecta ESTE bill (entrada del escáner), la
+        // línea del recurrente sobra: no duplicar.
+        const carried = ledger.some(
+          (p) =>
+            !p.income &&
+            Math.abs(diffDays(p.date, bDate)) <= 3 &&
+            amountClose(p.amount, remaining, 0.02) &&
+            vendorMatch(p.label, bill.vendor),
+        )
+        if (carried) {
+          duplicatesSkipped++
+          continue
+        }
+        // Bill pagado: este ciclo no proyecta nada.
+        if (remaining <= 0.009) continue
+        // El bill vence fuera del horizonte: la ocurrencia tampoco entra.
+        if (bDate > endDate) {
+          beyondHorizonCount++
+          continue
+        }
+        recurringCount++
+        lines.push({
+          id: `rc:${s.id}:${d}`,
+          date: bDate < today ? today : bDate,
+          label: effLabel,
+          amount: -remaining,
+          kind: bDate < today ? "overdue" : "rec",
+          scheduleId: s.id,
+          frequency: s.frequency,
+          ...(bDate < today ? { originalDate: bDate } : {}),
+        })
         continue
       }
       // ¿Pagado/cobrado adelantado en el banco? (estilo Quicken: monto ±15 %)

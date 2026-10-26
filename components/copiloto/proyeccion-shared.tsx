@@ -3,8 +3,8 @@
 // Compartido por las vistas clonadas de las fotos (Proyecciones = foto 1,
 // Forecast = foto 2). Misma matemática de dinero-forecast.ts.
 
-import { useMemo } from "react"
-import type { CashFlowEntry } from "./types"
+import { useEffect, useMemo, useState } from "react"
+import type { CashFlowEntry, Expense } from "./types"
 import type { DueItem, RegisterAccount } from "./registers-store"
 import {
   buildForecast,
@@ -12,9 +12,57 @@ import {
   todayKey,
   type Forecast,
   type ForecastBankTx,
+  type ForecastBill,
   type ForecastLine,
 } from "./dinero-forecast"
 import { useForecastInputs } from "./dinero-proyeccion"
+import { loadCycleBills, loadExternalBills } from "./liabilities"
+import { billRemaining } from "./bill-payments"
+import { FINANCE_SYNCED_EVENT } from "./finance-sync"
+
+/** Bills que mandan sobre el recurrente (regla de Miguel, 2026-10-25):
+ * los de ciclo de POR PAGAR (auto) y los reales escaneados en Gastos.
+ * Se recargan al montar y con los mismos eventos que los recurrentes. */
+function useForecastBills(): ForecastBill[] {
+  const [bills, setBills] = useState<ForecastBill[]>([])
+  useEffect(() => {
+    const map = (b: Expense, auto: boolean): ForecastBill | null => {
+      const date = String(b?.date || "").slice(0, 10)
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null
+      return {
+        vendor: String(b.vendor || ""),
+        date,
+        remaining: billRemaining(b),
+        scheduleId: b.originScheduleId || undefined,
+        auto,
+      }
+    }
+    const load = () => {
+      try {
+        const out: ForecastBill[] = []
+        for (const b of loadCycleBills()) {
+          const m = map(b, true)
+          if (m) out.push(m)
+        }
+        for (const b of loadExternalBills()) {
+          const m = map(b, false)
+          if (m) out.push(m)
+        }
+        setBills(out)
+      } catch {
+        setBills([])
+      }
+    }
+    load()
+    window.addEventListener(FINANCE_SYNCED_EVENT, load)
+    window.addEventListener("storage", load)
+    return () => {
+      window.removeEventListener(FINANCE_SYNCED_EVENT, load)
+      window.removeEventListener("storage", load)
+    }
+  }, [])
+  return bills
+}
 
 export interface ProyProps {
   registers: RegisterAccount[]
@@ -36,6 +84,7 @@ export function useForecast30(props: ProyProps): {
   schedules: ReturnType<typeof useForecastInputs>["schedules"]
 } {
   const { schedules, overrides, dismissed } = useForecastInputs()
+  const bills = useForecastBills()
   const today = todayKey()
   const inicio = useMemo(
     () => startingBalance(props.registers, props.balances, props.otherFunds),
@@ -54,8 +103,9 @@ export function useForecast30(props: ProyProps): {
         horizonDays: 30,
         dismissedPaid: dismissed,
         overrides,
+        bills,
       }),
-    [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, dismissed, overrides],
+    [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, dismissed, overrides, bills],
   )
   const fcLong = useMemo(
     () =>
@@ -70,8 +120,9 @@ export function useForecast30(props: ProyProps): {
         horizonDays: 90,
         dismissedPaid: dismissed,
         overrides,
+        bills,
       }),
-    [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, dismissed, overrides],
+    [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, dismissed, overrides, bills],
   )
   // Año completo para la gráfica mensual (mes a mes) de la foto 2.
   const fcYear = useMemo(
@@ -87,8 +138,9 @@ export function useForecast30(props: ProyProps): {
         horizonDays: 365,
         dismissedPaid: dismissed,
         overrides,
+        bills,
       }),
-    [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, dismissed, overrides],
+    [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, dismissed, overrides, bills],
   )
   return { fc, fcLong, fcYear, today, schedules }
 }
