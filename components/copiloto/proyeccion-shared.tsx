@@ -241,3 +241,138 @@ export function catIcon(category: string | null | undefined, label: string): str
   for (const [re, icon] of byCat) if (re.test(s)) return icon
   return "📌"
 }
+
+/* ── Flujo por fuente real (Dirección A · Flujo Contable, 2026-10-25) ──────
+   El ingreso se agrupa por su ORIGEN real — la plataforma que pagó (Uber,
+   Lyft, Island City Transit, SSA, Aventus Ride…) — nunca con una plantilla
+   genérica que fusione plataformas o cuente deposits como ingreso.
+   Los transfers internos NO son ingreso ni gasto: se suman aparte y el
+   gráfico los muestra solo como nota al pie. */
+
+export interface FlowGroup {
+  name: string
+  value: number
+  color: string
+}
+export interface FlowGroups {
+  sources: FlowGroup[]
+  uses: FlowGroup[]
+  incomeTotal: number
+  expenseTotal: number
+  transfersTotal: number
+  transfersCount: number
+}
+
+const SOURCE_COLORS_BY_NAME: [RegExp, string][] = [
+  [/^uber/i, "#34d17b"],
+  [/^lyft/i, "#d663c8"],
+  [/island city/i, "#5b8cff"],
+  [/^ssa|social security/i, "#f5b84c"],
+  [/aventus/i, "#2dd4bf"],
+  [/empower/i, "#a78bfa"],
+  [/gallant/i, "#ffa94d"],
+  [/aki/i, "#f783ac"],
+  [/texport/i, "#69db7c"],
+  [/^ctg/i, "#4dabf7"],
+  [/limosys/i, "#e599f7"],
+]
+const SOURCE_COLOR_CYCLE = ["#ffa94d", "#4dabf7", "#69db7c", "#f783ac", "#e599f7", "#63e6be", "#ffd43b", "#ff8787"]
+export function sourceColor(name: string, idx: number): string {
+  for (const [re, c] of SOURCE_COLORS_BY_NAME) if (re.test(name)) return c
+  return SOURCE_COLOR_CYCLE[idx % SOURCE_COLOR_CYCLE.length]
+}
+
+const USE_COLORS_BY_NAME: [RegExp, string][] = [
+  [/leasing|lease|car|vehicle|auto/i, "#e5484d"],
+  [/rent|housing|vivienda/i, "#e0653a"],
+  [/phone|internet|mobile/i, "#dd8433"],
+  [/fee/i, "#c9a13b"],
+  [/fuel|gas/i, "#b08968"],
+  [/insurance|seguro/i, "#4a7dd8"],
+  [/food|grocer|market/i, "#7fb069"],
+  [/toll|e-?zpass/i, "#82a6c9"],
+]
+const USE_COLOR_CYCLE = ["#e5484d", "#d9483b", "#e0653a", "#dd8433", "#c9a13b", "#a06a2c", "#8a5a44", "#7a4a56"]
+export function useColor(name: string, idx: number): string {
+  for (const [re, c] of USE_COLORS_BY_NAME) if (re.test(name)) return c
+  return USE_COLOR_CYCLE[idx % USE_COLOR_CYCLE.length]
+}
+
+type SchedLite = { id: string; category?: string; description?: string }
+
+/** Transfer interno estricto: origen "transfer", categoría de transfer
+ *  interno, o etiqueta que EMPIEZA con "Transfer". Un depósito, un payout,
+ *  Zelle o Venmo NO son transfer por sí solos (ese era el bug del gráfico
+ *  viejo: contaba deposits/payouts como "Transfers In"). */
+export function isTransferLine(line: ForecastLine, schedules: SchedLite[]): boolean {
+  const e = line.entry
+  if (e?.origin === "transfer") return true
+  const cat = (
+    e?.category ||
+    (line.scheduleId ? schedules.find((s) => s.id === line.scheduleId)?.category : "") ||
+    ""
+  ).toLowerCase()
+  if (/internal transfer|transferencia interna/.test(cat)) return true
+  const lab = (e?.description || line.label || "").toLowerCase().trim()
+  if (/^transfer\b|internal transfer/.test(lab)) return true
+  return false
+}
+
+/** Nombre real de la fuente de un ingreso: la plataforma del cobro
+ *  (id claris:cobro:{fecha}:{plataforma} o sourceLabel "Cobros · X"),
+ *  el nombre del recurrente (SSA, etc.) o la etiqueta de la línea. */
+export function incomeSourceName(line: ForecastLine, schedules: SchedLite[]): string {
+  const e = line.entry
+  if (e) {
+    const m = String(e.id || "").match(/^claris:cobro:[^:]+:(.+)$/)
+    if (m) return displayLabel(m[1].replace(/_/g, " ").trim())
+    const sl = String(e.sourceLabel || "")
+    if (/cobros/i.test(sl) && sl.includes("·")) return displayLabel(sl.split("·").pop()!.trim())
+    const d = String(e.description || "").replace(/^cobro\s+/i, "").trim()
+    if (d && !/^income$/i.test(d)) return displayLabel(d)
+  }
+  if (line.scheduleId) {
+    const s = schedules.find((x) => x.id === line.scheduleId)
+    if (s?.description) return displayLabel(s.description)
+  }
+  const lab = displayLabel(String(line.label || "").replace(/^cobro\s+/i, "").trim())
+  if (lab && !/^income$/i.test(lab)) return lab
+  return "Other income"
+}
+
+/** Agrupa las líneas del forecast por fuente real / categoría real. */
+export function flowGroups(lines: ForecastLine[], schedules: SchedLite[]): FlowGroups {
+  const inc = new Map<string, number>()
+  const exp = new Map<string, number>()
+  let transfersTotal = 0
+  let transfersCount = 0
+  for (const l of lines) {
+    if (isTransferLine(l, schedules)) {
+      transfersTotal += Math.abs(l.amount)
+      transfersCount++
+      continue
+    }
+    if (l.amount > 0) {
+      const n = incomeSourceName(l, schedules)
+      inc.set(n, (inc.get(n) || 0) + l.amount)
+    } else if (l.amount < 0) {
+      let n = lineCategory(l, schedules)
+      if (!n || /^(expense|gasto)$/i.test(n)) n = displayLabel(l.label) || "Other expenses"
+      exp.set(n, (exp.get(n) || 0) + Math.abs(l.amount))
+    }
+  }
+  const toArr = (m: Map<string, number>, colorFn: (n: string, i: number) => string): FlowGroup[] =>
+    [...m.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, value], i) => ({ name, value: Math.round(value * 100) / 100, color: colorFn(name, i) }))
+  const sources = toArr(inc, sourceColor)
+  const uses = toArr(exp, useColor)
+  return {
+    sources,
+    uses,
+    incomeTotal: Math.round(sources.reduce((a, s) => a + s.value, 0) * 100) / 100,
+    expenseTotal: Math.round(uses.reduce((a, s) => a + s.value, 0) * 100) / 100,
+    transfersTotal: Math.round(transfersTotal * 100) / 100,
+    transfersCount,
+  }
+}
