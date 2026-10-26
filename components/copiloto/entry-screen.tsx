@@ -387,8 +387,9 @@ export function EntryScreen({
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3 px-4 pt-2 sm:px-8 sm:pt-3">
+      {/* Header: saludo + localización + fecha a la izquierda; GPS y los
+          controles del turno en una columna a la derecha, bajo el GPS */}
+      <div className="flex items-start justify-between gap-3 px-4 pb-2.5 pt-2 sm:px-8 sm:pt-3">
         <div className="min-w-0">
           <h1 className="truncate text-2xl font-bold text-white">{greeting}</h1>
           {/* From the GPS: BARRIO · CALLE, CIUDAD */}
@@ -411,39 +412,34 @@ export function EntryScreen({
               <span className="truncate text-neutral-600">Looking up location…</span>
             )}
           </p>
+          {/* Fecha completa, pegada a la localización */}
+          <p className="mt-1 flex items-center gap-2" suppressHydrationWarning>
+            <span className={cn("size-2 shrink-0 rounded-full", timer.running ? "bg-green-400" : "bg-neutral-600")} />
+            <span className="whitespace-nowrap text-base font-bold text-neutral-100">
+              {today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+            </span>
+          </p>
         </div>
-        <span className="flex shrink-0 items-center gap-1.5 rounded-full border border-green-500/40 bg-green-500/10 px-2.5 py-1 text-[10px] font-bold text-green-400">
-          <span className="size-1.5 rounded-full bg-green-400" />
-          GPS · High accuracy
-        </span>
-      </div>
-
-      {/* Slim strip: fecha + millas + controles del turno — always visible, no scroll needed */}
-      <div className="shrink-0 border-b border-neutral-800/60 bg-black px-4 py-2.5 sm:px-8">
-        {/* Fila 1: la fecha completa, en una sola línea */}
-        <div className="flex items-center gap-2.5">
-          <span className={cn("size-2 shrink-0 rounded-full", timer.running ? "bg-green-400" : "bg-neutral-600")} />
-          <span className="whitespace-nowrap text-base font-bold text-neutral-100" suppressHydrationWarning>
-            {today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <span className="flex items-center gap-1.5 rounded-full border border-green-500/40 bg-green-500/10 px-2.5 py-1 text-[10px] font-bold text-green-400">
+            <span className="size-1.5 rounded-full bg-green-400" />
+            GPS · High accuracy
           </span>
-        </div>
-        {/* Fila 2: millas a la izquierda; controles del turno alineados a la derecha */}
-        <div className="mt-2 flex items-center gap-2.5">
           {/* Contador de millas IRS — corre solo con el turno activo */}
           {shift.shiftActive && (
             <span
               title="Millas de negocio (IRS) — se guardan al cerrar el turno"
-              className="flex shrink-0 items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 font-mono text-[10px] font-bold tabular-nums text-sky-300"
+              className="flex items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 font-mono text-[10px] font-bold tabular-nums text-sky-300"
             >
               {shift.shiftMiles.toFixed(1)} mi
             </span>
           )}
-          <div className="ml-auto flex items-center gap-2.5">
+          <div className="flex w-24 flex-col items-stretch gap-1.5">
             {!shift.shiftActive ? (
               <button
                 type="button"
                 onClick={shift.onStart}
-                className="flex items-center gap-1 rounded-md border border-emerald-500/50 bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-300"
+                className="flex items-center justify-center gap-1 rounded-md border border-emerald-500/50 bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-300"
               >
                 <Play className="size-3" /> START
               </button>
@@ -454,7 +450,7 @@ export function EntryScreen({
                   onClick={shift.onBreak}
                   title={shift.isOnBreak ? "Resume the shift" : "Pause the shift"}
                   className={cn(
-                    "flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-bold",
+                    "flex items-center justify-center gap-1 rounded-md border px-2.5 py-1 text-xs font-bold",
                     shift.isOnBreak
                       ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300"
                       : "border-amber-500/50 bg-amber-500/10 text-amber-300",
@@ -467,7 +463,7 @@ export function EntryScreen({
                   type="button"
                   onClick={shift.onEnd}
                   title="End the shift"
-                  className="flex items-center gap-1 rounded-md border border-rose-500/50 bg-rose-500/10 px-2.5 py-1 text-xs font-bold text-rose-300"
+                  className="flex items-center justify-center gap-1 rounded-md border border-rose-500/50 bg-rose-500/10 px-2.5 py-1 text-xs font-bold text-rose-300"
                 >
                   <Square className="size-3" /> END
                 </button>
