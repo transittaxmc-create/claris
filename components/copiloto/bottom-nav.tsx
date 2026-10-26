@@ -1,6 +1,6 @@
 "use client"
 
-import { Home, ClipboardList, Wallet, BarChart3, LayoutGrid, Receipt, Gauge, Sparkles, Boxes, BookOpen, Route } from "lucide-react"
+import { Home, ClipboardList, Wallet, BarChart3, LayoutGrid, Receipt, Gauge, Sparkles, Boxes, BookOpen, Route, CreditCard } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export type Tab =
@@ -15,6 +15,7 @@ export type Tab =
   | "DATA"
   | "SOBRES"
   | "TOLLAUDIT"
+  | "CREDIT"
   | "HELP"
 
 const ITEMS: { key: Tab; label: string; icon: typeof Home }[] = [
@@ -26,6 +27,7 @@ const ITEMS: { key: Tab; label: string; icon: typeof Home }[] = [
 
 export const TABS_EN_MAS: { key: Tab; label: string; hint: string; icon: typeof Home }[] = [
   { key: "EXPENSES", label: "EXPENSES", hint: "Bills, receipts and categories", icon: Receipt },
+  { key: "CREDIT", label: "CREDIT", hint: "Cards & builders — due dates, payoff plans, scores", icon: CreditCard },
   { key: "DASH", label: "SUMMARY", hint: "Day summary", icon: Gauge },
   { key: "V1DASH", label: "DASHBOARD", hint: "v1-style hourly board", icon: Gauge },
   { key: "AI", label: "COPILOT AI", hint: "Questions, expenses and reconciliation", icon: Sparkles },
