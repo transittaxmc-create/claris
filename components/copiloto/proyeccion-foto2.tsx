@@ -27,12 +27,15 @@ import {
   Cell,
 } from "recharts"
 import {
+  MESES,
+  MESES_L,
   catIcon,
   displayLabel,
   fmtFecha,
   fmtFechaL,
   flowGroups,
   healthOf,
+  isTransferLine,
   lineCategory,
   money2,
   signed,
@@ -46,7 +49,6 @@ import {
   SCENARIO_META,
   scaleLines,
   balancePath,
-  weeklyFlows,
   r2,
   ScenarioToggle,
   CASH_FLOOR_DEFAULT,
@@ -76,6 +78,24 @@ const signedK = (v: number) => {
   const body = a >= 1000 ? `$${(a / 1000).toFixed(a >= 10000 ? 0 : 1)}k` : `$${Math.round(a)}`
   return (v < 0 ? "-" : v > 0 ? "+" : "") + body
 }
+
+/** Aún más corta, sin $ (para la gráfica mensual: 12 etiquetas en fila). */
+const signedK2 = (v: number) => {
+  const a = Math.abs(v)
+  const body = a >= 1000 ? `${(a / 1000).toFixed(a >= 10000 ? 0 : 1)}k` : `${Math.round(a)}`
+  return (v < 0 ? "-" : v > 0 ? "+" : "") + body
+}
+
+/* Legibilidad (pedido de Miguel 2026-10-25): ejes más grandes y claros, y
+   halo oscuro tras las etiquetas de datos para que se lean sobre cualquier
+   color de barra sin perder la belleza. */
+const AXIS_TICK = { fill: "#b9bdd1", fontSize: 11, fontWeight: 600 } as const
+const HALO = {
+  paintOrder: "stroke",
+  stroke: "#14161d",
+  strokeWidth: 3.5,
+  strokeLinejoin: "round",
+} as const
 
 /** Tooltip oscuro único para todos los gráficos. */
 function ChartTip({ active, payload, label }: any) {
@@ -185,7 +205,7 @@ function mergeTop(gs: FlowGroup[], n: number): FlowGroup[] {
 }
 
 export function ProyeccionFoto2(props: ProyProps) {
-  const { fc, today, schedules } = useForecast30(props)
+  const { fc, fcYear, today, schedules } = useForecast30(props)
   const [scenario, setScenario] = useState<Scenario>("base")
 
   const scaledLines = useMemo(() => scaleLines(fc.lines, scenario), [fc.lines, scenario])
@@ -205,7 +225,6 @@ export function ProyeccionFoto2(props: ProyProps) {
   const health = healthOf({ ...fc, end: endBal, incomeTotal, expenseTotal } as Forecast)
   const CASH_FLOOR = CASH_FLOOR_DEFAULT
 
-  const weeks = useMemo(() => weeklyFlows(scaledLines, today), [scaledLines, today])
   const events = useMemo(
     () =>
       scaledLines
@@ -254,7 +273,7 @@ export function ProyeccionFoto2(props: ProyProps) {
     const isHub = name === "Income"
     const isLeft = x < containerWidth * 0.34
     const cy = y + height / 2
-    const nameFs = name.length > 16 ? 9.3 : 10.5
+    const nameFs = name.length > 16 ? 10 : 11
     // Nodo muy fino: una sola línea "Nombre · $X" para que las etiquetas
     // de nodos vecinos no se encimen (el detalle completo va en la lista).
     const thin = height < 17
@@ -267,7 +286,7 @@ export function ProyeccionFoto2(props: ProyProps) {
             <text x={x + width / 2} y={cy - 3} textAnchor="middle" fill="#fff" fontSize="9.5" fontWeight="800" letterSpacing="1">
               INCOME
             </text>
-            <text x={x + width / 2} y={cy + 11} textAnchor="middle" fill="rgba(255,255,255,.85)" fontSize="9.5" fontWeight="700">
+            <text x={x + width / 2} y={cy + 11} textAnchor="middle" fill="rgba(255,255,255,.92)" fontSize="10" fontWeight="700">
               {valTxt}
             </text>
           </>
@@ -280,14 +299,14 @@ export function ProyeccionFoto2(props: ProyProps) {
             fontSize={nameFs}
             fontWeight="700"
           >
-            {name} <tspan fill={SUB} fontWeight="600">· {valTxt}</tspan>
+            {name} <tspan fill="#c6c9d6" fontWeight="600">· {valTxt}</tspan>
           </text>
         ) : isLeft ? (
           <>
             <text x={x - 8} y={cy - 2} textAnchor="end" fill={INK} fontSize={nameFs} fontWeight="700">
               {name}
             </text>
-            <text x={x - 8} y={cy + 11} textAnchor="end" fill={SUB} fontSize="9.5" fontWeight="600">
+            <text x={x - 8} y={cy + 11} textAnchor="end" fill="#c6c9d6" fontSize="10" fontWeight="600">
               {valTxt}
             </text>
           </>
@@ -296,7 +315,7 @@ export function ProyeccionFoto2(props: ProyProps) {
             <text x={x + width + 8} y={cy - 2} textAnchor="start" fill={INK} fontSize={nameFs} fontWeight="700">
               {name}
             </text>
-            <text x={x + width + 8} y={cy + 11} textAnchor="start" fill={SUB} fontSize="9.5" fontWeight="600">
+            <text x={x + width + 8} y={cy + 11} textAnchor="start" fill="#c6c9d6" fontSize="10" fontWeight="600">
               {valTxt}
             </text>
           </>
@@ -319,7 +338,9 @@ export function ProyeccionFoto2(props: ProyProps) {
     )
   }
 
-  /* ── Waterfall resumen: Start · +Income · −Housing · −Vehicle · −Other · End ── */
+  /* ── Waterfall resumen: Start · +Income · −Housing · −Vehicle · −Other · End ──
+     Cada escalón es UNA barra de rango [base, tope]: flota sola, sin barra
+     invisible debajo (la invisible se pintaba como sombra y ensuciaba). */
   const wf = useMemo(() => {
     const housing = groups.uses
       .filter((u) => /rent|housing|vivienda/i.test(u.name))
@@ -328,31 +349,51 @@ export function ProyeccionFoto2(props: ProyProps) {
       .filter((u) => /leasing|lease|car|vehicle|auto|fuel|gas/i.test(u.name))
       .reduce((a, u) => a + u.value, 0)
     const other = r2(expenseTotal - housing - vehicle)
-    // Truco waterfall (pedido por Miguel): "invisible" = base acumulada que
-    // levanta la barra; "visible" = el escalón que se pinta flotando.
-    type WBar = { name: string; invisible: number; visible: number; fill: string; delta: number }
+    type WBar = { name: string; range: [number, number]; fill: string; delta: number }
     const bars: WBar[] = []
     let run = fc.start
-    bars.push({ name: "Start", invisible: Math.min(0, fc.start), visible: Math.abs(fc.start), fill: "#6b7280", delta: fc.start })
+    bars.push({ name: "Start", range: [Math.min(0, fc.start), Math.max(0, fc.start)], fill: "#6b7280", delta: fc.start })
     const pushDelta = (name: string, d: number, fill: string) => {
       const from = run
       run = r2(run + d)
-      bars.push({ name, invisible: Math.min(from, run), visible: Math.abs(d), fill, delta: d })
+      bars.push({ name, range: [Math.min(from, run), Math.max(from, run)], fill, delta: d })
     }
     if (incomeTotal > 0) pushDelta("Income", incomeTotal, GREEN)
     if (housing > 0.5) pushDelta("Housing", -r2(housing), "#e0653a")
     if (vehicle > 0.5) pushDelta("Vehicle", -r2(vehicle), "#e5484d")
     if (other > 0.5) pushDelta("Other", -other, "#dd8433")
     const endFlow = r2(fc.start + incomeTotal - expenseTotal)
-    bars.push({ name: "End", invisible: Math.min(0, endFlow), visible: Math.abs(endFlow), fill: endFlow < 0 ? RED : BLUE, delta: endFlow })
+    bars.push({ name: "End", range: [Math.min(0, endFlow), Math.max(0, endFlow)], fill: endFlow < 0 ? RED : BLUE, delta: endFlow })
     return bars
   }, [groups, incomeTotal, expenseTotal, fc.start])
 
-  /* ── Semanal divergente: entra arriba, sale abajo, punto = neto ── */
-  const wk = useMemo(
-    () => weeks.map((w) => ({ ...w, outNeg: -w.out, net: r2(w.inn - w.out) })),
-    [weeks],
-  )
+  /* ── Mensual divergente: 12 meses de proyección, mes a mes ── */
+  const monthly = useMemo(() => {
+    const linesY = scaleLines(fcYear.lines, scenario)
+    const t0 = Date.parse(today + "T12:00:00Z")
+    const base = new Date(t0)
+    const out: { label: string; full: string; inn: number; outNeg: number; net: number }[] = []
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(Date.UTC(base.getUTCFullYear(), base.getUTCMonth() + i, 1))
+      const ym = d.toISOString().slice(0, 7)
+      let inn = 0
+      let outAmt = 0
+      for (const l of linesY) {
+        if (!String(l.date).startsWith(ym)) continue
+        if (isTransferLine(l, schedules)) continue
+        if (l.amount > 0) inn += l.amount
+        else outAmt += Math.abs(l.amount)
+      }
+      out.push({
+        label: MESES[d.getUTCMonth()],
+        full: `${MESES_L[d.getUTCMonth()]} ${d.getUTCFullYear()}`,
+        inn: r2(inn),
+        outNeg: -r2(outAmt),
+        net: r2(inn - outAmt),
+      })
+    }
+    return out
+  }, [fcYear.lines, scenario, today, schedules])
 
   const transfersPct =
     groups.transfersTotal > 0
@@ -489,14 +530,14 @@ export function ProyeccionFoto2(props: ProyProps) {
               <XAxis
                 dataKey="date"
                 tickFormatter={fmtFechaL}
-                tick={{ fill: SUB, fontSize: 10.5 }}
+                tick={AXIS_TICK}
                 tickLine={false}
                 axisLine={{ stroke: BORDER }}
                 minTickGap={44}
               />
               <YAxis
                 tickFormatter={fmtK}
-                tick={{ fill: SUB, fontSize: 10.5 }}
+                tick={AXIS_TICK}
                 tickLine={false}
                 axisLine={false}
                 width={46}
@@ -508,7 +549,7 @@ export function ProyeccionFoto2(props: ProyProps) {
                 y={CASH_FLOOR}
                 stroke={AMBER}
                 strokeDasharray="4 4"
-                label={{ value: `floor $${CASH_FLOOR}`, fill: AMBER, fontSize: 9.5, fontWeight: 700, position: "insideTopRight" }}
+                label={{ value: `floor $${CASH_FLOOR}`, fill: AMBER, fontSize: 10.5, fontWeight: 700, position: "insideTopRight" }}
               />
               <Area type="stepAfter" dataKey="balance" name="Balance" stroke="#3ddc84" strokeWidth={2.4} fill="url(#f2area)" />
               {/* El punto bajo va SIN texto dentro del gráfico (el "Low $X · fecha"
@@ -567,18 +608,12 @@ export function ProyeccionFoto2(props: ProyProps) {
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={wf} margin={{ top: 26, right: 8, bottom: 0, left: 2 }}>
               <CartesianGrid stroke="rgba(255,255,255,.06)" vertical={false} />
-              <XAxis
-                dataKey="name"
-                tick={{ fill: SUB, fontSize: 10.5, fontWeight: 600 }}
-                tickLine={false}
-                axisLine={{ stroke: BORDER }}
-                interval={0}
-              />
-              <YAxis tickFormatter={fmtK} tick={{ fill: SUB, fontSize: 10.5 }} tickLine={false} axisLine={false} width={46} />
+              <XAxis dataKey="name" tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: BORDER }} interval={0} />
+              <YAxis tickFormatter={fmtK} tick={AXIS_TICK} tickLine={false} axisLine={false} width={46} />
               <Tooltip content={<ChartTip />} cursor={{ fill: "rgba(255,255,255,.04)" }} />
               <ReferenceLine y={0} stroke="rgba(255,255,255,.25)" strokeDasharray="4 4" />
-              <Bar dataKey="invisible" stackId="a" fill="transparent" isAnimationActive={false} />
-              <Bar dataKey="visible" stackId="a" name="Amount" radius={[4, 4, 4, 4]} isAnimationActive={false}>
+              {/* Una sola barra por escalón, con rango [base, tope]: flota sola. */}
+              <Bar dataKey="range" name="Amount" radius={[4, 4, 4, 4]} isAnimationActive={false}>
                 {wf.map((b, i) => (
                   <Cell key={i} fill={b.fill} />
                 ))}
@@ -586,7 +621,7 @@ export function ProyeccionFoto2(props: ProyProps) {
                   dataKey="delta"
                   position="top"
                   formatter={(v: any) => signedK(Number(v) || 0)}
-                  style={{ fill: INK, fontSize: 10, fontWeight: 700 }}
+                  style={{ fill: INK, fontSize: 10.5, fontWeight: 700, ...HALO }}
                 />
               </Bar>
             </ComposedChart>
@@ -594,35 +629,33 @@ export function ProyeccionFoto2(props: ProyProps) {
         </div>
       </FadeCard>
 
-      {/* ── SEMANAL DIVERGENTE ── */}
+      {/* ── MENSUAL DIVERGENTE: la proyección del año, mes a mes ── */}
       <FadeCard delay={0.2} style={{ margin: "12px 12px 0", ...card }}>
-        <div style={cardTitle}>WEEKLY IN vs OUT</div>
-        <div style={{ width: "100%", height: 208 }}>
+        <div style={cardTitle}>MONTHLY IN vs OUT · NEXT 12 MONTHS</div>
+        <div style={{ width: "100%", height: 216 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={wk} margin={{ top: 18, right: 10, bottom: 0, left: 2 }}>
+            <ComposedChart data={monthly} margin={{ top: 20, right: 6, bottom: 0, left: 2 }}>
               <CartesianGrid stroke="rgba(255,255,255,.06)" vertical={false} />
-              <XAxis
-                dataKey="label"
-                tick={{ fill: SUB, fontSize: 9 }}
-                tickLine={false}
-                axisLine={{ stroke: BORDER }}
-                interval={0}
+              <XAxis dataKey="label" tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: BORDER }} interval={0} />
+              <YAxis tickFormatter={fmtK} tick={AXIS_TICK} tickLine={false} axisLine={false} width={46} />
+              <Tooltip
+                content={<ChartTip />}
+                cursor={{ fill: "rgba(255,255,255,.04)" }}
+                labelFormatter={(_v: any, payload: any) => payload?.[0]?.payload?.full ?? ""}
               />
-              <YAxis tickFormatter={fmtK} tick={{ fill: SUB, fontSize: 10.5 }} tickLine={false} axisLine={false} width={46} />
-              <Tooltip content={<ChartTip />} cursor={{ fill: "rgba(255,255,255,.04)" }} />
               <ReferenceLine y={0} stroke="rgba(255,255,255,.3)" />
-              <Bar dataKey="inn" name="In" fill={GREEN} radius={[3, 3, 0, 0]} maxBarSize={26} />
-              <Bar dataKey="outNeg" name="Out" fill={RED} radius={[0, 0, 3, 3]} maxBarSize={26} />
+              <Bar dataKey="inn" name="In" fill={GREEN} radius={[3, 3, 0, 0]} maxBarSize={13} />
+              <Bar dataKey="outNeg" name="Out" fill={RED} radius={[0, 0, 3, 3]} maxBarSize={13} />
               <Line
                 dataKey="net"
                 name="Net"
                 stroke={AMBER}
                 strokeWidth={0}
-                dot={{ r: 4, fill: AMBER, stroke: "#14161d", strokeWidth: 1.5 }}
+                dot={{ r: 3.5, fill: AMBER, stroke: "#14161d", strokeWidth: 1.5 }}
                 isAnimationActive={false}
               >
-                {/* Neto corto (+$1.2k) y del lado que no choca con su barra:
-                    arriba si el neto es positivo, abajo si es negativo. */}
+                {/* Neto ultracorto (+3.3k) con halo: se lee sobre cualquier barra
+                    y no choca con el vecino (12 meses en fila). */}
                 <LabelList
                   dataKey="net"
                   content={(p: any) => {
@@ -635,8 +668,9 @@ export function ProyeccionFoto2(props: ProyProps) {
                         fill={AMBER}
                         fontSize={9.5}
                         fontWeight={700}
+                        {...HALO}
                       >
-                        {signedK(v)}
+                        {signedK2(v)}
                       </text>
                     )
                   }}
@@ -645,7 +679,9 @@ export function ProyeccionFoto2(props: ProyProps) {
             </ComposedChart>
           </ResponsiveContainer>
         </div>
-        <div style={{ fontSize: 10, color: SUB, marginTop: 4 }}>Green = in · Red = out · Amber dot = net for the week · each bar = 7 days from today</div>
+        <div style={{ fontSize: 10.5, color: "#b9bdd1", marginTop: 4 }}>
+          Green = in · Red = out · Amber dot = net for the month · projection month to month, next 12 months
+        </div>
       </FadeCard>
 
       {/* ── EVENTOS ── */}

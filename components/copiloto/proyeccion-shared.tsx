@@ -31,6 +31,7 @@ export interface ProyProps {
 export function useForecast30(props: ProyProps): {
   fc: Forecast
   fcLong: Forecast
+  fcYear: Forecast
   today: string
   schedules: ReturnType<typeof useForecastInputs>["schedules"]
 } {
@@ -72,7 +73,24 @@ export function useForecast30(props: ProyProps): {
       }),
     [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, dismissed, overrides],
   )
-  return { fc, fcLong, today, schedules }
+  // Año completo para la gráfica mensual (mes a mes) de la foto 2.
+  const fcYear = useMemo(
+    () =>
+      buildForecast({
+        startBalance: inicio.value,
+        entries: props.entries,
+        schedules,
+        dues: props.dues,
+        balances: props.balances,
+        bankTxs: props.bankOk ? props.bankTxs : [],
+        today,
+        horizonDays: 365,
+        dismissedPaid: dismissed,
+        overrides,
+      }),
+    [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, dismissed, overrides],
+  )
+  return { fc, fcLong, fcYear, today, schedules }
 }
 
 export const MESES = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
