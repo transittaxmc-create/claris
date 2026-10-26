@@ -80,7 +80,7 @@ export function ExpenseRegisterForm() {
         type="text"
         value={note}
         onChange={(e) => setNote(e.target.value)}
-        placeholder="Nota (optional)"
+        placeholder="Note (optional)"
         className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-white"
       />
 

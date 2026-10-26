@@ -81,9 +81,9 @@ export function BankAuditSheet() {
       const json = await res.json()
       if (res.ok && json.success && Number.isFinite(json.balance)) {
         setStartingBalance(Number(json.balance))
-        setStatus(`✅ Saldo del banco aplicado: $${Number(json.balance).toFixed(2)}`)
+        setStatus(`✅ Bank balance applied: $${Number(json.balance).toFixed(2)}`)
       } else {
-        setStatus(`⚠️ ${json.error || "No se pudo leer el saldo"}. Ingrésalo a mano.`)
+        setStatus(`⚠️ ${json.error || "The balance could not be read"}. Enter it manually.`)
       }
     } catch {
       setStatus("⚠️ Couldn't read the screenshot. Enter it manually.")
@@ -120,7 +120,7 @@ export function BankAuditSheet() {
               ) : (
                 <Camera className="size-4 text-yellow-400" />
               )}
-              {busy ? "Leyendo saldo..." : "Subir captura del banco"}
+              {busy ? "Reading balance..." : "Upload bank screenshot"}
               <input
                 type="file"
                 accept="image/*"

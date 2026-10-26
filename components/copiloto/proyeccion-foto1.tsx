@@ -90,7 +90,7 @@ export function ProyeccionFoto1(props: ProyProps) {
 
   // ——— Quitar TODO lo proyectado (pedido de Miguel, 2026-10-25) ———
   // Lo proyectado se borra desde ESTA misma pantalla para empezar a
-  // programar desde cero con ＋ Ingreso / ＋ Gasto. Misma regla que el
+  // programar desde cero con ＋ Income / ＋ Expense. Misma regla que el
   // DELETE PROJECTION DATA ONLY de Data: fuera recurrentes + overrides +
   // proyectados sin pagar; se quedan banco, viajes, pagos reales y los
   // cobros reconciliados de EARNINGS (claris:cobro:*). El historial de
@@ -180,7 +180,7 @@ export function ProyeccionFoto1(props: ProyProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [segurosKey])
 
-  const porConfirmar = fcLong.probablePaid.filter((p) => !esSeguro(p) && !dismissed.includes(p.key))
+  const porConfirm = fcLong.probablePaid.filter((p) => !esSeguro(p) && !dismissed.includes(p.key))
   const health = healthOf(fc)
   const net = fc.end - fc.start
 
@@ -271,39 +271,39 @@ export function ProyeccionFoto1(props: ProyProps) {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 14px 10px" }}>
         <span style={{ fontSize: 17, color: SUB }}>⚙️</span>
         <h2 style={{ fontSize: 13.5, fontWeight: 800, letterSpacing: 0.8, textAlign: "center", flex: 1, minWidth: 0 }}>
-          REGISTRO &amp; PRONÓSTICO DE FLUJO DE CAJA
+          CASH FLOW REGISTER & FORECAST
         </h2>
         <span style={{ fontSize: 17, color: SUB }}>🔔</span>
       </div>
 
-      {/* RESUMEN DE PROYECCIÓN */}
+      {/* PROJECTION SUMMARY */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "6px 14px 8px" }}>
-        <span style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: 1.2, color: SUB }}>RESUMEN DE PROYECCIÓN</span>
+        <span style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: 1.2, color: SUB }}>PROJECTION SUMMARY</span>
         <span style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: 1.2, color: SUB }}>
-          SALUD: <span style={{ color: health.color }}>{health.labelEs}</span>
+          HEALTH: <span style={{ color: health.color }}>{health.label}</span>
         </span>
       </div>
       <div style={{ margin: "0 12px", background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, padding: "16px 14px" }}>
         <div style={{ display: "flex", gap: 10 }}>
           <div style={{ flex: 1.15, minWidth: 0 }}>
             <div style={{ fontSize: 10.5, color: SUB, letterSpacing: 0.4, marginBottom: 3 }}>
-              SALDO INICIAL HOY ({fmtFecha(today)}):
+              STARTING BALANCE TODAY ({fmtFecha(today)}):
             </div>
             <div style={{ fontSize: 25, fontWeight: 800, marginBottom: 13 }}>{fc.start < 0 ? "-$" : "$"}{money2(fc.start)}</div>
-            <div style={{ fontSize: 10.5, color: SUB, letterSpacing: 0.4, marginBottom: 3 }}>INGRESOS PROYECTADOS (30D):</div>
+            <div style={{ fontSize: 10.5, color: SUB, letterSpacing: 0.4, marginBottom: 3 }}>PROJECTED INCOME (30D):</div>
             <div style={{ fontSize: 19, fontWeight: 800, color: GREEN, marginBottom: 13 }}>{signed(fc.incomeTotal)}</div>
-            <div style={{ fontSize: 10.5, color: SUB, letterSpacing: 0.4, marginBottom: 3 }}>GASTOS PROYECTADOS (30D):</div>
+            <div style={{ fontSize: 10.5, color: SUB, letterSpacing: 0.4, marginBottom: 3 }}>PROJECTED EXPENSES (30D):</div>
             <div style={{ fontSize: 19, fontWeight: 800, color: RED }}>{signed(-fc.expenseTotal)}</div>
           </div>
           <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
               <Gauge health={health} size={104} />
               <div style={{ fontSize: 10.5, fontWeight: 800, color: health.color, marginTop: -2, marginBottom: 10 }}>
-                SALUD: {health.labelEs}
+                HEALTH: {health.label}
               </div>
             </div>
             <div style={{ fontSize: 10.5, color: SUB, letterSpacing: 0.4, marginBottom: 3 }}>
-              SALDO FINAL PRONOSTICADO ({fmtFecha(fc.endDate)}):
+              FORECAST ENDING BALANCE ({fmtFecha(fc.endDate)}):
             </div>
             {/* El saldo final SÍ puede ser negativo (es proyectado) y
                 debe VERSE negativo: antes se imprimía con money2() que
@@ -311,7 +311,7 @@ export function ProyeccionFoto1(props: ProyProps) {
                 cuando la cuenta daba −$8,247.32. */}
             <div style={{ fontSize: 25, fontWeight: 800, marginBottom: 6, color: fc.end < 0 ? RED : undefined }}>{fc.end < 0 ? "-$" : "$"}{money2(fc.end)}</div>
             <div style={{ fontSize: 11.5, color: SUB }}>
-              FLUJO NETO: <b style={{ color: net >= 0 ? GREEN : RED }}>{signed(net)}</b>
+              NET FLOW: <b style={{ color: net >= 0 ? GREEN : RED }}>{signed(net)}</b>
             </div>
           </div>
         </div>
@@ -324,18 +324,18 @@ export function ProyeccionFoto1(props: ProyProps) {
           onClick={() => setForm("income")}
           style={{ flex: 1, border: `1.5px solid ${GREEN}`, background: "rgba(52,209,123,.12)", color: GREEN, borderRadius: 12, padding: "12px 0", fontSize: 14, fontWeight: 800, cursor: "pointer" }}
         >
-          ＋ Ingreso
+          ＋ Income
         </button>
         <button
           type="button"
           onClick={() => setForm("expense")}
           style={{ flex: 1, border: `1.5px solid ${RED}`, background: "rgba(255,93,108,.10)", color: RED, borderRadius: 12, padding: "12px 0", fontSize: 14, fontWeight: 800, cursor: "pointer" }}
         >
-          ＋ Gasto
+          ＋ Expense
         </button>
       </div>
 
-      {/* Quitar todo lo proyectado: empezar a programar desde cero */}
+      {/* Remove all projected: empezar a programar desde cero */}
       {wipeCounts === null ? (
         <div style={{ margin: "10px 12px 0" }}>
           <button
@@ -343,17 +343,17 @@ export function ProyeccionFoto1(props: ProyProps) {
             onClick={contarProyectado}
             style={{ width: "100%", border: `1px solid ${BORDER}`, background: "transparent", color: SUB, borderRadius: 12, padding: "9px 0", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
           >
-            Quitar todo lo proyectado
+            Remove all projected
           </button>
         </div>
       ) : (
         <div style={{ margin: "10px 12px 0", background: CARD, border: "1px solid #7c2d12", borderRadius: 12, padding: "10px 12px" }}>
           <p style={{ fontSize: 11.5, color: INK, margin: 0 }}>
-            Se borran <b>{wipeCounts.schedules} recurrentes</b> y <b>{wipeCounts.projected} proyectados sin pagar</b>.
+            This deletes <b>{wipeCounts.schedules} recurring</b> and <b>{wipeCounts.projected} unpaid projected</b> entries.
           </p>
           <p style={{ fontSize: 10.5, color: SUB, margin: "4px 0 0" }}>
-            Se quedan: banco, viajes, pagos reales, cobros de Earnings y el historial de Por pagar. Después programas
-            los tuyos con ＋ Ingreso / ＋ Gasto — todo editable.
+            Kept: bank, trips, real payments, Earnings payouts and the Payables history. Then add
+            your own with ＋ Income / ＋ Expense — everything editable.
           </p>
           <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
             <button
@@ -361,22 +361,22 @@ export function ProyeccionFoto1(props: ProyProps) {
               onClick={quitarTodoProyectado}
               style={{ flex: 1, background: "#b91c1c", color: "#fff", border: "none", borderRadius: 9, padding: "8px 0", fontSize: 12, fontWeight: 800, cursor: "pointer" }}
             >
-              Sí, quitar todo
+              Yes, remove all
             </button>
             <button
               type="button"
               onClick={() => setWipeCounts(null)}
               style={{ flex: 1, background: "#262833", color: "#c9cbd8", border: "none", borderRadius: 9, padding: "8px 0", fontSize: 12, fontWeight: 800, cursor: "pointer" }}
             >
-              Cancelar
+              Cancel
             </button>
           </div>
         </div>
       )}
 
-      {/* REGISTRO UNIFICADO — sin caja visible, ancho casi completo */}
+      {/* UNIFIED REGISTER — sin caja visible, ancho casi completo */}
       <div style={{ padding: "18px 14px 8px", fontSize: 12.5, fontWeight: 800, letterSpacing: 1.2, color: SUB }}>
-        REGISTRO UNIFICADO
+        UNIFIED REGISTER
       </div>
       <div>
         <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
@@ -386,14 +386,14 @@ export function ProyeccionFoto1(props: ProyProps) {
           </colgroup>
           <thead>
             <tr>
-              <th style={{ ...th, paddingLeft: 12 }}>FECHA</th><th style={th}>DESCRIPCIÓN</th><th style={th}>CATEGORÍA</th>
-              <th style={{ ...th, textAlign: "right" }}>BANK</th><th style={{ ...th, textAlign: "right" }}>MONTO</th>
-              <th style={{ ...th, textAlign: "right" }}>SALDO ACUM.</th>
+              <th style={{ ...th, paddingLeft: 12 }}>DATE</th><th style={th}>DESCRIPTION</th><th style={th}>CATEGORY</th>
+              <th style={{ ...th, textAlign: "right" }}>BANK</th><th style={{ ...th, textAlign: "right" }}>AMOUNT</th>
+              <th style={{ ...th, textAlign: "right" }}>RUNNING BAL.</th>
             </tr>
           </thead>
         </table>
         <div style={{ background: BAND, padding: "8px 14px", fontSize: 11, fontWeight: 800, letterSpacing: 1, color: SUB }}>
-          TRANSACCIONES FUTURAS / PRONÓSTICO
+          FUTURE TRANSACTIONS / FORECAST
         </div>
         <div style={{ maxHeight: "46vh", overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", touchAction: "pan-y" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
@@ -403,7 +403,7 @@ export function ProyeccionFoto1(props: ProyProps) {
           </colgroup>
           <tbody>
             {futuras.length === 0 && (
-              <tr><td colSpan={6} style={{ ...td, color: SUB }}>Sin transacciones futuras programadas.</td></tr>
+              <tr><td colSpan={6} style={{ ...td, color: SUB }}>No future transactions scheduled.</td></tr>
             )}
             {futuras.map(({ line, before, after }, i) => {
               const cat = lineCategory(line, schedules)
@@ -445,9 +445,9 @@ export function ProyeccionFoto1(props: ProyProps) {
         </table>
         </div>
 
-        {/* DESGLOSE DE PRONÓSTICO */}
+        {/* FORECAST BREAKDOWN */}
         <div style={{ padding: "14px 14px 10px", borderTop: `1px solid ${BORDER}` }}>
-          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: SUB, marginBottom: 8 }}>DESGLOSE DE PRONÓSTICO</div>
+          <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: SUB, marginBottom: 8 }}>FORECAST BREAKDOWN</div>
           <div style={{ display: "flex", gap: 12 }}>
             <div style={{ width: "38%", minWidth: 0 }}>
               <MiniChart points={chartPts} />
@@ -477,7 +477,7 @@ export function ProyeccionFoto1(props: ProyProps) {
                 </div>
               </div>
               <div style={{ textAlign: "right", marginTop: 6, fontSize: 11, color: SUB, whiteSpace: "nowrap" }}>
-                FLUJO NETO: <b style={{ color: net >= 0 ? GREEN : RED }}>{signed(net)}</b>
+                NET FLOW: <b style={{ color: net >= 0 ? GREEN : RED }}>{signed(net)}</b>
               </div>
             </div>
           </div>
@@ -485,21 +485,21 @@ export function ProyeccionFoto1(props: ProyProps) {
 
         {/* HOY */}
         <div style={{ background: BAND, padding: "10px 14px", fontSize: 12.5, fontWeight: 800, letterSpacing: 0.4 }}>
-          HOY, {fmtFecha(today)} - SALDO ACTUAL: ${money2(fc.start)}
+          TODAY, {fmtFecha(today)} - CURRENT BALANCE: ${money2(fc.start)}
         </div>
       </div>
 
       {/* POR CONFIRMAR — apareció en el banco pero no cierra solo:
           trae diferencia de monto o el comercio no es claro. */}
-      {porConfirmar.length > 0 && (
+      {porConfirm.length > 0 && (
         <div style={{ marginTop: 12, background: CARD, border: "1px solid #14532d", borderRadius: 16, padding: "12px 14px" }}>
           <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 1, color: GREEN }}>
-            POR CONFIRMAR · {porConfirmar.length}
+            TO CONFIRM · {porConfirm.length}
           </div>
           <p style={{ fontSize: 10, color: SUB, margin: "3px 0 9px" }}>
-            Apareció en el banco pero con diferencia o sin comercio claro. Tú confirmas o descartas.
+            It showed up at the bank but with a difference or no clear merchant. You confirm or dismiss it.
           </p>
-          {porConfirmar.map((p) => {
+          {porConfirm.map((p) => {
             const entryAmt = Math.abs(Number(p.entry.amount) || 0)
             const bankAmt = Math.abs(Number(p.tx.amount) || 0)
             const diff = Math.round((bankAmt - entryAmt) * 100) / 100
@@ -509,22 +509,22 @@ export function ProyeccionFoto1(props: ProyProps) {
               <div key={p.key} style={{ border: `1px solid ${BORDER}`, background: "#0b0d12", borderRadius: 10, padding: "8px 10px", marginBottom: 6 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
                   <span style={{ fontSize: 11.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {p.entry.description || "Movimiento"}
+                    {p.entry.description || "Transaction"}
                   </span>
                   <span style={{ fontSize: 11.5, fontWeight: 700 }}>${money2(entryAmt)}</span>
                 </div>
                 <div style={{ fontSize: 10, color: SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  Banco {fmtFecha(String(p.tx.date).slice(0, 10))} · {p.tx.detail} · ${money2(bankAmt)}
+                  Bank {fmtFecha(String(p.tx.date).slice(0, 10))} · {p.tx.detail} · ${money2(bankAmt)}
                 </div>
                 {hasDiff && (
                   <div style={{ fontSize: 10, fontWeight: 700, color: "#f5b73f", marginTop: 2 }}>
-                    Diferencia: ${money2(Math.abs(diff))} {diff < 0 ? "de menos" : "de más"}
+                    Difference: ${money2(Math.abs(diff))} {diff < 0 ? "less" : "more"}
                   </div>
                 )}
                 {!isAdjusting ? (
                   <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
                     <button type="button" onClick={() => aplicarPagado(p)} style={btnOk}>
-                      Sí, pagado
+                      Yes, paid
                     </button>
                     {hasDiff && (
                       <button
@@ -535,11 +535,11 @@ export function ProyeccionFoto1(props: ProyProps) {
                         }}
                         style={btnAmber}
                       >
-                        Ajustar ${money2(Math.abs(diff))}
+                        Adjust ${money2(Math.abs(diff))}
                       </button>
                     )}
                     <button type="button" onClick={() => setDismissed([...dismissed, p.key])} style={btnGhost}>
-                      No es este
+                      Not this one
                     </button>
                   </div>
                 ) : (
@@ -547,7 +547,7 @@ export function ProyeccionFoto1(props: ProyProps) {
                     <input
                       value={adjustReason}
                       onChange={(e) => setAdjustReason(e.target.value)}
-                      placeholder="Motivo (ej.: fee de la plataforma)"
+                      placeholder="Reason (e.g.: platform fee)"
                       style={{
                         width: "100%",
                         boxSizing: "border-box",
@@ -569,10 +569,10 @@ export function ProyeccionFoto1(props: ProyProps) {
                         }}
                         style={btnOk}
                       >
-                        Confirmar
+                        Confirm
                       </button>
                       <button type="button" onClick={() => setAdjustingKey(null)} style={btnGhost}>
-                        Cancelar
+                        Cancel
                       </button>
                     </div>
                   </div>

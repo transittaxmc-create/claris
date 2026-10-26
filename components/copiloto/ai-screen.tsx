@@ -202,7 +202,7 @@ export function AIScreen({
       const assistantMsg: Message = {
         id: `a-${Date.now()}`,
         role: "assistant",
-        content: `Leí la foto: ${sched.description} — $${sched.amount.toFixed(2)} (${sched.category}), fecha ${sched.startDate}.` + appliedNote,
+        content: `I read the photo: ${sched.description} — $${sched.amount.toFixed(2)} (${sched.category}), date ${sched.startDate}.` + appliedNote,
         time: new Date().toLocaleTimeString(),
       }
       setMessages((prev) => [...prev, assistantMsg])
@@ -433,7 +433,7 @@ export function AIScreen({
         {
           id: `a-${Date.now()}`,
           role: "assistant",
-          content: `✅ Aplicado: ${applied} pago${applied === 1 ? "" : "s"} guardado${applied === 1 ? "" : "s"} en Proyecciones. ¿Algo más?`,
+          content: `✅ Applied: ${applied} payment${applied === 1 ? "" : "s"} saved in Projections. Anything else?`,
           time: new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
         },
       ])
@@ -489,7 +489,7 @@ export function AIScreen({
         let replyText = data.reply
         const aiDiceGuardado = /registrad[oa]|guardad[oa]|listo|hecho/i.test(replyText)
         if (aiDiceGuardado && !algoSeGuardo && pendingSchedules.length === 0) {
-          replyText += "\n\n⚠️ Nota: no se guardó nada todavía. Si ves este mensaje, dime qué falló."
+          replyText += "\n\n⚠️ Note: nothing was saved yet. If you see this message, tell me what failed."
         }
         setMessages((prev) => [
           ...prev,

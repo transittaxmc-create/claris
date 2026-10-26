@@ -92,7 +92,7 @@ export function computeScheduleC(
     )
   } else {
     const carActual = c("Fuel") + c("Vehicle maintenance") + c("Car wash") + c("Tolls") + c("Parking")
-    L("9", "Car and truck expenses (actual)", carActual, "Fuel + mantenimiento + lavado + tolls + parking (porción negocio)")
+    L("9", "Car and truck expenses (actual)", carActual, "Fuel + maintenance + wash + tolls + parking (business portion)")
   }
 
   L(
@@ -102,12 +102,12 @@ export function computeScheduleC(
     "Comisiones de plataforma + fees de transferencia de tarjetas",
   )
   L("11", "Contract labor", 0)
-  L("13", "Depreciation and section 179", 0, "Solo método actual con carro propio (él alquila)")
+  L("13", "Depreciation and section 179", 0, "Only with the actual method and his own car (he leases)")
   L(
     "15",
     "Insurance (other than health)",
     opts.method === "actual" ? c("Insurance") : 0,
-    opts.method === "mileage" ? "Incluido en la tasa por milla" : "Porción negocio del seguro",
+    opts.method === "mileage" ? "Included in the per-mile rate" : "Business portion of insurance",
   )
   L("16", "Interest", 0)
   L("17", "Legal and professional services", opts.legal, "CPA / abogado — monto manual")
@@ -117,16 +117,16 @@ export function computeScheduleC(
     "Rent or lease — vehicles",
     opts.method === "actual" ? c("Car leasing") : 0,
     opts.method === "mileage"
-      ? "Incluido en la tasa por milla — NO deducir aparte"
-      : "Leasing $924/semana (porción negocio)",
+      ? "Included in the per-mile rate — NO deducir aparte"
+      : "Leasing $924/week (business portion)",
   )
   L("20b", "Rent or lease — other", 0)
-  L("21", "Repairs and maintenance", 0, "En línea 9 si usa método actual")
+  L("21", "Repairs and maintenance", 0, "In line 9 if using the actual method")
   L("22", "Supplies", c("Supplies"))
-  L("23", "Taxes and licenses", opts.licenses, "TLC / registro / inspección — monto manual")
+  L("23", "Taxes and licenses", opts.licenses, "TLC / registration / inspection — manual amount")
   L("24a", "Travel", 0)
   L("24b", "Deductible meals (50%)", 0, "Comida diaria local NO es deducible — solo viajes con pernocta")
-  L("25", "Utilities", c("Phone"), "Porción negocio del teléfono")
+  L("25", "Utilities", c("Phone"), "Business portion of the phone")
   L("26", "Wages", 0)
   L("27b", "Other expenses", c("Bank fees") + c("Other"), "Bank fees + otros (negocio)")
   // Nota: "Food" y "Rent" (apartamento $1,500) NO entran — personal.
@@ -136,7 +136,7 @@ export function computeScheduleC(
     .reduce((s, x) => s + x.amount, 0)
   L("28", "Total expenses", totalExp, undefined, true)
   const net = gross - totalExp
-  L("29/31", "Net profit (or loss)", net, "Línea 7 − línea 28", true)
+  L("29/31", "Net profit (or loss)", net, "Line 7 − line 28", true)
 
   // Estimados (informativo)
   const seTaxable = Math.max(0, net * 0.9235)

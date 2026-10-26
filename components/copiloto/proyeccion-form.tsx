@@ -22,11 +22,11 @@ const FIELD = "#1b1e27"
 
 type Freq = "once" | "daily" | "weekly" | "biweekly" | "monthly"
 const FREQS: { value: Freq; label: string }[] = [
-  { value: "once", label: "Una vez" },
-  { value: "daily", label: "Diario" },
-  { value: "weekly", label: "Semanal" },
-  { value: "biweekly", label: "Cada 2 semanas" },
-  { value: "monthly", label: "Mensual" },
+  { value: "once", label: "Once" },
+  { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
+  { value: "biweekly", label: "Every 2 weeks" },
+  { value: "monthly", label: "Monthly" },
 ]
 
 function readList<T>(key: string): T[] {
@@ -110,7 +110,7 @@ function CategorySelect(props: {
           justifyContent: "space-between",
         }}
       >
-        <span>CATEGORÍA</span>
+        <span>CATEGORY</span>
         <button
           type="button"
           onClick={() => setAdding((v) => !v)}
@@ -124,7 +124,7 @@ function CategorySelect(props: {
             padding: 0,
           }}
         >
-          + Añadir categoría
+          + Add category
         </button>
       </div>
       {adding && (
@@ -133,7 +133,7 @@ function CategorySelect(props: {
             autoFocus
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
-            placeholder="Nombre de la categoría"
+            placeholder="Category name"
             style={{ ...props.fieldStyle, flex: 1, minWidth: 0, padding: "11px 12px", fontSize: 14 }}
           />
           <button
@@ -150,7 +150,7 @@ function CategorySelect(props: {
               cursor: "pointer",
             }}
           >
-            Añadir
+            Add
           </button>
         </div>
       )}
@@ -189,15 +189,15 @@ export function ProyeccionForm(props: {
   const save = () => {
     const desc = description.trim()
     if (!desc) {
-      setError("Escribe la descripción (a quién se le paga o de dónde viene).")
+      setError("Enter the description (who gets paid or where it comes from).")
       return
     }
     if (!(amt > 0)) {
-      setError("Escribe el monto.")
+      setError("Enter the amount.")
       return
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      setError("Elige la fecha.")
+      setError("Pick the date.")
       return
     }
     if (freq === "once") {
@@ -252,18 +252,6 @@ export function ProyeccionForm(props: {
     padding: "13px 14px",
     outline: "none",
   }
-  const chip = (active: boolean, color?: string): CSSProperties => ({
-    border: `1.5px solid ${active ? color || accent : BORDER}`,
-    background: active ? `${color || accent}22` : FIELD,
-    color: active ? color || accent : "#c9cbd8",
-    borderRadius: 999,
-    padding: "8px 12px",
-    fontSize: 12.5,
-    fontWeight: 700,
-    cursor: "pointer",
-    whiteSpace: "nowrap",
-  })
-
   return (
     <div style={{ paddingBottom: 32, color: INK }}>
       {/* Encabezado de página */}
@@ -271,13 +259,13 @@ export function ProyeccionForm(props: {
         <button
           type="button"
           onClick={props.onClose}
-          aria-label="Volver"
+          aria-label="Back"
           style={{ background: "none", border: "none", color: SUB, fontSize: 22, cursor: "pointer", padding: "4px 6px", lineHeight: 1 }}
         >
           ‹
         </button>
         <h2 style={{ fontSize: 14, fontWeight: 800, letterSpacing: 1.2, flex: 1, textAlign: "center", marginRight: 34 }}>
-          NUEVA PROYECCIÓN
+          NEW PROJECTION
         </h2>
       </div>
 
@@ -301,25 +289,25 @@ export function ProyeccionForm(props: {
                 color: kind === k ? "#0b0d12" : SUB,
               }}
             >
-              {k === "income" ? "Ingreso" : "Gasto"}
+              {k === "income" ? "Income" : "Expense"}
             </button>
           ))}
         </div>
 
         {/* Descripción */}
-        <div style={label}>DESCRIPCIÓN</div>
+        <div style={label}>DESCRIPTION</div>
         <input
           style={input}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder={kind === "income" ? "Ej. Cobro Uber, depósito…" : "Ej. Renta, CB Livery, AT&T…"}
+          placeholder={kind === "income" ? "E.g. Uber payout, deposit…" : "E.g. Rent, CB Livery, AT&T…"}
         />
 
         {/* Categoría: dropdown + añadir la que no esté (como en Gastos) */}
         <CategorySelect kind={kind} value={category} onChange={setCategory} fieldStyle={input} labelStyle={label} />
 
         {/* Monto */}
-        <div style={label}>MONTO</div>
+        <div style={label}>AMOUNT</div>
         <div style={{ position: "relative" }}>
           <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 20, fontWeight: 800, color: accent }}>$</span>
           <input
@@ -332,7 +320,7 @@ export function ProyeccionForm(props: {
         </div>
 
         {/* Fecha */}
-        <div style={label}>FECHA</div>
+        <div style={label}>DATE</div>
         <input style={input} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         {/^\d{4}-\d{2}-\d{2}$/.test(date) && (
           <div style={{ fontSize: 12, color: SUB, marginTop: 6 }}>
@@ -340,15 +328,15 @@ export function ProyeccionForm(props: {
           </div>
         )}
 
-        {/* Repetición */}
-        <div style={label}>SE REPITE</div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+        {/* Repeats: dropdown, same as Category (Miguel, 2026-10-26) */}
+        <div style={label}>REPEATS</div>
+        <select value={freq} onChange={(e) => setFreq(e.target.value as Freq)} style={input}>
           {FREQS.map((f) => (
-            <button key={f.value} type="button" onClick={() => setFreq(f.value)} style={chip(freq === f.value)}>
+            <option key={f.value} value={f.value}>
               {f.label}
-            </button>
+            </option>
           ))}
-        </div>
+        </select>
 
         {error && (
           <div style={{ marginTop: 16, color: RED, fontSize: 13, fontWeight: 600 }}>{error}</div>
@@ -372,14 +360,14 @@ export function ProyeccionForm(props: {
             color: "#0b0d12",
           }}
         >
-          GUARDAR
+          SAVE
         </button>
         <button
           type="button"
           onClick={props.onClose}
           style={{ width: "100%", marginTop: 10, background: "none", border: "none", color: SUB, fontSize: 13.5, fontWeight: 600, padding: "8px 0", cursor: "pointer" }}
         >
-          Cancelar
+          Cancel
         </button>
       </div>
     </div>
@@ -418,11 +406,11 @@ export function ProyeccionEdit(props: {
 
   const validate = (): boolean => {
     if (!description.trim()) {
-      setError("Escribe la descripción.")
+      setError("Enter the description.")
       return false
     }
     if (!(amt > 0)) {
-      setError("Escribe el monto.")
+      setError("Enter the amount.")
       return false
     }
     return true
@@ -431,7 +419,7 @@ export function ProyeccionEdit(props: {
   const saveEntry = () => {
     if (!entry || !validate()) return
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      setError("Elige la fecha.")
+      setError("Pick the date.")
       return
     }
     const next = readList<CashFlowEntry>(FINANCE_LEDGER_KEY).map((e) =>
@@ -559,34 +547,34 @@ export function ProyeccionEdit(props: {
         <button
           type="button"
           onClick={props.onClose}
-          aria-label="Volver"
+          aria-label="Back"
           style={{ background: "none", border: "none", color: SUB, fontSize: 22, cursor: "pointer", padding: "4px 6px", lineHeight: 1 }}
         >
           ‹
         </button>
         <h2 style={{ fontSize: 14, fontWeight: 800, letterSpacing: 1.2, flex: 1, textAlign: "center", marginRight: 34 }}>
-          EDITAR PROYECCIÓN
+          EDIT PROJECTION
         </h2>
       </div>
 
       <div style={{ margin: "10px 12px 0", background: CARD, border: `1px solid ${BORDER}`, borderRadius: 16, padding: "18px 16px 20px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ background: `${accent}22`, color: accent, border: `1.5px solid ${accent}`, borderRadius: 999, padding: "6px 12px", fontSize: 12.5, fontWeight: 800 }}>
-            {kind === "income" ? "Ingreso" : "Gasto"}
+            {kind === "income" ? "Income" : "Expense"}
           </span>
           <span style={{ color: SUB, fontSize: 12.5 }}>
             {fmtWeekday(line.date)}, {fmtFecha(line.date)}
-            {isSchedule ? " · Recurrente" : ""}
+            {isSchedule ? " · Recurring" : ""}
           </span>
         </div>
 
-        <div style={label}>DESCRIPCIÓN</div>
+        <div style={label}>DESCRIPTION</div>
         <input style={input} value={description} onChange={(e) => setDescription(e.target.value)} />
 
         {/* Categoría: dropdown + añadir la que no esté (como en Gastos) */}
         <CategorySelect kind={kind} value={category} onChange={setCategory} fieldStyle={input} labelStyle={label} />
 
-        <div style={label}>MONTO</div>
+        <div style={label}>AMOUNT</div>
         <div style={{ position: "relative" }}>
           <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 20, fontWeight: 800, color: accent }}>$</span>
           <input
@@ -599,7 +587,7 @@ export function ProyeccionEdit(props: {
 
         {!isSchedule && (
           <>
-            <div style={label}>FECHA</div>
+            <div style={label}>DATE</div>
             <input style={input} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </>
         )}
@@ -609,14 +597,14 @@ export function ProyeccionEdit(props: {
         {entry && (
           <>
             <button type="button" onClick={saveEntry} style={mainBtn}>
-              GUARDAR
+              SAVE
             </button>
             <button
               type="button"
               onClick={deleteEntry}
               style={{ ...ghostBtn, borderColor: confirmDelete ? RED : BORDER, color: confirmDelete ? RED : "#c9cbd8" }}
             >
-              {confirmDelete ? "¿Seguro? Toca de nuevo para eliminar" : "Eliminar"}
+              {confirmDelete ? "Are you sure? Tap again to delete" : "Delete"}
             </button>
           </>
         )}
@@ -624,20 +612,20 @@ export function ProyeccionEdit(props: {
         {isSchedule && (
           <>
             <button type="button" onClick={() => saveOverride(false)} style={mainBtn}>
-              GUARDAR SOLO ESTA FECHA
+              SAVE ONLY THIS DATE
             </button>
             <button type="button" onClick={saveScheduleAll} style={ghostBtn}>
-              Guardar para todas
+              Save for all
             </button>
             <button type="button" onClick={() => saveOverride(true)} style={{ ...ghostBtn, color: RED, borderColor: BORDER }}>
-              Saltar esta fecha
+              Skip this date
             </button>
             <button
               type="button"
               onClick={deleteSchedule}
               style={{ ...ghostBtn, borderColor: confirmDelete ? RED : BORDER, color: confirmDelete ? RED : "#c9cbd8" }}
             >
-              {confirmDelete ? "¿Seguro? Toca de nuevo para eliminar" : "Eliminar recurrente"}
+              {confirmDelete ? "Are you sure? Tap again to delete" : "Delete recurring"}
             </button>
           </>
         )}
@@ -647,7 +635,7 @@ export function ProyeccionEdit(props: {
           onClick={props.onClose}
           style={{ width: "100%", marginTop: 10, background: "none", border: "none", color: SUB, fontSize: 13.5, fontWeight: 600, padding: "8px 0", cursor: "pointer" }}
         >
-          Cancelar
+          Cancel
         </button>
       </div>
     </div>

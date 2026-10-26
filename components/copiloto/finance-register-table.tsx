@@ -106,7 +106,7 @@ export function FinanceRegisterTable({
       <div className="flex items-center justify-between border-b border-neutral-800 bg-neutral-900 px-4 py-3">
         <div>
           <h2 className="text-sm font-extrabold text-white">{mode === "bank" ? "Register bancario" : "Projected register"}</h2>
-          <p className="mt-0.5 text-[10px] text-neutral-400">{mode === "bank" ? "Transacciones reales para reconciliación" : "Bank balance + projected income and payments"}</p>
+          <p className="mt-0.5 text-[10px] text-neutral-400">{mode === "bank" ? "Real transactions for reconciliation" : "Bank balance + projected income and payments"}</p>
         </div>
         <span className="rounded-full bg-yellow-400/15 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-yellow-300">Editable</span>
       </div>

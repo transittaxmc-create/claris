@@ -1,6 +1,6 @@
 "use client"
 
-// POR PAGAR · LIABILITIES — cuentas liability por deuda (Miguel, 2026-10-25).
+// PAYABLES — cuentas liability por deuda (Miguel, 2026-10-25).
 //
 // Cada deuda recurrente programada en Proyecciones abre sola su Open Bill
 // en su cuenta; la cuenta muestra $0 o lo que resta del bill. Los pagos del
@@ -225,13 +225,13 @@ export function LiabilitiesEntryCard(props: { onOpen: () => void }) {
       className="flex w-full items-center justify-between rounded-[14px] border border-[#262633] bg-[#101018] px-4 py-3 text-left active:scale-[.99]"
     >
       <span>
-        <span className="block text-[11px] font-extrabold tracking-[.08em] text-[#f5b84c]">POR PAGAR · LIABILITIES</span>
+        <span className="block text-[11px] font-extrabold tracking-[.08em] text-[#f5b84c]">PAYABLES</span>
         <span className="mt-0.5 block text-[11px] text-neutral-400">
           {data.ready
             ? conDeuda > 0
-              ? `${conDeuda} ${conDeuda === 1 ? "cuenta" : "cuentas"} con balance abierto`
-              : "Todo saldado"
-            : "Cargando…"}
+              ? `${conDeuda} ${conDeuda === 1 ? "account" : "accounts"} with an open balance`
+              : "All settled"
+            : "Loading…"}
         </span>
       </span>
       <span className="flex items-center gap-1">
@@ -292,12 +292,12 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
         </button>
         <div>
           <h2 className="text-[15px] font-extrabold tracking-wide text-[#f2f3f7]">
-            {selected ? selected.name : "Por pagar · Liabilities"}
+            {selected ? selected.name : "Payables"}
           </h2>
           <p className="text-[11px] text-neutral-400">
             {selected
-              ? `${selected.category} · ${selected.year}: ${money(selected.yearPaid)} pagados · ${selected.yearCount} pagos`
-              : "Cada deuda, su cuenta: $0 o el balance de su bill"}
+              ? `${selected.category} · ${selected.year}: ${money(selected.yearPaid)} paid · ${selected.yearCount} payments`
+              : "Each debt, its own account: $0 or its bill's balance"}
           </p>
         </div>
         {!selected && (
@@ -314,8 +314,8 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
         <div className="mx-1 mb-1 mt-1 flex rounded-[10px] border border-[#262633] bg-[#0a0a0f] p-0.5">
           {(
             [
-              ["pagar", "POR PAGAR"],
-              ["historial", `HISTORIAL ${data.year}`],
+              ["pagar", "PAYABLES"],
+              ["historial", `HISTORY ${data.year}`],
             ] as const
           ).map(([t, label]) => (
             <button
@@ -336,14 +336,14 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
 
       {!selected && tab === "pagar" && (data.detections.length > 0 || data.catProposals.length > 0) && (
         <section className="mt-1 rounded-[14px] border border-[#3a2f14] bg-[#171307] px-3 py-2.5">
-          <h3 className="text-[11px] font-extrabold tracking-[.08em] text-[#f5b84c]">POR CONFIRMAR</h3>
+          <h3 className="text-[11px] font-extrabold tracking-[.08em] text-[#f5b84c]">TO CONFIRM</h3>
           <p className="mt-0.5 text-[11px] text-neutral-400">
-            Pagos del banco que parecen de un bill. Aplicar los enlaza a ese bill y restan de la deuda.
+            Bank payments that look like they belong to a bill. Applying links them to that bill and subtracts them from the debt.
           </p>
           {data.detections.map((d) => (
             <div key={d.id} className="mt-2 border-t border-[#262633] pt-2">
               <p className="text-[12.5px] font-semibold text-neutral-100">
-                {d.billVendor} — resta {money(d.billRemaining)}
+                {d.billVendor} — {money(d.billRemaining)} remaining
               </p>
               {d.txs.map((tx) => (
                 <p key={bankTxIdOf(tx)} className="mt-0.5 flex justify-between text-[12px] text-neutral-300">
@@ -353,21 +353,21 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
                   <span className="font-mono tabular-nums">{money(Math.abs(tx.amount))}</span>
                 </p>
               ))}
-              {d.isSplit && <p className="mt-0.5 text-[11px] text-[#f5b84c]">Pago dividido entre cuentas</p>}
+              {d.isSplit && <p className="mt-0.5 text-[11px] text-[#f5b84c]">Payment split across accounts</p>}
               <div className="mt-1.5 flex gap-2">
                 <button
                   type="button"
                   onClick={() => data.confirmDetection(d)}
                   className="rounded-lg bg-[#2fbf71] px-3 py-1.5 text-[12px] font-bold text-black active:scale-95"
                 >
-                  Aplicar {money(d.total)}
+                  Apply {money(d.total)}
                 </button>
                 <button
                   type="button"
                   onClick={() => data.dismissDetection(d)}
                   className="rounded-lg border border-[#262633] px-3 py-1.5 text-[12px] font-semibold text-neutral-300 active:scale-95"
                 >
-                  No es este
+                  Not this one
                 </button>
               </div>
             </div>
@@ -375,7 +375,7 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
           {data.catProposals.map((p) => (
             <div key={p.id} className="mt-2 border-t border-[#262633] pt-2">
               <p className="text-[12.5px] font-semibold text-neutral-100">
-                {p.billVendor} — resta {money(p.billRemaining)} <span className="text-[#f5b84c]">(por categoría)</span>
+                {p.billVendor} — {money(p.billRemaining)} remaining <span className="text-[#f5b84c]">(by category)</span>
               </p>
               <p className="mt-0.5 flex justify-between text-[12px] text-neutral-300">
                 <span>
@@ -389,14 +389,14 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
                   onClick={() => data.confirmCategory(p)}
                   className="rounded-lg bg-[#2fbf71] px-3 py-1.5 text-[12px] font-bold text-black active:scale-95"
                 >
-                  Aplicar {money(Math.abs(p.tx.amount))}
+                  Apply {money(Math.abs(p.tx.amount))}
                 </button>
                 <button
                   type="button"
                   onClick={() => data.dismissCategory(p)}
                   className="rounded-lg border border-[#262633] px-3 py-1.5 text-[12px] font-semibold text-neutral-300 active:scale-95"
                 >
-                  No es este
+                  Not this one
                 </button>
               </div>
             </div>
@@ -416,7 +416,7 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
             <span>
               <span className="block text-[13.5px] font-bold text-[#f2f3f7]">{d.name}</span>
               <span className="mt-0.5 block text-[11px] text-neutral-400">
-                {d.category} · {d.year}: {money(d.yearPaid)} pagados · {d.yearCount} pagos
+                {d.category} · {d.year}: {money(d.yearPaid)} paid · {d.yearCount} payments
               </span>
             </span>
             <span className="flex items-center gap-1">
@@ -432,8 +432,8 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
         ))}
       {!selected && tab === "pagar" && data.ready && data.debts.length === 0 && (
         <p className="px-2 py-6 text-center text-[12.5px] text-neutral-400">
-          Todavía no hay deudas programadas. Cuando programes un gasto recurrente en Proyecciones, su cuenta liability
-          se abre aquí sola con su primer bill.
+          No scheduled debts yet. When you schedule a recurring expense in Projections, its liability account
+          opens here on its own with its first bill.
         </p>
       )}
 
@@ -442,25 +442,25 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
           {/* Resumen del año de bills */}
           <div className="rounded-[14px] border border-[#262633] bg-[#101018] px-4 py-3">
             <p className="text-[11px] font-extrabold tracking-[.08em] text-neutral-400">
-              BILLS · {data.year} (1 ENE – 31 DIC)
+              BILLS · {data.year} (JAN 1 – DEC 31)
             </p>
             <div className="mt-2 grid grid-cols-3 text-center">
               <div>
-                <p className="text-[10px] font-bold tracking-wider text-neutral-500">FACTURADO</p>
+                <p className="text-[10px] font-bold tracking-wider text-neutral-500">BILLED</p>
                 <p className="font-mono text-[14px] tabular-nums text-neutral-100">{money(data.yearHistory.totalBilled)}</p>
               </div>
               <div>
-                <p className="text-[10px] font-bold tracking-wider text-neutral-500">PAGADO</p>
+                <p className="text-[10px] font-bold tracking-wider text-neutral-500">PAID</p>
                 <p className="font-mono text-[14px] tabular-nums text-[#2fbf71]">{money(data.yearHistory.totalPaid)}</p>
               </div>
               <div>
-                <p className="text-[10px] font-bold tracking-wider text-neutral-500">PAGOS</p>
+                <p className="text-[10px] font-bold tracking-wider text-neutral-500">PAYMENTS</p>
                 <p className="font-mono text-[14px] tabular-nums text-neutral-100">{data.yearHistory.totalCount}</p>
               </div>
             </div>
             <p className="mt-2 text-[11px] text-neutral-400">
-              Cada pago aplicado a su bill, no importa de qué cuenta salió. Esto alimenta el Financial Statement y la
-              deducción de taxes.
+              Every payment applied to its bill, no matter which account it came from. This feeds the Financial Statement and the
+              tax deduction.
             </p>
           </div>
 
@@ -475,8 +475,8 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
               <span>
                 <span className="block text-[13.5px] font-bold text-[#f2f3f7]">{h.name}</span>
                 <span className="mt-0.5 block text-[11px] text-neutral-400">
-                  {h.category} · Facturado {money(h.billedYear)} · {h.countYear} pagos
-                  {h.remainingYear > 0.009 ? ` · Resta ${money(h.remainingYear)}` : " · Al día"}
+                  {h.category} · Billed {money(h.billedYear)} · {h.countYear} payments
+                  {h.remainingYear > 0.009 ? ` · ${money(h.remainingYear)} left` : " · Up to date"}
                 </span>
               </span>
               <span className="flex items-center gap-1">
@@ -492,7 +492,7 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
           {data.yearHistory.payments.length > 0 && (
             <div className="mt-3 rounded-[14px] border border-[#262633] bg-[#101018] px-4 py-3">
               <p className="text-[11px] font-extrabold tracking-[.08em] text-neutral-400">
-                PAGOS DEL {data.year} · {data.yearHistory.payments.length}
+                PAYMENTS IN {data.year} · {data.yearHistory.payments.length}
               </p>
               {data.yearHistory.payments.map((p, i) => (
                 <p
@@ -503,7 +503,7 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
                     {fmtFecha(p.date)} · {p.debtName}
                     <span className="text-neutral-500">
                       {" "}
-                      · {p.source === "banco" ? p.account || "Banco" : p.source === "recibo" ? "Recibo" : "Manual"}
+                      · {p.source === "banco" ? p.account || "Bank" : p.source === "recibo" ? "Receipt" : "Manual"}
                       {p.note ? ` · ${p.note}` : ""}
                       {p.auto ? " · auto" : ""}
                     </span>
@@ -517,14 +517,14 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
           {/* Gastos sin bill, por categoría */}
           <div className="mt-3 rounded-[14px] border border-[#262633] bg-[#101018] px-4 py-3">
             <p className="text-[11px] font-extrabold tracking-[.08em] text-neutral-400">
-              GASTOS POR CATEGORÍA · {data.year} (SIN BILL)
+              EXPENSES BY CATEGORY · {data.year} (NO BILL)
             </p>
             <p className="mt-0.5 text-[11px] text-neutral-400">
-              Salidas reales del banco sumadas por categoría — como la gasolina, que no es un bill. Sin transferencias
-              internas y sin duplicar los pagos ya aplicados a bills.
+              Real money out of the bank, summed by category — like gas, which isn't a bill. No internal
+              transfers and no double-counting payments already applied to bills.
             </p>
             {data.catSums.length === 0 && (
-              <p className="py-3 text-center text-[12px] text-neutral-500">Sin gastos del banco en el año todavía.</p>
+              <p className="py-3 text-center text-[12px] text-neutral-500">No bank expenses this year yet.</p>
             )}
             {data.catSums.map((c) => (
               <p
@@ -532,14 +532,14 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
                 className="flex items-center justify-between border-t border-[#1a1c24] py-1.5 text-[12.5px] text-neutral-200 first:border-t-0"
               >
                 <span>
-                  {c.category} <span className="text-neutral-500">· {c.count} mov.</span>
+                  {c.category} <span className="text-neutral-500">· {c.count} txns</span>
                 </span>
                 <span className="font-mono tabular-nums">{money(c.total)}</span>
               </p>
             ))}
             {data.catSums.length > 0 && (
               <p className="flex items-center justify-between border-t border-[#262633] pt-2 text-[12.5px] font-bold text-neutral-100">
-                <span>Total gastos por categoría</span>
+                <span>Total expenses by category</span>
                 <span className="font-mono tabular-nums">
                   {money(data.catSums.reduce((s, c) => s + c.total, 0))}
                 </span>
@@ -552,7 +552,7 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
       {selected && (
         <div className="mt-1">
           <div className="rounded-[14px] border border-[#262633] bg-[#101018] px-4 py-3">
-            <p className="text-[11px] font-extrabold tracking-[.08em] text-neutral-400">SE DEBE AHORA</p>
+            <p className="text-[11px] font-extrabold tracking-[.08em] text-neutral-400">OWED NOW</p>
             <p
               className="mt-0.5 font-mono text-[20px] font-semibold tabular-nums"
               style={{ color: selected.openRemaining > 0.009 ? "#ff5d6c" : "#2fbf71" }}
@@ -560,8 +560,8 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
               {money(selected.openRemaining)}
             </p>
             <p className="mt-1 text-[11.5px] text-neutral-400">
-              Récord {selected.year} (para taxes): <b className="text-neutral-200">{money(selected.yearPaid)}</b>{" "}
-              pagados en {selected.yearCount} pagos
+              Record {selected.year} (for taxes): <b className="text-neutral-200">{money(selected.yearPaid)}</b>{" "}
+              paid in {selected.yearCount} payments
             </p>
           </div>
 
@@ -576,7 +576,7 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
                     background: "rgba(255,255,255,.05)",
                   }}
                 >
-                  {!c.open ? "PAGADA" : c.paid > 0 ? "PARCIAL" : "ABIERTA"}
+                  {!c.open ? "PAID" : c.paid > 0 ? "PARTIAL" : "OPEN"}
                 </span>
               </div>
               <div className="mt-1.5 grid grid-cols-3 text-center">
@@ -585,11 +585,11 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
                   <p className="font-mono text-[13.5px] tabular-nums text-neutral-100">{money(c.total)}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold tracking-wider text-neutral-500">PAGADO</p>
+                  <p className="text-[10px] font-bold tracking-wider text-neutral-500">PAID</p>
                   <p className="font-mono text-[13.5px] tabular-nums text-[#2fbf71]">{money(c.paid)}</p>
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold tracking-wider text-neutral-500">RESTA</p>
+                  <p className="text-[10px] font-bold tracking-wider text-neutral-500">LEFT</p>
                   <p
                     className="font-mono text-[13.5px] font-semibold tabular-nums"
                     style={{ color: c.remaining > 0.009 ? "#ff5d6c" : "#2fbf71" }}
@@ -606,9 +606,9 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
                       <span>
                         {fmtFecha(p.date)} ·{" "}
                         {p.source === "banco"
-                          ? accountLabelOf(p.bankTxId) || "Banco"
+                          ? accountLabelOf(p.bankTxId) || "Bank"
                           : p.source === "recibo"
-                            ? "Recibo"
+                            ? "Receipt"
                             : "Manual"}
                         {p.note ? ` · ${p.note}` : ""}
                         {p.auto ? <span className="text-[#f5b84c]"> · auto</span> : null}
@@ -618,7 +618,7 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
                         {!c.external && (
                           <button
                             type="button"
-                            aria-label="Quitar pago"
+                            aria-label="Remove payment"
                             onClick={() => removePayment(c.bill, p.id)}
                             className="grid size-5 place-items-center rounded-full border border-[#262633] text-neutral-400 active:scale-90"
                           >
@@ -637,13 +637,13 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
                   onClick={() => setPayDraft({ billId: c.bill.id, amount: String(c.remaining || ""), date: data.today })}
                   className="mt-2 rounded-lg border border-[#262633] px-3 py-1.5 text-[12px] font-semibold text-neutral-200 active:scale-95"
                 >
-                  Registrar pago
+                  Record payment
                 </button>
               )}
               {c.open && !c.external && payDraft?.billId === c.bill.id && (
                 <div className="mt-2 flex flex-wrap items-end gap-2 border-t border-[#262633] pt-2">
                   <label className="flex flex-col gap-1 text-[10.5px] font-bold tracking-wider text-neutral-400">
-                    MONTO
+                    AMOUNT
                     <input
                       value={payDraft.amount}
                       onChange={(e) => setPayDraft({ ...payDraft, amount: e.target.value })}
@@ -652,7 +652,7 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
                     />
                   </label>
                   <label className="flex flex-col gap-1 text-[10.5px] font-bold tracking-wider text-neutral-400">
-                    FECHA
+                    DATE
                     <input
                       type="date"
                       value={payDraft.date}
@@ -665,27 +665,27 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
                     onClick={saveManualPayment}
                     className="rounded-lg bg-[#2fbf71] px-3 py-1.5 text-[12px] font-bold text-black active:scale-95"
                   >
-                    Guardar pago
+                    Save payment
                   </button>
                   <button
                     type="button"
                     onClick={() => setPayDraft(null)}
                     className="rounded-lg border border-[#262633] px-3 py-1.5 text-[12px] font-semibold text-neutral-300 active:scale-95"
                   >
-                    Cancelar
+                    Cancel
                   </button>
                 </div>
               )}
               {c.external && (
                 <p className="mt-2 text-[10.5px] text-neutral-500">
-                  Bill de Gastos/escáner — aquí se muestra su historial; sus pagos se gestionan en Gastos.
+                  Bill from Expenses/scanner — its history shows here; its payments are managed in Expenses.
                 </p>
               )}
             </div>
           ))}
           {selected.bills.length === 0 && (
             <p className="px-2 py-6 text-center text-[12.5px] text-neutral-400">
-              Esta deuda aún no tiene bills. El próximo ciclo abrirá el suyo automáticamente.
+              This debt has no bills yet. The next cycle will open its own automatically.
             </p>
           )}
         </div>

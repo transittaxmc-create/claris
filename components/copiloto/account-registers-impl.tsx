@@ -265,7 +265,7 @@ export function RegistersHome(props: {
               </span>
             </p>
             <p className="border-x border-[#262633] text-[10px] text-[#9a9cb0]">
-              Debo <span className="font-mono font-bold tabular-nums text-[#ff5d6c]">{money(owe)}</span>
+              I owe <span className="font-mono font-bold tabular-nums text-[#ff5d6c]">{money(owe)}</span>
             </p>
             <p className="text-[10px] text-[#9a9cb0]">
               Net{" "}
@@ -328,10 +328,10 @@ export function RegistersHome(props: {
               className="flex items-center justify-between rounded-[14px] border border-[#262633] bg-[#16161f] px-3.5 py-3 text-left active:scale-[.99]"
             >
               <span className="flex items-center gap-2 text-[13px] font-bold text-[#f2f3f7]">
-                <ArrowLeftRight className="size-4 text-[#5b8cff]" /> Transferencias
+                <ArrowLeftRight className="size-4 text-[#5b8cff]" /> Transfers
               </span>
               <span className="font-mono text-[10px] font-bold text-[#9a9cb0]">
-                {pairCount} matched · {looseCount} abiertas
+                {pairCount} matched · {looseCount} open
               </span>
             </button>
           )}
@@ -545,7 +545,7 @@ export function RegisterDetail(props: {
       const last4s: string[] = []
       const errors: string[] = []
       for (let i = 0; i < files.length; i++) {
-        setScanMsg(files.length > 1 ? `Leyendo foto ${i + 1} de ${files.length}…` : "Leyendo el screenshot…")
+        setScanMsg(files.length > 1 ? `Reading photo ${i + 1} of ${files.length}…` : "Reading the screenshot…")
         try {
           const { base64, mimeType } = await resizeShotImage(files[i])
           const res = await fetch("/api/scan-bank-shot", {
@@ -555,7 +555,7 @@ export function RegisterDetail(props: {
           })
           const json = await res.json()
           if (!res.ok || !json.success) {
-            errors.push(`foto ${i + 1}: ${json.error || "no se pudo leer"}`)
+            errors.push(`photo ${i + 1}: ${json.error || "could not be read"}`)
             perPhoto.push([])
             continue
           }
@@ -563,7 +563,7 @@ export function RegisterDetail(props: {
           if (typeof json.balance === "number") balanceSeen = json.balance
           if (json.accountLast4) last4s.push(String(json.accountLast4))
         } catch {
-          errors.push(`foto ${i + 1}: no se pudo leer`)
+          errors.push(`photo ${i + 1}: could not be read`)
           perPhoto.push([])
         }
       }
@@ -584,13 +584,13 @@ export function RegisterDetail(props: {
         setScanMsg(
           errors.length
             ? `⚠️ ${errors.join(" · ")}`
-            : "No se vieron movimientos ni balance en las fotos.",
+            : "No movements or balance were found in the photos.",
         )
         return
       }
       const { fresh, yaEnPlaid, yaEscaneados } = filterExtracted(merged, bankTxs || [], myShots)
       if (fresh.length === 0 && balanceSeen == null) {
-        setScanMsg(`Todo lo de las fotos ya está en el register (${yaEnPlaid} por Plaid, ${yaEscaneados} escaneados). Nada duplicado.`)
+        setScanMsg(`Everything in the photos is already in the register (${yaEnPlaid} via Plaid, ${yaEscaneados} scanned). Nothing duplicated.`)
         return
       }
       const last4Seen = last4s[0] || null
@@ -606,7 +606,7 @@ export function RegisterDetail(props: {
       })
       setScanMsg(errors.length ? `⚠️ ${errors.join(" · ")}` : null)
     } catch {
-      setScanMsg("⚠️ No se pudieron leer los screenshots. Intenta con fotos más claras.")
+      setScanMsg("⚠️ The screenshots could not be read. Try clearer photos.")
     } finally {
       setScanBusy(false)
     }
@@ -653,10 +653,10 @@ export function RegisterDetail(props: {
     setPreview(null)
     setScanMsg(
       nuevos.length === 0
-        ? "Balance de la foto guardado en la nota de auditoría."
+        ? "Photo balance saved in the audit note."
         : useBank
-          ? `${nuevos.length} provisionales guardados. Cuando Plaid los baje, se reemplazan solos.`
-          : `${nuevos.length} movimientos de Lyft registrados. El balance ya se calculó con ellos.`,
+          ? `${nuevos.length} provisionals saved. When Plaid pulls them in, they replace themselves automatically.`
+          : `${nuevos.length} Lyft movements recorded. The balance was calculated with them.`,
     )
   }
 
@@ -687,8 +687,8 @@ export function RegisterDetail(props: {
         out.push({
           key: `bank-${t.transaction_id || t.date + t.detail + t.amount}`,
           date: String(t.date || "").slice(0, 10),
-          detail: esVentaSquare ? "Venta · Island City Transit" : t.detail || "Bank",
-          category: esVentaSquare ? "Venta" : t.category,
+          detail: esVentaSquare ? "Sale · Island City Transit" : t.detail || "Bank",
+          category: esVentaSquare ? "Sale" : t.category,
           amount: Number(t.amount) || 0,
           pending: Boolean(t.pending),
           tx: t,
@@ -806,8 +806,8 @@ export function RegisterDetail(props: {
             {useScan && myShots.length > 0 && balance != null && (
               <p className="mt-0.5 text-[10px] font-semibold text-sky-300">
                 {useBank
-                  ? `Calculado con ${myShots.length} provisional${myShots.length === 1 ? "" : "es"} de screenshot`
-                  : `Calculado con ${myShots.length} movimiento${myShots.length === 1 ? "" : "s"} escaneados de Lyft`}
+                  ? `Calculated with ${myShots.length} screenshot provisional${myShots.length === 1 ? "" : "s"}`
+                  : `Calculated with ${myShots.length} scanned Lyft movement${myShots.length === 1 ? "" : "s"}`}
                 {myAudit ? ` · ${useBank ? "Plaid" : "Base"}: ${money(myAudit.plaidBalance)}` : ""}
               </p>
             )}
@@ -815,11 +815,11 @@ export function RegisterDetail(props: {
         </div>
         <div className="mt-2 grid grid-cols-3 gap-2 border-t border-[#262633] pt-2">
           <div>
-            <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-500">Entradas</p>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-500">In</p>
             <p className="font-mono text-[14px] font-semibold tabular-nums text-[#2fbf71]">+{money(inMonth).replace("-", "")}</p>
           </div>
           <div>
-            <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-500">Salidas</p>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-neutral-500">Out</p>
             <p className="font-mono text-[14px] font-semibold tabular-nums text-[#ff5d6c]">-{money(outMonth).replace("-", "")}</p>
           </div>
           <div>
@@ -839,7 +839,7 @@ export function RegisterDetail(props: {
               {myAudit ? money(myAudit.shotBalance) : balance == null ? "—" : money(balance)}
             </p>
             <p className="text-[9px] leading-tight text-neutral-500">
-              {myAudit ? `Foto · ${fmtFecha(myAudit.date)}` : "Según Plaid"}
+              {myAudit ? `Photo · ${fmtFecha(myAudit.date)}` : "Per Plaid"}
             </p>
           </div>
         </div>
@@ -862,11 +862,11 @@ export function RegisterDetail(props: {
         <div className="rounded-2xl border border-[#262633] bg-[#111119] p-3">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-[12px] font-bold text-neutral-100">{useBank ? "¿Plaid va atrasado?" : "Tu dinero en Lyft, al día"}</p>
+              <p className="text-[12px] font-bold text-neutral-100">{useBank ? "Is Plaid behind?" : "Your Lyft money, up to date"}</p>
               <p className="text-[10.5px] leading-snug text-neutral-400">
                 {useBank
-                  ? "Sube una o varias fotos de tu banco (los movimientos y el balance): entran provisionales, el balance se calcula ya y en Proyecciones sale el correcto. Cuando Plaid los baje, se reemplazan solos, sin duplicados."
-                  : "Sube una o varias fotos de la app de Lyft (ganancias, payouts y el balance): quedan como tu récord — de aquí sale el dinero que luego llega a PayPal — y el balance se calcula con ellas: es tu dinero disponible en Lyft, como si estuviera en el banco, listo para transferir cuando quieras."}
+                  ? "Upload one or more photos from your bank (the movements and the balance): they come in as provisionals, the balance is calculated right away and Projections shows the correct one. When Plaid pulls them in, they replace themselves automatically, with no duplicates."
+                  : "Upload one or more photos from the Lyft app (earnings, payouts and the balance): they stay as your record — this is where the money that later lands in PayPal comes from — and the balance is calculated from them: it's your money available in Lyft, as if it were in the bank, ready to transfer whenever you want."}
               </p>
             </div>
             <button
@@ -875,7 +875,7 @@ export function RegisterDetail(props: {
               onClick={() => fileRef.current?.click()}
               className="shrink-0 rounded-xl bg-sky-600 px-3 py-2 text-[12px] font-extrabold text-white active:scale-95 disabled:opacity-50"
             >
-              {scanBusy ? "Leyendo…" : "📷 Escanear"}
+              {scanBusy ? "Reading…" : "📷 Scan"}
             </button>
             <input
               ref={fileRef}
@@ -901,11 +901,11 @@ export function RegisterDetail(props: {
             >
               <div className="flex items-start justify-between gap-2">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-neutral-400">
-                  Nota de auditoría · screenshot {fmtFecha(myAudit.date)}
+                  Audit note · screenshot {fmtFecha(myAudit.date)}
                 </p>
                 <button
                   type="button"
-                  aria-label="Quitar nota"
+                  aria-label="Remove note"
                   onClick={() => setAudits(clearShotAudit(reg.id))}
                   className="-mr-1 -mt-1 px-1 text-[13px] leading-none text-neutral-500"
                 >
@@ -913,18 +913,18 @@ export function RegisterDetail(props: {
                 </button>
               </div>
               <p className="mt-1 text-[11.5px] leading-snug text-neutral-300">
-                {useBank ? "Banco" : "Lyft"} (foto): <span className="font-mono font-semibold text-neutral-100">{money(myAudit.shotBalance)}</span>
-                {" · "}App ({useBank ? "Plaid" : "Base"} {money(myAudit.plaidBalance)} + {useBank ? "provisionales" : "escaneados"} {money(myAudit.shotsTotal)}):{" "}
+                {useBank ? "Bank" : "Lyft"} (photo): <span className="font-mono font-semibold text-neutral-100">{money(myAudit.shotBalance)}</span>
+                {" · "}App ({useBank ? "Plaid" : "Base"} {money(myAudit.plaidBalance)} + {useBank ? "provisionals" : "scanned"} {money(myAudit.shotsTotal)}):{" "}
                 <span className="font-mono font-semibold text-neutral-100">
                   {money(Math.round((myAudit.plaidBalance + myAudit.shotsTotal) * 100) / 100)}
                 </span>
               </p>
               {Math.abs(myAudit.diff) <= 0.005 ? (
-                <p className="mt-0.5 text-[11.5px] font-bold text-[#2fbf71]">Diferencia: $0.00 — cuadra al centavo ✓</p>
+                <p className="mt-0.5 text-[11.5px] font-bold text-[#2fbf71]">Difference: $0.00 — matches to the cent ✓</p>
               ) : (
                 <p className="mt-0.5 text-[11.5px] font-bold text-[#f5b73f]">
-                  Diferencia por explicar: {myAudit.diff < 0 ? "-$" : "$"}
-                  {Math.abs(myAudit.diff).toFixed(2)} — es lo que falta por encontrar entre el banco y Plaid.
+                  Unexplained difference: {myAudit.diff < 0 ? "-$" : "$"}
+                  {Math.abs(myAudit.diff).toFixed(2)} — that's what's still missing between the bank and Plaid.
                 </p>
               )}
             </div>
@@ -932,20 +932,20 @@ export function RegisterDetail(props: {
           {preview && (
             <div className="mt-2 border-t border-[#262633] pt-2">
               <p className="text-[11px] font-bold uppercase tracking-widest text-neutral-400">
-                Nuevos en {preview.fotos === 1 ? "la foto" : `las ${preview.fotos} fotos`} ·{" "}
+                New in {preview.fotos === 1 ? "the photo" : `the ${preview.fotos} photos`} ·{" "}
                 {preview.items.filter((i) => i.keep).length} de {preview.items.length}
               </p>
               {preview.last4Conflict && (
                 <p className="mt-0.5 text-[11px] font-semibold text-amber-400">
-                  Ojo: las fotos traen cuentas distintas (·{preview.last4Seen} y ·{preview.last4Conflict}). Revisa antes de guardar.
+                  Careful: the photos show different accounts (·{preview.last4Seen} and ·{preview.last4Conflict}). Check before saving.
                 </p>
               )}
               {preview.balanceSeen != null && (
                 <p className="mt-0.5 text-[11px] text-neutral-400">
-                  La foto dice balance: <span className="font-mono text-neutral-200">{money(preview.balanceSeen)}</span>
+                  The photo shows balance: <span className="font-mono text-neutral-200">{money(preview.balanceSeen)}</span>
                   {balance != null && (
                     <>
-                      {" "}· Con estos:{" "}
+                      {" "}· With these:{" "}
                       <span className="font-mono text-sky-300">
                         {money(balNow + preview.items.filter((i) => i.keep).reduce((s, i) => s + i.amount, 0))}
                       </span>
@@ -957,11 +957,11 @@ export function RegisterDetail(props: {
                               100,
                           ) / 100
                         return Math.abs(d) <= 0.005 ? (
-                          <span className="font-bold text-[#2fbf71]"> · Diferencia: $0.00 ✓</span>
+                          <span className="font-bold text-[#2fbf71]"> · Difference: $0.00 ✓</span>
                         ) : (
                           <span className="font-bold text-[#f5b73f]">
-                            {" "}· Diferencia: {d < 0 ? "-$" : "$"}
-                            {Math.abs(d).toFixed(2)} por explicar
+                            {" "}· Difference: {d < 0 ? "-$" : "$"}
+                            {Math.abs(d).toFixed(2)} unexplained
                           </span>
                         )
                       })()}
@@ -971,12 +971,12 @@ export function RegisterDetail(props: {
               )}
               {preview.last4Seen && last4Of(reg.name) && preview.last4Seen !== last4Of(reg.name) && (
                 <p className="mt-0.5 text-[11px] font-semibold text-amber-400">
-                  Ojo: la foto parece de la cuenta ·{preview.last4Seen} y este register es ·{last4Of(reg.name)}.
+                  Careful: the photo looks like account ·{preview.last4Seen} and this register is ·{last4Of(reg.name)}.
                 </p>
               )}
               {(preview.yaEnPlaid > 0 || preview.yaEscaneados > 0) && (
                 <p className="mt-0.5 text-[11px] text-neutral-500">
-                  Se saltaron {preview.yaEnPlaid + preview.yaEscaneados} que ya están en el register (no se duplican).
+                  Skipped {preview.yaEnPlaid + preview.yaEscaneados} already in the register (not duplicated).
                 </p>
               )}
               {preview.items.map((it, idx) => (
@@ -1010,14 +1010,14 @@ export function RegisterDetail(props: {
                   onClick={savePreview}
                   className="flex-1 rounded-lg bg-[#2fbf71] py-2 text-[12px] font-extrabold text-black active:scale-[.99]"
                 >
-                  Guardar provisionales
+                  Save provisionals
                 </button>
                 <button
                   type="button"
                   onClick={() => setPreview(null)}
                   className="flex-1 rounded-lg border border-[#262633] py-2 text-[12px] font-bold text-neutral-300 active:scale-[.99]"
                 >
-                  Cancelar
+                  Cancel
                 </button>
               </div>
             </div>
@@ -1029,19 +1029,19 @@ export function RegisterDetail(props: {
       <div>
         {wide ? (
           <div className="flex px-0.5">
-            <span className={BANK_HDR} style={{ width: "14%" }}>Fecha</span>
-            <span className={BANK_HDR} style={{ width: "19%" }}>Descripción</span>
-            <span className={BANK_HDR} style={{ width: "16%" }}>Categoría</span>
+            <span className={BANK_HDR} style={{ width: "14%" }}>Date</span>
+            <span className={BANK_HDR} style={{ width: "19%" }}>Description</span>
+            <span className={BANK_HDR} style={{ width: "16%" }}>Category</span>
             <span className={BANK_HDR} style={{ width: "13%" }}>Bank</span>
-            <span className={BANK_HDR} style={{ width: "17%" }}>Monto</span>
-            <span className={BANK_HDR} style={{ width: "21%" }}>Saldo</span>
+            <span className={BANK_HDR} style={{ width: "17%" }}>Amount</span>
+            <span className={BANK_HDR} style={{ width: "21%" }}>Balance</span>
           </div>
         ) : (
           <div className="flex px-0.5">
-            <span className={BANK_HDR} style={{ width: "15%" }}>Fecha</span>
-            <span className={BANK_HDR} style={{ width: "33%" }}>Descripción</span>
-            <span className={BANK_HDR} style={{ width: "22%" }}>Monto</span>
-            <span className={BANK_HDR} style={{ width: "30%" }}>Saldo</span>
+            <span className={BANK_HDR} style={{ width: "15%" }}>Date</span>
+            <span className={BANK_HDR} style={{ width: "33%" }}>Description</span>
+            <span className={BANK_HDR} style={{ width: "22%" }}>Amount</span>
+            <span className={BANK_HDR} style={{ width: "30%" }}>Balance</span>
           </div>
         )}
         <div
@@ -1137,7 +1137,7 @@ export function RegisterDetail(props: {
           })}
           {rows.length === 0 && (
             <p className="px-1 py-3 text-[12px] text-neutral-500">
-              {useBank ? "Sin movimientos del banco todavía." : "No movements yet. Press SYNC."}
+              {useBank ? "No bank movements yet." : "No movements yet. Press SYNC."}
             </p>
           )}
         </div>
@@ -1160,7 +1160,7 @@ export function RegisterDetail(props: {
                 </p>
                 <button
                   type="button"
-                  aria-label="Cerrar"
+                  aria-label="Close"
                   onClick={() => setPeek(null)}
                   className="-mr-1 -mt-1 px-1 text-[13px] leading-none text-neutral-400"
                 >
@@ -1170,7 +1170,7 @@ export function RegisterDetail(props: {
               <p className="mt-0.5 break-words text-[12.5px] font-semibold leading-snug text-neutral-50">{peek.text}</p>
               <div className="mt-2 space-y-1 border-t border-[#2c2c40] pt-2 text-[11.5px]">
                 <p className="flex items-center justify-between">
-                  <span className="text-neutral-500">Categoría</span>
+                  <span className="text-neutral-500">Category</span>
                   <span className="flex items-center gap-1 font-medium text-neutral-200">
                     <span className="inline-block w-[19px] text-center">{catIcon(peek.category, peek.text)}</span>
                     {peek.category || "—"}
@@ -1178,16 +1178,16 @@ export function RegisterDetail(props: {
                 </p>
                 {peek.notes ? (
                   <p className="flex items-start justify-between gap-2">
-                    <span className="shrink-0 text-neutral-500">Comentario</span>
+                    <span className="shrink-0 text-neutral-500">Comment</span>
                     <span className="text-right font-medium text-neutral-200">{peek.notes}</span>
                   </p>
                 ) : null}
                 <p className="flex items-center justify-between">
-                  <span className="text-neutral-500">Bank (ese día)</span>
+                  <span className="text-neutral-500">Bank (that day)</span>
                   <span className="font-mono font-medium tabular-nums text-neutral-200">{money(peek.bank)}</span>
                 </p>
                 <p className="flex items-center justify-between">
-                  <span className="text-neutral-500">Monto</span>
+                  <span className="text-neutral-500">Amount</span>
                   <span
                     className={cn(
                       "font-mono font-semibold tabular-nums",
@@ -1209,22 +1209,22 @@ export function RegisterDetail(props: {
                   }}
                   className="mt-2.5 w-full rounded-lg bg-[#26263a] py-1.5 text-[12px] font-bold text-[#5b8cff]"
                 >
-                  Editar
+                  Edit
                 </button>
               )}
               {peek.shotId && (
                 <>
                   <p className="mt-2 border-t border-[#2c2c40] pt-2 text-[11px] leading-snug text-sky-300">
                     {useBank
-                      ? "Provisional de screenshot — se reemplaza solo cuando Plaid baje el movimiento real."
-                      : "Registro escaneado de Lyft — queda como constancia del dinero que salió de Lyft (ej: hacia PayPal)."}
+                      ? "Screenshot provisional — it replaces itself when Plaid pulls in the real movement."
+                      : "Scanned Lyft record — kept as proof of the money that left Lyft (e.g.: to PayPal)."}
                   </p>
                   <button
                     type="button"
                     onClick={() => removeShot(peek.shotId as string)}
                     className="mt-2 w-full rounded-lg bg-[#3a1d24] py-1.5 text-[12px] font-bold text-[#ff5d6c]"
                   >
-                    {useBank ? "Quitar provisional" : "Quitar registro"}
+                    {useBank ? "Remove provisional" : "Remove record"}
                   </button>
                 </>
               )}
@@ -1233,14 +1233,14 @@ export function RegisterDetail(props: {
         )}
         <div className="mt-1 flex items-center justify-between bg-[#1b1b26] px-2 py-1.5">
           <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
-            Hoy, {fmtFecha(today)} - Saldo actual
+            Today, {fmtFecha(today)} - Current balance
           </span>
           <span className="font-mono text-[11px] font-bold tabular-nums text-neutral-100">
             {balance == null ? "—" : money(balance)}
           </span>
         </div>
         {rows.length > 200 && (
-          <p className="px-1 pt-1 text-[10px] text-neutral-600">Mostrando los 200 movimientos más recientes de {rows.length}.</p>
+          <p className="px-1 pt-1 text-[10px] text-neutral-600">Showing the 200 most recent movements of {rows.length}.</p>
         )}
       </div>
 
@@ -1248,12 +1248,12 @@ export function RegisterDetail(props: {
       {monthLines.length > 0 && (
         <div>
           <p className="px-1 pb-1 text-[11px] font-bold uppercase tracking-widest text-neutral-400">
-            Desglose · {monthLabel}
+            Breakdown · {monthLabel}
           </p>
           <div className="rounded-2xl border border-[#262633] bg-[#111119] p-3">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <p className="pb-1 text-[9px] font-bold uppercase tracking-widest text-neutral-500">Entradas por categoría</p>
+                <p className="pb-1 text-[9px] font-bold uppercase tracking-widest text-neutral-500">Money in by category</p>
                 {topCats(monthLines, 1).map(([c, v]) => (
                   <div key={c} className="flex items-center justify-between py-0.5">
                     <span className="flex min-w-0 items-center gap-1 text-[11px] text-neutral-300">
@@ -1266,7 +1266,7 @@ export function RegisterDetail(props: {
                 {topCats(monthLines, 1).length === 0 && <p className="text-[11px] text-neutral-600">—</p>}
               </div>
               <div>
-                <p className="pb-1 text-[9px] font-bold uppercase tracking-widest text-neutral-500">Salidas por categoría</p>
+                <p className="pb-1 text-[9px] font-bold uppercase tracking-widest text-neutral-500">Money out by category</p>
                 {topCats(monthLines, -1).map(([c, v]) => (
                   <div key={c} className="flex items-center justify-between py-0.5">
                     <span className="flex min-w-0 items-center gap-1 text-[11px] text-neutral-300">
@@ -1280,7 +1280,7 @@ export function RegisterDetail(props: {
               </div>
             </div>
             <div className="mt-2 flex items-center justify-between border-t border-[#262633] pt-2">
-              <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">Flujo neto del mes</span>
+              <span className="text-[10px] font-bold uppercase tracking-widest text-neutral-500">Net flow for the month</span>
               <span
                 className={cn(
                   "font-mono text-[14px] font-bold tabular-nums",
@@ -1323,9 +1323,9 @@ export function BankTxEdit(props: {
 
   async function guardar() {
     const amt = parseFloat(monto.replace(/[^0-9.]/g, ""))
-    if (!desc.trim()) return setErr("Falta la descripción.")
-    if (!amt || amt <= 0) return setErr("Falta el monto.")
-    if (!fecha) return setErr("Falta la fecha.")
+    if (!desc.trim()) return setErr("Description is missing.")
+    if (!amt || amt <= 0) return setErr("Amount is missing.")
+    if (!fecha) return setErr("Date is missing.")
     setSaving(true)
     setErr("")
     try {
@@ -1344,7 +1344,7 @@ export function BankTxEdit(props: {
       if (!r.ok) throw new Error("save failed")
       props.onSaved()
     } catch {
-      setErr("No se pudo guardar. Intenta de nuevo.")
+      setErr("Could not save. Try again.")
       setSaving(false)
     }
   }
@@ -1361,7 +1361,7 @@ export function BankTxEdit(props: {
       if (!r.ok) throw new Error("delete failed")
       props.onSaved()
     } catch {
-      setErr("No se pudo eliminar. Intenta de nuevo.")
+      setErr("Could not delete. Try again.")
       setSaving(false)
     }
   }
@@ -1371,7 +1371,7 @@ export function BankTxEdit(props: {
       <button type="button" onClick={props.onBack} className="self-start text-[12px] font-bold text-[#5b8cff]">
         ← Register
       </button>
-      <p className="text-[15px] font-extrabold uppercase tracking-wide text-neutral-100">Editar transacción</p>
+      <p className="text-[15px] font-extrabold uppercase tracking-wide text-neutral-100">Edit transaction</p>
 
       <div className="grid grid-cols-2 gap-1 rounded-xl border border-[#2c2c3e] bg-[#17171f] p-1">
         {(["gasto", "ingreso"] as const).map((t) => (
@@ -1388,19 +1388,19 @@ export function BankTxEdit(props: {
                 : "text-neutral-400",
             )}
           >
-            {t === "gasto" ? "Gasto" : "Ingreso"}
+            {t === "gasto" ? "Expense" : "Income"}
           </button>
         ))}
       </div>
 
       <div>
-        <label className={labelCls}>Descripción</label>
-        <input className={inputCls} value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Nombre / detalle" />
+        <label className={labelCls}>Description</label>
+        <input className={inputCls} value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Name / detail" />
       </div>
 
       {tipo === "gasto" && (
         <div>
-          <label className={labelCls}>Categoría</label>
+          <label className={labelCls}>Category</label>
           <div className="flex flex-wrap gap-1.5">
             {EXPENSE_CATEGORIES.map((c) => (
               <button
@@ -1423,24 +1423,24 @@ export function BankTxEdit(props: {
 
       {tipo === "ingreso" && (
         <div>
-          <label className={labelCls}>Categoría</label>
+          <label className={labelCls}>Category</label>
           <input className={inputCls} value={cat} onChange={(e) => setCat(e.target.value)} placeholder="Income" />
         </div>
       )}
 
       <div>
-        <label className={labelCls}>Comentario · origen / destino</label>
+        <label className={labelCls}>Comment · origin / destination</label>
         <textarea
           className={inputCls}
           value={nota}
           onChange={(e) => setNota(e.target.value)}
           rows={2}
-          placeholder="Ej.: Origen: Lyft → PayPal · Transferencia PayPal → Citibank"
+          placeholder="E.g.: Origin: Lyft → PayPal · Transfer PayPal → Citibank"
         />
       </div>
 
       <div>
-        <label className={labelCls}>Monto</label>
+        <label className={labelCls}>Amount</label>
         <div className="relative">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[15px] text-neutral-500">$</span>
           <input
@@ -1454,7 +1454,7 @@ export function BankTxEdit(props: {
       </div>
 
       <div>
-        <label className={labelCls}>Fecha</label>
+        <label className={labelCls}>Date</label>
         <input type="date" className={inputCls} value={fecha} onChange={(e) => setFecha(e.target.value)} />
         {fecha && <p className="mt-1 text-[11px] text-neutral-500">{fmtWeekday(fecha)}</p>}
       </div>
@@ -1467,7 +1467,7 @@ export function BankTxEdit(props: {
         onClick={guardar}
         className="mt-1 rounded-xl bg-[#2fbf71] py-3 text-[14px] font-extrabold uppercase tracking-wide text-white disabled:opacity-50"
       >
-        {saving ? "Guardando…" : "Guardar"}
+        {saving ? "Saving…" : "Save"}
       </button>
       <button
         type="button"
@@ -1478,7 +1478,7 @@ export function BankTxEdit(props: {
           confirmDel ? "border-[#ff5d6c] bg-[#ff5d6c] text-white" : "border-[#2c2c3e] text-[#ff5d6c]",
         )}
       >
-        {confirmDel ? "¿Seguro? Toca otra vez para eliminar" : "Eliminar"}
+        {confirmDel ? "Are you sure? Tap again to delete" : "Delete"}
       </button>
     </div>
   )
@@ -1564,7 +1564,7 @@ export function TransfersReport(props: {
       <button type="button" onClick={props.onBack} className="self-start text-[12px] font-bold text-[#5b8cff]">
         ← Back
       </button>
-      <p className="text-[14px] font-bold text-[#f2f3f7]">Transferencias</p>
+      <p className="text-[14px] font-bold text-[#f2f3f7]">Transfers</p>
       <p className="text-[12px] text-neutral-400">
         {pairs.length} matched · {open} open
       </p>

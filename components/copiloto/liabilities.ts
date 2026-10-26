@@ -175,7 +175,7 @@ export function ensureCycleBills(
         isAiGenerated: false,
         isEditedByUser: false,
         payments: [],
-        notes: "Open Bill automático del recurrente de Proyecciones",
+        notes: "Automatic Open Bill from the Projections recurring",
         createdAt: now,
         updatedAt: now,
       })

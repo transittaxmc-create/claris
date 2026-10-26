@@ -91,7 +91,7 @@ export function UpcomingBillsForm() {
                       {e.priority === 1 ? "🔴 " : "🟡 "}
                       {e.name}
                     </p>
-                    <p className="text-[11px] text-neutral-500">Vence {e.dueDate}</p>
+                    <p className="text-[11px] text-neutral-500">Due {e.dueDate}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
                     <span className="font-extrabold tabular-nums text-neutral-200">

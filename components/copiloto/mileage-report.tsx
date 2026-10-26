@@ -49,7 +49,7 @@ export function MileageReport() {
         <div>
           <p className="text-[11px] font-bold tracking-wide text-white">MILEAGE LOG — IRS</p>
           <p className="text-[10px] text-neutral-500">
-            {totals.days} días · {totals.trips} viajes · {num(totals.total)} mi en {year}
+            {totals.days} days · {totals.trips} trips · {num(totals.total)} mi in {year}
           </p>
         </div>
         <div className="flex gap-1.5">
@@ -116,7 +116,7 @@ export function MileageReport() {
       <div className="max-h-96 space-y-2 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {yearDays.length === 0 ? (
           <p className="py-4 text-center text-[11px] text-neutral-500">
-            Sin registros todavía. Presiona START al empezar el turno — las millas se anotan solas.
+            No records yet. Press START when you begin the shift — the miles are logged automatically.
           </p>
         ) : (
           [...yearDays].reverse().map((d) => (
@@ -149,7 +149,7 @@ export function MileageReport() {
         )}
       </div>
       <p className="mt-2 text-[9px] leading-snug text-neutral-500">
-        Registro contemporáneo (Pub 463): fecha, millas, destino y propósito de negocio por día. Guárdalo para el IRS.
+        Contemporaneous record (Pub 463): date, miles, destination and business purpose per day. Keep it for the IRS.
       </p>
     </section>
   )

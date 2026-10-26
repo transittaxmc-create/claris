@@ -17,7 +17,7 @@ export function PlaidConnectButton({ onLinked }: { onLinked?: () => void }) {
       const tokRes = await fetch("/api/plaid/create-link-token", { method: "POST" })
       const tokJson = await tokRes.json()
       if (!tokRes.ok || !tokJson.link_token) {
-        throw new Error(tokJson.error || tokJson.hint || "No se pudo crear el link token")
+        throw new Error(tokJson.error || tokJson.hint || "Could not create the link token")
       }
 
       await new Promise<void>((resolve, reject) => {
@@ -51,7 +51,7 @@ export function PlaidConnectButton({ onLinked }: { onLinked?: () => void }) {
             if (!ex.ok) throw new Error(j.error || "exchange_failed")
             onLinked?.()
           } catch (e: any) {
-            setError(e?.message || "Error al guardar el banco")
+            setError(e?.message || "Error saving the bank")
           } finally {
             setBusy(false)
           }

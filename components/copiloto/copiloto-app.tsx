@@ -544,7 +544,7 @@ export function CopilotoApp() {
   function connectSync(code: string) {
     if (!isValidSyncCode(code)) {
       setSyncTone("error")
-      setSyncMessage(`Código inválido (mín. ${MIN_SYNC_CODE_LENGTH} characters).`)
+      setSyncMessage(`Invalid code (min. ${MIN_SYNC_CODE_LENGTH} characters).`)
       return
     }
     saveSyncCode(code)
@@ -591,7 +591,7 @@ export function CopilotoApp() {
         <div className="flex items-center gap-2 border-b border-cyan-500/40 bg-cyan-950/70 px-3 py-1.5 text-[11px] text-cyan-200">
           <span className="flex-1">
             Test build {(process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 7)} · newer than
-            producción ({versionPrueba}).
+            production ({versionPrueba}).
           </span>
           <button type="button" onClick={() => setAvisoCerrado(true)} className="text-cyan-400">
             ✕
@@ -772,8 +772,8 @@ export function CopilotoApp() {
               {(
                 [
                   { title: "Operations", keys: ["EXPENSES", "DASH", "V1DASH", "SOBRES", "TOLLAUDIT"] as const },
-                  { title: "Inteligencia y datos", keys: ["AI", "DATA"] as const },
-                  { title: "Ayuda", keys: ["HELP"] as const },
+                  { title: "Intelligence & data", keys: ["AI", "DATA"] as const },
+                  { title: "Help", keys: ["HELP"] as const },
                 ] as const
               ).map((group) => {
                 const items = TABS_EN_MAS.filter((t) => (group.keys as readonly string[]).includes(t.key))

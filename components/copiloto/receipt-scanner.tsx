@@ -470,11 +470,11 @@ export function ReceiptScanner({
             </select>
             <p className="mt-1.5 text-[10px] leading-snug" style={{ color: "#8A93A3" }}>
               {docTipo === "factura"
-                ? "Se guarda como Escaneado · Bill: va a Projected (payable) y no toca el banco todavía."
+                ? "Saved as Scanned · Bill: goes to Projected (payable) and doesn't touch the bank yet."
                 : docTipo === "recibo"
-                  ? "Se guarda como Escaneado · Receipt: va a Bank como Posted (already paid)."
+                  ? "Saved as Scanned · Receipt: goes to Bank as Posted (already paid)."
                   : sugerirTipoDoc(comercio, notas) === "factura"
-                    ? "Sugerido: Bill (parece un peaje o cuenta payable). Tú decides."
+                    ? "Suggested: Bill (looks like a toll or a payable account). Your call."
                     : "Los peajes (Easy Pass, SunPass, Tower) casi siempre son Facturas, no recibos."}
             </p>
           </div>

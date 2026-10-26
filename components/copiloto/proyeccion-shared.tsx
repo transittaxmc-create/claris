@@ -200,7 +200,7 @@ export function lineCategory(
  *  Si el saldo inicial es muy bajo (< $50), el % vs start se dispara
  *  (ej. $14 → $7,962 = +56,769%). En ese caso medimos cobertura
  *  (ingreso vs gasto). El % mostrado se limita a ±999. */
-export function healthOf(fc: Forecast): { pct: number; label: string; labelEs: string; color: string } {
+export function healthOf(fc: Forecast): { pct: number; label: string; color: string } {
   const net = (Number(fc.end) || 0) - (Number(fc.start) || 0)
   const start = Math.abs(Number(fc.start) || 0)
   const expenses = Math.abs(Number(fc.expenseTotal) || 0)
@@ -214,10 +214,10 @@ export function healthOf(fc: Forecast): { pct: number; label: string; labelEs: s
     pct = net >= 0 ? 100 : -50
   }
   pct = Math.max(-999, Math.min(999, pct))
-  if (fc.end < 0) return { pct, label: "WEAK", labelEs: "DÉBIL", color: "#ff5d6c" }
-  if (pct >= 20 || net >= 200) return { pct, label: "STRONG", labelEs: "FUERTE", color: "#34d17b" }
-  if (pct >= 0) return { pct, label: "FAIR", labelEs: "REGULAR", color: "#f5b84c" }
-  return { pct, label: "WEAK", labelEs: "DÉBIL", color: "#ff5d6c" }
+  if (fc.end < 0) return { pct, label: "WEAK", color: "#ff5d6c" }
+  if (pct >= 20 || net >= 200) return { pct, label: "STRONG", color: "#34d17b" }
+  if (pct >= 0) return { pct, label: "FAIR", color: "#f5b84c" }
+  return { pct, label: "WEAK", color: "#ff5d6c" }
 }
 
 /** Gauge semicircular rojo → amarillo → verde, como las fotos. */

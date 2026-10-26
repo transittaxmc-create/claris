@@ -188,7 +188,7 @@ function ExpenseRow({
         </span>
         {(expense.isAiGenerated || expense.scanned) && (
           <span className="inline-flex items-center gap-1 rounded-full border border-sky-500/40 bg-sky-500/10 px-2 py-0.5 text-[9px] font-bold text-sky-400">
-            <Sparkles className="size-2.5" /> ESCANEADO
+            <Sparkles className="size-2.5" /> SCANNED
           </span>
         )}
         {expense.docType === "factura" && (
@@ -203,12 +203,12 @@ function ExpenseRow({
         )}
         {expense.isEditedByUser && (
           <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[9px] font-bold text-amber-400">
-            EDITADO
+            EDITED
           </span>
         )}
         {expense.scheduled && (
           <span className="inline-flex items-center gap-1 rounded-full border border-yellow-400/50 bg-yellow-400/10 px-2 py-0.5 text-[9px] font-bold text-yellow-300">
-            <CalendarClock className="size-2.5" /> PROGRAMADO
+            <CalendarClock className="size-2.5" /> SCHEDULED
           </span>
         )}
         {expense.classification === "business" && (
@@ -264,15 +264,15 @@ function ExpenseRow({
           <div className="flex items-center justify-between gap-2">
             <p className="text-[11px] font-bold text-neutral-300">
               Total {money(expense.amount)} <span className="text-neutral-600">·</span>{" "}
-              <span className="text-emerald-400">Pagado {money(pagado)}</span>{" "}
+              <span className="text-emerald-400">Paid {money(pagado)}</span>{" "}
               <span className="text-neutral-600">·</span>{" "}
               <span className={resta > 0.009 ? "text-amber-300" : "text-neutral-400"}>
-                Restan {money(resta)}
+                {money(resta)} left
               </span>
             </p>
             {estado === "pagada" ? (
               <span className="shrink-0 rounded-full border border-emerald-500/50 bg-emerald-500/15 px-2 py-0.5 text-[9px] font-black text-emerald-300">
-                PAGADA
+                PAID
               </span>
             ) : (
               <span className="inline-flex shrink-0 animate-pulse items-center gap-1 rounded-full border border-amber-500/50 bg-amber-500/15 px-2 py-0.5 text-[9px] font-black text-amber-300">
@@ -669,7 +669,7 @@ export function ExpensesScreen({
       let mimeType: string
       if (esPdf) {
         if (file.size > 15 * 1024 * 1024) {
-          throw new Error("El PDF pesa más de 15 MB")
+          throw new Error("The PDF is larger than 15 MB")
         }
         setScanStatus("Leyendo el statement...")
         base64 = await readFileAsDataUrl(file)
@@ -701,10 +701,10 @@ export function ExpensesScreen({
         const notas: string[] = []
         if (result.notes) notas.push(String(result.notes))
         if (Number(result.pastDue) > 0) {
-          notas.push(`Atrasado según el statement: $${Number(result.pastDue).toFixed(2)} (vencía de inmediato).`)
+          notas.push(`Past due per the statement: $${Number(result.pastDue).toFixed(2)} (was due immediately).`)
         }
         if (Number(result.totalDue) > 0 && Number(result.totalDue) !== Number(result.amount)) {
-          notas.push(`Total del statement: $${Number(result.totalDue).toFixed(2)}.`)
+          notas.push(`Statement total: $${Number(result.totalDue).toFixed(2)}.`)
         }
         const dueDate = result.dueDate || scanDate
         setDraft({
@@ -740,7 +740,7 @@ export function ExpensesScreen({
       setTimeout(() => setScanStatus(null), 3500)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error al procesar"
-      alert(`Error al escanear recibo: ${msg}`)
+      alert(`Error scanning receipt: ${msg}`)
       setScanStatus(null)
     } finally {
       setIsScanning(false)
@@ -765,11 +765,11 @@ export function ExpensesScreen({
     const dup = findDuplicateExpense(expenses, draft)
     if (dup) {
       const msg =
-        `⚠️ Posible duplicado:\n\n` +
+        `⚠️ Possible duplicate:\n\n` +
         `${dup.expense.vendor} · ${dup.expense.date} · ${money(dup.expense.amount)} · ${dup.expense.category}\n\n` +
-        `Ya existe un gasto idéntico (vendedor + fecha + monto).\n\n` +
-        `"Aceptar" lo guarda igual (¿dos compras iguales el mismo día?)\n` +
-        `"Cancel" no guarda nada.`
+        `An identical expense already exists (vendor + date + amount).\n\n` +
+        `"OK" saves it anyway (two identical purchases the same day?)\n` +
+        `"Cancel" saves nothing.`
       if (!window.confirm(msg)) return
     }
 
@@ -922,7 +922,7 @@ export function ExpensesScreen({
                 disabled={isScanning}
                 aria-label="Upload receipt photo or bill statement PDF"
                 className="flex items-center rounded-full border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-neutral-300 hover:bg-neutral-800 active:scale-95 disabled:opacity-50"
-                title="Subir foto o statement (PDF)"
+                title="Upload photo or statement (PDF)"
               >
                 <Upload className="size-3.5" />
               </button>
@@ -1186,7 +1186,7 @@ export function ExpensesScreen({
               {draft.frequency !== "once" && (
                 <p className="mt-1.5 text-[10px] leading-tight text-neutral-500">
                   It will be saved to the FINANCE scheduled ledger and repeat every{" "}
-                  {draft.frequency === "daily" ? "día" : draft.frequency === "weekly" ? "week" : draft.frequency === "monthly" ? "mes" : "año"}.
+                  {draft.frequency === "daily" ? "day" : draft.frequency === "weekly" ? "week" : draft.frequency === "monthly" ? "month" : "year"}.
                 </p>
               )}
             </div>
@@ -1208,7 +1208,7 @@ export function ExpensesScreen({
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar vendedor"
+              placeholder="Search vendor"
               className="w-full min-w-0 bg-transparent text-sm text-white outline-none placeholder:text-neutral-600"
             />
           </div>
@@ -1248,14 +1248,14 @@ export function ExpensesScreen({
                 <p className="text-[11px] font-bold text-white">
                   {d.isSplit ? "Split payment of " : "Possible payment of "}
                   <span className="text-cyan-300">{d.billVendor}</span>
-                  <span className="text-neutral-500"> · restan {money(d.billRemaining)}</span>
+                  <span className="text-neutral-500"> · {money(d.billRemaining)} left</span>
                 </p>
                 <div className="mt-1 space-y-0.5">
                   {d.txs.map((tx) => (
                     <p key={bankTxIdOf(tx)} className="text-[10px] text-neutral-400">
                       {money(Math.abs(Number(tx.amount) || 0))} ·{" "}
                       {accountNameById.get(accountIdFor(String(tx.bank_account || ""))) ||
-                        String(tx.bank_account || "banco")}{" "}
+                        String(tx.bank_account || "bank")}{" "}
                       · {String(tx.date).slice(0, 10)}
                     </p>
                   ))}
@@ -1278,7 +1278,7 @@ export function ExpensesScreen({
                     onClick={() => dismissDetected(d)}
                     className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 py-1.5 text-[11px] font-extrabold text-neutral-400 active:scale-[0.99]"
                   >
-                    ✕ NO ES
+                    ✕ NOT IT
                   </button>
                 </div>
               </div>

@@ -433,7 +433,7 @@ export function EntryScreen({
           {/* Contador de millas IRS — corre solo con el turno activo */}
           {shift.shiftActive && (
             <span
-              title="Millas de negocio (IRS) — se guardan al cerrar el turno"
+              title="Business miles (IRS) — saved when you end the shift"
               className="flex h-8 shrink-0 items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 font-mono text-[11px] font-bold tabular-nums text-sky-300"
             >
               {shift.shiftMiles.toFixed(1)} mi

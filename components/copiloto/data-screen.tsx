@@ -194,11 +194,11 @@ export function DataScreen({
           />
           <Row
             label="INDEXEDDB (COPIA)"
-            value={info ? (info.indexedDbOk ? `${info.indexedDbCount} registros` : "NO DISPONIBLE") : "…"}
+            value={info ? (info.indexedDbOk ? `${info.indexedDbCount} records` : "NOT AVAILABLE") : "…"}
             tone={info?.indexedDbOk ? "text-green-400" : "text-rose-400"}
           />
-          <Row label="ESPACIO USADO" value={info ? `${fmtBytes(info.bytes)} · ${info.keys} claves` : "…"} />
-          <Row label="BORRADOS PENDIENTES" value={String(info?.tombstones ?? 0)} tone="text-neutral-400" />
+          <Row label="SPACE USED" value={info ? `${fmtBytes(info.bytes)} · ${info.keys} keys` : "…"} />
+          <Row label="PENDING DELETIONS" value={String(info?.tombstones ?? 0)} tone="text-neutral-400" />
           {/* Versión: sirve para saber si este teléfono abrió la última copia. */}
           <Row
             label="APP VERSION"
@@ -206,9 +206,9 @@ export function DataScreen({
               process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA
                 ? `${process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA.slice(0, 7)}${
                     estadoVersion === "older"
-                      ? ` (hay ${ultimaVersion})`
+                      ? ` (newer: ${ultimaVersion})`
                       : estadoVersion === "newer"
-                        ? ` · prueba (prod ${ultimaVersion})`
+                        ? ` · test (prod ${ultimaVersion})`
                         : " · per day"
                   }`
                 : "local"
@@ -323,7 +323,7 @@ export function DataScreen({
           </div>
           <p className="mb-2 text-[10px] leading-tight text-neutral-500">
             Enter the same private code on both phones. Trips are encrypted here before leaving and nobody else
-            (ni el servidor) puede leerlos. Sin código no hay sincronización.
+            (not even the server) can read them. Without the code there is no sync.
           </p>
 
           {syncCode ? (
@@ -461,9 +461,9 @@ export function DataScreen({
 
           {/* Opción 2: reset desde cero (todo) */}
           <p className="mb-2 mt-3 border-t border-rose-900/40 pt-2 text-[10px] leading-tight text-neutral-400">
-            <strong className="text-rose-300">From cero (ALL):</strong> deletes all trips from this
-            teléfono: memoria, localStorage, copia de seguridad, GPS temporal e IndexedDB. Se conserva el
-            código de sync para poder volver a bajar tus datos.
+            <strong className="text-rose-300">From zero (ALL):</strong> deletes all trips from this
+            phone: memory, localStorage, backup copy, temporary GPS and IndexedDB. The sync code is kept
+            so you can download your data again.
           </p>
           {confirmReset ? (
             <div className="flex gap-2">

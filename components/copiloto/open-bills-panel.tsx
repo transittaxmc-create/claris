@@ -54,7 +54,7 @@ export function OpenBillsPanel() {
     setBills((prev) => [bill, ...prev])
     setDesc("")
     setAmount("")
-    setLastMsg(`Account payable creada: ${bill.description} ${money(value)}`)
+    setLastMsg(`Account payable created: ${bill.description} ${money(value)}`)
   }
 
   function recordPayment() {
@@ -74,9 +74,9 @@ export function OpenBillsPanel() {
     setPayAmount("")
     setPayNote("")
     const lines = applications.map(
-      (a) => `• ${a.description}: ${money(a.amount)} (queda ${money(a.remainingAfter)})`,
+      (a) => `• ${a.description}: ${money(a.amount)} (${money(a.remainingAfter)} left)`,
     )
-    const extra = leftover > 0.009 ? `\nSobrante no aplicado: ${money(leftover)}` : ""
+    const extra = leftover > 0.009 ? `\nLeftover not applied: ${money(leftover)}` : ""
     setLastMsg(`Deducted from accounts payable (oldest → newest):\n${lines.join("\n")}${extra}`)
   }
 
@@ -98,7 +98,7 @@ export function OpenBillsPanel() {
           </p>
           <p className="mt-0.5 text-[10px] leading-snug text-neutral-500">
             This is accounts payable: what you owe. Not a receipt or receivable. Each payment
-            descuenta de la más vieja hasta $0; el sobrante a la siguiente.
+            comes off the oldest one down to $0; the leftover goes to the next.
           </p>
         </div>
         <div className="shrink-0 rounded-xl border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-right">
@@ -168,14 +168,14 @@ export function OpenBillsPanel() {
           <option value="">Oldest first</option>
           {openOnes.map((b) => (
             <option key={b.id} value={b.id}>
-              {b.description} · queda {money(b.remainingAmount)}
+              {b.description} · {money(b.remainingAmount)} left
             </option>
           ))}
         </select>
         <input
           value={payNote}
           onChange={(e) => setPayNote(e.target.value)}
-          placeholder="Nota (ej. parcial carro / EZPass)"
+          placeholder="Note (e.g. partial car / EZPass)"
           className="w-full rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-xs text-white placeholder:text-neutral-600"
         />
         <button
@@ -203,8 +203,8 @@ export function OpenBillsPanel() {
               <div className="min-w-0">
                 <p className="truncate text-xs font-bold text-white">{b.description}</p>
                 <p className="text-[10px] text-neutral-500">
-                  Vence {b.dueDate} · Original {money(b.originalAmount)}
-                  {b.status === "partial" && " · parcial"}
+                  Due {b.dueDate} · Original {money(b.originalAmount)}
+                  {b.status === "partial" && " · partial"}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-1.5">
