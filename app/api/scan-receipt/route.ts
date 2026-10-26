@@ -11,6 +11,12 @@ interface AnalysisResult {
   category: string
   notes?: string
   confidence?: number
+  // Campos extra cuando el documento es un STATEMENT de bill (PDF):
+  isBill?: boolean
+  dueDate?: string
+  amountDue?: number
+  pastDue?: number
+  totalDue?: number
 }
 
 export async function POST(req: Request) {
@@ -25,7 +31,7 @@ export async function POST(req: Request) {
       )
     }
 
-    const { image, mimeType } = await req.json()
+    const { image, mimeType, kind } = await req.json()
     if (!image) {
       return NextResponse.json({ error: "Falta la imagen en base64" }, { status: 400 })
     }
@@ -35,7 +41,32 @@ export async function POST(req: Request) {
 
     console.log(`[scan-receipt] Recibida imagen: ${resolvedMime}, base64 len: ${cleanBase64.length}`)
 
-    const prompt = `You are an expert accountant who analyzes tickets, receipts and invoices for Uber, Lyft and transportation drivers.
+    // Un PDF (o kind:"bill") es un STATEMENT de bill, no un recibo: se extrae
+    // el monto que vence y su fecha, separados de lo atrasado.
+    const esBill = resolvedMime === "application/pdf" || kind === "bill"
+
+    const prompt = esBill
+      ? `You are an expert accountant. The attached document is a BILL STATEMENT (for example a phone, utility, insurance or service bill) for a small transportation business. Extract the following fields with maximum precision in strict JSON format:
+
+1. vendor: The company issuing the bill (e.g.: "AT&T", "Verizon", "E-ZPass", "Geico"). Use the commercial brand name.
+2. dueDate: The due date of the CURRENT amount due, in exactly YYYY-MM-DD format. This is the date printed next to "Amount due" / "Total due by" / "Please pay by". If the statement lists a past-due amount "due immediately" AND a separate amount with a future due date, dueDate is that FUTURE due date.
+3. amountDue: The amount due ON dueDate (the new/current charges for this cycle), as a float, NO currency symbols or commas. CRITICAL: if the statement separates a PAST DUE amount (due immediately, from previous cycles) from the amount due on dueDate, amountDue EXCLUDES the past-due part. Example: "Past due $212.82 due immediately" + "$349.19 due Nov 15" -> amountDue = 349.19, dueDate = the Nov 15 date. If there is only one total amount due with one due date, amountDue = that total.
+4. pastDue: The amount shown as past due / previous balance due immediately, as a float. 0 if none.
+5. totalDue: The grand total needed to bring the account fully current (pastDue + amountDue when both exist), as a float. If only one amount exists, totalDue = amountDue.
+6. date: The statement issue date, YYYY-MM-DD.
+7. category: Classify MANDATORILY into ONE of these exact system categories:
+${EXPENSE_CATEGORIES.map((c) => `   - "${c}"`).join("\n")}
+   Classification rules:
+   * Phone / mobile / internet bills -> "Phone"
+   * Tolls (E-ZPass, SunPass) -> "Tolls"
+   * Insurance bills -> "Insurance"
+   * Fuel -> "Fuel"
+   * If it fits none of the above -> "Other"
+8. notes: One short line: service/account reference using ONLY the last 4 digits if an account number is visible (e.g.: "Account ·7878, 4 lines"), plus the billing cycle if shown. NEVER include a full account number.
+9. confidence: Decimal number from 0.0 to 1.0 indicating your certainty.
+
+Respond with ONLY a valid JSON object with these exact keys: vendor, dueDate, amountDue, pastDue, totalDue, date, category, notes, confidence.`
+      : `You are an expert accountant who analyzes tickets, receipts and invoices for Uber, Lyft and transportation drivers.
 Carefully analyze the attached receipt image and extract the following fields with maximum precision in strict JSON format:
 
 1. vendor: Clear business name of the seller, establishment or company (e.g.: "Shell", "Chevron", "McDonald's", "AutoZone", "E-ZPass", "Car Wash Express"). Avoid cryptic legal names if the commercial brand name is visible.
@@ -138,6 +169,16 @@ Respond with ONLY a valid JSON object with those exact keys.`
     if (typeof parsed.notes === "string") {
       const limpio = parsed.notes.replace(/\s+/g, " ").trim().slice(0, 200)
       parsed.notes = limpio || undefined
+    }
+
+    // Statement de bill: el "amount/date" principal es lo que vence y cuándo.
+    if (esBill) {
+      parsed.isBill = true
+      const due = Number(parsed.amountDue)
+      if (Number.isFinite(due) && due > 0) parsed.amount = due
+      if (parsed.dueDate) parsed.date = parsed.dueDate
+      parsed.pastDue = Number(parsed.pastDue) || 0
+      parsed.totalDue = Number(parsed.totalDue) || parsed.amount
     }
 
     console.log(`[scan-receipt] Éxito en ${Date.now() - start}ms:`, parsed.vendor, parsed.category, parsed.amount)

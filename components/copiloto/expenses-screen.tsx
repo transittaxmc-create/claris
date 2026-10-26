@@ -646,21 +646,46 @@ export function ExpensesScreen({
     })
   }
 
+  function readFileAsDataUrl(f: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(f)
+    })
+  }
+
   async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
 
     try {
       setIsScanning(true)
-      setScanStatus("Procesando imagen...")
+      // Un PDF es un STATEMENT de bill: va directo, sin pasar por el canvas
+      // de fotos (que solo maneja imágenes y lo rompería).
+      const esPdf = file.type === "application/pdf"
 
-      const { base64, mimeType } = await resizeImage(file)
+      let base64: string
+      let mimeType: string
+      if (esPdf) {
+        if (file.size > 15 * 1024 * 1024) {
+          throw new Error("El PDF pesa más de 15 MB")
+        }
+        setScanStatus("Leyendo el statement...")
+        base64 = await readFileAsDataUrl(file)
+        mimeType = "application/pdf"
+      } else {
+        setScanStatus("Procesando imagen...")
+        const r = await resizeImage(file)
+        base64 = r.base64
+        mimeType = r.mimeType
+      }
       setScanStatus("Analyzing with AI...")
 
       const res = await fetch("/api/scan-receipt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: base64, mimeType }),
+        body: JSON.stringify({ image: base64, mimeType, kind: esPdf ? "bill" : undefined }),
       })
 
       const json = await res.json()
@@ -670,20 +695,48 @@ export function ExpensesScreen({
 
       const { result } = json
       const scanDate = result.date || localDateKey(new Date())
-      setDraft({
-        id: null,
-        date: scanDate,
-        vendor: result.vendor || "",
-        category: result.category || EXPENSE_CATEGORIES[0],
-        amount: Number(result.amount) || 0,
-        notes: result.notes || "",
-        isAiGenerated: true,
-        docType: "",
-        frequency: "once",
-        nextDate: scanDate,
-        accountId: defaultAccountId || undefined,
-      })
-      setScanStatus("Receipt detected! Review and save.")
+      if (result.isBill) {
+        // Bill: el draft nace como FACTURA con fecha = vencimiento y monto =
+        // lo que vence ese día. Lo atrasado y el total quedan en las notas.
+        const notas: string[] = []
+        if (result.notes) notas.push(String(result.notes))
+        if (Number(result.pastDue) > 0) {
+          notas.push(`Atrasado según el statement: $${Number(result.pastDue).toFixed(2)} (vencía de inmediato).`)
+        }
+        if (Number(result.totalDue) > 0 && Number(result.totalDue) !== Number(result.amount)) {
+          notas.push(`Total del statement: $${Number(result.totalDue).toFixed(2)}.`)
+        }
+        const dueDate = result.dueDate || scanDate
+        setDraft({
+          id: null,
+          date: dueDate,
+          vendor: result.vendor || "",
+          category: result.category || EXPENSE_CATEGORIES[0],
+          amount: Number(result.amount) || 0,
+          notes: notas.join(" "),
+          isAiGenerated: true,
+          docType: "factura",
+          frequency: "once",
+          nextDate: dueDate,
+          accountId: defaultAccountId || undefined,
+        })
+        setScanStatus("Bill detected! Review and save.")
+      } else {
+        setDraft({
+          id: null,
+          date: scanDate,
+          vendor: result.vendor || "",
+          category: result.category || EXPENSE_CATEGORIES[0],
+          amount: Number(result.amount) || 0,
+          notes: result.notes || "",
+          isAiGenerated: true,
+          docType: "",
+          frequency: "once",
+          nextDate: scanDate,
+          accountId: defaultAccountId || undefined,
+        })
+        setScanStatus("Receipt detected! Review and save.")
+      }
       setTimeout(() => setScanStatus(null), 3500)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error al procesar"
@@ -838,7 +891,7 @@ export function ExpensesScreen({
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
+        accept="image/*,application/pdf"
         onChange={handleFileSelected}
         className="hidden"
       />
@@ -867,9 +920,9 @@ export function ExpensesScreen({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isScanning}
-                aria-label="Upload receipt photo"
+                aria-label="Upload receipt photo or bill statement PDF"
                 className="flex items-center rounded-full border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-neutral-300 hover:bg-neutral-800 active:scale-95 disabled:opacity-50"
-                title="Subir archivo"
+                title="Subir foto o statement (PDF)"
               >
                 <Upload className="size-3.5" />
               </button>
