@@ -69,10 +69,18 @@ const fmtK = (v: number) => {
   return `$${Math.round(v)}`
 }
 
+/** Etiqueta corta con signo para poner SOBRE las barras sin que se encime:
+ *  +$13.5k en vez de +$13,452.00. */
+const signedK = (v: number) => {
+  const a = Math.abs(v)
+  const body = a >= 1000 ? `$${(a / 1000).toFixed(a >= 10000 ? 0 : 1)}k` : `$${Math.round(a)}`
+  return (v < 0 ? "-" : v > 0 ? "+" : "") + body
+}
+
 /** Tooltip oscuro único para todos los gráficos. */
 function ChartTip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null
-  const rows = payload.filter((p: any) => p.dataKey !== "base")
+  const rows = payload.filter((p: any) => p.dataKey !== "invisible")
   if (!rows.length) return null
   return (
     <div
@@ -217,8 +225,8 @@ export function ProyeccionFoto2(props: ProyProps) {
 
   /* ── Sankey: fuentes → Income → usos (+ Kept si sobra / From balance si falta) ── */
   const sankey = useMemo(() => {
-    const topSrc = mergeTop(groups.sources, 6)
-    const topUse = mergeTop(groups.uses, 6)
+    const topSrc = mergeTop(groups.sources, 5)
+    const topUse = mergeTop(groups.uses, 5)
     const nodes: { name: string; color: string }[] = []
     const links: { source: number; target: number; value: number; color: string }[] = []
     topSrc.forEach((s) => nodes.push({ name: s.name, color: s.color }))
@@ -247,6 +255,10 @@ export function ProyeccionFoto2(props: ProyProps) {
     const isLeft = x < containerWidth * 0.34
     const cy = y + height / 2
     const nameFs = name.length > 16 ? 9.3 : 10.5
+    // Nodo muy fino: una sola línea "Nombre · $X" para que las etiquetas
+    // de nodos vecinos no se encimen (el detalle completo va en la lista).
+    const thin = height < 17
+    const valTxt = `$${Math.round(value).toLocaleString()}`
     return (
       <g>
         <rect x={x} y={y} width={width} height={height} rx={3} fill={color} />
@@ -256,16 +268,27 @@ export function ProyeccionFoto2(props: ProyProps) {
               INCOME
             </text>
             <text x={x + width / 2} y={cy + 11} textAnchor="middle" fill="rgba(255,255,255,.85)" fontSize="9.5" fontWeight="700">
-              ${Math.round(value).toLocaleString()}
+              {valTxt}
             </text>
           </>
+        ) : thin ? (
+          <text
+            x={isLeft ? x - 8 : x + width + 8}
+            y={cy + 3.5}
+            textAnchor={isLeft ? "end" : "start"}
+            fill={INK}
+            fontSize={nameFs}
+            fontWeight="700"
+          >
+            {name} <tspan fill={SUB} fontWeight="600">· {valTxt}</tspan>
+          </text>
         ) : isLeft ? (
           <>
             <text x={x - 8} y={cy - 2} textAnchor="end" fill={INK} fontSize={nameFs} fontWeight="700">
               {name}
             </text>
             <text x={x - 8} y={cy + 11} textAnchor="end" fill={SUB} fontSize="9.5" fontWeight="600">
-              ${Math.round(value).toLocaleString()}
+              {valTxt}
             </text>
           </>
         ) : (
@@ -274,7 +297,7 @@ export function ProyeccionFoto2(props: ProyProps) {
               {name}
             </text>
             <text x={x + width + 8} y={cy + 11} textAnchor="start" fill={SUB} fontSize="9.5" fontWeight="600">
-              ${Math.round(value).toLocaleString()}
+              {valTxt}
             </text>
           </>
         )}
@@ -305,21 +328,23 @@ export function ProyeccionFoto2(props: ProyProps) {
       .filter((u) => /leasing|lease|car|vehicle|auto|fuel|gas/i.test(u.name))
       .reduce((a, u) => a + u.value, 0)
     const other = r2(expenseTotal - housing - vehicle)
-    type WBar = { name: string; base: number; value: number; fill: string; delta: number }
+    // Truco waterfall (pedido por Miguel): "invisible" = base acumulada que
+    // levanta la barra; "visible" = el escalón que se pinta flotando.
+    type WBar = { name: string; invisible: number; visible: number; fill: string; delta: number }
     const bars: WBar[] = []
     let run = fc.start
-    bars.push({ name: "Start", base: Math.min(0, fc.start), value: Math.abs(fc.start), fill: "#6b7280", delta: fc.start })
+    bars.push({ name: "Start", invisible: Math.min(0, fc.start), visible: Math.abs(fc.start), fill: "#6b7280", delta: fc.start })
     const pushDelta = (name: string, d: number, fill: string) => {
       const from = run
       run = r2(run + d)
-      bars.push({ name, base: Math.min(from, run), value: Math.abs(d), fill, delta: d })
+      bars.push({ name, invisible: Math.min(from, run), visible: Math.abs(d), fill, delta: d })
     }
     if (incomeTotal > 0) pushDelta("Income", incomeTotal, GREEN)
     if (housing > 0.5) pushDelta("Housing", -r2(housing), "#e0653a")
     if (vehicle > 0.5) pushDelta("Vehicle", -r2(vehicle), "#e5484d")
     if (other > 0.5) pushDelta("Other", -other, "#dd8433")
     const endFlow = r2(fc.start + incomeTotal - expenseTotal)
-    bars.push({ name: "End", base: Math.min(0, endFlow), value: Math.abs(endFlow), fill: endFlow < 0 ? RED : BLUE, delta: endFlow })
+    bars.push({ name: "End", invisible: Math.min(0, endFlow), visible: Math.abs(endFlow), fill: endFlow < 0 ? RED : BLUE, delta: endFlow })
     return bars
   }, [groups, incomeTotal, expenseTotal, fc.start])
 
@@ -486,23 +511,9 @@ export function ProyeccionFoto2(props: ProyProps) {
                 label={{ value: `floor $${CASH_FLOOR}`, fill: AMBER, fontSize: 9.5, fontWeight: 700, position: "insideTopRight" }}
               />
               <Area type="stepAfter" dataKey="balance" name="Balance" stroke="#3ddc84" strokeWidth={2.4} fill="url(#f2area)" />
-              {minDay && (
-                <ReferenceDot
-                  x={minDay.date}
-                  y={minDay.balance}
-                  r={4.5}
-                  fill={RED}
-                  stroke="#fff"
-                  strokeWidth={1.6}
-                  label={{
-                    value: `Low $${Math.round(minDay.balance).toLocaleString()}`,
-                    fill: RED,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    position: "top",
-                  }}
-                />
-              )}
+              {/* El punto bajo va SIN texto dentro del gráfico (el "Low $X · fecha"
+                  ya vive en el encabezado de la tarjeta): menos etiquetas encimadas. */}
+              {minDay && <ReferenceDot x={minDay.date} y={minDay.balance} r={4.5} fill={RED} stroke="#fff" strokeWidth={1.6} />}
               {path.length > 0 && (
                 <ReferenceDot x={path[path.length - 1].date} y={endBal} r={4.5} fill={GREEN} stroke="#fff" strokeWidth={1.6} />
               )}
@@ -519,15 +530,15 @@ export function ProyeccionFoto2(props: ProyProps) {
         {sankey.links.length === 0 ? (
           <div style={{ fontSize: 12.5, color: SUB, padding: "8px 0 4px" }}>No income or expenses scheduled in the next 30 days.</div>
         ) : (
-          <div style={{ width: "100%", height: 430 }}>
+          <div style={{ width: "100%", height: 470 }}>
             <ResponsiveContainer width="100%" height="100%">
               <Sankey
                 data={sankey}
-                nodePadding={26}
+                nodePadding={32}
                 nodeWidth={13}
                 iterations={32}
                 linkCurvature={0.5}
-                margin={{ top: 6, right: 118, bottom: 6, left: 124 }}
+                margin={{ top: 6, right: 124, bottom: 6, left: 128 }}
                 node={renderSankeyNode}
                 link={renderSankeyLink}
               />
@@ -554,7 +565,7 @@ export function ProyeccionFoto2(props: ProyProps) {
         <div style={cardTitle}>BRIDGE · START TO END</div>
         <div style={{ width: "100%", height: 208 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={wf} margin={{ top: 20, right: 8, bottom: 0, left: 2 }}>
+            <ComposedChart data={wf} margin={{ top: 26, right: 8, bottom: 0, left: 2 }}>
               <CartesianGrid stroke="rgba(255,255,255,.06)" vertical={false} />
               <XAxis
                 dataKey="name"
@@ -566,16 +577,16 @@ export function ProyeccionFoto2(props: ProyProps) {
               <YAxis tickFormatter={fmtK} tick={{ fill: SUB, fontSize: 10.5 }} tickLine={false} axisLine={false} width={46} />
               <Tooltip content={<ChartTip />} cursor={{ fill: "rgba(255,255,255,.04)" }} />
               <ReferenceLine y={0} stroke="rgba(255,255,255,.25)" strokeDasharray="4 4" />
-              <Bar dataKey="base" stackId="wf" fill="transparent" isAnimationActive={false} />
-              <Bar dataKey="value" stackId="wf" name="Amount" radius={[4, 4, 4, 4]} isAnimationActive={false}>
+              <Bar dataKey="invisible" stackId="a" fill="transparent" isAnimationActive={false} />
+              <Bar dataKey="visible" stackId="a" name="Amount" radius={[4, 4, 4, 4]} isAnimationActive={false}>
                 {wf.map((b, i) => (
                   <Cell key={i} fill={b.fill} />
                 ))}
                 <LabelList
                   dataKey="delta"
                   position="top"
-                  formatter={(v: any) => signed(Number(v) || 0)}
-                  style={{ fill: INK, fontSize: 10.5, fontWeight: 700 }}
+                  formatter={(v: any) => signedK(Number(v) || 0)}
+                  style={{ fill: INK, fontSize: 10, fontWeight: 700 }}
                 />
               </Bar>
             </ComposedChart>
@@ -610,11 +621,25 @@ export function ProyeccionFoto2(props: ProyProps) {
                 dot={{ r: 4, fill: AMBER, stroke: "#14161d", strokeWidth: 1.5 }}
                 isAnimationActive={false}
               >
+                {/* Neto corto (+$1.2k) y del lado que no choca con su barra:
+                    arriba si el neto es positivo, abajo si es negativo. */}
                 <LabelList
                   dataKey="net"
-                  position="top"
-                  formatter={(v: any) => signed(Number(v) || 0)}
-                  style={{ fill: AMBER, fontSize: 9.5, fontWeight: 700 }}
+                  content={(p: any) => {
+                    const v = Number(p.value) || 0
+                    return (
+                      <text
+                        x={p.x}
+                        y={v >= 0 ? p.y - 8 : p.y + 16}
+                        textAnchor="middle"
+                        fill={AMBER}
+                        fontSize={9.5}
+                        fontWeight={700}
+                      >
+                        {signedK(v)}
+                      </text>
+                    )
+                  }}
                 />
               </Line>
             </ComposedChart>
