@@ -419,54 +419,62 @@ export function EntryScreen({
       </div>
 
       {/* Slim strip: fecha + millas + controles del turno — always visible, no scroll needed */}
-      <div className="flex shrink-0 items-center gap-2.5 border-b border-neutral-800/60 bg-black px-4 py-2.5 sm:px-8">
-        <span className={cn("size-2 shrink-0 rounded-full", timer.running ? "bg-green-400" : "bg-neutral-600")} />
-        <span className="text-base font-bold text-neutral-100" suppressHydrationWarning>
-          {today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
-        </span>
-        {/* Contador de millas IRS — corre solo con el turno activo */}
-        {shift.shiftActive && (
-          <span
-            title="Millas de negocio (IRS) — se guardan al cerrar el turno"
-            className="flex shrink-0 items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 font-mono text-[10px] font-bold tabular-nums text-sky-300"
-          >
-            {shift.shiftMiles.toFixed(1)} mi
+      <div className="shrink-0 border-b border-neutral-800/60 bg-black px-4 py-2.5 sm:px-8">
+        {/* Fila 1: la fecha completa, en una sola línea */}
+        <div className="flex items-center gap-2.5">
+          <span className={cn("size-2 shrink-0 rounded-full", timer.running ? "bg-green-400" : "bg-neutral-600")} />
+          <span className="whitespace-nowrap text-base font-bold text-neutral-100" suppressHydrationWarning>
+            {today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
           </span>
-        )}
-        {!shift.shiftActive ? (
-          <button
-            type="button"
-            onClick={shift.onStart}
-            className="flex items-center gap-1 rounded-md border border-emerald-500/50 bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-300"
-          >
-            <Play className="size-3" /> START
-          </button>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={shift.onBreak}
-              title={shift.isOnBreak ? "Resume the shift" : "Pause the shift"}
-              className={cn(
-                "flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-bold",
-                shift.isOnBreak
-                  ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300"
-                  : "border-amber-500/50 bg-amber-500/10 text-amber-300",
-              )}
+        </div>
+        {/* Fila 2: millas a la izquierda; controles del turno alineados a la derecha */}
+        <div className="mt-2 flex items-center gap-2.5">
+          {/* Contador de millas IRS — corre solo con el turno activo */}
+          {shift.shiftActive && (
+            <span
+              title="Millas de negocio (IRS) — se guardan al cerrar el turno"
+              className="flex shrink-0 items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 font-mono text-[10px] font-bold tabular-nums text-sky-300"
             >
-              {shift.isOnBreak ? <Play className="size-3" /> : <Pause className="size-3" />}
-              {shift.isOnBreak ? "RESUME" : "PAUSE"}
-            </button>
-            <button
-              type="button"
-              onClick={shift.onEnd}
-              title="End the shift"
-              className="flex items-center gap-1 rounded-md border border-rose-500/50 bg-rose-500/10 px-2.5 py-1 text-xs font-bold text-rose-300"
-            >
-              <Square className="size-3" /> END
-            </button>
-          </>
-        )}
+              {shift.shiftMiles.toFixed(1)} mi
+            </span>
+          )}
+          <div className="ml-auto flex items-center gap-2.5">
+            {!shift.shiftActive ? (
+              <button
+                type="button"
+                onClick={shift.onStart}
+                className="flex items-center gap-1 rounded-md border border-emerald-500/50 bg-emerald-500/10 px-2.5 py-1 text-xs font-bold text-emerald-300"
+              >
+                <Play className="size-3" /> START
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={shift.onBreak}
+                  title={shift.isOnBreak ? "Resume the shift" : "Pause the shift"}
+                  className={cn(
+                    "flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs font-bold",
+                    shift.isOnBreak
+                      ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300"
+                      : "border-amber-500/50 bg-amber-500/10 text-amber-300",
+                  )}
+                >
+                  {shift.isOnBreak ? <Play className="size-3" /> : <Pause className="size-3" />}
+                  {shift.isOnBreak ? "RESUME" : "PAUSE"}
+                </button>
+                <button
+                  type="button"
+                  onClick={shift.onEnd}
+                  title="End the shift"
+                  className="flex items-center gap-1 rounded-md border border-rose-500/50 bg-rose-500/10 px-2.5 py-1 text-xs font-bold text-rose-300"
+                >
+                  <Square className="size-3" /> END
+                </button>
+              </>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* TODAY + REGISTER — juntos en una línea, bien cuadrado */}
