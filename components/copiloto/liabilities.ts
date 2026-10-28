@@ -137,15 +137,26 @@ export function ensureCycleBills(
   today: string,
 ): { bills: Expense[]; created: number } {
   const overrides = loadOverrides()
+  // Bills duplicados por id (de estados viejos): uno solo, el que tenga pagos.
+  const byBillId = new Map<string, Expense>()
+  for (const b of ownBills || []) {
+    if (!b || !b.id) continue
+    const prev = byBillId.get(b.id)
+    if (!prev || (b.payments?.length || 0) > (prev.payments?.length || 0)) byBillId.set(b.id, b)
+  }
+  const own = [...byBillId.values()]
   const existing = new Set(
-    ownBills.filter((e) => e.originScheduleId).map((e) => `${e.originScheduleId}|${String(e.date).slice(0, 10)}`),
+    own.filter((e) => e.originScheduleId).map((e) => `${e.originScheduleId}|${String(e.date).slice(0, 10)}`),
   )
-  const out = [...ownBills]
+  const out = [...own]
   let created = 0
   const from = addDays(today, -370)
   const to = addDays(today, 45)
+  const seenSch = new Set<string>()
   for (const s of schedules || []) {
     if (!s || s.kind !== "expense" || s.active === false) continue
+    if (seenSch.has(s.id)) continue
+    seenSch.add(s.id)
     const amt = r2(Math.abs(Number(s.amount) || 0))
     if (amt < 0.01) continue
     // expandSchedule corta por nextDate; para materializar ciclos pasados se

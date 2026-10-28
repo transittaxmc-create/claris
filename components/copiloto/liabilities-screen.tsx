@@ -89,9 +89,12 @@ function useLiabilityData(bankTxs: BankTx[]) {
   useEffect(() => {
     const sched = loadSchedules()
     const { bills, created } = ensureCycleBills(sched, loadCycleBills(), todayLocal())
-    if (created > 0) saveCycleBills(bills)
+    // Bills cuyo recurrente ya no existe (se borró): huérfanos, se retiran.
+    const schIds = new Set(sched.map((s) => s.id))
+    const kept = bills.filter((b) => !b.originScheduleId || schIds.has(b.originScheduleId))
+    if (created > 0 || kept.length !== bills.length) saveCycleBills(kept)
     setSchedules(sched)
-    setOwnBills(bills)
+    setOwnBills(kept)
     setExternalBills(loadExternalBills())
     setDismissed(loadDismissed())
     setReady(true)

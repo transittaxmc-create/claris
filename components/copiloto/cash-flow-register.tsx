@@ -95,6 +95,7 @@ function loadJson<T>(key: string, fallback: T): T {
 export function CashFlowRegister({
   startingActualBalance,
   onUpdateStartingBalance,
+  onOpenScanner,
 }: CashFlowRegisterProps) {
   const [entries, setEntries] = useState<CashFlowEntry[]>([])
   const [isLoaded, setIsLoaded] = useState(false)
@@ -663,6 +664,7 @@ export function CashFlowRegister({
           <RegistersHome
             registers={registers}
             balances={balances}
+            onOpenScanner={onOpenScanner}
             bankTxs={bankTxs}
             bankOk={!bankError && bankAccounts.length > 0}
             onSyncBank={fetchBank}
@@ -782,6 +784,7 @@ export function CashFlowRegister({
                 return next
               })
             }}
+            onOpenScanner={onOpenScanner ? () => onOpenScanner() : undefined}
             onBack={() => setView({ kind: "home" })}
             onAddBill={() => handleOpenAddModal("expense", "projected")}
             onAddPost={() => handleOpenAddModal("expense", "actual")}
@@ -1032,7 +1035,23 @@ export function EntryModal(props: {
             </button>
             <button
               type="button"
-              onClick={() => onSave(editingEntry)}
+              onClick={() => {
+                // Una categoría escrita a mano entra a la lista compartida
+                // (claris_custom_categories): queda disponible en TODOS
+                // los formularios de entrada, no solo en este.
+                const cat = (editingEntry.category || "").trim()
+                if (cat) {
+                  try {
+                    const rawCats = JSON.parse(localStorage.getItem("claris_custom_categories") || "[]")
+                    const list: string[] = Array.isArray(rawCats) ? rawCats : []
+                    if (!list.some((c) => String(c).toLowerCase() === cat.toLowerCase())) {
+                      localStorage.setItem("claris_custom_categories", JSON.stringify([...list, cat]))
+                      window.dispatchEvent(new Event(FINANCE_SYNCED_EVENT))
+                    }
+                  } catch {}
+                }
+                onSave(editingEntry)
+              }}
               className="flex-1 rounded-xl bg-yellow-400 py-2.5 text-xs font-black text-black"
             >
               Save

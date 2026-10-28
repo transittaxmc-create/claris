@@ -188,8 +188,15 @@ export function startFinanceCloud() {
   started = true
 
   void (async () => {
+    const localBefore = hashOf(collectLocal())
     const cloud = await fetchCloud()
     if (cloud && keysHaveData(cloud.keys)) {
+      // Si el usuario guardó algo mientras bajaba la nube, NO pisarlo
+      // con la foto anterior: manda lo local y se sube enseguida.
+      if (hashOf(collectLocal()) !== localBefore) {
+        lastHash = ""
+        return
+      }
       cloudHasData = true
       hadDataThisSession = true
       applyKeys(cloud.keys)
@@ -226,6 +233,11 @@ export function startFinanceCloud() {
       }
       const cloud = await fetchCloud()
       if (cloud && keysHaveData(cloud.keys) && hashOf(cloud.keys) !== lastHash) {
+        // Igual que al abrir: si lo local cambió durante la bajada, no pisar.
+        if (hashOf(collectLocal()) !== lastHash) {
+          schedulePush()
+          return
+        }
         cloudHasData = true
         hadDataThisSession = true
         applyKeys(cloud.keys)

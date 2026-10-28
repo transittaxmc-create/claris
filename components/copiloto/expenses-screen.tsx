@@ -844,7 +844,10 @@ export function ExpensesScreen({
       try {
         const existing: ScheduledEntry[] = JSON.parse(localStorage.getItem("claris_scheduled_entries") || "[]")
         if (!Array.isArray(existing)) throw new Error("bad")
-        const next = [entry, ...existing]
+        // El recurrente de ESTE gasto se ACTUALIZA, no se duplica: antes
+        // cada guardado anteponía una copia nueva con el mismo id
+        // (el leasing quedó dos veces y Proyecciones no cuadraba).
+        const next = [entry, ...existing.filter((s) => s && s.id !== entry.id)]
         localStorage.setItem("claris_scheduled_entries", JSON.stringify(next))
       } catch {
         try {

@@ -108,6 +108,7 @@ export function RegistersHome(props: {
   entries?: CashFlowEntry[]
   onOpenAccount: (id: string) => void
   onAddAccount: () => void
+  onOpenScanner?: () => void
   onOpenTransfers: () => void
   onEditEntry?: (e: CashFlowEntry) => void
   reconReport?: ReconReport | null
@@ -340,6 +341,7 @@ export function RegistersHome(props: {
 
       {vista === 1 && (
         <ProyeccionFoto1
+          onScan={props.onOpenScanner}
           registers={registers}
           balances={balances}
           dues={dues}

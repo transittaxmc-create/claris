@@ -351,12 +351,18 @@ export function syncBillToProjections(bill: Expense): void {
   let changed = false
   const next: any[] = []
   for (const e of entries) {
+    // Un pago solo toca la proyección de SU bill: la entrada propia
+    // (claris:gasto:<id del bill>) o la del mismo comercio EN LA MISMA
+    // FECHA. Antes una ventana de 31 días dejaba que un pago del ciclo
+    // anterior rebajara el bill nuevo (leasing: $919 → $297 con el pago
+    // de $622 del ciclo pasado, 2026-10-28).
     if (
       e &&
       e.type === "expense" &&
       e.status === "projected" &&
-      vendorFuzzyMatch(e.description, bill.vendor) &&
-      daysBetween(String(e.date || ""), bill.date) <= PROJECTION_MATCH_DAYS
+      (e.id === `claris:gasto:${bill.id}` ||
+        (vendorFuzzyMatch(e.description, bill.vendor) &&
+          String(e.date || "").slice(0, 10) === String(bill.date || "").slice(0, 10)))
     ) {
       changed = true
       if (remaining <= 0.009) continue // pagada: sale de proyecciones

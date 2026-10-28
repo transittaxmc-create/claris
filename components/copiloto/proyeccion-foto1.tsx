@@ -74,7 +74,7 @@ function MiniChart({ points }: { points: number[] }) {
   )
 }
 
-export function ProyeccionFoto1(props: ProyProps) {
+export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
   const { fc, fcLong, today, schedules } = useForecast30(props)
   const [form, setForm] = useState<null | "income" | "expense">(null)
   const [editing, setEditing] = useState<ForecastLine | null>(null)
@@ -333,6 +333,15 @@ export function ProyeccionFoto1(props: ProyProps) {
         >
           ＋ Expense
         </button>
+        {props.onScan && (
+          <button
+            type="button"
+            onClick={props.onScan}
+            style={{ flex: 1, border: "1.5px solid #5b8cff", background: "rgba(91,140,255,.10)", color: "#5b8cff", borderRadius: 12, padding: "12px 0", fontSize: 14, fontWeight: 800, cursor: "pointer" }}
+          >
+            📷 Scan
+          </button>
+        )}
       </div>
 
       {/* Remove all projected: empezar a programar desde cero */}
