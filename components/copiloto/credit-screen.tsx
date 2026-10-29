@@ -90,6 +90,7 @@ function AccountCard({
   const [dueDraft, setDueDraft] = useState(acc.dueDay == null ? "" : String(acc.dueDay))
   const [fixedDraft, setFixedDraft] = useState(acc.planFixed ? String(acc.planFixed) : "")
   const [monthsDraft, setMonthsDraft] = useState(String(acc.planMonths || 3))
+  const [countDraft, setCountDraft] = useState(acc.planPayments ? String(acc.planPayments) : "")
 
   useEffect(() => {
     setBalDraft(acc.balance == null ? "" : String(acc.balance))
@@ -97,7 +98,8 @@ function AccountCard({
     setDueDraft(acc.dueDay == null ? "" : String(acc.dueDay))
     setFixedDraft(acc.planFixed ? String(acc.planFixed) : "")
     setMonthsDraft(String(acc.planMonths || 3))
-  }, [acc.balance, acc.limit, acc.dueDay, acc.planFixed, acc.planMonths])
+    setCountDraft(acc.planPayments ? String(acc.planPayments) : "")
+  }, [acc.balance, acc.limit, acc.dueDay, acc.planFixed, acc.planMonths, acc.planPayments])
 
   const util = acc.limit && acc.balance != null ? Math.max(0, (acc.balance / acc.limit) * 100) : null
   const utilBad = util != null && util >= 30
@@ -263,6 +265,19 @@ function AccountCard({
                 onBlur={() => {
                   const n = Math.max(0, Number(fixedDraft) || 0)
                   if (n !== acc.planFixed) onChange({ ...acc, planFixed: n })
+                }}
+              />
+              <label className={labelCls}>Number of payments (program — blank = until paid off)</label>
+              <input
+                inputMode="numeric"
+                className={inputCls}
+                value={countDraft}
+                placeholder="e.g. 6"
+                onChange={(e) => setCountDraft(e.target.value)}
+                onBlur={() => {
+                  const t = countDraft.trim()
+                  const n = t === "" ? null : Math.max(1, Math.min(120, Math.floor(Number(t) || 0))) || null
+                  if (n !== (acc.planPayments ?? null)) onChange({ ...acc, planPayments: n })
                 }}
               />
             </div>

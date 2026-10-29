@@ -118,6 +118,12 @@ type Draft = {
   // el ledger programado con su próxima fecha.
   frequency: ScheduleFrequency
   nextDate: string
+  // Fin del recurrente (Miguel, 2026-10-29): "3months" = default de
+  // 3 meses si no se indica nada; "date" = hasta endDate; "count" =
+  // endsCount veces; "none" = sin fin, solo si se elige a propósito.
+  endsMode?: "3months" | "date" | "count" | "none"
+  endDate?: string
+  endsCount?: string
   // Clasificación fiscal: business / personal / sin clasificar.
   classification?: ExpenseClassification
   // Cuenta/register de donde salió (editable; "" = sin indicar).
@@ -136,6 +142,9 @@ function emptyDraft(): Draft {
     isAiGenerated: false,
     frequency: "once",
     nextDate: today,
+    endsMode: "3months",
+    endDate: "",
+    endsCount: "",
   }
 }
 
@@ -682,15 +691,28 @@ export function ExpensesScreen({
       }
       setScanStatus("Analyzing with AI...")
 
-      const res = await fetch("/api/scan-receipt", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: base64, mimeType, kind: esPdf ? "bill" : undefined }),
-      })
-
-      const json = await res.json()
-      if (!res.ok || !json.success) {
-        throw new Error(json.error || "Couldn't analyze the receipt")
+      // Reintento (Miguel, 2026-10-29): una caída de conexión o un 5xx
+      // pasajero no tumba el escaneo — hasta 2 intentos.
+      let res: Response | null = null
+      let json: any = null
+      for (let intento = 1; intento <= 2; intento++) {
+        try {
+          res = await fetch("/api/scan-receipt", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ image: base64, mimeType, kind: esPdf ? "bill" : undefined }),
+          })
+          json = await res.json().catch(() => null)
+        } catch {
+          res = null
+          json = null
+        }
+        if (res && res.ok && json?.success) break
+        if (res && res.status >= 400 && res.status < 500) break
+        if (intento < 2) setScanStatus("Connection dropped — retrying…")
+      }
+      if (!res || !res.ok || !json?.success) {
+        throw new Error(json?.error || "Couldn't analyze the receipt")
       }
 
       const { result } = json
@@ -718,6 +740,9 @@ export function ExpensesScreen({
           docType: "factura",
           frequency: "once",
           nextDate: dueDate,
+          endsMode: "3months",
+          endDate: "",
+          endsCount: "",
           accountId: defaultAccountId || undefined,
         })
         setScanStatus("Bill detected! Review and save.")
@@ -733,6 +758,9 @@ export function ExpensesScreen({
           docType: "",
           frequency: "once",
           nextDate: scanDate,
+          endsMode: "3months",
+          endDate: "",
+          endsCount: "",
           accountId: defaultAccountId || undefined,
         })
         setScanStatus("Receipt detected! Review and save.")
@@ -840,7 +868,17 @@ export function ExpensesScreen({
     // produce los cinco válidos, pero nunca está over).
     const RECURRING: ScheduleFrequency[] = ["daily", "weekly", "monthly", "annual"]
     if (RECURRING.includes(draft.frequency)) {
-      const entry = scheduledEntryFromExpense(expense, draft.frequency, draft.nextDate || expense.date)
+      // Fin del recurrente: el modo elegido manda; "none" pasa null
+      // explícito (sin fin a propósito); sin modo = default de 3 meses.
+      const endsParam =
+        draft.endsMode === "none"
+          ? null
+          : draft.endsMode === "count"
+            ? { occurrences: Math.max(1, Math.floor(Number(draft.endsCount) || 0)) }
+            : draft.endsMode === "date"
+              ? { endDate: draft.endDate || "" }
+              : undefined
+      const entry = scheduledEntryFromExpense(expense, draft.frequency, draft.nextDate || expense.date, endsParam)
       try {
         const existing: ScheduledEntry[] = JSON.parse(localStorage.getItem("claris_scheduled_entries") || "[]")
         if (!Array.isArray(existing)) throw new Error("bad")
@@ -863,6 +901,13 @@ export function ExpensesScreen({
   }
 
   function editFromRow(ex: Expense) {
+    // Si el gasto tiene recurrente, la forma abre con SU frecuencia y SU
+    // fin reales (antes abría siempre en "once" y el fin no se veía).
+    let sched: ScheduledEntry | undefined
+    try {
+      const all: ScheduledEntry[] = JSON.parse(localStorage.getItem("claris_scheduled_entries") || "[]")
+      if (Array.isArray(all)) sched = all.find((s) => s && s.id === `sch-${ex.id}`)
+    } catch {}
     setDraft({
       id: ex.id,
       date: ex.date,
@@ -872,8 +917,11 @@ export function ExpensesScreen({
       notes: ex.notes ?? "",
       isAiGenerated: ex.isAiGenerated,
       docType: ex.docType === "factura" || ex.docType === "recibo" ? ex.docType : ex.scheduled ? "factura" : "recibo",
-      frequency: "once",
-      nextDate: ex.date,
+      frequency: sched?.frequency ?? "once",
+      nextDate: sched?.nextDate ?? ex.date,
+      endsMode: sched?.occurrences ? "count" : sched?.endDate ? "date" : sched ? "none" : "3months",
+      endDate: sched?.endDate ?? "",
+      endsCount: sched?.occurrences ? String(sched.occurrences) : "",
       classification: ex.classification,
       // La cuenta se puede cambiar al editar (todo editable).
       accountId: ex.accountId || defaultAccountId || undefined,
@@ -887,7 +935,6 @@ export function ExpensesScreen({
         ref={cameraInputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         onChange={handleFileSelected}
         className="hidden"
       />
@@ -1191,6 +1238,48 @@ export function ExpensesScreen({
                   It will be saved to the FINANCE scheduled ledger and repeat every{" "}
                   {draft.frequency === "daily" ? "day" : draft.frequency === "weekly" ? "week" : draft.frequency === "monthly" ? "month" : "year"}.
                 </p>
+              )}
+              {draft.frequency !== "once" && (
+                <div className="mt-2">
+                  <span className="text-[10px] font-bold tracking-wide text-yellow-300/90">ENDS</span>
+                  <div className="mt-1 grid grid-cols-2 gap-2">
+                    <select
+                      value={draft.endsMode ?? "3months"}
+                      onChange={(e) => setDraft({ ...draft, endsMode: e.target.value as Draft["endsMode"] })}
+                      className="rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white outline-none"
+                      aria-label="How the repetition ends"
+                    >
+                      <option value="3months">In 3 months (default)</option>
+                      <option value="date">On a date</option>
+                      <option value="count">After a number of times</option>
+                      <option value="none">No end</option>
+                    </select>
+                    {(draft.endsMode ?? "3months") === "date" ? (
+                      <input
+                        type="date"
+                        value={draft.endDate ?? ""}
+                        onChange={(e) => setDraft({ ...draft, endDate: e.target.value })}
+                        aria-label="End date"
+                        className="rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white outline-none [color-scheme:dark]"
+                      />
+                    ) : (draft.endsMode ?? "3months") === "count" ? (
+                      <input
+                        type="number"
+                        min={1}
+                        inputMode="numeric"
+                        value={draft.endsCount ?? ""}
+                        onChange={(e) => setDraft({ ...draft, endsCount: e.target.value })}
+                        placeholder="Times, e.g. 6"
+                        aria-label="Number of times"
+                        className="rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white outline-none"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900/40 px-2 text-[11px] text-neutral-400">
+                        {(draft.endsMode ?? "3months") === "none" ? "Repeats until you delete it" : "Stops 3 months after the start"}
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
 

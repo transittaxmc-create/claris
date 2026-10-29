@@ -64,6 +64,33 @@ function useForecastBills(): ForecastBill[] {
   return bills
 }
 
+/** Bills CRUDOS (con pagos) para las vistas: la Foto 1 los usa para el
+ * registro de PAGADOS al final de la lista y para anotar los parciales
+ * (Original · Pagado · Resta) sin tocar la matemática del forecast. */
+export function useBillsDetail(): { bill: Expense; auto: boolean }[] {
+  const [out, setOut] = useState<{ bill: Expense; auto: boolean }[]>([])
+  useEffect(() => {
+    const load = () => {
+      try {
+        const next: { bill: Expense; auto: boolean }[] = []
+        for (const b of loadCycleBills()) if (b && b.id) next.push({ bill: b, auto: true })
+        for (const b of loadExternalBills()) if (b && b.id) next.push({ bill: b, auto: false })
+        setOut(next)
+      } catch {
+        setOut([])
+      }
+    }
+    load()
+    window.addEventListener(FINANCE_SYNCED_EVENT, load)
+    window.addEventListener("storage", load)
+    return () => {
+      window.removeEventListener(FINANCE_SYNCED_EVENT, load)
+      window.removeEventListener("storage", load)
+    }
+  }, [])
+  return out
+}
+
 export interface ProyProps {
   registers: RegisterAccount[]
   balances: Record<string, number | null>

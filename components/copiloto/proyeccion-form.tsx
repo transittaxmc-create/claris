@@ -6,7 +6,7 @@
 // una vez → libro (CashFlowEntry projected); recurrente → ScheduledEntry.
 
 import { useMemo, useState, type CSSProperties } from "react"
-import { CUSTOM_CATEGORIES_KEY, EXPENSE_CATEGORIES, type CashFlowEntry, type ScheduledEntry } from "./types"
+import { CUSTOM_CATEGORIES_KEY, EXPENSE_CATEGORIES, resolveScheduleEnds, type CashFlowEntry, type ScheduleEnds, type ScheduledEntry } from "./types"
 import { FINANCE_LEDGER_KEY, FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT } from "./finance-sync"
 import { etiquetaCombinada } from "./cash-flow-store"
 import { SCHEDULE_OVERRIDES_KEY, todayKey, type ForecastLine, type ScheduleOverride } from "./dinero-forecast"
@@ -165,6 +165,83 @@ function CategorySelect(props: {
   )
 }
 
+// ——— Fin de un recurrente (pedido de Miguel, 2026-10-29) ———
+// Al repetir, el usuario indica hasta cuándo: por defecto dura 3 meses;
+// puede elegir una fecha de fin o un número de veces; "No end" solo si
+// lo elige a propósito. El motor (expandSchedule) ya respeta endDate y
+// occurrences — lo que faltaba era poder ponerlos en los formularios.
+export type EndsMode = "3months" | "date" | "count" | "none"
+
+export function endsStateFromSchedule(s?: ScheduledEntry | null): { mode: EndsMode; endDate: string; count: string } {
+  if (s?.occurrences && s.occurrences > 0) return { mode: "count", endDate: "", count: String(s.occurrences) }
+  if (s?.endDate) return { mode: "date", endDate: String(s.endDate).slice(0, 10), count: "" }
+  if (s) return { mode: "none", endDate: "", count: "" }
+  return { mode: "3months", endDate: "", count: "" }
+}
+
+/** ScheduleEnds a guardar, o null cuando el modo es "No end" (sin fin). */
+export function endsValue(mode: EndsMode, startDate: string, endDate: string, count: string): ScheduleEnds | null {
+  if (mode === "none") return null
+  if (mode === "count") {
+    const n = Math.floor(Number(count) || 0)
+    return resolveScheduleEnds(startDate, n > 0 ? { occurrences: n } : undefined)
+  }
+  if (mode === "date") {
+    return resolveScheduleEnds(startDate, /^\d{4}-\d{2}-\d{2}$/.test(endDate) ? { endDate } : undefined)
+  }
+  return resolveScheduleEnds(startDate, undefined)
+}
+
+export function EndsFields(props: {
+  mode: EndsMode
+  setMode: (m: EndsMode) => void
+  endDate: string
+  setEndDate: (v: string) => void
+  count: string
+  setCount: (v: string) => void
+  fieldStyle: CSSProperties
+  labelStyle: CSSProperties
+}) {
+  return (
+    <>
+      <div style={props.labelStyle}>ENDS</div>
+      <select value={props.mode} onChange={(e) => props.setMode(e.target.value as EndsMode)} style={props.fieldStyle}>
+        <option value="3months">In 3 months (default)</option>
+        <option value="date">On a date</option>
+        <option value="count">After a number of times</option>
+        <option value="none">No end</option>
+      </select>
+      {props.mode === "date" && (
+        <input
+          style={{ ...props.fieldStyle, marginTop: 8 }}
+          type="date"
+          value={props.endDate}
+          onChange={(e) => props.setEndDate(e.target.value)}
+          aria-label="End date"
+        />
+      )}
+      {props.mode === "count" && (
+        <input
+          style={{ ...props.fieldStyle, marginTop: 8 }}
+          type="number"
+          min={1}
+          inputMode="numeric"
+          value={props.count}
+          onChange={(e) => props.setCount(e.target.value)}
+          placeholder="How many times? e.g. 6"
+          aria-label="Number of times"
+        />
+      )}
+      {props.mode === "3months" && (
+        <div style={{ fontSize: 12, color: SUB, marginTop: 6 }}>It repeats for 3 months from the start date, then stops.</div>
+      )}
+      {props.mode === "none" && (
+        <div style={{ fontSize: 12, color: SUB, marginTop: 6 }}>It keeps repeating until you delete it.</div>
+      )}
+    </>
+  )
+}
+
 export function ProyeccionForm(props: {
   initialKind: "income" | "expense"
   onClose: () => void
@@ -175,6 +252,9 @@ export function ProyeccionForm(props: {
   const [amount, setAmount] = useState("")
   const [date, setDate] = useState(todayKey())
   const [freq, setFreq] = useState<Freq>("once")
+  const [endsMode, setEndsMode] = useState<EndsMode>("3months")
+  const [endsDate, setEndsDate] = useState("")
+  const [endsCount, setEndsCount] = useState("")
   const [error, setError] = useState("")
 
   const amt = useMemo(() => Math.round((parseFloat(amount.replace(/[^0-9.]/g, "")) || 0) * 100) / 100, [amount])
@@ -220,6 +300,7 @@ export function ProyeccionForm(props: {
         localStorage.setItem(FINANCE_LEDGER_KEY, JSON.stringify(next))
       } catch {}
     } else {
+      const ends = endsValue(endsMode, date, endsDate, endsCount)
       const sched: ScheduledEntry = {
         id: `sch-${Date.now().toString(36)}`,
         kind,
@@ -230,6 +311,7 @@ export function ProyeccionForm(props: {
         frequency: freq,
         nextDate: date,
         active: true,
+        ...(ends ?? {}),
       }
       const next = [...readList<ScheduledEntry>(FINANCE_SCHEDULES_KEY), sched]
       try {
@@ -338,6 +420,19 @@ export function ProyeccionForm(props: {
           ))}
         </select>
 
+        {freq !== "once" && (
+          <EndsFields
+            mode={endsMode}
+            setMode={setEndsMode}
+            endDate={endsDate}
+            setEndDate={setEndsDate}
+            count={endsCount}
+            setCount={setEndsCount}
+            fieldStyle={input}
+            labelStyle={label}
+          />
+        )}
+
         {error && (
           <div style={{ marginTop: 16, color: RED, fontSize: 13, fontWeight: 600 }}>{error}</div>
         )}
@@ -399,6 +494,10 @@ export function ProyeccionEdit(props: {
   )
   const [amount, setAmount] = useState(String(Math.abs(line.amount) || ""))
   const [date, setDate] = useState(entry ? entry.date : line.date)
+  const [endsInit] = useState(() => endsStateFromSchedule(props.schedule))
+  const [endsMode, setEndsMode] = useState<EndsMode>(endsInit.mode)
+  const [endsDate, setEndsDate] = useState(endsInit.endDate)
+  const [endsCount, setEndsCount] = useState(endsInit.count)
   const [error, setError] = useState("")
   const [confirmDelete, setConfirmDelete] = useState(false)
 
@@ -468,9 +567,20 @@ export function ProyeccionEdit(props: {
 
   const saveScheduleAll = () => {
     if (!props.schedule || !validate()) return
+    const anchor = props.schedule.startDate || props.schedule.nextDate || line.date
+    const ends = endsValue(endsMode, anchor, endsDate, endsCount)
     const next = readList<ScheduledEntry>(FINANCE_SCHEDULES_KEY).map((s) =>
       s.id === props.schedule!.id
-        ? { ...s, description: description.trim(), category, amount: amt }
+        ? {
+            ...s,
+            description: description.trim(),
+            category,
+            amount: amt,
+            // El fin elegido manda: se limpia el otro campo para que no
+            // convivan una fecha vieja y un conteo nuevo.
+            endDate: ends?.endDate,
+            occurrences: ends?.occurrences,
+          }
         : s,
     )
     try {
@@ -590,6 +700,19 @@ export function ProyeccionEdit(props: {
             <div style={label}>DATE</div>
             <input style={input} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
           </>
+        )}
+
+        {isSchedule && (
+          <EndsFields
+            mode={endsMode}
+            setMode={setEndsMode}
+            endDate={endsDate}
+            setEndDate={setEndsDate}
+            count={endsCount}
+            setCount={setEndsCount}
+            fieldStyle={input}
+            labelStyle={label}
+          />
         )}
 
         {error && <div style={{ marginTop: 16, color: RED, fontSize: 13, fontWeight: 600 }}>{error}</div>}

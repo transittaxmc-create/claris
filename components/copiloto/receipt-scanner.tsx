@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Camera, Check, Loader2, X } from "lucide-react"
-import { EXPENSE_CATEGORIES, type Expense, type ExpenseCategory, type ExpenseDocType } from "./types"
+import { EXPENSE_CATEGORIES, resolveScheduleEnds, scheduledEntryFromExpense, type Expense, type ExpenseCategory, type ExpenseDocType, type ScheduleFrequency, type ScheduledEntry } from "./types"
+import { FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT } from "./finance-sync"
 import { localDateKey } from "@/lib/dates"
 import { sugerirTipoDoc } from "./cash-flow-store"
 import { accountBalance, accountDisplayName, buildRegisters } from "./registers-store"
@@ -97,6 +98,13 @@ export function ReceiptScanner({
   const [verCategorias, setVerCategorias] = useState(false)
   // Empty until user chooses — Easy Pass / Tower look like receipts but are Bills
   const [docTipo, setDocTipo] = useState<ExpenseDocType | "">(initialDocTipo ?? "")
+  // Repetición + fin (Miguel, 2026-10-29): igual que en Gastos y
+  // Proyecciones — si se repite, se indica hasta cuándo o cuántas veces;
+  // sin indicación, dura 3 meses.
+  const [freq, setFreq] = useState<ScheduleFrequency>("once")
+  const [endsMode, setEndsMode] = useState<"3months" | "date" | "count" | "none">("3months")
+  const [endsDate, setEndsDate] = useState("")
+  const [endsCount, setEndsCount] = useState("")
   // Categorías personalizadas (igual que en EXPENSES): si la IA no tiene la
   // correcta, Miguel escribe una y queda guardada.
   const [customCategories, setCustomCategories] = useState<string[]>(() => {
@@ -181,13 +189,27 @@ export function ReceiptScanner({
       setFoto(image)
       setDocTipo("")
       setAviso({ tipo: "info", texto: "Reading document with AI…" })
-      const res = await fetch("/api/scan-receipt", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image, mimeType }),
-      })
-      const json = await res.json()
-      if (!res.ok || !json?.success) throw new Error(json?.error || "Could not analyze document")
+      // Reintento (Miguel, 2026-10-29): una caída de conexión o un 5xx
+      // pasajero no debe tumbar el escaneo — se intenta hasta 2 veces.
+      let res: Response | null = null
+      let json: any = null
+      for (let intento = 1; intento <= 2; intento++) {
+        try {
+          res = await fetch("/api/scan-receipt", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ image, mimeType }),
+          })
+          json = await res.json().catch(() => null)
+        } catch {
+          res = null
+          json = null
+        }
+        if (res && res.ok && json?.success) break
+        if (res && res.status >= 400 && res.status < 500) break // error real: no reintentar
+        if (intento < 2) setAviso({ tipo: "info", texto: "Connection dropped — retrying…" })
+      }
+      if (!res || !res.ok || !json?.success) throw new Error(json?.error || "Could not analyze document")
       const r = json.result || {}
       if (r.date) setFecha(String(r.date).slice(0, 10))
       if (r.vendor) setComercio(String(r.vendor))
@@ -212,8 +234,42 @@ export function ReceiptScanner({
     const nombre = comercio.trim() || (direccion === "gasto" ? "Unnamed expense" : "Unnamed income")
     // Categoría: si quedó en "__new__" sin completar, usar la primera.
     const categoriaFinal = categoria === "__new__" ? EXPENSE_CATEGORIES[0] : categoria
+    // Fin del recurrente: "none" = null explícito (sin fin a propósito);
+    // sin elección = undefined (default de 3 meses del helper).
+    const endsParam =
+      freq === "once"
+        ? undefined
+        : endsMode === "none"
+          ? null
+          : endsMode === "count"
+            ? { occurrences: Math.max(1, Math.floor(Number(endsCount) || 0)) }
+            : endsMode === "date"
+              ? { endDate: endsDate || "" }
+              : undefined
+    const saveSchedule = (sched: ScheduledEntry) => {
+      try {
+        const existing: ScheduledEntry[] = JSON.parse(localStorage.getItem(FINANCE_SCHEDULES_KEY) || "[]")
+        const base = Array.isArray(existing) ? existing.filter((s) => s && s.id !== sched.id) : []
+        localStorage.setItem(FINANCE_SCHEDULES_KEY, JSON.stringify([...base, sched]))
+        window.dispatchEvent(new Event(FINANCE_SYNCED_EVENT))
+      } catch {}
+    }
     if (direccion === "ingreso") {
       onSaveIncome({ description: nombre, category: categoriaFinal, amount: monto, date: fecha, notes: notas.trim() || undefined })
+      if (freq !== "once") {
+        saveSchedule({
+          id: `sch-${Date.now().toString(36)}`,
+          kind: "income",
+          description: nombre,
+          category: categoriaFinal,
+          amount: monto,
+          startDate: fecha,
+          nextDate: fecha,
+          frequency: freq,
+          active: true,
+          ...resolveScheduleEnds(fecha, endsParam),
+        })
+      }
       onClose()
       return
     }
@@ -228,7 +284,7 @@ export function ReceiptScanner({
       confidence: confianza ?? undefined,
       isAiGenerated: docTipo === "recibo" || Boolean(foto),
       isEditedByUser: false,
-      scheduled: docTipo === "factura",
+      scheduled: docTipo === "factura" || freq !== "once",
       docType: docTipo || undefined,
       scanned: true,
       // Register/cuenta de donde salió (la indica Miguel; va directo a ese register).
@@ -236,6 +292,9 @@ export function ReceiptScanner({
       savedAt: new Date().toISOString(),
     }
     onSaveExpense(expense)
+    if (freq !== "once") {
+      saveSchedule(scheduledEntryFromExpense(expense, freq, undefined, endsParam))
+    }
     onClose()
   }
 
@@ -255,7 +314,6 @@ export function ReceiptScanner({
         ref={inputRef}
         type="file"
         accept="image/*"
-        capture="environment"
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0]
@@ -317,7 +375,7 @@ export function ReceiptScanner({
             style={{ background: foto ? NAVY : BLUE }}
           >
             {leyendo ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />}
-            {foto ? "RETAKE PHOTO" : "TAKE PHOTO"}
+            {foto ? "CHANGE PHOTO" : "TAKE PHOTO OR UPLOAD"}
           </button>
 
           {foto && (
@@ -502,6 +560,70 @@ export function ReceiptScanner({
                   )
                 })}
               </select>
+            </div>
+          )}
+
+          {/* ¿Se repite? + ¿hasta cuándo? (Miguel, 2026-10-29): igual que en
+              Gastos y Proyecciones. Sin indicación, dura 3 meses. */}
+          <div className="mt-3">
+            <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#6B7280" }}>Repeats</p>
+            <select
+              value={freq}
+              onChange={(e) => setFreq(e.target.value as ScheduleFrequency)}
+              className="mt-1.5 w-full rounded-xl px-3 py-3 text-[14px] font-bold outline-none"
+              style={{ background: "#fff", border: `1px solid ${LINE}`, color: "#1F2937" }}
+            >
+              <option value="once">Once</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="biweekly">Every 2 weeks</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </div>
+          {freq !== "once" && (
+            <div className="mt-3">
+              <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#6B7280" }}>Ends</p>
+              <select
+                value={endsMode}
+                onChange={(e) => setEndsMode(e.target.value as typeof endsMode)}
+                className="mt-1.5 w-full rounded-xl px-3 py-3 text-[14px] font-bold outline-none"
+                style={{ background: "#fff", border: `1px solid ${LINE}`, color: "#1F2937" }}
+              >
+                <option value="3months">After 3 months (default)</option>
+                <option value="date">On a date</option>
+                <option value="count">After X times</option>
+                <option value="none">No end</option>
+              </select>
+              {endsMode === "date" && (
+                <input
+                  type="date"
+                  value={endsDate}
+                  onChange={(e) => setEndsDate(e.target.value)}
+                  className="mt-1.5 w-full rounded-xl px-3 py-2.5 text-sm font-semibold outline-none"
+                  style={{ background: "#fff", border: `1px solid ${LINE}`, color: "#1F2937" }}
+                />
+              )}
+              {endsMode === "count" && (
+                <input
+                  type="number"
+                  min={1}
+                  inputMode="numeric"
+                  value={endsCount}
+                  onChange={(e) => setEndsCount(e.target.value)}
+                  placeholder="How many times? e.g. 6"
+                  className="mt-1.5 w-full rounded-xl px-3 py-2.5 text-sm font-semibold outline-none"
+                  style={{ background: "#fff", border: `1px solid ${LINE}`, color: "#1F2937" }}
+                />
+              )}
+              <p className="mt-1.5 text-[10px] leading-snug" style={{ color: "#8A93A3" }}>
+                {endsMode === "3months"
+                  ? "Stops 3 months after the start date."
+                  : endsMode === "none"
+                    ? "Repeats until you delete it."
+                    : endsMode === "count"
+                      ? "Stops after that many payments."
+                      : "Last repetition on or before that date."}
+              </p>
             </div>
           )}
 

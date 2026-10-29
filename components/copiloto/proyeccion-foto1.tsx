@@ -15,9 +15,13 @@ import {
   lineCategory,
   money2,
   signed,
+  useBillsDetail,
   useForecast30,
   type ProyProps,
 } from "./proyeccion-shared"
+import { billPaidTotal, billRemaining } from "./bill-payments"
+import { accountDisplayName } from "./registers-store"
+import { normalizeVendorName, type Expense } from "./types"
 import { platformMatch, vendorMatch, SCHEDULE_OVERRIDES_KEY, type ForecastLine, type ProbablePaid } from "./dinero-forecast"
 import { useForecastInputs } from "./dinero-proyeccion"
 import { FINANCE_LEDGER_KEY, FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT } from "./finance-sync"
@@ -196,6 +200,62 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
         return { line: l, before, after: bal }
       })
   }, [fcLong, today])
+
+  // ——— Pagados y parciales (Miguel, 2026-10-29) ———
+  // Lo pagado NO se borra ni se desaparece sin rastro: baja al final de la
+  // lista con ✓ PAID y NO afecta ningún saldo. Lo pagado a medias sigue en
+  // la lista por lo que RESTA, con su desglose Original · Pagado · Resta.
+  const billsDetail = useBillsDetail()
+  const partialNoteFor = useMemo(() => {
+    const byEntry = new Map<string, Expense>()
+    const bySched = new Map<string, Expense>()
+    for (const { bill } of billsDetail) {
+      if (billPaidTotal(bill) <= 0.004) continue
+      byEntry.set(`claris:gasto:${bill.id}`, bill)
+      if (bill.originScheduleId) bySched.set(`${bill.originScheduleId}|${String(bill.date).slice(0, 10)}`, bill)
+    }
+    return (line: ForecastLine): Expense | null => {
+      if (line.entry?.id && byEntry.has(line.entry.id)) return byEntry.get(line.entry.id)!
+      if (line.scheduleId) {
+        const b = bySched.get(`${line.scheduleId}|${String(line.date).slice(0, 10)}`)
+        if (b) return b
+      }
+      return null
+    }
+  }, [billsDetail])
+  const paidBills = useMemo(() => {
+    const desde = new Date(`${today}T12:00:00`)
+    desde.setDate(desde.getDate() - 60)
+    const desdeISO = desde.toISOString().slice(0, 10)
+    const paid = billsDetail.filter(
+      ({ bill }) => billPaidTotal(bill) > 0.004 && billRemaining(bill) <= 0.009 && String(bill.date).slice(0, 10) >= desdeISO,
+    )
+    // Gemelos (el bill escaneado en Gastos y su bill de ciclo en POR PAGAR
+    // son LA MISMA deuda): se muestra una sola vez, el de ciclo.
+    return paid
+      .filter(({ bill, auto }) => {
+        if (auto) return true
+        return !paid.some(
+          ({ bill: o, auto: oa }) =>
+            oa &&
+            normalizeVendorName(o.vendor) === normalizeVendorName(bill.vendor) &&
+            Math.abs((Number(o.amount) || 0) - (Number(bill.amount) || 0)) <= 0.011 &&
+            Math.abs(new Date(`${String(o.date).slice(0, 10)}T12:00:00`).getTime() - new Date(`${String(bill.date).slice(0, 10)}T12:00:00`).getTime()) <= 3 * 86400000,
+        )
+      })
+      .sort((a, b) => (String(b.bill.date) < String(a.bill.date) ? -1 : 1))
+  }, [billsDetail, today])
+  const paidFromLabel = (bill: Expense): string => {
+    const pays = Array.isArray(bill.payments) ? bill.payments : []
+    const last = pays[pays.length - 1]
+    if (!last) return ""
+    if (last.accountId) {
+      const reg = props.registers.find((r) => r.id === last.accountId)
+      if (reg) return accountDisplayName(reg.name).title
+    }
+    if (last.bankTxId) return String(last.bankTxId).split("|")[1] || ""
+    return ""
+  }
 
   // Desglose por categoría (top 2 ingresos / top 2 gastos, como la foto).
   const desglose = useMemo(() => {
@@ -416,6 +476,8 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
             )}
             {futuras.map(({ line, before, after }, i) => {
               const cat = lineCategory(line, schedules)
+              const pb = partialNoteFor(line)
+              const pbLeft = pb ? billRemaining(pb) : 0
               return (
                 <tr
                   key={line.id + i}
@@ -431,6 +493,11 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
                   </td>
                   <td style={{ ...td, overflow: "hidden" }}>
                     <span style={{ fontWeight: 600 }}>{line.label}</span>
+                    {pb && pbLeft > 0.009 && (
+                      <div style={{ fontSize: 9.5, color: SUB, marginTop: 1, whiteSpace: "normal" }}>
+                        Original ${money2(Number(pb.amount) || 0)} · Paid ${money2(billPaidTotal(pb))} · Left ${money2(pbLeft)}
+                      </div>
+                    )}
                   </td>
                   <td style={{ ...td, color: "#c9cbd8", overflow: "hidden", textOverflow: "ellipsis" }}>
                     <span style={{ display: "inline-block", width: 19, textAlign: "center", marginRight: 3, fontSize: 12 }}>{catIcon(cat, line.label)}</span>
@@ -452,6 +519,46 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
             })}
           </tbody>
         </table>
+        {paidBills.length > 0 && (
+          <>
+            <div style={{ background: BAND, padding: "8px 14px", fontSize: 11, fontWeight: 800, letterSpacing: 1, color: GREEN }}>
+              ✓ PAID — RECORD ONLY, DOES NOT AFFECT THE BALANCE
+            </div>
+            <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+              <colgroup>
+                <col style={{ width: "15%" }} /><col style={{ width: "21%" }} /><col style={{ width: "14%" }} />
+                <col style={{ width: "13%" }} /><col style={{ width: "17%" }} /><col style={{ width: "20%" }} />
+              </colgroup>
+              <tbody>
+                {paidBills.map(({ bill }) => {
+                  const pays = Array.isArray(bill.payments) ? bill.payments : []
+                  const lastPay = pays[pays.length - 1]
+                  const from = paidFromLabel(bill)
+                  return (
+                    <tr key={bill.id} style={{ opacity: 0.62 }}>
+                      <td style={{ ...td, whiteSpace: "nowrap", fontWeight: 600, paddingLeft: 12, color: SUB }}>
+                        {fmtFecha(String(bill.date).slice(0, 10))}
+                        <div style={{ fontSize: 8, color: SUB, fontWeight: 500, marginTop: 1 }}>{fmtWeekday(String(bill.date).slice(0, 10))}</div>
+                      </td>
+                      <td style={{ ...td, overflow: "hidden" }}>
+                        <span style={{ fontWeight: 600, color: "#c9cbd8" }}>{bill.vendor}</span>
+                        <div style={{ fontSize: 9.5, color: GREEN, fontWeight: 700, marginTop: 1 }}>
+                          ✓ PAID{lastPay ? ` · ${fmtFecha(String(lastPay.date).slice(0, 10))}` : ""}{from ? ` · ${from}` : ""}
+                        </div>
+                      </td>
+                      <td style={{ ...td, color: SUB, overflow: "hidden", textOverflow: "ellipsis" }}>{bill.category || ""}</td>
+                      <td style={{ ...td, textAlign: "right", color: SUB, fontSize: 10.5 }}>—</td>
+                      <td style={{ ...td, textAlign: "right", fontWeight: 600, color: SUB, whiteSpace: "nowrap", fontSize: 12.5, textDecoration: "line-through" }}>
+                        {signed(-Math.abs(Number(bill.amount) || 0))}
+                      </td>
+                      <td style={{ ...td, textAlign: "right", color: SUB, fontSize: 10.5 }}>paid</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </>
+        )}
         </div>
 
         {/* FORECAST BREAKDOWN */}

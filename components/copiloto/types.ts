@@ -222,18 +222,54 @@ export function nextOccurrenceDate(date: string, frequency: ScheduleFrequency): 
   return localDateKey(d)
 }
 
-export function scheduledEntryFromExpense(e: Expense, frequency: ScheduleFrequency = "monthly"): ScheduledEntry {
+/** Suma meses a una fecha ISO conservando el día (con clamp al último día
+ *  del mes destino: 29-oct + 1 mes = 29-nov; + 4 meses = 28-feb). */
+export function addMonthsIso(iso: string, months: number): string {
+  const d = new Date(`${String(iso).slice(0, 10)}T12:00:00`)
+  if (Number.isNaN(d.getTime())) return iso
+  const day = d.getDate()
+  d.setDate(1)
+  d.setMonth(d.getMonth() + months)
+  const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()
+  d.setDate(Math.min(day, last))
+  return localDateKey(d)
+}
+
+/** Cómo termina un recurrente (pedido de Miguel, 2026-10-29): por fecha de
+ *  fin o por número de veces; si no se indica nada, dura 3 meses. */
+export type ScheduleEnds = { endDate?: string; occurrences?: number }
+
+export const DEFAULT_SCHEDULE_MONTHS = 3
+
+/** Resuelve el fin de un recurrente: lo pedido manda; sin nada
+ *  (undefined), 3 meses; null explícito = sin fin, a propósito. */
+export function resolveScheduleEnds(startDate: string, ends?: ScheduleEnds | null): ScheduleEnds {
+  if (ends === null) return {}
+  if (ends?.occurrences && ends.occurrences > 0) return { occurrences: Math.floor(ends.occurrences) }
+  if (ends?.endDate && /^\d{4}-\d{2}-\d{2}$/.test(ends.endDate)) return { endDate: ends.endDate }
+  return { endDate: addMonthsIso(startDate, DEFAULT_SCHEDULE_MONTHS) }
+}
+
+export function scheduledEntryFromExpense(
+  e: Expense,
+  frequency: ScheduleFrequency = "monthly",
+  _nextDate?: string,
+  ends?: ScheduleEnds | null,
+): ScheduledEntry {
   const today = localDateKey(new Date())
+  const startDate = e.date || today
+  const resolved = frequency === "once" ? {} : resolveScheduleEnds(startDate, ends)
   return {
     id: `sch-${e.id}`,
     kind: "expense",
     description: e.vendor || e.category,
     category: e.category,
     amount: e.amount,
-    startDate: e.date || today,
-    nextDate: e.date || today,
+    startDate,
+    nextDate: startDate,
     frequency,
     active: true,
+    ...resolved,
   }
 }
 

@@ -13,7 +13,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { ChevronLeft, ChevronRight, X } from "lucide-react"
 import { money, type Expense, type ScheduledEntry } from "./types"
-import { accountIdFor } from "./registers-store"
+import { accountDisplayName, accountIdFor, buildRegisters } from "./registers-store"
 import {
   learnConfirm,
   learnDismiss,
@@ -75,6 +75,34 @@ function accountLabelOf(bankTxId?: string): string {
   if (!bankTxId) return ""
   const seg = bankTxId.split("|")
   return seg.length >= 2 ? seg[1] : ""
+}
+
+/**
+ * Cuentas elegibles como "pagado desde" (Miguel, 2026-10-29): el bill puede
+ * estar programado contra Citibank ★ en Proyecciones, pero el pago real
+ * pudo salir de PayPal u otra cuenta — el pago lleva SU cuenta y el bill
+ * queda linkeado a ella. La lista sale de los nombres de cuenta del banco
+ * (buildRegisters agrega las manuales: PayPal, Branch, Venmo, Lyft…).
+ */
+function useAccountOptions(bankTxs: BankTx[]): { id: string; label: string; isMain: boolean }[] {
+  return useMemo(() => {
+    try {
+      const names = [...new Set((bankTxs || []).map((t) => String(t.bank_account || "")).filter(Boolean))]
+      const regs = buildRegisters(names.map((name) => ({ name }) as any))
+      return regs.map((r) => ({
+        id: r.id,
+        label: accountDisplayName(r.name).title,
+        isMain: Boolean(r.isMain),
+      }))
+    } catch {
+      return []
+    }
+  }, [bankTxs])
+}
+
+function accountNameOf(options: { id: string; label: string }[], accountId?: string): string {
+  if (!accountId) return ""
+  return options.find((o) => o.id === accountId)?.label || ""
 }
 
 function useLiabilityData(bankTxs: BankTx[]) {
@@ -256,9 +284,10 @@ export function LiabilitiesEntryCard(props: { onOpen: () => void }) {
 
 export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void }) {
   const data = useLiabilityData(props.bankTxs)
+  const accountOptions = useAccountOptions(props.bankTxs)
   const [tab, setTab] = useState<"pagar" | "historial">("pagar")
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [payDraft, setPayDraft] = useState<{ billId: string; amount: string; date: string } | null>(null)
+  const [payDraft, setPayDraft] = useState<{ billId: string; amount: string; date: string; accountId: string } | null>(null)
   const selected: DebtAccount | null = data.debts.find((d) => d.id === selectedId) || null
 
   const saveManualPayment = () => {
@@ -273,6 +302,9 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
       amount: Math.round(monto * 100) / 100,
       date: payDraft.date || data.today,
       source: "manual",
+      // La cuenta REAL de donde salió el pago (puede no ser la de la
+      // proyección): queda linkeada en el bill para siempre.
+      accountId: payDraft.accountId || undefined,
     })
     data.persistBill(updated)
     setPayDraft(null)
@@ -613,6 +645,9 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
                           : p.source === "recibo"
                             ? "Receipt"
                             : "Manual"}
+                        {p.source !== "banco" && accountNameOf(accountOptions, p.accountId)
+                          ? ` · ${accountNameOf(accountOptions, p.accountId)}`
+                          : ""}
                         {p.note ? ` · ${p.note}` : ""}
                         {p.auto ? <span className="text-[#f5b84c]"> · auto</span> : null}
                       </span>
@@ -637,7 +672,14 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
               {c.open && !c.external && payDraft?.billId !== c.bill.id && (
                 <button
                   type="button"
-                  onClick={() => setPayDraft({ billId: c.bill.id, amount: String(c.remaining || ""), date: data.today })}
+                  onClick={() =>
+                    setPayDraft({
+                      billId: c.bill.id,
+                      amount: String(c.remaining || ""),
+                      date: data.today,
+                      accountId: (accountOptions.find((o) => o.isMain) || accountOptions[0])?.id || "",
+                    })
+                  }
                   className="mt-2 rounded-lg border border-[#262633] px-3 py-1.5 text-[12px] font-semibold text-neutral-200 active:scale-95"
                 >
                   Record payment
@@ -663,6 +705,23 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
                       className="rounded-lg border border-[#262633] bg-[#0a0a0f] px-2 py-1.5 text-[13px] text-neutral-100 outline-none"
                     />
                   </label>
+                  {accountOptions.length > 0 && (
+                    <label className="flex flex-col gap-1 text-[10.5px] font-bold tracking-wider text-neutral-400">
+                      PAID FROM
+                      <select
+                        value={payDraft.accountId}
+                        onChange={(e) => setPayDraft({ ...payDraft, accountId: e.target.value })}
+                        className="rounded-lg border border-[#262633] bg-[#0a0a0f] px-2 py-1.5 text-[13px] text-neutral-100 outline-none"
+                      >
+                        {accountOptions.map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.label}
+                            {o.isMain ? " ★" : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                   <button
                     type="button"
                     onClick={saveManualPayment}

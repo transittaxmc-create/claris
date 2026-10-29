@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { EXPENSE_CATEGORIES } from "@/components/copiloto/types"
 
 export const runtime = "nodejs"
-export const maxDuration = 30
+export const maxDuration = 60
 
 interface AnalysisResult {
   vendor: string
@@ -93,41 +93,68 @@ Respond with ONLY a valid JSON object with those exact keys.`
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent`
 
-    // Timeout de 20s para la llamada a Google
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), 28000)
-
-    let response: Response
-    try {
-      response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": apiKey,
-        },
-        signal: controller.signal,
-        body: JSON.stringify({
-          contents: [
+    // Llamada a Google con REINTENTOS (Miguel, 2026-10-29: el escáner le
+    // daba "mucho error" — eran caídas de conexión y timeouts pasajeros sin
+    // ningún reintento). Hasta 3 intentos ante: error de red/timeout o
+    // respuesta 5xx. Un 4xx real no se reintenta.
+    const geminiBody = JSON.stringify({
+      contents: [
+        {
+          parts: [
+            { text: prompt },
             {
-              parts: [
-                { text: prompt },
-                {
-                  inlineData: {
-                    mimeType: resolvedMime,
-                    data: cleanBase64,
-                  },
-                },
-              ],
+              inlineData: {
+                mimeType: resolvedMime,
+                data: cleanBase64,
+              },
             },
           ],
-          generationConfig: {
-            responseMimeType: "application/json",
-            temperature: 0.1,
+        },
+      ],
+      generationConfig: {
+        responseMimeType: "application/json",
+        temperature: 0.1,
+      },
+    })
+
+    let response: Response | null = null
+    let lastErr: unknown = null
+    for (let intento = 1; intento <= 3; intento++) {
+      const controller = new AbortController()
+      const timer = setTimeout(() => controller.abort(), 20000)
+      try {
+        response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": apiKey,
           },
-        }),
-      })
-    } finally {
-      clearTimeout(timer)
+          signal: controller.signal,
+          body: geminiBody,
+        })
+        lastErr = null
+      } catch (e) {
+        lastErr = e
+        response = null
+      } finally {
+        clearTimeout(timer)
+      }
+      if (response && response.status < 500) break
+      if (Date.now() - start > 45000) break
+      console.log(`[scan-receipt] Intento ${intento} falló (${response ? response.status : String(lastErr)}); reintentando…`)
+    }
+
+    if (!response) {
+      const aborted = lastErr instanceof Error && lastErr.name === "AbortError"
+      console.error("[scan-receipt] Gemini no respondió tras los reintentos:", lastErr)
+      return NextResponse.json(
+        {
+          error: aborted
+            ? "The reading took too long — please try again"
+            : "The connection to the reading service dropped — please try again",
+        },
+        { status: 504 },
+      )
     }
 
     console.log(`[scan-receipt] Gemini respondió en ${Date.now() - start}ms con status ${response.status}`)
@@ -163,7 +190,7 @@ Respond with ONLY a valid JSON object with those exact keys.`
       )
     })
 
-    parsed.category = matchedCat || "Varios"
+    parsed.category = matchedCat || "Other"
 
     // Sanear notas: nunca guardar un blob — recortar, colapsar espacios, 200 máx.
     if (typeof parsed.notes === "string") {
@@ -188,9 +215,14 @@ Respond with ONLY a valid JSON object with those exact keys.`
       result: parsed,
     })
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Error desconocido"
+    const aborted = err instanceof Error && err.name === "AbortError"
+    const message = aborted
+      ? "The reading took too long — please try again"
+      : err instanceof Error
+        ? err.message
+        : "Error desconocido"
     console.error(`[scan-receipt] Fallo tras ${Date.now() - start}ms:`, message)
-    return NextResponse.json({ error: message }, { status: 500 })
+    return NextResponse.json({ error: message }, { status: aborted ? 504 : 500 })
   }
 }
 

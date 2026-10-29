@@ -41,6 +41,11 @@ export type CreditAccount = {
   planMonths: number
   /** When planMode = "fixed": this amount per payment. */
   planFixed: number
+  /** When planMode = "fixed" and the creditor set a PROGRAM (e.g. Mercury:
+   * $22.86 × 6): exactly this many payments of planFixed, then it stops —
+   * whatever balance remains after the program stays owed. null/absent =
+   * the fixed amount repeats until the balance is paid off. */
+  planPayments?: number | null
   /** Last payment seen (bank record) or recorded by hand. ISO date. */
   lastPaymentDate: string | null
   lastPaymentAmount: number | null
@@ -516,6 +521,10 @@ export function planAmounts(acc: CreditAccount): number[] {
   if (acc.planMode === "fixed") {
     const f = r2(acc.planFixed)
     if (f <= 0) return [r2(bal)]
+    // Programa del acreedor: exactamente N pagos de `f` y se detiene,
+    // aunque quede balance (ese resto se sigue debiendo tras el programa).
+    const nProg = Math.floor(Number(acc.planPayments) || 0)
+    if (nProg >= 1) return Array.from({ length: Math.min(nProg, 120) }, () => f)
     const out: number[] = []
     let rest = r2(bal)
     while (rest > 0.004 && out.length < 120) {

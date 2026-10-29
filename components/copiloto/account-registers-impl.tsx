@@ -426,7 +426,14 @@ export function RegisterDetail(props: {
   // CALCULA (base manual + escaneados): es su dinero disponible en Lyft
   // para transferir cuando él quiera.
   const isLyft = reg.id === "manual:lyft"
-  const useScan = useBank || isLyft
+  // El escáner de screenshots va en TODOS los registers (Miguel,
+  // 2026-10-29): cuentas del banco (provisionales que Plaid reemplaza) y
+  // cuentas manuales sin feed (Venmo, Branch, Navy, Varo, Lyft…), donde lo
+  // escaneado es el récord permanente y el balance se calcula con ello —
+  // el motor de balances de cash-flow-register ya suma los escaneados de
+  // TODA cuenta manual, no solo Lyft.
+  const isManual = reg.source === "manual"
+  const useScan = useBank || isManual
 
   // Pantalla ancha (computadora/monitor): la descripción se ve completa,
   // sin recorte ni tener que apretar (responsive, idea de Miguel 2026-10-24).
@@ -658,7 +665,7 @@ export function RegisterDetail(props: {
         ? "Photo balance saved in the audit note."
         : useBank
           ? `${nuevos.length} provisionals saved. When Plaid pulls them in, they replace themselves automatically.`
-          : `${nuevos.length} Lyft movements recorded. The balance was calculated with them.`,
+          : `${nuevos.length} movements recorded. The balance was calculated with them.`,
     )
   }
 
@@ -721,9 +728,10 @@ export function RegisterDetail(props: {
           entry: e,
         })
       }
-      // Lyft: los movimientos escaneados viven en el mismo register como
-      // récord permanente (no hay Plaid que los reemplace).
-      if (isLyft) {
+      // Cuentas manuales (Lyft, Venmo, Branch…): los movimientos
+      // escaneados viven en el mismo register como récord permanente
+      // (no hay Plaid que los reemplace).
+      if (isManual) {
         for (const s of myShots) {
           out.push({
             key: `shot-${s.id}`,
@@ -809,7 +817,7 @@ export function RegisterDetail(props: {
               <p className="mt-0.5 text-[10px] font-semibold text-sky-300">
                 {useBank
                   ? `Calculated with ${myShots.length} screenshot provisional${myShots.length === 1 ? "" : "s"}`
-                  : `Calculated with ${myShots.length} scanned Lyft movement${myShots.length === 1 ? "" : "s"}`}
+                  : `Calculated with ${myShots.length} scanned movement${myShots.length === 1 ? "" : "s"}`}
                 {myAudit ? ` · ${useBank ? "Plaid" : "Base"}: ${money(myAudit.plaidBalance)}` : ""}
               </p>
             )}
@@ -864,11 +872,13 @@ export function RegisterDetail(props: {
         <div className="rounded-2xl border border-[#262633] bg-[#111119] p-3">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-[12px] font-bold text-neutral-100">{useBank ? "Is Plaid behind?" : "Your Lyft money, up to date"}</p>
+              <p className="text-[12px] font-bold text-neutral-100">{useBank ? "Is Plaid behind?" : isLyft ? "Your Lyft money, up to date" : "Keep this account up to date"}</p>
               <p className="text-[10.5px] leading-snug text-neutral-400">
                 {useBank
                   ? "Upload one or more photos from your bank (the movements and the balance): they come in as provisionals, the balance is calculated right away and Projections shows the correct one. When Plaid pulls them in, they replace themselves automatically, with no duplicates."
-                  : "Upload one or more photos from the Lyft app (earnings, payouts and the balance): they stay as your record — this is where the money that later lands in PayPal comes from — and the balance is calculated from them: it's your money available in Lyft, as if it were in the bank, ready to transfer whenever you want."}
+                  : isLyft
+                    ? "Upload one or more photos from the Lyft app (earnings, payouts and the balance): they stay as your record — this is where the money that later lands in PayPal comes from — and the balance is calculated from them: it's your money available in Lyft, as if it were in the bank, ready to transfer whenever you want."
+                    : "Upload one or more screenshots of this account (the movements and the balance): this account has no bank feed, so the screenshots stay as its record and the balance is calculated from them."}
               </p>
             </div>
             <button
@@ -915,7 +925,7 @@ export function RegisterDetail(props: {
                 </button>
               </div>
               <p className="mt-1 text-[11.5px] leading-snug text-neutral-300">
-                {useBank ? "Bank" : "Lyft"} (photo): <span className="font-mono font-semibold text-neutral-100">{money(myAudit.shotBalance)}</span>
+                {useBank ? "Bank" : isLyft ? "Lyft" : "Account"} (photo): <span className="font-mono font-semibold text-neutral-100">{money(myAudit.shotBalance)}</span>
                 {" · "}App ({useBank ? "Plaid" : "Base"} {money(myAudit.plaidBalance)} + {useBank ? "provisionals" : "scanned"} {money(myAudit.shotsTotal)}):{" "}
                 <span className="font-mono font-semibold text-neutral-100">
                   {money(Math.round((myAudit.plaidBalance + myAudit.shotsTotal) * 100) / 100)}
@@ -1219,7 +1229,9 @@ export function RegisterDetail(props: {
                   <p className="mt-2 border-t border-[#2c2c40] pt-2 text-[11px] leading-snug text-sky-300">
                     {useBank
                       ? "Screenshot provisional — it replaces itself when Plaid pulls in the real movement."
-                      : "Scanned Lyft record — kept as proof of the money that left Lyft (e.g.: to PayPal)."}
+                      : isLyft
+                        ? "Scanned Lyft record — kept as proof of the money that left Lyft (e.g.: to PayPal)."
+                        : "Scanned record — this account has no bank feed, so the screenshot is its record."}
                   </p>
                   <button
                     type="button"
