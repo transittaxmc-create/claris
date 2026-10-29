@@ -703,14 +703,15 @@ export function RegisterDetail(props: {
           tx: t,
         })
       }
-      // Provisionales de screenshot (Plan B): se mezclan en el register
-      // con su etiqueta; salen solos cuando Plaid baja el real.
+      // Provisionales (Plan B): se mezclan en el register con su
+      // etiqueta; salen solos cuando Plaid baja el real. Dos orígenes:
+      // screenshots del banco y PAGOS de bills anotados en Payables.
       for (const s of myShots) {
         out.push({
           key: `shot-${s.id}`,
           date: s.date,
           detail: s.detail,
-          category: "Screenshot",
+          category: s.source === "payment" ? "Bill payment" : "Screenshot",
           amount: s.amount,
           pending: true,
           shotId: s.id,
@@ -737,7 +738,7 @@ export function RegisterDetail(props: {
             key: `shot-${s.id}`,
             date: s.date,
             detail: s.detail,
-            category: "Screenshot",
+            category: s.source === "payment" ? "Bill payment" : "Screenshot",
             amount: s.amount,
             shotId: s.id,
           })
@@ -786,6 +787,7 @@ export function RegisterDetail(props: {
 
   const disp = accountDisplayName(reg.name)
   const myAudit = audits[reg.id]
+  const peekShot = peek?.shotId ? myShots.find((s) => s.id === peek.shotId) : undefined
 
   return (
     <div className="flex flex-col gap-3">
@@ -816,7 +818,7 @@ export function RegisterDetail(props: {
             {useScan && myShots.length > 0 && balance != null && (
               <p className="mt-0.5 text-[10px] font-semibold text-sky-300">
                 {useBank
-                  ? `Calculated with ${myShots.length} screenshot provisional${myShots.length === 1 ? "" : "s"}`
+                  ? `Calculated with ${myShots.length} provisional${myShots.length === 1 ? "" : "s"}`
                   : `Calculated with ${myShots.length} scanned movement${myShots.length === 1 ? "" : "s"}`}
                 {myAudit ? ` · ${useBank ? "Plaid" : "Base"}: ${money(myAudit.plaidBalance)}` : ""}
               </p>
@@ -1224,7 +1226,14 @@ export function RegisterDetail(props: {
                   Edit
                 </button>
               )}
-              {peek.shotId && (
+              {peek.shotId && peekShot?.source === "payment" && (
+                <p className="mt-2 border-t border-[#2c2c40] pt-2 text-[11px] leading-snug text-sky-300">
+                  {useBank
+                    ? "Bill payment — recorded in Payables, so it shows here right away. When Plaid posts the real charge it replaces itself, with no duplicate. To undo it, remove the payment in Payables."
+                    : "Bill payment — recorded in Payables. This account has no bank feed, so this entry is its record. To undo it, remove the payment in Payables."}
+                </p>
+              )}
+              {peek.shotId && peekShot?.source !== "payment" && (
                 <>
                   <p className="mt-2 border-t border-[#2c2c40] pt-2 text-[11px] leading-snug text-sky-300">
                     {useBank

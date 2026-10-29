@@ -20,6 +20,16 @@ export interface ShotTx {
   /** Con signo, estilo app: + entra, − sale. */
   amount: number
   createdAt: string
+  /** "shot" = leído de un screenshot del banco (default). "payment" =
+   * provisional creado al ANOTAR un pago de bill en Payables (Miguel,
+   * 2026-10-29): el pago se ve al momento en el register de la cuenta que
+   * pagó, y cuando Plaid baja el cargo real se reemplaza solo. Su ventana
+   * de match es más ancha (±5 días: el banco tarda más en postear un pago
+   * anotado a mano que en reflejar un screenshot). */
+  source?: "shot" | "payment"
+  /** Solo para source="payment": el pago de Payables que lo creó. */
+  paymentId?: string
+  billId?: string
 }
 
 export const SHOT_TXS_KEY = "claris_screenshot_txs_v1"
@@ -149,11 +159,13 @@ export interface BankTxLike {
 }
 
 /** ¿Este movimiento (del screenshot) ya existe entre los reales? Empareja
- *  uno a uno contra el pool: monto exacto al centavo y fecha a ±2 días. */
+ *  uno a uno contra el pool: monto exacto al centavo y fecha dentro de la
+ *  ventana (±2 días; los provisionales de PAGO usan ±5). */
 function takeMatch(
   pool: { date: string; amount: number; used: boolean }[],
   date: string,
   amount: number,
+  windowDays = 2,
 ): boolean {
   let best = -1
   let bestDiff = 99
@@ -162,7 +174,7 @@ function takeMatch(
     if (p.used) continue
     if (Math.abs(r2(p.amount) - r2(amount)) > 0.011) continue
     const d = daysDiff(p.date, date)
-    if (d <= 2 && d < bestDiff) {
+    if (d <= windowDays && d < bestDiff) {
       best = i
       bestDiff = d
     }
@@ -187,7 +199,7 @@ export function reconcileShots(
   let replaced = 0
   const kept = (shots || []).filter((s) => {
     if (s.accountId !== accountId) return true
-    if (takeMatch(pool, s.date, s.amount)) {
+    if (takeMatch(pool, s.date, s.amount, s.source === "payment" ? 5 : 2)) {
       replaced++
       return false
     }

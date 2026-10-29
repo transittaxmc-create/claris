@@ -23,6 +23,7 @@ import {
   type BankTxIn,
 } from "./bill-payments"
 import { FINANCE_SYNCED_EVENT } from "./finance-sync"
+import { loadShotTxs, saveShotTxs } from "./screenshot-txs"
 import type { BankTx } from "./account-registers-impl"
 import {
   LIABILITY_DISMISSED_KEY,
@@ -307,11 +308,40 @@ export function LiabilitiesScreen(props: { bankTxs: BankTx[]; onBack: () => void
       accountId: payDraft.accountId || undefined,
     })
     data.persistBill(updated)
+    // PROVISIONAL en el register de la cuenta que pagó (Miguel,
+    // 2026-10-29): el pago se ve AL MOMENTO en ese register y su balance
+    // lo refleja; cuando Plaid baja el cargo real, el provisional se
+    // reemplaza solo (match monto exacto, fecha ±5 días) — sin duplicar.
+    const pays = Array.isArray(updated.payments) ? updated.payments : []
+    const nuevo = pays[pays.length - 1]
+    if (nuevo && nuevo.accountId) {
+      try {
+        const shots = loadShotTxs().filter((s) => s.paymentId !== nuevo.id)
+        shots.push({
+          id: `shot-pay-${nuevo.id}`,
+          accountId: nuevo.accountId,
+          date: String(nuevo.date).slice(0, 10),
+          detail: bill.vendor,
+          amount: -Math.abs(Math.round(monto * 100) / 100),
+          createdAt: new Date().toISOString(),
+          source: "payment",
+          paymentId: nuevo.id,
+          billId: bill.id,
+        })
+        saveShotTxs(shots)
+      } catch {}
+    }
     setPayDraft(null)
   }
 
   const removePayment = (bill: Expense, paymentId: string) => {
     data.persistBill(removeBillPayment(bill, paymentId))
+    // Su provisional también sale (el balance de la cuenta se compone solo).
+    try {
+      const shots = loadShotTxs()
+      const next = shots.filter((s) => s.paymentId !== paymentId)
+      if (next.length !== shots.length) saveShotTxs(next)
+    } catch {}
   }
 
   return (

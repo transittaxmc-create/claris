@@ -148,6 +148,19 @@ export function CashFlowRegister({
     }
   }, [])
 
+  // SYNC (toque de Miguel): además de releer el snapshot, PIDE una bajada
+  // fresca de Plaid (marca en Supabase; el servidor la ejecuta en ~1 min)
+  // y relee a los 25s y 60s para que la pantalla se actualice sola cuando
+  // la bajada entre — sin tener que volver a tocar nada.
+  const syncNow = useCallback(() => {
+    try {
+      void fetch("/api/bank/sync-request", { method: "POST" }).catch(() => {})
+    } catch {}
+    void fetchBank()
+    window.setTimeout(() => void fetchBank(), 25000)
+    window.setTimeout(() => void fetchBank(), 60000)
+  }, [fetchBank])
+
   useEffect(() => {
     fetchBank()
     const refresh = window.setInterval(fetchBank, 5 * 60 * 1000)
@@ -646,7 +659,7 @@ export function CashFlowRegister({
           </span>
           <button
             type="button"
-            onClick={fetchBank}
+            onClick={syncNow}
             disabled={bankLoading}
             title={bankUpdatedAt ? `Bank synced ${bankUpdatedAt}` : "Sync bank"}
             className="rounded border border-[#262633] bg-[#16161f] px-2 py-0.5 text-[9px] font-bold text-[#f2f3f7] active:scale-95 disabled:opacity-50"
