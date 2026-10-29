@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Camera, Check, Loader2, X } from "lucide-react"
+import { Camera, Check, Loader2, Upload, X } from "lucide-react"
 import { EXPENSE_CATEGORIES, resolveScheduleEnds, scheduledEntryFromExpense, type Expense, type ExpenseCategory, type ExpenseDocType, type ScheduleFrequency, type ScheduledEntry } from "./types"
 import { FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT } from "./finance-sync"
 import { localDateKey } from "@/lib/dates"
@@ -116,7 +116,8 @@ export function ReceiptScanner({
     }
   })
   const [newCategory, setNewCategory] = useState("")
-  const inputRef = useRef<HTMLInputElement>(null)
+  const cameraRef = useRef<HTMLInputElement>(null)
+  const uploadRef = useRef<HTMLInputElement>(null)
 
   // Accounts/registers para "Which account did it come from?" (mismos que MONEY).
   const [snapshotAccounts, setSnapshotAccounts] = useState<any[]>([])
@@ -311,7 +312,19 @@ export function ReceiptScanner({
   return (
     <div className="fixed inset-0 z-50 flex flex-col" style={{ background: BG }}>
       <input
-        ref={inputRef}
+        ref={cameraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          if (f) escanear(f)
+          e.target.value = ""
+        }}
+      />
+      <input
+        ref={uploadRef}
         type="file"
         accept="image/*"
         className="hidden"
@@ -367,16 +380,31 @@ export function ReceiptScanner({
             })}
           </div>
 
-          <button
-            type="button"
-            onClick={() => inputRef.current?.click()}
-            disabled={leyendo}
-            className="mt-3.5 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[13px] font-bold text-white disabled:opacity-60"
-            style={{ background: foto ? NAVY : BLUE }}
-          >
-            {leyendo ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />}
-            {foto ? "CHANGE PHOTO" : "TAKE PHOTO OR UPLOAD"}
-          </button>
+          <div className="mt-3.5 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => cameraRef.current?.click()}
+              disabled={leyendo}
+              className="flex items-center justify-center gap-2 rounded-xl py-3 text-[13px] font-bold text-white disabled:opacity-60"
+              style={{ background: BLUE }}
+            >
+              {leyendo ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />}
+              TAKE PHOTO
+            </button>
+            <button
+              type="button"
+              onClick={() => uploadRef.current?.click()}
+              disabled={leyendo}
+              className="flex items-center justify-center gap-2 rounded-xl py-3 text-[13px] font-bold text-white disabled:opacity-60"
+              style={{ background: NAVY }}
+            >
+              {leyendo ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+              UPLOAD PHOTO
+            </button>
+          </div>
+          <p className="mt-1.5 text-center text-[10.5px] leading-snug" style={{ color: "#8A93A3" }}>
+            TAKE PHOTO opens the camera. UPLOAD PHOTO picks a photo or screenshot you already have.
+          </p>
 
           {foto && (
             <div className="mt-2.5 overflow-hidden rounded-xl border" style={{ borderColor: LINE }}>

@@ -935,6 +935,7 @@ export function ExpensesScreen({
         ref={cameraInputRef}
         type="file"
         accept="image/*"
+        capture="environment"
         onChange={handleFileSelected}
         className="hidden"
       />
@@ -971,10 +972,11 @@ export function ExpensesScreen({
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isScanning}
                 aria-label="Upload receipt photo or bill statement PDF"
-                className="flex items-center rounded-full border border-neutral-700 bg-neutral-900 px-2 py-1.5 text-neutral-300 hover:bg-neutral-800 active:scale-95 disabled:opacity-50"
+                className="flex items-center gap-1 rounded-full border border-neutral-700 bg-neutral-900 px-2.5 py-1.5 text-[11px] font-bold text-neutral-300 hover:bg-neutral-800 active:scale-95 disabled:opacity-50"
                 title="Upload photo or statement (PDF)"
               >
                 <Upload className="size-3.5" />
+                <span>UPLOAD</span>
               </button>
               <button
                 type="button"

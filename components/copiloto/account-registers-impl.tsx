@@ -509,6 +509,7 @@ export function RegisterDetail(props: {
     yaEscaneados: number
   } | null>(null)
   const fileRef = useRef<HTMLInputElement | null>(null)
+  const cameraFileRef = useRef<HTMLInputElement | null>(null)
   const [audits, setAudits] = useState<Record<string, ShotAudit>>({})
 
   useEffect(() => {
@@ -883,14 +884,36 @@ export function RegisterDetail(props: {
                     : "Upload one or more screenshots of this account (the movements and the balance): this account has no bank feed, so the screenshots stay as its record and the balance is calculated from them."}
               </p>
             </div>
-            <button
-              type="button"
-              disabled={scanBusy}
-              onClick={() => fileRef.current?.click()}
-              className="shrink-0 rounded-xl bg-sky-600 px-3 py-2 text-[12px] font-extrabold text-white active:scale-95 disabled:opacity-50"
-            >
-              {scanBusy ? "Reading…" : "📷 Scan"}
-            </button>
+            <div className="flex shrink-0 flex-col gap-1.5">
+              <button
+                type="button"
+                disabled={scanBusy}
+                onClick={() => cameraFileRef.current?.click()}
+                className="rounded-xl bg-sky-600 px-3 py-2 text-[12px] font-extrabold text-white active:scale-95 disabled:opacity-50"
+              >
+                {scanBusy ? "Reading…" : "📷 Take photo"}
+              </button>
+              <button
+                type="button"
+                disabled={scanBusy}
+                onClick={() => fileRef.current?.click()}
+                className="rounded-xl bg-[#23232f] px-3 py-2 text-[12px] font-extrabold text-white active:scale-95 disabled:opacity-50"
+              >
+                ⬆ Upload
+              </button>
+            </div>
+            <input
+              ref={cameraFileRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => {
+                const fs = Array.from(e.target.files || [])
+                e.target.value = ""
+                if (fs.length) void handleScanFiles(fs)
+              }}
+            />
             <input
               ref={fileRef}
               type="file"

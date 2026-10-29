@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useRef, useState } from "react"
-import { Camera, Loader2, Trash2, CircleCheck, AlertTriangle, CircleAlert, Info, ScanLine, Copy, Check } from "lucide-react"
+import { Camera, Loader2, Trash2, CircleCheck, AlertTriangle, CircleAlert, Info, ScanLine, Copy, Check, Upload } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { Trip } from "./types"
 import type { TollCharge } from "@/app/api/scan-toll-statement/route"
@@ -72,6 +72,7 @@ export function TollAuditScreen({ trips }: { trips: Trip[] }) {
   const [payAmt, setPayAmt] = useState("")
   const [billTick, setBillTick] = useState(0)
   const fileRef = useRef<HTMLInputElement>(null)
+  const uploadRef = useRef<HTMLInputElement>(null)
 
   const gpsTolls = useMemo(() => gpsTollsFromTrips(trips), [trips])
   const audit = useMemo(() => auditTolls(charges, gpsTolls), [charges, gpsTolls])
@@ -243,10 +244,22 @@ export function TollAuditScreen({ trips }: { trips: Trip[] }) {
             ref={fileRef}
             type="file"
             accept="image/*"
+            capture="environment"
             className="hidden"
             onChange={(e) => {
               const f = e.target.files?.[0]
               if (f) void scan(f)
+            }}
+          />
+          <input
+            ref={uploadRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0]
+              if (f) void scan(f)
+              e.target.value = ""
             }}
           />
           <button
@@ -256,7 +269,16 @@ export function TollAuditScreen({ trips }: { trips: Trip[] }) {
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-yellow-400 px-4 py-3 text-sm font-black text-black disabled:opacity-50"
           >
             {scanning ? <Loader2 className="size-4 animate-spin" /> : <Camera className="size-4" />}
-            {scanning ? "Reading statement…" : "Scan E-ZPass statement"}
+            {scanning ? "Reading statement…" : "Take photo of E-ZPass statement"}
+          </button>
+          <button
+            type="button"
+            disabled={scanning}
+            onClick={() => uploadRef.current?.click()}
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-neutral-700 bg-neutral-900 px-4 py-3 text-sm font-black text-neutral-200 disabled:opacity-50"
+          >
+            <Upload className="size-4" />
+            Upload statement photo
           </button>
           {error && <p className="mt-2 text-[11px] font-semibold text-rose-400">{error}</p>}
           {okMsg && <p className="mt-2 text-[11px] font-semibold text-emerald-400">{okMsg}</p>}
