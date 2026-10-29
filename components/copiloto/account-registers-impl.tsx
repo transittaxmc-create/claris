@@ -178,6 +178,13 @@ export function RegistersHome(props: {
       dues,
       balances,
       bankTxs: props.bankOk ? props.bankTxs || [] : [],
+      // Provisionales de screenshot = evidencia de pago (macheo automático).
+      shots: loadShotTxs().map((s) => ({
+        date: String(s.date).slice(0, 10),
+        amount: Number(s.amount) || 0,
+        detail: s.detail,
+        bank_account: s.accountId,
+      })),
       today,
       horizonDays: daysToEndOfMonth(today),
       dismissedPaid: dismissed,

@@ -90,6 +90,14 @@ export interface ForecastInput {
   /** Balance por cuenta (para el monto del pago de tarjeta). */
   balances?: Record<string, number | null | undefined>
   bankTxs?: ForecastBankTx[]
+  /** Provisionales de screenshot (Plan B): evidencia de pago con la misma
+   *  fuerza que un cargo de Plaid para el macheo "¿ya se pagó?". Sin esto,
+   *  un cargo que solo existe como screenshot (Plaid aún no lo trae) se
+   *  proyectaba OTRA vez y el balance bajaba dos veces por el mismo
+   *  movimiento (caso Washville, Miguel 2026-10-29). El macheo es
+   *  automático en cada cálculo — al cerrar y abrir la app, todo lo que
+   *  esté en ese estado queda macheado. */
+  shots?: ForecastBankTx[]
   /** yyyy-mm-dd (hora local). */
   today: string
   horizonDays: number
@@ -422,6 +430,13 @@ export function buildForecast(input: ForecastInput): Forecast {
   const bankTxs = (input.bankTxs || []).filter(
     (t) => t && isIsoDate(t.date) && String(t.date).slice(0, 10) <= today && Math.abs(Number(t.amount) || 0) >= 0.01,
   )
+  // Pool único de evidencia: reales de Plaid + provisionales de screenshot.
+  // findTx consume uno a uno (usedTx), así un movimiento y su provisional
+  // nunca pagan dos cosas distintas.
+  const shotTxs = (input.shots || []).filter(
+    (t) => t && isIsoDate(t.date) && String(t.date).slice(0, 10) <= today && Math.abs(Number(t.amount) || 0) >= 0.01,
+  )
+  const txPool: ForecastBankTx[] = [...bankTxs, ...shotTxs]
   const usedTx = new Set<number>()
 
   const lines: ForecastLine[] = []
@@ -439,9 +454,9 @@ export function buildForecast(input: ForecastInput): Forecast {
   const findTx = (income: boolean, amount: number, date: string, label: string, window: number, pct: number): number => {
     let best = -1
     let bestGap = Infinity
-    for (let i = 0; i < bankTxs.length; i++) {
+    for (let i = 0; i < txPool.length; i++) {
       if (usedTx.has(i)) continue
-      const t = bankTxs[i]
+      const t = txPool[i]
       const amt = Number(t.amount) || 0
       if (income ? amt <= 0 : amt >= 0) continue
       const gap = Math.abs(diffDays(String(t.date).slice(0, 10), date))
@@ -455,9 +470,9 @@ export function buildForecast(input: ForecastInput): Forecast {
     }
     if (best < 0 && income) {
       const flexPct = Math.max(pct, 0.08)
-      for (let i = 0; i < bankTxs.length; i++) {
+      for (let i = 0; i < txPool.length; i++) {
         if (usedTx.has(i)) continue
-        const t = bankTxs[i]
+        const t = txPool[i]
         const amt = Number(t.amount) || 0
         if (amt <= 0) continue
         const gap = Math.abs(diffDays(String(t.date).slice(0, 10), date))
@@ -474,9 +489,9 @@ export function buildForecast(input: ForecastInput): Forecast {
     // Solo monto (±15%) y fecha: Miguel lo confirma o descarta en "Por confirmar".
     if (best < 0 && income) {
       const loosePct = Math.max(pct, 0.15)
-      for (let i = 0; i < bankTxs.length; i++) {
+      for (let i = 0; i < txPool.length; i++) {
         if (usedTx.has(i)) continue
-        const t = bankTxs[i]
+        const t = txPool[i]
         const amt = Number(t.amount) || 0
         if (amt <= 0) continue
         const gap = Math.abs(diffDays(String(t.date).slice(0, 10), date))
@@ -504,7 +519,7 @@ export function buildForecast(input: ForecastInput): Forecast {
       const ti = findTx(p.income, p.amount, p.date, p.label, 10, 0.02)
       if (ti >= 0) {
         usedTx.add(ti)
-        probablePaid.push({ key, entry: p.entry, tx: bankTxs[ti] })
+        probablePaid.push({ key, entry: p.entry, tx: txPool[ti] })
         continue
       }
     }
@@ -632,6 +647,17 @@ export function buildForecast(input: ForecastInput): Forecast {
         // El bill vence fuera del horizonte: la ocurrencia tampoco entra.
         if (bDate > endDate) {
           beyondHorizonCount++
+          continue
+        }
+        // ¿Ya se pagó aunque el pago aún no esté APLICADO al bill? Si el
+        // cargo ya existe como evidencia (Plaid o provisional de
+        // screenshot), el balance real YA restó ese dinero: proyectarlo
+        // sería contarlo dos veces. Macheo automático en cada cálculo
+        // (Miguel, 2026-10-29: "tan pronto cierre y abra la aplicación,
+        // va a machear todo lo que está así").
+        const tiBill = findTx(false, remaining, bDate, bill.vendor, 10, 0.02)
+        if (tiBill >= 0) {
+          usedTx.add(tiBill)
           continue
         }
         recurringCount++

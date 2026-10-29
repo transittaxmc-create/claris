@@ -19,6 +19,39 @@ import { useForecastInputs } from "./dinero-proyeccion"
 import { loadCycleBills, loadExternalBills } from "./liabilities"
 import { billRemaining } from "./bill-payments"
 import { FINANCE_SYNCED_EVENT } from "./finance-sync"
+import { loadShotTxs, SHOTS_CHANGED_EVENT } from "./screenshot-txs"
+
+/** Provisionales de screenshot como evidencia de pago para el forecast
+ *  (Miguel, 2026-10-29): un cargo que solo existe en screenshot ya afectó
+ *  el balance calculado, así que el forecast lo machea como pagado en
+ *  cada cálculo — automático al abrir la app, sin esperar a Plaid. */
+export function useForecastShots(): ForecastBankTx[] {
+  const [shots, setShots] = useState<ForecastBankTx[]>([])
+  useEffect(() => {
+    const load = () => {
+      try {
+        setShots(
+          loadShotTxs().map((s) => ({
+            date: String(s.date).slice(0, 10),
+            amount: Number(s.amount) || 0,
+            detail: s.detail,
+            bank_account: s.accountId,
+          })),
+        )
+      } catch {
+        setShots([])
+      }
+    }
+    load()
+    window.addEventListener(SHOTS_CHANGED_EVENT, load)
+    window.addEventListener(FINANCE_SYNCED_EVENT, load)
+    return () => {
+      window.removeEventListener(SHOTS_CHANGED_EVENT, load)
+      window.removeEventListener(FINANCE_SYNCED_EVENT, load)
+    }
+  }, [])
+  return shots
+}
 
 /** Bills que mandan sobre el recurrente (regla de Miguel, 2026-10-25):
  * los de ciclo de POR PAGAR (auto) y los reales escaneados en Gastos.
@@ -112,6 +145,7 @@ export function useForecast30(props: ProyProps): {
 } {
   const { schedules, overrides, dismissed } = useForecastInputs()
   const bills = useForecastBills()
+  const shots = useForecastShots()
   const today = todayKey()
   const inicio = useMemo(
     () => startingBalance(props.registers, props.balances, props.otherFunds),
@@ -126,13 +160,14 @@ export function useForecast30(props: ProyProps): {
         dues: props.dues,
         balances: props.balances,
         bankTxs: props.bankOk ? props.bankTxs : [],
+        shots,
         today,
         horizonDays: 30,
         dismissedPaid: dismissed,
         overrides,
         bills,
       }),
-    [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, dismissed, overrides, bills],
+    [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, dismissed, overrides, bills, shots],
   )
   const fcLong = useMemo(
     () =>
@@ -143,13 +178,14 @@ export function useForecast30(props: ProyProps): {
         dues: props.dues,
         balances: props.balances,
         bankTxs: props.bankOk ? props.bankTxs : [],
+        shots,
         today,
         horizonDays: 90,
         dismissedPaid: dismissed,
         overrides,
         bills,
       }),
-    [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, dismissed, overrides, bills],
+    [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, dismissed, overrides, bills, shots],
   )
   // Año completo para la gráfica mensual (mes a mes) de la foto 2.
   const fcYear = useMemo(
@@ -161,13 +197,14 @@ export function useForecast30(props: ProyProps): {
         dues: props.dues,
         balances: props.balances,
         bankTxs: props.bankOk ? props.bankTxs : [],
+        shots,
         today,
         horizonDays: 365,
         dismissedPaid: dismissed,
         overrides,
         bills,
       }),
-    [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, dismissed, overrides, bills],
+    [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, dismissed, overrides, bills, shots],
   )
   return { fc, fcLong, fcYear, today, schedules }
 }

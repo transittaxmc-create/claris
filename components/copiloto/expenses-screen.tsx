@@ -19,6 +19,7 @@ import {
 import { MoneyInput } from "./money-input"
 import { sugerirTipoDoc } from "./cash-flow-store"
 import { archiveReceipt, findReceiptDuplicate, hashImage, loadReceipts } from "./receipts"
+import { loadShotTxs, reconcileShots } from "./screenshot-txs"
 import { accountBalance, accountDisplayName, accountIdFor, buildRegisters } from "./registers-store"
 import {
   addBillPayment,
@@ -377,7 +378,44 @@ export function ExpensesScreen({
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
         if (alive && j) {
-          if (Array.isArray(j.transactions)) setBankTxs(j.transactions)
+          if (Array.isArray(j.transactions)) {
+            // Evidencia completa (Miguel, 2026-10-29): los provisionales de
+            // screenshot que Plaid aún no trae también machean recibos y
+            // bills — automático al abrir, sin esperar al banco. Fuera los
+            // de pago (circulares) y los que ya tienen su real de Plaid.
+            let txs: BankTxLite[] = j.transactions
+            try {
+              const nameByAccountId = new Map<string, string>()
+              for (const t of j.transactions) {
+                const nm = String(t?.bank_account || "")
+                if (nm) nameByAccountId.set(accountIdFor(nm), nm)
+              }
+              const shots = loadShotTxs().filter((s) => s.source !== "payment")
+              const byAccount = new Map<string, typeof shots>()
+              for (const s of shots) {
+                const arr = byAccount.get(s.accountId) || []
+                arr.push(s)
+                byAccount.set(s.accountId, arr)
+              }
+              const extra: BankTxLite[] = []
+              for (const [accountId, arr] of byAccount) {
+                const realOfAccount = (j.transactions as BankTxLite[]).filter(
+                  (t) => accountIdFor(String(t.bank_account || "")) === accountId,
+                )
+                const { kept } = reconcileShots(arr, accountId, realOfAccount)
+                for (const s of kept) {
+                  extra.push({
+                    date: String(s.date).slice(0, 10),
+                    bank_account: nameByAccountId.get(accountId) || accountId.replace(/^(snap|manual):/, ""),
+                    detail: s.detail,
+                    amount: Number(s.amount) || 0,
+                  })
+                }
+              }
+              if (extra.length) txs = [...txs, ...extra]
+            } catch {}
+            setBankTxs(txs)
+          }
           if (Array.isArray(j.accounts)) setBankAccounts(j.accounts)
         }
       })

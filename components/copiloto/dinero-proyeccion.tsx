@@ -27,6 +27,7 @@ import {
   type ScheduleOverride,
 } from "./dinero-forecast"
 import { FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT, FORECAST_DISMISSED_KEY } from "./finance-sync"
+import { loadShotTxs } from "./screenshot-txs"
 
 type Horizon = "mes" | 30 | 60 | 90
 const HORIZONS: { value: Horizon; label: string }[] = [
@@ -734,6 +735,13 @@ export function DineroProyeccion(props: {
         balances: props.balances,
         // Sin banco no hay auto-match (nunca se da por pagado algo sin evidencia).
         bankTxs: props.bankOk ? props.bankTxs : [],
+        // Provisionales de screenshot = evidencia de pago (macheo automático).
+        shots: loadShotTxs().map((s) => ({
+          date: String(s.date).slice(0, 10),
+          amount: Number(s.amount) || 0,
+          detail: s.detail,
+          bank_account: s.accountId,
+        })),
         today,
         horizonDays,
         dismissedPaid: dismissed,

@@ -23,7 +23,7 @@ import {
   type BankTxIn,
 } from "./bill-payments"
 import { FINANCE_SYNCED_EVENT } from "./finance-sync"
-import { loadShotTxs, saveShotTxs } from "./screenshot-txs"
+import { loadShotTxs, reconcileShots, saveShotTxs } from "./screenshot-txs"
 import type { BankTx } from "./account-registers-impl"
 import {
   LIABILITY_DISMISSED_KEY,
@@ -154,16 +154,47 @@ function useLiabilityData(bankTxs: BankTx[]) {
   }
 
   // --- Detección de pagos del banco contra los bills de ciclo ---
-  const bankTxIns: BankTxIn[] = useMemo(
-    () =>
-      (bankTxs || []).map((t) => ({
-        date: String(t.date || ""),
-        bank_account: String(t.bank_account || ""),
-        detail: String(t.detail || ""),
-        amount: Number(t.amount) || 0,
-      })),
-    [bankTxs],
-  )
+  // Evidencia = cargos de Plaid + provisionales de screenshot que Plaid
+  // aún no trae (Miguel, 2026-10-29: el macheo es automático al abrir la
+  // app, también para lo que solo existe en screenshot — ej. Washville).
+  // Se excluyen los provisionales de PAGO (source="payment": son pagos
+  // anotados en esta misma pantalla, usarlos de evidencia sería circular)
+  // y los que ya tienen su real de Plaid (reconcileShots los retira).
+  const bankTxIns: BankTxIn[] = useMemo(() => {
+    const base: BankTxIn[] = (bankTxs || []).map((t) => ({
+      date: String(t.date || ""),
+      bank_account: String(t.bank_account || ""),
+      detail: String(t.detail || ""),
+      amount: Number(t.amount) || 0,
+    }))
+    try {
+      const nameByAccountId = new Map<string, string>()
+      for (const t of bankTxs || []) {
+        const nm = String(t.bank_account || "")
+        if (nm) nameByAccountId.set(accountIdFor(nm), nm)
+      }
+      const shots = loadShotTxs().filter((s) => s.source !== "payment")
+      const byAccount = new Map<string, typeof shots>()
+      for (const s of shots) {
+        const arr = byAccount.get(s.accountId) || []
+        arr.push(s)
+        byAccount.set(s.accountId, arr)
+      }
+      for (const [accountId, arr] of byAccount) {
+        const realOfAccount = (bankTxs || []).filter((t) => accountIdFor(String(t.bank_account || "")) === accountId)
+        const { kept } = reconcileShots(arr, accountId, realOfAccount)
+        for (const s of kept) {
+          base.push({
+            date: String(s.date).slice(0, 10),
+            bank_account: nameByAccountId.get(accountId) || accountId.replace(/^(snap|manual):/, ""),
+            detail: s.detail,
+            amount: Number(s.amount) || 0,
+          })
+        }
+      }
+    } catch {}
+    return base
+  }, [bankTxs])
   const detections = useMemo(
     () => detectBillPayments(ownBills, bankTxIns).filter((d) => !dismissed.has(d.id)),
     [ownBills, bankTxIns, dismissed],
