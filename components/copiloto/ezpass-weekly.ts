@@ -23,6 +23,7 @@ import {
   type OpenBill,
 } from "./open-bills-store"
 import { FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT } from "./finance-sync"
+import { loadShiftTolls } from "./shift-tolls"
 
 const TRACK_KEY = "claris_ezpass_weekly_v1"
 const BILL_PREFIX = "E-ZPass"
@@ -117,6 +118,17 @@ export function syncEzpassWeekly(trips: Trip[]): { friday: string; total: number
     const day = tripDateOf(t)
     perDay.set(day, round2((perDay.get(day) || 0) + toll))
   }
+  // 1b. Peajes del diario del turno (entre trabajos, sin viaje activo —
+  // Miguel, 2026-10-29): también son peajes de la semana y entran al bill
+  // del viernes. Los de monto desconocido (sistema ticket) no suman $:
+  // se cobran cuando el statement los confirme.
+  try {
+    for (const st of loadShiftTolls()) {
+      const amt = Number(st.amount) || 0
+      if (amt <= 0 || !st.date) continue
+      perDay.set(st.date, round2((perDay.get(st.date) || 0) + amt))
+    }
+  } catch {}
   if (perDay.size === 0) return null
 
   const track = loadTrack()

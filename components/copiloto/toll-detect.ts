@@ -5,7 +5,7 @@
  * TOLL_PLAZAS_2026. When the driver passes within radius of a plaza that has
  * not been charged yet on this trip, the toll is auto-added:
  *  - draft.toll += rate (2026 NY E-ZPass discounted rate, peak/off-peak by time)
- *  - draft.notes += "[HH:MM] Plaza name - $X.XX"
+ *  - draft.notes += "[Oct 29 · HH:MM] Plaza name - $X.XX" (día y hora, Miguel 2026-10-29)
  *
  * Coordinates in the database are crossing midpoints (approx), so the radius
  * is generous on purpose: a missed toll is a lost deduction, while a false
@@ -94,10 +94,15 @@ export function detectNewTolls(
 }
 
 export function tollNoteStamp(date: Date): string {
-  return date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })
+  // Estampa con DÍA y hora (Miguel, 2026-10-29): la nota de cada trabajo
+  // dice qué día y a qué hora pasó el peaje — es su prueba contra el
+  // statement de E-ZPass. Formato: "Oct 29 · 14:35".
+  const day = date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+  const time = date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })
+  return `${day} · ${time}`
 }
 
-/** "[09:15] GW Bridge - $14.00" or "[09:15] NJTPK Exit 14 — check E-ZPass statement" */
+/** "[Oct 29 · 09:15] GW Bridge - $14.00" or "[Oct 29 · 09:15] NJTPK Exit 14 — check E-ZPass statement" */
 export function formatTollNote(plaza: TollPlaza, date: Date): { text: string; amount: number | null } {
   const stamp = tollNoteStamp(date)
   const rate = rateFor(plaza, date)

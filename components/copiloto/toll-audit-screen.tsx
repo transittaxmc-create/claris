@@ -5,7 +5,8 @@ import { Camera, Loader2, Trash2, CircleCheck, AlertTriangle, CircleAlert, Info,
 import { cn } from "@/lib/utils"
 import type { Trip } from "./types"
 import type { TollCharge } from "@/app/api/scan-toll-statement/route"
-import { gpsTollsFromTrips, auditTolls, auditReportText, type AuditStatus } from "./toll-audit"
+import { gpsTollsFromTrips, gpsTollsFromShiftDiary, auditTolls, auditReportText, type AuditStatus } from "./toll-audit"
+import { loadShiftTolls } from "./shift-tolls"
 import { currentEzpassBill, fridayOfWeek } from "./ezpass-weekly"
 import { loadOpenBills, saveOpenBills, applyPayment } from "./open-bills-store"
 
@@ -74,7 +75,10 @@ export function TollAuditScreen({ trips }: { trips: Trip[] }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const uploadRef = useRef<HTMLInputElement>(null)
 
-  const gpsTolls = useMemo(() => gpsTollsFromTrips(trips), [trips])
+  const gpsTolls = useMemo(
+    () => [...gpsTollsFromTrips(trips), ...gpsTollsFromShiftDiary(loadShiftTolls())],
+    [trips]
+  )
   const audit = useMemo(() => auditTolls(charges, gpsTolls), [charges, gpsTolls])
   const gpsTotal = useMemo(() => gpsTolls.reduce((s, g) => s + (g.amount || 0), 0), [gpsTolls])
   const weeklyBill = useMemo(() => currentEzpassBill(), [gpsTolls, billTick])
@@ -213,13 +217,16 @@ export function TollAuditScreen({ trips }: { trips: Trip[] }) {
             </span>
           </div>
           {gpsTolls.length === 0 ? (
-            <p className="text-[11px] text-neutral-600">No tolls detected yet. They appear automatically when you drive through one with a trip active.</p>
+            <p className="text-[11px] text-neutral-600">No tolls detected yet. They appear automatically when you drive through one with the shift on.</p>
           ) : (
             <div className="max-h-44 space-y-1 overflow-y-auto">
               {gpsTolls.map((g) => (
                 <div key={g.id} className="flex items-center justify-between gap-2 text-[11px]">
                   <span className="min-w-0 flex-1 truncate text-neutral-300">
                     <span className="font-mono text-neutral-500">{g.date.slice(5)} {g.time}</span> · {g.plaza}
+                    {g.platform === "SHIFT" && (
+                      <span className="ml-1.5 rounded border border-sky-800 bg-sky-950/50 px-1 py-px align-middle text-[8.5px] font-bold tracking-wide text-sky-300">SHIFT</span>
+                    )}
                   </span>
                   <span className="shrink-0 font-mono font-bold text-neutral-200">
                     {g.amount != null ? `$${g.amount.toFixed(2)}` : "—"}

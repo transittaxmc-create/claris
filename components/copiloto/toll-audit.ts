@@ -25,7 +25,9 @@ export interface GpsToll {
   platform: string
 }
 
-const NOTE_RE = /\[(\d{2}:\d{2})\]\s*(.+?)\s*-\s*\$?([\d,]+\.\d{2})/
+// La estampa de la nota trae día y hora desde 2026-10-29 ("[Oct 29 · 09:15]");
+// las notas viejas solo traen la hora ("[09:15]"). El parser acepta las dos.
+const NOTE_RE = /\[(?:[A-Z][a-z]{2} \d{1,2} · )?(\d{2}:\d{2})\]\s*(.+?)\s*-\s*\$?([\d,]+\.\d{2})/
 
 /** Extract GPS toll crossings from trip notes. */
 export function gpsTollsFromTrips(trips: Trip[]): GpsToll[] {
@@ -49,8 +51,8 @@ export function gpsTollsFromTrips(trips: Trip[]): GpsToll[] {
           platform: String(t.platform || ""),
         })
       } else if (/check E-ZPass statement/i.test(part)) {
-        const tm = part.match(/\[(\d{2}:\d{2})\]/)
-        const nm = part.match(/\[\d{2}:\d{2}\]\s*(.+?)\s*—/)
+        const tm = part.match(/\[(?:[A-Z][a-z]{2} \d{1,2} · )?(\d{2}:\d{2})\]/)
+        const nm = part.match(/\[(?:[A-Z][a-z]{2} \d{1,2} · )?\d{2}:\d{2}\]\s*(.+?)\s*—/)
         out.push({
           id: `${t.id}#${i}`,
           tripId: t.id,
@@ -64,6 +66,28 @@ export function gpsTollsFromTrips(trips: Trip[]): GpsToll[] {
     })
   }
   return out.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
+}
+
+/**
+ * Pasadas del diario del turno (entre trabajos, sin viaje activo) como
+ * parte del log GPS de la auditoría, con label SHIFT (Miguel, 2026-10-29):
+ * también matchean contra el statement — no quedan fuera por no pertenecer
+ * a un trabajo.
+ */
+export function gpsTollsFromShiftDiary(
+  diary: { id: string; date: string; time: string; plaza: string; amount: number | null }[]
+): GpsToll[] {
+  return diary
+    .map((t) => ({
+      id: `shift#${t.id}`,
+      tripId: "shift-diary",
+      date: t.date,
+      time: t.time,
+      plaza: t.plaza,
+      amount: t.amount,
+      platform: "SHIFT",
+    }))
+    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
 }
 
 /** Normalize plaza names for fuzzy matching ("GWB" = "George Washington Bridge"). */

@@ -19,6 +19,17 @@ import {
 } from "./geo"
 import { MoneyInput } from "./money-input"
 import { detectNewTolls, rateFor, formatTollNote, appendNote } from "./toll-detect"
+import { loadShiftTolls, sumShiftTolls, SHIFT_TOLLS_EVENT, type ShiftToll } from "./shift-tolls"
+import { fridayOfWeek } from "./ezpass-weekly"
+
+/** Cuenta las estampas de peaje en una nota ("[Oct 29 · 14:35] … - $X" o "[14:35] …"). */
+function countTollStamps(notes?: string): number {
+  if (!notes) return 0
+  return notes
+    .split("|")
+    .filter((p) => /\[(?:[A-Z][a-z]{2} \d{1,2} · )?\d{2}:\d{2}\]/.test(p) && (p.includes("- $") || /check E-ZPass/i.test(p)))
+    .length
+}
 
 function LocationColumn({
   label,
@@ -199,6 +210,14 @@ export function EntryScreen({
   // E-ZPass: peajes ya cobrados en este viaje (no duplicar) + aviso visual
   const tollHit = useRef<Set<string>>(new Set())
   const [tollFlash, setTollFlash] = useState<string | null>(null)
+  // Diario de peajes del turno (pasadas entre trabajos): alimenta el
+  // contador acumulativo de abajo (día/semana).
+  const [diaryTolls, setDiaryTolls] = useState<ShiftToll[]>(() => loadShiftTolls())
+  useEffect(() => {
+    const refresh = () => setDiaryTolls(loadShiftTolls())
+    window.addEventListener(SHIFT_TOLLS_EVENT, refresh)
+    return () => window.removeEventListener(SHIFT_TOLLS_EVENT, refresh)
+  }, [])
 
   const set = <K extends keyof Trip>(key: K, val: Trip[K]) =>
     setDraft((d) => ({ ...d, [key]: val }))
@@ -266,7 +285,9 @@ export function EntryScreen({
 
   // E-ZPass automático: con el viaje activo (pickup capturado), cada fix del
   // GPS se cruza con las plazas 2026. Peaje nuevo → se suma a toll y se anota
-  // "[HH:MM] Estación - $X.XX" en notas. No duplica en el mismo viaje.
+  // "[Oct 29 · HH:MM] Estación - $X.XX" en notas (día y hora, Miguel
+  // 2026-10-29). Si pasan varios peajes en el viaje, se suman todos.
+  // No duplica la misma plaza en el mismo viaje.
   // El GPS continuo arranca con el viaje aunque no se haya presionado START.
   const gpsFix = shift.gps
   const tripActive = draft.pickupLoc != null
@@ -374,6 +395,27 @@ export function EntryScreen({
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
   const todayTrips = trips.filter((trip) => tripDateOf(trip) === todayKey)
   const grossIncomeToday = todayTrips.reduce((total, trip) => total + grossOf(trip), 0)
+
+  // Contador acumulativo de peajes (Miguel, 2026-10-29): TODO lo del día —
+  // lo de los trabajos guardados + el viaje abierto + el diario del turno
+  // (entre trabajos) — y la semana (la que cierra el viernes, como el bill
+  // de E-ZPass). El total anual NO va aquí: vive en el Financial Statement.
+  const weekFridayKey = fridayOfWeek(todayKey)
+  const weekTrips = trips.filter((trip) => fridayOfWeek(tripDateOf(trip)) === weekFridayKey)
+  const diaryToday = diaryTolls.filter((t) => t.date === todayKey)
+  const diaryWeek = diaryTolls.filter((t) => fridayOfWeek(t.date) === weekFridayKey)
+  const draftTollMoney = Number(draft.toll) || 0
+  const tollsTodayMoney =
+    Math.round(
+      (todayTrips.reduce((s, t) => s + (Number(t.toll) || 0), 0) + sumShiftTolls(diaryToday) + draftTollMoney) * 100
+    ) / 100
+  const tollsWeekMoney =
+    Math.round(
+      (weekTrips.reduce((s, t) => s + (Number(t.toll) || 0), 0) + sumShiftTolls(diaryWeek) + draftTollMoney) * 100
+    ) / 100
+  const tollsTodayPasses =
+    todayTrips.reduce((s, t) => s + countTollStamps(t.notes), 0) + diaryToday.length + countTollStamps(draft.notes)
+  const lastDiaryPass = diaryToday.length > 0 ? diaryToday[diaryToday.length - 1] : null
 
   function toggleGross() {
     setShowGross((v) => !v)
@@ -705,6 +747,33 @@ export function EntryScreen({
           )}
         </section>
 
+      </div>
+
+      {/* Contador acumulativo de peajes (Miguel, 2026-10-29): fijo abajo,
+          siempre visible sin scroll. Se suma solo con cada pasada — de los
+          trabajos, del viaje abierto y del diario del turno. */}
+      <div className="shrink-0 border-t border-neutral-800 bg-neutral-950 px-4 py-1.5 sm:px-8">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-[10px] font-bold tracking-[0.15em] text-neutral-400">
+            🛣️ TOLLS TODAY
+          </span>
+          <span className="font-mono text-[13px] font-bold tabular-nums text-neutral-100">
+            ${tollsTodayMoney.toFixed(2)}
+            <span className="ml-1.5 text-[10.5px] font-semibold text-neutral-400">
+              · {tollsTodayPasses} {tollsTodayPasses === 1 ? "PASS" : "PASSES"}
+            </span>
+          </span>
+          <span className="text-[10px] font-bold tracking-[0.15em] text-neutral-400">WEEK</span>
+          <span className="font-mono text-[13px] font-bold tabular-nums text-neutral-100">
+            ${tollsWeekMoney.toFixed(2)}
+          </span>
+        </div>
+        {lastDiaryPass && (
+          <p className="mt-0.5 truncate text-right text-[10px] text-sky-300/80">
+            Last between-jobs pass: {lastDiaryPass.time} · {lastDiaryPass.plaza}
+            {lastDiaryPass.amount != null ? ` · $${lastDiaryPass.amount.toFixed(2)}` : ""} — saved to today's diary
+          </p>
+        )}
       </div>
 
       {/* Sticky record button con calidad y feedback */}

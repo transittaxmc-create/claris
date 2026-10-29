@@ -17,6 +17,9 @@ import { SobresScreen } from "./sobres-screen"
 import { TollAuditScreen } from "./toll-audit-screen"
 import { CreditScreen } from "./credit-screen"
 import { syncEzpassWeekly } from "./ezpass-weekly"
+import { detectNewTolls, rateFor } from "./toll-detect"
+import { addShiftTolls, loadShiftTolls, SHIFT_TOLLS_EVENT } from "./shift-tolls"
+import { CURRENT_PICKUP_KEY } from "./geo"
 import { TripEditSheet } from "./trip-edit-sheet"
 import { ReceiptScanner } from "./receipt-scanner"
 import { useShift } from "./shift"
@@ -230,6 +233,67 @@ export function CopilotoApp() {
       syncEzpassWeekly(tripsRef.current || [])
     } catch {}
   }, [hydrated, trips])
+
+  // Diario de peajes del turno (Miguel, 2026-10-29): con el turno prendido,
+  // la detección corre TODO el turno — también entre trabajos, sin viaje
+  // activo — y esas pasadas van al diario del turno (shift-tolls), no se
+  // pierden. Si hay un viaje activo (pickup capturado), el viaje mismo
+  // registra sus peajes en su nota: aquí se salta para no duplicar.
+  // La misma plaza no se anota dos veces en 20 min a nivel turno (tráfico
+  // detenido junto a la plaza no cobra doble); pasada esa ventana, si la
+  // cruza otra vez, cuenta otra vez.
+  const shiftTollCooldown = useRef<Map<string, number>>(new Map())
+  useEffect(() => {
+    if (shift.shiftActive) shift.ensureGpsWatch()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shift.shiftActive])
+  useEffect(() => {
+    const fix = shift.gps
+    if (!fix || !shift.shiftActive) return
+    try {
+      if (localStorage.getItem(CURRENT_PICKUP_KEY)) return // viaje activo: lo anota el viaje
+    } catch {}
+    const now = new Date()
+    const nowMs = now.getTime()
+    const COOLDOWN_MS = 20 * 60_000
+    const hit = new Set<string>()
+    for (const [plaza, at] of shiftTollCooldown.current) {
+      if (nowMs - at < COOLDOWN_MS) hit.add(plaza)
+    }
+    // Semilla desde el diario de hoy (por si la app se reabrió a mitad de turno).
+    const pad = (n: number) => String(n).padStart(2, "0")
+    const todayKey = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
+    const nowMin = now.getHours() * 60 + now.getMinutes()
+    for (const t of loadShiftTolls()) {
+      if (t.date !== todayKey) continue
+      const m = /^(\d{2}):(\d{2})$/.exec(t.time || "")
+      if (!m) continue
+      if (nowMin - (Number(m[1]) * 60 + Number(m[2])) < 20) hit.add(t.plaza)
+    }
+    const fresh = detectNewTolls(fix.lat, fix.lng, fix.heading ?? null, hit, now)
+    if (fresh.length === 0) return
+    fresh.forEach((p) => shiftTollCooldown.current.set(p.name, nowMs))
+    addShiftTolls(
+      fresh.map((p) => ({
+        id: `st-${nowMs}-${p.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}`,
+        date: todayKey,
+        time: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
+        plaza: p.name,
+        amount: rateFor(p, now),
+      }))
+    )
+  }, [shift.gps, shift.shiftActive])
+  // El bill del viernes también se actualiza cuando entra una pasada al diario.
+  useEffect(() => {
+    if (!hydrated) return
+    const onDiary = () => {
+      try {
+        syncEzpassWeekly(tripsRef.current || [])
+      } catch {}
+    }
+    window.addEventListener(SHIFT_TOLLS_EVENT, onDiary)
+    return () => window.removeEventListener(SHIFT_TOLLS_EVENT, onDiary)
+  }, [hydrated])
 
   useEffect(() => {
     if (!hydrated) return

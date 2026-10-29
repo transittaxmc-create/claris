@@ -240,7 +240,10 @@ export function useShift() {
           setGps(null)
           showToast("⚠️ GPS denied: enable the permission")
         },
-        { enableHighAccuracy: true, maximumAge: 10_000, timeout: 20_000 }
+        // Afinado (Miguel, 2026-10-29): fixes casi en vivo (máx 2 s de
+        // antigüedad) — a velocidad de autopista un fix de 10 s ya quedó
+        // ~300 m atrás y el geofence de peajes lo puede fallar.
+        { enableHighAccuracy: true, maximumAge: 2_000, timeout: 20_000 }
       )
     } catch {
       setGps(null)
