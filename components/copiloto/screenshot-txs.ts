@@ -208,6 +208,92 @@ export function reconcileShots(
   return { kept, replaced }
 }
 
+// ===== Guardia ENTRE cuentas (Miguel, 2026-10-29) =====
+// El filtro de duplicados de arriba solo mira la cuenta de destino: si la
+// foto de Citibank se sube al register de PayPal, el mismo movimiento
+// entra DOS veces (pasó el 2026-10-29: 5 cargos de Citi en PayPal,
+// diferencia $231.67). Esta guardia revisa las DEMÁS cuentas antes de
+// guardar y AVISA — nunca bloquea ni borra sola, porque un monto repetido
+// puede ser legítimo (dos parqueos NYCDOT de −$0.95 el mismo día). La
+// decisión final es de Miguel en la vista previa: deja marcado = guarda
+// de todos modos; desmarca = descarta.
+
+/** Normaliza una descripción para comparar entre fuentes: minúsculas,
+ *  sin acentos, sin puntuación, sin palabras de relleno del banco. */
+export function normalizeShotDesc(s: string): string {
+  return String(s || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9 ]+/g, " ")
+    .replace(
+      /\b(debit|credit|card|authorization|auth|transfer|payment|purchase|pos|ach|the|de|la|el|en|llc|inc|corp|co)\b/g,
+      " ",
+    )
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+/** ¿Dos descripciones hablan del mismo movimiento? Iguales tras
+ *  normalizar, una contenida en la otra, o solape fuerte de palabras. */
+export function descSimilar(a: string, b: string): boolean {
+  const na = normalizeShotDesc(a)
+  const nb = normalizeShotDesc(b)
+  if (!na || !nb) return false
+  if (na === nb) return true
+  if (na.length >= 4 && nb.includes(na)) return true
+  if (nb.length >= 4 && na.includes(nb)) return true
+  const ta = new Set(na.split(" ").filter((w) => w.length >= 3))
+  const tb = new Set(nb.split(" ").filter((w) => w.length >= 3))
+  if (ta.size === 0 || tb.size === 0) return false
+  let inter = 0
+  for (const w of ta) if (tb.has(w)) inter++
+  const jaccard = inter / (ta.size + tb.size - inter)
+  return jaccard >= 0.6
+}
+
+export interface CrossPoolItem {
+  date: string
+  amount: number
+  detail: string
+  /** Nombre visible de la cuenta donde ya está el movimiento. */
+  accountLabel: string
+  kind: "bank" | "shot"
+}
+
+/**
+ * Para cada movimiento recién escaneado, busca su gemelo en OTRA cuenta
+ * (reales de Plaid o provisionales escaneados). Empareja uno a uno (un
+ * gemelo legítimo doble consume dos entradas del pool, no una): monto
+ * exacto al centavo, fecha ±2 días y descripción parecida. Devuelve, por
+ * índice del item, la cuenta donde ya está — o null. Solo AVISA.
+ */
+export function findCrossAccountMatches(
+  items: { date: string; description: string; amount: number }[],
+  pool: CrossPoolItem[],
+): (CrossPoolItem | null)[] {
+  const used = new Array(pool.length).fill(false)
+  return (items || []).map((it) => {
+    let best = -1
+    let bestDiff = 99
+    for (let i = 0; i < pool.length; i++) {
+      if (used[i]) continue
+      const p = pool[i]
+      if (Math.abs(r2(p.amount) - r2(it.amount)) > 0.011) continue
+      const d = daysDiff(p.date, it.date)
+      if (d > 2 || d >= bestDiff) continue
+      if (!descSimilar(p.detail, it.description)) continue
+      best = i
+      bestDiff = d
+    }
+    if (best >= 0) {
+      used[best] = true
+      return pool[best]
+    }
+    return null
+  })
+}
+
 /**
  * Filtra lo recién escaneado: fuera lo que ya está en Plaid y lo que ya
  * se había escaneado (mismo monto/fecha) — no entra dos veces.

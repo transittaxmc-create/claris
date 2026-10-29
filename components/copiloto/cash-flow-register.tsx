@@ -749,6 +749,8 @@ export function CashFlowRegister({
             account={activeAccount}
             balance={balances[activeAccount.id] ?? null}
             bankTxs={txsForAccount(activeAccount)}
+            allBankTxs={bankTxs}
+            accountNames={Object.fromEntries(registers.map((r) => [r.id, r.name]))}
             entries={entriesForAccount(activeAccount)}
             otherFunds={
               activeAccount.isMain

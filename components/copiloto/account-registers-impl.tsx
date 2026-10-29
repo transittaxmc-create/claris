@@ -20,11 +20,13 @@ import { AccountSettings } from "./account-settings"
 import {
   clearShotAudit,
   filterExtracted,
+  findCrossAccountMatches,
   loadShotAudits,
   loadShotTxs,
   reconcileShots,
   saveShotAudit,
   saveShotTxs,
+  type CrossPoolItem,
   type ShotAudit,
   type ShotTx,
 } from "./screenshot-txs"
@@ -508,7 +510,7 @@ export function RegisterDetail(props: {
   const [scanBusy, setScanBusy] = useState(false)
   const [scanMsg, setScanMsg] = useState<string | null>(null)
   const [preview, setPreview] = useState<{
-    items: { date: string; description: string; amount: number; pending?: boolean; keep: boolean }[]
+    items: { date: string; description: string; amount: number; pending?: boolean; keep: boolean; cross?: string | null }[]
     balanceSeen: number | null
     last4Seen: string | null
     last4Conflict: string | null
@@ -639,10 +641,39 @@ export function RegisterDetail(props: {
         setScanMsg(`Everything in the photos is already in the register (${yaEnPlaid} via Plaid, ${yaEscaneados} scanned). Nothing duplicated.`)
         return
       }
+      // Guardia ENTRE cuentas (Miguel, 2026-10-29): el filtro de arriba
+      // solo mira ESTA cuenta. Si la foto es de OTRA cuenta (ej: cargos de
+      // Citibank subidos al register de PayPal), el mismo movimiento ya
+      // vive en ese otro register y entraría dos veces. Se busca el gemelo
+      // en las demás cuentas (reales de Plaid + provisionales escaneados)
+      // y se MARCA en la vista previa para que Miguel decida: marcado =
+      // se guarda de todos modos; desmarcado = se descarta. Nada se
+      // borra ni se bloquea solo.
+      const acctNames = (props.accountNames || {}) as Record<string, string>
+      const crossPool: CrossPoolItem[] = []
+      for (const s of shots) {
+        if (s.accountId === reg.id) continue
+        crossPool.push({
+          date: s.date,
+          amount: s.amount,
+          detail: s.detail,
+          accountLabel: acctNames[s.accountId] || s.accountId.replace(/^snap:|^manual:/, ""),
+          kind: "shot",
+        })
+      }
+      const myLast4 = last4Of(reg.name)
+      for (const t of (props.allBankTxs as BankTx[] | undefined) || []) {
+        const acctName = String(t.bank_account || "")
+        if (accountIdFor(acctName) === reg.id) continue
+        const t4 = last4Of(acctName)
+        if (t4 && myLast4 && t4 === myLast4) continue
+        crossPool.push({ date: String(t.date).slice(0, 10), amount: Number(t.amount) || 0, detail: t.detail, accountLabel: acctName, kind: "bank" })
+      }
+      const crossMatches = findCrossAccountMatches(fresh, crossPool)
       const last4Seen = last4s[0] || null
       const last4Conflict = last4Seen ? last4s.find((x) => x !== last4Seen) || null : null
       setPreview({
-        items: fresh.map((t) => ({ ...t, keep: true })),
+        items: fresh.map((t, i) => ({ ...t, keep: true, cross: crossMatches[i]?.accountLabel ?? null })),
         balanceSeen,
         last4Seen,
         last4Conflict,
@@ -1163,6 +1194,13 @@ export function RegisterDetail(props: {
                   Skipped {preview.yaEnPlaid + preview.yaEscaneados} already in the register (not duplicated).
                 </p>
               )}
+              {preview.items.some((i) => i.cross) && (
+                <p className="mt-0.5 rounded-md bg-amber-500/10 px-2 py-1 text-[11px] font-semibold text-amber-300">
+                  ⚠️ {preview.items.filter((i) => i.cross).length} of these already appear in ANOTHER account (marked
+                  below). If the photo belongs to that account, uncheck them so they are not counted twice. Nothing is
+                  deleted automatically — you decide.
+                </p>
+              )}
               {preview.items.map((it, idx) => (
                 <label key={idx} className="flex cursor-pointer items-center justify-between gap-2 border-t border-[#1a1c24] py-1.5 text-[12px] text-neutral-200">
                   <span className="flex min-w-0 items-center gap-2">
@@ -1181,6 +1219,11 @@ export function RegisterDetail(props: {
                       <span className="block text-[10px] text-neutral-500">
                         {fmtFecha(it.date)}{it.pending ? " · Pending" : ""}
                       </span>
+                      {it.cross && (
+                        <span className="block text-[10px] font-bold text-amber-400">
+                          ⚠️ Already in {it.cross} — save here anyway?
+                        </span>
+                      )}
                     </span>
                   </span>
                   <span className={cn("shrink-0 font-mono tabular-nums", it.amount < 0 ? "text-[#ff5d6c]" : "text-[#2fbf71]")}>

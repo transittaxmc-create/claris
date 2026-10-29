@@ -244,6 +244,16 @@ export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAcc
     || topAccess
     || regs.find((r) => /citi/i.test(String(r.name)))
   let mainId = st.mainId
+  // Las cuentas semilla (Venmo, Square Checking, Lyft, Branch…) NUNCA son
+  // la Principal: la ★ es de Citibank ·6393. Si un mainId viejo apunta a
+  // una semilla, es el residuo del fallback de abajo (ver comentario) —
+  // se limpia, no se respeta (Miguel, 2026-10-29: "en algún lado todavía
+  // se guarda Venmo como primary… quita eso").
+  if (mainId && SEED_MANUAL.some((s) => s.id === mainId)) {
+    mainId = null
+    st.mainId = null
+    saveState(st)
+  }
   // CitiBank 6393 es siempre la Principal (Miguel). Se corrige en cada carga:
   // si existe en los datos, la ★ va ahí, sin importar lo que haya guardado.
   if (exactCiti) {
@@ -252,8 +262,16 @@ export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAcc
       st.mainId = mainId
       saveState(st)
     }
-  } else if (!mainId || !regs.some((r) => r.id === mainId)) {
-    mainId = (regs.find((r) => r.kind === "bank") || regs[0])?.id ?? null
+  } else if ((snapshotAccounts || []).length > 0 && (!mainId || !regs.some((r) => r.id === mainId))) {
+    // Fallback SOLO con datos reales del banco ya cargados. Antes corría
+    // también con el snapshot VACÍO (la app recién abierta, antes de que
+    // baje el snapshot): los únicos registers eran las semillas manuales
+    // y el primero de tipo "bank" es Venmo — quedaba GUARDADO como
+    // mainId, Venmo salía PRIMARY al abrir MONEY, y al llegar el snapshot
+    // se corregía solo a ·6393. Ese flash es el que veía Miguel
+    // (2026-10-29). Sin snapshot: no se asigna ni se guarda ninguna ★;
+    // la guardada (·6393) se aplica en cuanto su cuenta aparece.
+    mainId = (regs.find((r) => r.kind === "bank" && r.source === "snapshot") || regs.find((r) => r.kind === "bank") || regs[0])?.id ?? null
     if (mainId) {
       st.mainId = mainId
       saveState(st)
