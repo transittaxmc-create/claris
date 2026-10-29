@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils"
 import { grossOf, tripDateOf, daysUntil, netOf, type Trip, type Expense, type ScheduledEntry } from "./types"
 import { reconSummary, reconViewOf, expectedOf, receivedOf } from "./reconciliation"
 import { parseBankCsv } from "@/lib/bank-csv"
+import { archiveReceipt, findReceiptDuplicate, hashImage, loadReceipts } from "./receipts"
 
 interface Message {
   id: string
@@ -194,10 +195,41 @@ export function AIScreen({
         nextDate: String(scan.date || new Date().toISOString().slice(0, 10)).slice(0, 10),
         active: true,
       }
+      // ANTI-DUPLICADO de recibos (Miguel, 2026-10-29): si esta foto ya está
+      // guardada como recibo adjunto, se anula — no se guarda dos veces.
+      const imgHash = await hashImage(dataUrl)
+      const dupReceipt = findReceiptDuplicate(loadReceipts(), {
+        vendor: sched.description,
+        date: sched.startDate,
+        amount: sched.amount,
+        imgHash: imgHash || undefined,
+      })
+      if (dupReceipt) {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `a-${Date.now()}`,
+            role: "assistant",
+            content: `Ese recibo ya está guardado (${dupReceipt.vendor} · ${dupReceipt.date} · $${dupReceipt.amount.toFixed(2)}). Duplicado anulado — no lo guardé otra vez.`,
+            time: new Date().toLocaleTimeString(),
+          },
+        ])
+        return
+      }
       let appliedNote = ""
       if (onApplySchedules) {
         onApplySchedules([sched])
         appliedNote = `\n\n✅ GUARDADO: ${sched.description} $${sched.amount.toFixed(2)} para el ${sched.startDate} en Proyecciones.`
+        // Adjunto de auditoría: la foto queda guardada y se machea con su
+        // transacción del banco en el register.
+        void archiveReceipt({
+          vendor: sched.description,
+          date: sched.startDate,
+          amount: sched.amount,
+          category: sched.category,
+          image: dataUrl,
+          imgHash: imgHash || undefined,
+        })
       }
       const assistantMsg: Message = {
         id: `a-${Date.now()}`,

@@ -7,6 +7,7 @@ import { FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT } from "./finance-sync"
 import { localDateKey } from "@/lib/dates"
 import { sugerirTipoDoc } from "./cash-flow-store"
 import { accountBalance, accountDisplayName, buildRegisters } from "./registers-store"
+import { archiveReceipt, findReceiptDuplicate, hashImage, loadReceipts } from "./receipts"
 
 const NAVY = "#082A4F"
 const ORANGE = "#F86810"
@@ -118,6 +119,8 @@ export function ReceiptScanner({
   const [newCategory, setNewCategory] = useState("")
   const cameraRef = useRef<HTMLInputElement>(null)
   const uploadRef = useRef<HTMLInputElement>(null)
+  // Huella de la foto (para el anti-duplicado de recibos adjuntos).
+  const fotoHashRef = useRef<string>("")
 
   // Accounts/registers para "Which account did it come from?" (mismos que MONEY).
   const [snapshotAccounts, setSnapshotAccounts] = useState<any[]>([])
@@ -188,6 +191,10 @@ export function ReceiptScanner({
     try {
       const { image, mimeType } = await reducir(file)
       setFoto(image)
+      fotoHashRef.current = ""
+      hashImage(image).then((h) => {
+        fotoHashRef.current = h
+      })
       setDocTipo("")
       setAviso({ tipo: "info", texto: "Reading document with AI…" })
       // Reintento (Miguel, 2026-10-29): una caída de conexión o un 5xx
@@ -233,6 +240,24 @@ export function ReceiptScanner({
     if (!listo) return
     const monto = Number(importe)
     const nombre = comercio.trim() || (direccion === "gasto" ? "Unnamed expense" : "Unnamed income")
+    // ANTI-DUPLICADO de recibos (Miguel, 2026-10-29): si esta foto ya está
+    // guardada como recibo adjunto (misma foto o mismo vendedor+fecha+
+    // monto), se ANULA el guardado — no entra dos veces.
+    if (direccion === "gasto" && foto) {
+      const dup = findReceiptDuplicate(loadReceipts(), {
+        vendor: nombre,
+        date: fecha,
+        amount: monto,
+        imgHash: fotoHashRef.current || undefined,
+      })
+      if (dup) {
+        setAviso({
+          tipo: "error",
+          texto: `This receipt is already saved (${dup.vendor} · ${dup.date} · $${dup.amount.toFixed(2)}). Duplicate annulled — nothing was saved.`,
+        })
+        return
+      }
+    }
     // Categoría: si quedó en "__new__" sin completar, usar la primera.
     const categoriaFinal = categoria === "__new__" ? EXPENSE_CATEGORIES[0] : categoria
     // Fin del recurrente: "none" = null explícito (sin fin a propósito);
@@ -293,6 +318,20 @@ export function ReceiptScanner({
       savedAt: new Date().toISOString(),
     }
     onSaveExpense(expense)
+    // Adjunto de auditoría: la foto queda guardada en la nube y amarrada a
+    // este gasto; el register la machea con su transacción del banco.
+    if (foto) {
+      void archiveReceipt({
+        expenseId: expense.id,
+        vendor: nombre,
+        date: fecha,
+        amount: monto,
+        category: categoriaFinal,
+        accountId: cuentaId || undefined,
+        image: foto,
+        imgHash: fotoHashRef.current || undefined,
+      })
+    }
     if (freq !== "once") {
       saveSchedule(scheduledEntryFromExpense(expense, freq, undefined, endsParam))
     }

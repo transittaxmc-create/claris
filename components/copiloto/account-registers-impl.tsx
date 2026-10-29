@@ -28,6 +28,14 @@ import {
   type ShotAudit,
   type ShotTx,
 } from "./screenshot-txs"
+import {
+  loadReceipts,
+  matchReceiptsForAccount,
+  saveReceipts,
+  RECEIPTS_CHANGED_EVENT,
+  type ReceiptMeta,
+} from "./receipts"
+import { FINANCE_SYNCED_EVENT } from "./finance-sync"
 
 export interface BankTx {
   date: string
@@ -529,6 +537,34 @@ export function RegisterDetail(props: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bankTxs, shots])
 
+  // ===== Recibos adjuntos (auditoría, Miguel 2026-10-25/29) =====
+  const [receipts, setReceiptsState] = useState<ReceiptMeta[]>([])
+  const [viewReceiptId, setViewReceiptId] = useState<string | null>(null)
+  const [printMenu, setPrintMenu] = useState(false)
+  useEffect(() => {
+    const load = () => setReceiptsState(loadReceipts())
+    load()
+    window.addEventListener(RECEIPTS_CHANGED_EVENT, load)
+    window.addEventListener(FINANCE_SYNCED_EVENT, load)
+    return () => {
+      window.removeEventListener(RECEIPTS_CHANGED_EVENT, load)
+      window.removeEventListener(FINANCE_SYNCED_EVENT, load)
+    }
+  }, [])
+  // Macheo: los recibos sin adjuntar buscan su transacción en ESTA cuenta
+  // (monto exacto, fecha ±3 días, uno a uno). Al bajar el real por Plaid,
+  // el recibo se adjunta solo en la siguiente pasada.
+  useEffect(() => {
+    if (!useBank || receipts.length === 0 || !bankTxs || bankTxs.length === 0) return
+    const { list, attached } = matchReceiptsForAccount(receipts, reg.id, bankTxs)
+    if (attached > 0) saveReceipts(list)
+  }, [receipts, bankTxs, reg.id, useBank])
+  const receiptByTxId = useMemo(() => {
+    const m = new Map<string, ReceiptMeta>()
+    for (const r of receipts) if (r.bankTxId) m.set(r.bankTxId, r)
+    return m
+  }, [receipts])
+
   const myShots = useMemo(() => shots.filter((s) => s.accountId === reg.id), [shots, reg.id])
   const shotSum = useMemo(() => Math.round(myShots.reduce((s, x) => s + x.amount, 0) * 100) / 100, [myShots])
 
@@ -681,6 +717,7 @@ export function RegisterDetail(props: {
       tx?: BankTx
       entry?: CashFlowEntry
       shotId?: string
+      receiptId?: string
     }[] = []
     if (useBank) {
       const isSquareChecking = /square checking/i.test(reg.name)
@@ -702,6 +739,7 @@ export function RegisterDetail(props: {
           amount: Number(t.amount) || 0,
           pending: Boolean(t.pending),
           tx: t,
+          receiptId: t.transaction_id ? receiptByTxId.get(t.transaction_id)?.id : undefined,
         })
       }
       // Provisionales (Plan B): se mezclan en el register con su
@@ -760,7 +798,7 @@ export function RegisterDetail(props: {
     out.sort((a, b) => (a.amount < 0 ? 0 : 1) - (b.amount < 0 ? 0 : 1))
     out.sort((a, b) => String(b.date).localeCompare(String(a.date)))
     return out
-  }, [bankTxs, entries, useBank, myShots])
+  }, [bankTxs, entries, useBank, myShots, receiptByTxId])
 
   // Saldo corriendo: se camina hacia atrás desde el balance actual, que
   // YA viene calculado (Plaid + provisionales vigentes de screenshot —
@@ -789,6 +827,84 @@ export function RegisterDetail(props: {
   const disp = accountDisplayName(reg.name)
   const myAudit = audits[reg.id]
   const peekShot = peek?.shotId ? myShots.find((s) => s.id === peek.shotId) : undefined
+  const viewReceipt = viewReceiptId ? receipts.find((r) => r.id === viewReceiptId) : undefined
+  const peekReceipt = peek?.tx?.transaction_id ? receiptByTxId.get(peek.tx.transaction_id) : undefined
+
+  // Imprimir el statement del mes (esta cuenta): con o sin los recibos
+  // adjuntos (auditoría, Miguel 2026-10-25/29).
+  function printStatement(withReceipts: boolean) {
+    const esc = (s: string | number) =>
+      String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+    const mRows = rows.filter((r) => r.date.startsWith(monthPrefix))
+    const body =
+      mRows
+        .map(
+          (r) =>
+            `<tr><td>${esc(fmtFecha(r.date))}</td><td>${esc(r.detail)}${r.receiptId ? " 🧾" : ""}</td><td class="r">${r.amount < 0 ? "-" : "+"}$${Math.abs(r.amount).toFixed(2)}</td><td class="r">$${r.after.toFixed(2)}</td></tr>`,
+        )
+        .join("") || '<tr><td colspan="4">No movements this month.</td></tr>'
+    const attached = withReceipts ? mRows.filter((r) => r.receiptId && r.tx?.transaction_id) : []
+    const appendix =
+      attached.length > 0
+        ? `<h2>Attached receipts</h2>` +
+          attached
+            .map((r) => {
+              const meta = receiptByTxId.get(r.tx!.transaction_id as string) as ReceiptMeta
+              return `<div class="rcpt"><p><b>${esc(meta.vendor)}</b> · ${esc(fmtFecha(r.date))} · $${Math.abs(r.amount).toFixed(2)} — ${esc(r.detail)}</p><img src="/api/receipt-image?id=${encodeURIComponent(meta.imageId)}" alt="Receipt"/></div>`
+            })
+            .join("")
+        : ""
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Statement — ${esc(disp.title)}</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 24px; color: #111; background: #fff; }
+  h1 { font-size: 17px; margin: 0 0 4px; }
+  .sub { color: #666; font-size: 12px; margin-bottom: 16px; }
+  h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #666; margin: 20px 0 8px; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  td { padding: 5px 4px; border-bottom: 1px solid #f0f0f0; }
+  td.r { text-align: right; font-variant-numeric: tabular-nums; }
+  .rcpt { page-break-inside: avoid; margin: 14px 0; }
+  .rcpt img { max-width: 100%; max-height: 70vh; border: 1px solid #ddd; border-radius: 6px; }
+  @media print { body { padding: 12px; } }
+</style>
+</head>
+<body>
+  <h1>Statement — ${esc(disp.title)}</h1>
+  <p class="sub">${esc(monthLabel)} ${monthPrefix.slice(0, 4)} · Island City Transit · Balance ${balance == null ? "—" : esc(money(balance))} · In +$${inMonth.toFixed(2)} · Out -$${outMonth.toFixed(2)}${withReceipts ? " · With attached receipts" : ""}</p>
+  <table>${body}</table>
+  ${appendix}
+  <script>
+    var imgs = [].slice.call(document.images); var n = imgs.length;
+    function go(){ window.print(); }
+    if (!n) { setTimeout(go, 300); }
+    else {
+      var done = 0;
+      imgs.forEach(function(im){
+        if (im.complete) { if (++done >= n) setTimeout(go, 200); }
+        else { im.onload = im.onerror = function(){ if (++done >= n) setTimeout(go, 200); }; }
+      });
+      setTimeout(go, 3000);
+    }
+  <\/script>
+</body>
+</html>`
+    const w = window.open("", "_blank")
+    if (!w) {
+      alert("Allow pop-ups to print the statement.")
+      return
+    }
+    w.document.write(html)
+    w.document.close()
+    setPrintMenu(false)
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -857,6 +973,37 @@ export function RegisterDetail(props: {
           </div>
         </div>
       </div>
+
+      {/* ===== Imprimir statement: con o sin recibos adjuntos ===== */}
+      {useBank && (
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setPrintMenu((v) => !v)}
+            className="rounded-xl bg-[#23232f] px-3 py-2 text-[12px] font-extrabold text-white active:scale-95"
+          >
+            🖨 Print statement
+          </button>
+          {printMenu && (
+            <>
+              <button
+                type="button"
+                onClick={() => printStatement(false)}
+                className="rounded-xl bg-[#23232f] px-3 py-2 text-[12px] font-bold text-neutral-200 active:scale-95"
+              >
+                Without receipts
+              </button>
+              <button
+                type="button"
+                onClick={() => printStatement(true)}
+                className="rounded-xl bg-amber-600 px-3 py-2 text-[12px] font-bold text-white active:scale-95"
+              >
+                With receipts 🧾
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* ===== Ajustes de la cuenta (saldo manual editable, etc.) ===== */}
       <AccountSettings
@@ -1132,6 +1279,20 @@ export function RegisterDetail(props: {
                     {r.detail}
                   </span>
                   {r.shotId ? <ShotBadge /> : <PendingBadge pending={r.pending} />}
+                  {r.receiptId && (
+                    <button
+                      type="button"
+                      title="View attached receipt"
+                      aria-label="View attached receipt"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setViewReceiptId(r.receiptId as string)
+                      }}
+                      className="ml-1 inline-block rounded bg-amber-500/15 px-1.5 py-px align-middle text-[12px] leading-tight"
+                    >
+                      🧾
+                    </button>
+                  )}
                 </span>
                 {wide && (
                   <span style={{ width: "16%" }} className="min-w-0 overflow-hidden pr-1">
@@ -1235,6 +1396,18 @@ export function RegisterDetail(props: {
                   </span>
                 </p>
               </div>
+              {peekReceipt && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPeek(null)
+                    setViewReceiptId(peekReceipt.id)
+                  }}
+                  className="mt-2.5 w-full rounded-lg bg-amber-600/90 py-1.5 text-[12px] font-bold text-white"
+                >
+                  🧾 View attached receipt
+                </button>
+              )}
               {((peek.tx && props.onEditBankTx) || (peek.entry && props.onEditEntry)) && (
                 <button
                   type="button"
@@ -1276,6 +1449,35 @@ export function RegisterDetail(props: {
               )}
             </div>
           </>
+        )}
+        {viewReceipt && (
+          <div
+            className="fixed inset-0 z-[60] flex flex-col bg-black/90 p-4"
+            onClick={() => setViewReceiptId(null)}
+          >
+            <div className="flex items-center justify-between gap-2 pb-3">
+              <p className="min-w-0 truncate text-[13px] font-bold text-white">
+                🧾 {viewReceipt.vendor} · {fmtFecha(viewReceipt.date)} · ${viewReceipt.amount.toFixed(2)}
+              </p>
+              <button
+                type="button"
+                onClick={() => setViewReceiptId(null)}
+                className="shrink-0 rounded-lg bg-white/10 px-3 py-1.5 text-[12px] font-bold text-white"
+              >
+                Close
+              </button>
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={`/api/receipt-image?id=${viewReceipt.imageId}`}
+              alt="Attached receipt"
+              className="min-h-0 flex-1 object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+            <p className="pt-2 text-center text-[10.5px] text-neutral-400">
+              Attached receipt — audit copy saved in the cloud.
+            </p>
+          </div>
         )}
         <div className="mt-1 flex items-center justify-between bg-[#1b1b26] px-2 py-1.5">
           <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">

@@ -18,6 +18,7 @@ import {
 } from "./types"
 import { MoneyInput } from "./money-input"
 import { sugerirTipoDoc } from "./cash-flow-store"
+import { archiveReceipt, findReceiptDuplicate, hashImage, loadReceipts } from "./receipts"
 import { accountBalance, accountDisplayName, accountIdFor, buildRegisters } from "./registers-store"
 import {
   addBillPayment,
@@ -598,6 +599,14 @@ export function ExpensesScreen({
 
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  // Foto del escaneo en curso (para archivarla como recibo adjunto al
+  // guardar; los PDF de bills no se archivan por esta vía).
+  const scanImageRef = useRef<string | null>(null)
+  const scanHashRef = useRef<string>("")
+  const clearScanImage = () => {
+    scanImageRef.current = null
+    scanHashRef.current = ""
+  }
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -688,6 +697,13 @@ export function ExpensesScreen({
         const r = await resizeImage(file)
         base64 = r.base64
         mimeType = r.mimeType
+        // Se conserva la foto para archivarla como recibo adjunto si el
+        // draft se guarda como Receipt (auditoría, Miguel 2026-10-29).
+        scanImageRef.current = base64
+        scanHashRef.current = ""
+        hashImage(base64).then((h) => {
+          scanHashRef.current = h
+        })
       }
       setScanStatus("Analyzing with AI...")
 
@@ -789,6 +805,26 @@ export function ExpensesScreen({
     if (draft.docType !== "factura" && draft.docType !== "recibo") {
       window.alert("Elige el tipo: Bill (payable) o Receipt (already paid).")
       return
+    }
+    // ANTI-DUPLICADO de recibos con foto (Miguel, 2026-10-29): si esta foto
+    // ya está guardada como recibo adjunto, se ANULA sin preguntar — no se
+    // guarda dos veces. (Sin foto, manda el chequeo de abajo, que sí deja
+    // decidir en caso de dos compras idénticas legítimas.)
+    if (scanImageRef.current && draft.docType === "recibo" && !draft.id) {
+      const yaEsta = findReceiptDuplicate(loadReceipts(), {
+        vendor: draft.vendor.trim(),
+        date: draft.date,
+        amount: Number(draft.amount) || 0,
+        imgHash: scanHashRef.current || undefined,
+      })
+      if (yaEsta) {
+        window.alert(
+          `This receipt is already saved (${yaEsta.vendor} · ${yaEsta.date} · $${yaEsta.amount.toFixed(2)}).\n\nDuplicate annulled — nothing was saved.`,
+        )
+        clearScanImage()
+        setDraft(null)
+        return
+      }
     }
     const dup = findDuplicateExpense(expenses, draft)
     if (dup) {
@@ -893,6 +929,22 @@ export function ExpensesScreen({
         } catch {}
       }
     }
+    // Adjunto de auditoría: si este Receipt nació de una foto, la foto se
+    // guarda en la nube amarrada al gasto; el register la machea con su
+    // transacción del banco y la fila muestra el 🧾.
+    if (scanImageRef.current && expense.docType === "recibo") {
+      void archiveReceipt({
+        expenseId: expense.id,
+        vendor: expense.vendor,
+        date: expense.date,
+        amount: expense.amount,
+        category: expense.category,
+        accountId: expense.accountId,
+        image: scanImageRef.current,
+        imgHash: scanHashRef.current || undefined,
+      })
+    }
+    clearScanImage()
     setDraft(null)
   }
 
@@ -901,6 +953,7 @@ export function ExpensesScreen({
   }
 
   function editFromRow(ex: Expense) {
+    clearScanImage()
     // Si el gasto tiene recurrente, la forma abre con SU frecuencia y SU
     // fin reales (antes abría siempre en "once" y el fin no se veía).
     let sched: ScheduledEntry | undefined
@@ -980,7 +1033,7 @@ export function ExpensesScreen({
               </button>
               <button
                 type="button"
-                onClick={() => setDraft({ ...emptyDraft(), accountId: defaultAccountId || undefined })}
+                onClick={() => { clearScanImage(); setDraft({ ...emptyDraft(), accountId: defaultAccountId || undefined }) }}
                 className="flex items-center gap-1 rounded-full bg-gradient-to-r from-yellow-500 to-amber-500 px-3 py-1.5 text-[11px] font-extrabold text-black active:scale-95"
               >
                 <Plus className="size-3.5" /> MANUAL
@@ -1017,7 +1070,7 @@ export function ExpensesScreen({
                   </span>
                 )}
               </div>
-              <button type="button" onClick={() => setDraft(null)} className="text-[11px] font-bold text-rose-400">
+              <button type="button" onClick={() => { clearScanImage(); setDraft(null) }} className="text-[11px] font-bold text-rose-400">
                 CANCEL
               </button>
             </div>
@@ -1451,7 +1504,7 @@ export function ExpensesScreen({
             {expenses.length === 0 && !draft && (
               <button
                 type="button"
-                onClick={() => setDraft({ ...emptyDraft(), accountId: defaultAccountId || undefined })}
+                onClick={() => { clearScanImage(); setDraft({ ...emptyDraft(), accountId: defaultAccountId || undefined }) }}
                 className="flex items-center gap-1.5 rounded-xl border border-neutral-700 px-3 py-2 text-xs font-bold text-neutral-300"
               >
                 <Plus className="size-3.5" /> ADD FIRST EXPENSE
