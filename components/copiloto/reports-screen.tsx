@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Download, FileText, Printer } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { localDateKey } from "@/lib/dates"
@@ -22,6 +22,7 @@ import {
   DEFAULT_SCHEDULE_C_OPTS,
   type ScheduleCOpts,
 } from "./schedule-c-draft"
+import { computeTransferFees, type FeeBankTx } from "./transfer-fees"
 
 type Preset = "week" | "lastWeek" | "month" | "lastMonth" | "last30" | "custom"
 
@@ -125,6 +126,32 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
   })
 
   const { from, to } = rangeFor(preset, customFrom, customTo)
+
+  // Movimientos del banco (la misma fuente del snapshot) para la sección
+  // TRANSFER FEES del Financial Statement: cuánto paga por mover su dinero.
+  const [bankTxs, setBankTxs] = useState<FeeBankTx[]>([])
+  useEffect(() => {
+    let alive = true
+    fetch("/api/bank/snapshot", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!alive) return
+        const arr = Array.isArray(d?.transactions) ? d.transactions : []
+        setBankTxs(
+          arr.map((t: any) => ({
+            date: String(t.date ?? "").slice(0, 10),
+            amount: Number(t.amount) || 0,
+            detail: String(t.detail ?? ""),
+            bank_account: String(t.bank_account ?? ""),
+          })),
+        )
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [])
+  const fees = useMemo(() => computeTransferFees(bankTxs, from, to), [bankTxs, from, to])
 
   const data = useMemo(() => {
     const t = trips.filter((x) => inRange(tripDateOf(x), from, to))
@@ -239,6 +266,11 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
     lines.push(`Esperado,${data.expectedTotal}`)
     lines.push(`Recibido,${data.receivedTotal}`)
     lines.push(`Pending collection,${data.pendingTotal}`)
+    lines.push("")
+    lines.push("TRANSFER FEES,AMOUNT")
+    lines.push(`Uber Pro Card unload fees,-${fees.uberUnloadFees}`)
+    lines.push(`PayPal instant transfer fees,-${fees.paypalInstantFees}`)
+    lines.push(`TOTAL TRANSFER FEES,-${fees.total}`)
 
     const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" })
     const url = URL.createObjectURL(blob)
@@ -357,6 +389,13 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
     <tr><td>Received</td><td class="r">${moneyHtml(data.receivedTotal)}</td></tr>
     <tr><td>Outstanding</td><td class="r">${moneyHtml(data.pendingTotal)}</td></tr>
   </table>
+  <h2>Transfer fees</h2>
+  <table>
+    <tr><td>Uber Pro Card → Citibank (unload fees)</td><td class="r">-${moneyHtml(fees.uberUnloadFees)}</td></tr>
+    <tr><td>PayPal → Citibank (instant transfer fees)</td><td class="r">-${moneyHtml(fees.paypalInstantFees)}</td></tr>
+    <tr class="total"><td>TOTAL TRANSFER FEES</td><td class="r">-${moneyHtml(fees.total)}</td></tr>
+  </table>
+  <p class="sub">Lyft → PayPal and Square transfer fees are not identified in the bank feed yet.</p>
   <div class="result">
     <span>PERIOD RESULT</span>
     <span class="${data.result >= 0 ? "pos" : "neg"}">${moneyHtml(data.result)}</span>
@@ -484,6 +523,29 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
           <Row label="Esperado" value={money(data.expectedTotal)} tone="muted" />
           <Row label="Recibido" value={money(data.receivedTotal)} tone="income" />
           <Row label="Pending collection" value={money(data.pendingTotal)} tone={data.pendingTotal > 0 ? "expense" : "muted"} />
+
+          {bankTxs.length > 0 && (
+            <>
+              <p className="mt-3 text-[10px] font-bold uppercase tracking-wide text-neutral-400">Transfer fees</p>
+              <Row
+                label={`Uber Pro Card → Citibank · unload fees (${fees.uberUnloads} transfers)`}
+                value={`-${money(fees.uberUnloadFees)}`}
+                tone="expense"
+              />
+              <Row
+                label={`PayPal → Citibank · instant fees (${fees.paypalInstantCount} transfers)`}
+                value={`-${money(fees.paypalInstantFees)}`}
+                tone="expense"
+              />
+              <Row label="Lyft → PayPal" value="—" tone="muted" />
+              <Row label="Square → bank" value="—" tone="muted" />
+              <Row label="TOTAL TRANSFER FEES" value={`-${money(fees.total)}`} bold tone="total" />
+              <p className="mt-1 text-[10px] leading-snug text-neutral-500">
+                Lyft → PayPal and Square fees are not identified in the bank feed yet — they will appear here once
+                identified. For Square, send your Square screenshots.
+              </p>
+            </>
+          )}
         </section>
 
         <BankTxReport />

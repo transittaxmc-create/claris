@@ -421,6 +421,17 @@ function ledgerProjected(entries: CashFlowEntry[], today: string): LedgerItem[] 
   return out
 }
 
+/** Regla de DESTINO FINAL de Miguel (2026-10-29): un INGRESO proyectado solo
+ * se considera depositado cuando el dinero cayó en un banco destino —
+ * Citibank o PayPal. Las cuentas de paso (Uber Pro Card, Lyft, Square) son
+ * donde el dinero se GENERA o espera: un movimiento ahí NO machea un cobro,
+ * porque el dinero todavía no llegó a su destino (la Uber Pro Card, p. ej.,
+ * solo descarga hacia Citibank y cobra su fee en el camino). Los GASTOS sí
+ * machean en cualquier cuenta — él paga desde cualquiera de ellas. */
+export function isDestinationAccount(bankAccount?: string): boolean {
+  return /citi|access|paypal/i.test(String(bankAccount ?? ""))
+}
+
 export function buildForecast(input: ForecastInput): Forecast {
   const today = input.today
   const horizon = Math.max(0, Math.floor(Number(input.horizonDays) || 0))
@@ -459,6 +470,7 @@ export function buildForecast(input: ForecastInput): Forecast {
       const t = txPool[i]
       const amt = Number(t.amount) || 0
       if (income ? amt <= 0 : amt >= 0) continue
+      if (income && !isDestinationAccount(t.bank_account)) continue
       const gap = Math.abs(diffDays(String(t.date).slice(0, 10), date))
       if (gap > window) continue
       if (!amountClose(amt, amount, pct)) continue
@@ -475,6 +487,7 @@ export function buildForecast(input: ForecastInput): Forecast {
         const t = txPool[i]
         const amt = Number(t.amount) || 0
         if (amt <= 0) continue
+        if (!isDestinationAccount(t.bank_account)) continue
         const gap = Math.abs(diffDays(String(t.date).slice(0, 10), date))
         if (gap > window) continue
         if (!amountClose(amt, amount, flexPct)) continue
@@ -494,9 +507,14 @@ export function buildForecast(input: ForecastInput): Forecast {
         const t = txPool[i]
         const amt = Number(t.amount) || 0
         if (amt <= 0) continue
+        if (!isDestinationAccount(t.bank_account)) continue
         const gap = Math.abs(diffDays(String(t.date).slice(0, 10), date))
         if (gap > window) continue
-        if (!amountClose(amt, amount, loosePct)) continue
+        // Fee de transferencia: el depósito puede llegar MENOR que el cobro
+        // por el fee mínimo de la plataforma ($2.99 la descarga de Uber) —
+        // esa diferencia es el fee de la cadena, no dinero perdido.
+        const feeGap = amt < amount && amount - amt <= 3.25 + 0.011
+        if (!amountClose(amt, amount, loosePct) && !feeGap) continue
         if (gap < bestGap) {
           bestGap = gap
           best = i
