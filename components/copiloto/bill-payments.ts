@@ -123,6 +123,13 @@ export type DetectedPayment = {
   total: number
   /** true = los cargos suman el total de la factura (pago dividido). */
   isSplit: boolean
+  /** true = UN cargo cubre VARIOS bills (pago grupal): `total` es la parte
+   * que le toca a ESTE bill, no el monto completo del cargo. */
+  isGroup?: boolean
+  /** Id del pago grupal (el mismo para todos los bills que cubre). */
+  groupId?: string
+  /** La parte del cargo que paga este bill (solo si isGroup). */
+  share?: number
 }
 
 function txMatchesBill(bill: Expense, tx: BankTxIn, remaining: number): boolean {
@@ -161,7 +168,8 @@ export function detectBillPayments(expenses: Expense[], bankTxs: BankTxIn[]): De
     // Ambiguo (encaja en 2+ facturas): no se sugiere, Miguel lo anota a mano.
     if (cands.length === 1) matches.set(tid, cands)
   }
-  if (matches.size === 0) return []
+  // Sin macheos 1-a-1 NO se sale: abajo corre el macheo grupal
+  // (un cargo → varios bills), que es justo el caso sin candidatos aquí.
 
   // Agrupar por factura
   const byBill = new Map<string, BankTxIn[]>()
@@ -203,6 +211,91 @@ export function detectBillPayments(expenses: Expense[], bankTxs: BankTxIn[]): De
       }
     }
   }
+  // ------------------------------------------------------------------
+  // Pago GRUPAL (regla de Miguel, 2026-10-29): UN cargo que cubre VARIOS
+  // bills abiertos del mismo comercio (ej. un pago de PayPal de $1,085.90
+  // = leasing $919 + tolls $161.90 + fee $5). El macheo anterior solo
+  // sabía muchos-cargos→un-bill; el caso inverso quedaba sin aplicar y
+  // los bills seguían proyectando. Si la suma de 2+ bills la cubre el
+  // cargo (exacta o con resto de fee ≤ $10) y hay UNA sola combinación
+  // posible, se emite una detección por bill con su parte (share). Si
+  // hay dos combinaciones, no se adivina: no se emite nada.
+  // ------------------------------------------------------------------
+  const claimed = new Set<string>()
+  for (const d of out) for (const tx of d.txs) claimed.add(bankTxIdOf(tx))
+  // Un bill que ya tiene detección 1-a-1 no entra al macheo grupal: ya
+  // está hablado por ese sistema y no se le puede pagar dos veces.
+  const proposedBills = new Set(out.map((d) => d.billId))
+  const groupBillsUsed = new Set<string>()
+  for (const tx of bankTxs) {
+    const tid = bankTxIdOf(tx)
+    if (used.has(tid) || claimed.has(tid)) continue
+    const txAmt = Math.abs(Number(tx.amount) || 0)
+    if (!(Number(tx.amount) < 0) || txAmt < 0.01) continue
+    let cands = bills
+      .filter(
+        (b) =>
+          !groupBillsUsed.has(b.id) &&
+          !proposedBills.has(b.id) &&
+          (remainingByBill.get(b.id) ?? 0) <= txAmt + DETECT_AMOUNT_TOL &&
+          vendorFuzzyMatch(b.vendor, tx.detail) &&
+          daysBetween(tx.date, b.date) <= DETECT_DAY_WINDOW,
+      )
+      .sort((a, b) => daysBetween(tx.date, a.date) - daysBetween(tx.date, b.date))
+    if (cands.length < 2) continue
+    if (cands.length > 12) cands = cands.slice(0, 12)
+    let bestSum = -1
+    let bestGap = Infinity
+    let bestSets = 0
+    let bestMask = 0
+    const n = cands.length
+    for (let mask = 1; mask < 1 << n; mask++) {
+      let bits = 0
+      let sum = 0
+      let gap = 0
+      for (let j = 0; j < n; j++) {
+        if (mask & (1 << j)) {
+          bits++
+          sum += remainingByBill.get(cands[j].id) ?? 0
+          gap += daysBetween(tx.date, cands[j].date)
+        }
+      }
+      if (bits < 2) continue
+      sum = r2(sum)
+      const rest = r2(txAmt - sum)
+      if (rest < -DETECT_AMOUNT_TOL || rest > 10 + DETECT_AMOUNT_TOL) continue
+      if (sum > bestSum + DETECT_AMOUNT_TOL || (Math.abs(sum - bestSum) <= DETECT_AMOUNT_TOL && gap < bestGap)) {
+        bestSum = sum
+        bestGap = gap
+        bestSets = 1
+        bestMask = mask
+      } else if (Math.abs(sum - bestSum) <= DETECT_AMOUNT_TOL && gap === bestGap) {
+        bestSets++
+      }
+    }
+    if (bestSets !== 1 || bestMask === 0) continue
+    const groupId = `group:${tid}`
+    for (let j = 0; j < n; j++) {
+      if (!(bestMask & (1 << j))) continue
+      const bill = cands[j]
+      const share = remainingByBill.get(bill.id) ?? 0
+      groupBillsUsed.add(bill.id)
+      out.push({
+        id: `${groupId}:${bill.id}`,
+        billId: bill.id,
+        billVendor: bill.vendor,
+        billRemaining: share,
+        txs: [tx],
+        total: share,
+        isSplit: false,
+        isGroup: true,
+        groupId,
+        share,
+      })
+    }
+    claimed.add(tid)
+  }
+
   return out.sort((a, b) => String(a.txs[0]?.date || "").localeCompare(String(b.txs[0]?.date || "")))
 }
 

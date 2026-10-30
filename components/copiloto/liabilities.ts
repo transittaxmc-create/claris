@@ -390,7 +390,8 @@ export function applyDetection(
   let updated = bill
   for (const tx of d.txs) {
     updated = addBillPayment(updated, {
-      amount: Math.abs(Number(tx.amount) || 0),
+      // Pago grupal: el cargo cubre varios bills — a este le toca su parte.
+      amount: d.isGroup && d.share ? Math.abs(d.share) : Math.abs(Number(tx.amount) || 0),
       accountId: accountIdFor?.(String(tx.bank_account || "")) || undefined,
       date: String(tx.date).slice(0, 10),
       source: "banco",

@@ -524,8 +524,124 @@ export function buildForecast(input: ForecastInput): Forecast {
     return best
   }
 
-  // 1) Libro: movimientos proyectados (facturas por pagar e ingresos esperados)
+  // ------------------------------------------------------------------
+  // Pago GRUPAL (regla de Miguel, 2026-10-29): UN solo cargo puede pagar
+  // VARIOS bills a la vez (ej. PayPal −$1,085.90 = leasing $919 + tolls
+  // $161.90 + fee $5). El macheo 1-a-1 nunca lo encuentra y los bills se
+  // quedaban proyectando como si no se hubieran pagado. Aquí se buscan,
+  // por cargo, los grupos de deudas abiertas del mismo comercio cuya
+  // SUMA el cargo cubre (exacta, o con un resto chico de fee ≤ $10):
+  // si hay UNA sola combinación posible, esas deudas quedan cubiertas
+  // por el cargo — no proyectan y el cargo no paga ninguna otra cosa.
+  // Si hay dos combinaciones posibles, no se adivina: queda el macheo
+  // normal (POR CONFIRMAR). Corre en cada cálculo: al abrir la app todo
+  // lo que esté en ese estado queda macheado solo, sin recordatorios.
+  // ------------------------------------------------------------------
   const ledger = ledgerProjected(input.entries, today)
+  const billsIn: ForecastBill[] = (input.bills || []).filter(
+    (b) => b && isIsoDate(b.date) && Number.isFinite(Number(b.remaining)),
+  )
+  const usedBills = new Set<number>()
+  const groupCoveredEntry = new Map<string, ForecastBankTx>()
+  const groupCoveredBill = new Set<number>()
+  {
+    // Deudas proyectables: entradas del libro + bills abiertos, unificados
+    // por gemelo (misma fecha, mismo monto, mismo comercio): la factura y
+    // su entrada del libro son LA MISMA deuda, no dos.
+    type Debt = { amount: number; date: string; label: string; entryIds: string[]; billIdxs: number[] }
+    const debts: Debt[] = []
+    const addDebt = (amount: number, date: string, label: string, entryId?: string, billIdx?: number) => {
+      const amt = r2(Math.abs(Number(amount) || 0))
+      if (amt < 0.01) return
+      const found = debts.find(
+        (d) => d.date === date && Math.abs(d.amount - amt) <= 0.011 && vendorMatch(d.label, label),
+      )
+      if (found) {
+        if (entryId) found.entryIds.push(entryId)
+        if (billIdx !== undefined) found.billIdxs.push(billIdx)
+        return
+      }
+      debts.push({
+        amount: amt,
+        date,
+        label,
+        entryIds: entryId ? [entryId] : [],
+        billIdxs: billIdx !== undefined ? [billIdx] : [],
+      })
+    }
+    for (const p of ledger) if (!p.income) addDebt(p.amount, p.date, p.label, p.entry.id)
+    billsIn.forEach((b, bi) => {
+      if (Number(b.remaining) > 0.009) addDebt(Number(b.remaining), String(b.date).slice(0, 10), b.vendor, undefined, bi)
+    })
+
+    const GROUP_FEE_MAX = 10
+    const GROUP_WINDOW = 10
+    const coveredDebt = new Set<number>()
+    for (let i = 0; i < txPool.length; i++) {
+      if (usedTx.has(i)) continue
+      const t = txPool[i]
+      const txAmt = Math.abs(Number(t.amount) || 0)
+      if (!(Number(t.amount) < 0) || txAmt < 0.01) continue // solo salidas
+      const tDate = String(t.date).slice(0, 10)
+      let cands = debts
+        .map((d, di) => ({ d, di }))
+        .filter(
+          ({ d, di }) =>
+            !coveredDebt.has(di) &&
+            d.amount <= txAmt + 0.011 &&
+            Math.abs(diffDays(tDate, d.date)) <= GROUP_WINDOW &&
+            vendorMatch(t.detail, d.label),
+        )
+        .sort((a, b) => Math.abs(diffDays(tDate, a.d.date)) - Math.abs(diffDays(tDate, b.d.date)))
+      if (cands.length < 2) continue
+      if (cands.length > 12) cands = cands.slice(0, 12)
+      // Subconjuntos de 2+ deudas cuya suma el cargo cubre (resto = fee).
+      // Gana la mayor suma cubierta; en empate, el grupo de deudas más
+      // cercano en fecha al cargo (el leasing de ESTA semana, no el de
+      // la próxima, que vale lo mismo). Solo si persiste el empate hay
+      // ambigüedad real y no se aplica.
+      let bestSum = -1
+      let bestGap = Infinity
+      let bestSets = 0
+      let bestMask = 0
+      const n = cands.length
+      for (let mask = 1; mask < 1 << n; mask++) {
+        let bits = 0
+        let sum = 0
+        let gap = 0
+        for (let j = 0; j < n; j++) {
+          if (mask & (1 << j)) {
+            bits++
+            sum += cands[j].d.amount
+            gap += Math.abs(diffDays(tDate, cands[j].d.date))
+          }
+        }
+        if (bits < 2) continue
+        sum = r2(sum)
+        const rest = r2(txAmt - sum)
+        if (rest < -0.011 || rest > GROUP_FEE_MAX + 0.011) continue
+        if (sum > bestSum + 0.011 || (Math.abs(sum - bestSum) <= 0.011 && gap < bestGap)) {
+          bestSum = sum
+          bestGap = gap
+          bestSets = 1
+          bestMask = mask
+        } else if (Math.abs(sum - bestSum) <= 0.011 && gap === bestGap) {
+          bestSets++
+        }
+      }
+      if (bestSets !== 1 || bestMask === 0) continue // ambiguo: no se adivina
+      for (let j = 0; j < n; j++) {
+        if (!(bestMask & (1 << j))) continue
+        coveredDebt.add(cands[j].di)
+        const d = cands[j].d
+        for (const id of d.entryIds) groupCoveredEntry.set(id, t)
+        for (const bi of d.billIdxs) groupCoveredBill.add(bi)
+      }
+      usedTx.add(i)
+    }
+  }
+
+  // 1) Libro: movimientos proyectados (facturas por pagar e ingresos esperados)
   for (const p of ledger) {
     if (p.date > endDate) {
       beyondHorizonCount++
@@ -533,6 +649,12 @@ export function buildForecast(input: ForecastInput): Forecast {
     }
     // ¿Ya salió/entró en el banco? Estricto: monto ±2 %, ±10 días, mismo comercio.
     const key = `pp:${p.entry.id}`
+    // Pago grupal: esta entrada la cubre un cargo que pagó varios bills.
+    const gTx = !p.income && !dismissed.has(key) ? groupCoveredEntry.get(p.entry.id) : undefined
+    if (gTx) {
+      probablePaid.push({ key, entry: p.entry, tx: gTx })
+      continue
+    }
     if (!dismissed.has(key)) {
       const ti = findTx(p.income, p.amount, p.date, p.label, 10, 0.02)
       if (ti >= 0) {
@@ -567,11 +689,8 @@ export function buildForecast(input: ForecastInput): Forecast {
   }
 
   // Bills reales (POR PAGAR / escaneados): cada uno alimenta UNA sola
-  // ocurrencia de su recurrente. Se prepara la lista una vez por forecast.
-  const billsIn: ForecastBill[] = (input.bills || []).filter(
-    (b) => b && isIsoDate(b.date) && Number.isFinite(Number(b.remaining)),
-  )
-  const usedBills = new Set<number>()
+  // ocurrencia de su recurrente. La lista (billsIn) se preparó arriba,
+  // junto al macheo grupal.
 
   // 2) Recurrentes (claris_scheduled_entries)
   let recurringCount = 0
@@ -591,6 +710,12 @@ export function buildForecast(input: ForecastInput): Forecast {
       const cands: { b: ForecastBill; bi: number }[] = []
       billsIn.forEach((b, bi) => {
         if (usedBills.has(bi)) return
+        // Bill cubierto por un pago grupal y AJENO a este recurrente (ej.
+        // los tolls, que solo comparten comercio con el leasing): no
+        // ocupa el cupo de una ocurrencia — queda libre para el bill del
+        // ciclo siguiente. Si el bill cubierto es del PROPIO recurrente,
+        // sí toma su ocurrencia y la rama del bill lo salta como pagado.
+        if (groupCoveredBill.has(bi) && b.scheduleId !== s.id) return
         const linked = b.scheduleId && b.scheduleId === s.id
         if (!linked && !vendorMatch(b.vendor, label)) return
         cands.push({ b, bi })
@@ -645,6 +770,10 @@ export function buildForecast(input: ForecastInput): Forecast {
       // fecha del bill — no el monto fijo del recurrente.
       const bill = billForOcc.get(d)
       if (bill) {
+        // Bill del propio recurrente cubierto por un pago grupal: este
+        // ciclo ya se pagó — no proyecta nada.
+        const billIdx = billsIn.indexOf(bill)
+        if (billIdx >= 0 && groupCoveredBill.has(billIdx)) continue
         const bDate = String(bill.date).slice(0, 10)
         const remaining = r2(Number(bill.remaining) || 0)
         // Si el libro ya proyecta ESTE bill (entrada del escáner), la
