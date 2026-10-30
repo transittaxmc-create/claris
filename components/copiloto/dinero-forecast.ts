@@ -498,10 +498,37 @@ export function buildForecast(input: ForecastInput): Forecast {
         }
       }
     }
-    // Tercer intento: el depósito llegó por otra vía o el monto varía más.
-    // Solo monto (±15%) y fecha: Miguel lo confirma o descarta en "Por confirmar".
+    // Tercer intento — SOLO con prueba de fee (regla de Miguel, 2026-10-29:
+    // "sin macheo por adivinanza"). Antes este intento macheaba solo por
+    // monto ±15% y fecha ±10 días, sin mirar el nombre: el cobro Uber de
+    // $25.28 (29-oct) se escondió emparejado con un abono Citibank de
+    // +$28.68 del 27-oct que era la pata de un crédito PayPal, no de Uber.
+    // Ahora: el depósito en la cuenta destino debe ser MENOR que el cobro
+    // (un fee solo puede achicarlo; un depósito MAYOR nunca es el mismo
+    // cobro) y la diferencia debe ser un fee plausible de la cadena
+    // (≤ $3.25 — el mínimo $2.99 de la descarga Uber — o ≤ 2% del monto,
+    // que cubre el 1.75% de PayPal), con fecha a ±3 días. Sin esa prueba,
+    // el cobro NO se esconde: queda visible como ingreso del día.
     if (best < 0 && income) {
-      const loosePct = Math.max(pct, 0.15)
+      const feeCap = Math.max(3.25, amount * 0.02) + 0.011
+      // Un abono en Citibank que es la pata neta de una transferencia
+      // PayPal → Citibank (salida de PayPal ≈ abono / 0.9825, por el fee
+      // instantáneo de 1.75%) es una TRANSFERENCIA INTERNA con origen ya
+      // probado — nunca es el depósito de un cobro (quién paga manda).
+      // Sin este guarda, el cobro Aventus Ride de $43 (27-oct) se escondía
+      // contra el abono +$40.62 que era la pata de una transferencia PayPal.
+      const esPataPayPal = (t: ForecastBankTx): boolean => {
+        if (!/citi|access/i.test(String(t.bank_account ?? ""))) return false
+        const amt = Number(t.amount) || 0
+        return bankTxs.some((o) => {
+          const oAmt = Number(o.amount) || 0
+          if (oAmt >= 0) return false
+          if (!/paypal/i.test(String(o.bank_account ?? ""))) return false
+          if (Math.abs(Math.abs(oAmt) * 0.9825 - amt) > 0.02) return false
+          const dg = diffDays(String(t.date).slice(0, 10), String(o.date).slice(0, 10))
+          return dg >= -2 && dg <= 3
+        })
+      }
       for (let i = 0; i < txPool.length; i++) {
         if (usedTx.has(i)) continue
         const t = txPool[i]
@@ -509,12 +536,10 @@ export function buildForecast(input: ForecastInput): Forecast {
         if (amt <= 0) continue
         if (!isDestinationAccount(t.bank_account)) continue
         const gap = Math.abs(diffDays(String(t.date).slice(0, 10), date))
-        if (gap > window) continue
-        // Fee de transferencia: el depósito puede llegar MENOR que el cobro
-        // por el fee mínimo de la plataforma ($2.99 la descarga de Uber) —
-        // esa diferencia es el fee de la cadena, no dinero perdido.
-        const feeGap = amt < amount && amount - amt <= 3.25 + 0.011
-        if (!amountClose(amt, amount, loosePct) && !feeGap) continue
+        if (gap > Math.min(window, 3)) continue
+        const fee = amount - amt
+        if (fee <= 0 || fee > feeCap) continue
+        if (esPataPayPal(t)) continue
         if (gap < bestGap) {
           bestGap = gap
           best = i
