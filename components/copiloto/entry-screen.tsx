@@ -564,27 +564,25 @@ export function EntryScreen({
           (aclaración de Miguel, 2026-10-26: las notas pueden quedar abajo;
           lo que nunca puede requerir scroll es entrar datos ni salvar). */}
       <div className="flex-1 space-y-1.5 overflow-y-auto px-4 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:content-start sm:gap-4 sm:px-8 sm:py-5">
-        {/* Platform + break — la plataforma va en tarjeta como la del
-            clon; el botón BREAK/LUNCH se queda al lado (confirmado por
-            Miguel, 2026-10-31). El dropdown sigue siendo el mismo. */}
+        {/* Platform + break — EXACTAMENTE como estaba en V7, con los
+            logos originales de cada plataforma (orden de Miguel,
+            2026-10-31: "en la V7 prefiero dejarla como está esa parte").
+            La tarjeta del clon NO se aplicó aquí. */}
         <div className="flex items-center gap-2 sm:col-span-2">
-          <div className="relative flex-1 rounded-2xl border border-neutral-800 bg-neutral-950 p-3">
+          <div className="relative flex-1">
             <button
               type="button"
               onClick={() => setPlatformOpen((o) => !o)}
               aria-haspopup="listbox"
               aria-expanded={platformOpen}
-              className="flex w-full items-center justify-between"
+              className="flex w-full items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2"
             >
-              <span className="flex min-w-0 items-center gap-2.5">
-                <PlatformAvatar platform={draft.platform} size={32} />
-                <span className="text-left">
-                  <span className="block text-[9px] font-bold uppercase tracking-wider text-neutral-500">Platform</span>
-                  <span className="block truncate text-sm font-bold text-white">{draft.platform}</span>
-                </span>
+              <span className="flex min-w-0 items-center gap-2">
+                <PlatformAvatar platform={draft.platform} size={24} />
+                <span className="truncate font-semibold text-white">{draft.platform}</span>
                 <PlatformBadge platform={draft.platform} />
               </span>
-              <ChevronDown className="size-5 shrink-0 text-neutral-500" />
+              <ChevronDown className="size-4 shrink-0 text-neutral-500" />
             </button>
 
             {platformOpen && (
