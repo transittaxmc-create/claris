@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { ChevronDown, MapPin, Coffee, Loader2, X, AlertTriangle, RotateCw, Edit2, DollarSign, Play, Pause, Square } from "lucide-react"
+import { ChevronDown, MapPin, Coffee, Loader2, X, AlertTriangle, RotateCw, Edit2, Play, Pause, Square } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip, grossOf, tripDateOf } from "./types"
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
@@ -17,7 +17,7 @@ import {
   refreshHeaderPlace,
   type HeaderPlace,
 } from "./geo"
-import { MoneyInput } from "./money-input"
+import { moneyTextFromNumber, moneyTextToNumber, normalizeMoneyText } from "@/lib/money"
 import { detectNewTolls, rateFor, formatTollNote, appendNote } from "./toll-detect"
 import { loadShiftTolls, sumShiftTolls, SHIFT_TOLLS_EVENT, type ShiftToll } from "./shift-tolls"
 import { fridayOfWeek } from "./ezpass-weekly"
@@ -167,6 +167,71 @@ function LocationColumn({
           </button>
         </>
       )}
+    </div>
+  )
+}
+
+
+/**
+ * Tarjeta compacta de una entrada de dinero de TODAY (modelo de 5 tarjetas
+ * del clon V8, integrado a pedido de Miguel 2026-10-31 para recoger la
+ * página). La lógica de edición es la MISMA de MoneyInput: el texto se
+ * conserva tal como se escribe (permite estados intermedios "-", "12."),
+ * se normaliza al escribir y el número se confirma al salir; el valor
+ * sigue llegando al mismo campo del draft de siempre.
+ */
+function EarningsCard({
+  icon,
+  label,
+  color,
+  value,
+  onChange,
+}: {
+  icon: string
+  label: string
+  color: string
+  value: number
+  onChange: (n: number) => void
+}) {
+  // null = no se está editando -> se muestra el valor numérico real.
+  const [text, setText] = useState<string | null>(null)
+  const display = text ?? moneyTextFromNumber(value)
+  const negative = display.trim().startsWith("-")
+
+  function edit(next: string) {
+    const clean = normalizeMoneyText(next)
+    setText(clean)
+    onChange(moneyTextToNumber(clean))
+  }
+
+  return (
+    <div className="rounded-xl border border-neutral-800 bg-black/50 p-1.5 text-center">
+      <div className="text-sm" aria-hidden>
+        {icon}
+      </div>
+      <p className="text-[8px] font-bold uppercase tracking-wide text-neutral-500">{label}</p>
+      <input
+        type="text"
+        inputMode="decimal"
+        enterKeyHint="done"
+        autoComplete="off"
+        autoCorrect="off"
+        spellCheck={false}
+        aria-label={label}
+        value={display}
+        onFocus={() => setText(moneyTextFromNumber(value))}
+        onBlur={() => {
+          const clean = normalizeMoneyText(display)
+          setText(null)
+          onChange(moneyTextToNumber(clean))
+        }}
+        onChange={(e) => edit(e.target.value)}
+        placeholder="$0"
+        className={cn(
+          "mt-0.5 w-full min-w-0 bg-transparent text-center text-sm font-bold outline-none placeholder:text-neutral-600",
+          negative ? "text-rose-300" : color,
+        )}
+      />
     </div>
   )
 }
@@ -427,97 +492,43 @@ export function EntryScreen({
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
-      {/* Header FIJO (shrink-0, nunca scrollea): saludo, localización, fecha
-          y una sola fila de controles del turno, todos de la misma altura */}
+      {/* Header FIJO (shrink-0, nunca scrollea): modelo del clon V8
+          (integrado 2026-10-31) — marca + pastilla GPS, saludo, tagline,
+          localización con la fecha corta a la derecha. Los controles del
+          turno YA NO viven aquí: bajaron a la tira fija de abajo. */}
       <div className="shrink-0 px-4 pb-2 pt-2 sm:px-8 sm:pt-3">
-        <h1 className="truncate text-2xl font-bold text-white">{greeting}</h1>
-        {/* From the GPS: BARRIO · CALLE, CIUDAD */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-lime-500">
+              <svg className="size-5 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 2L4 6v6c0 5.5 3.5 10.5 8 12 4.5-1.5 8-6.5 8-12V6l-8-4z"/><path d="M9 12l2 2 4-4"/></svg>
+            </div>
+            <h1 className="text-xl font-bold text-white">Copiloto <span className="text-lime-400">V7</span></h1>
+          </div>
+          <div className="flex items-center gap-1 rounded-full border border-lime-500/50 bg-lime-500/10 px-2.5 py-1 text-[11px] font-semibold text-lime-400">
+            <span className="size-1.5 rounded-full bg-lime-400" />
+            {place ? "GPS ready" : "Locating"}
+          </div>
+        </div>
+        <p className="mt-1 text-lg font-bold leading-tight text-white">{greeting}</p>
+        <p className="text-sm text-neutral-500">Drive safe. Earn smart.</p>
         <p
-          className="mt-0.5 flex items-center gap-1.5 text-sm"
+          className="mt-0.5 flex items-center gap-1 text-xs text-neutral-400"
           title={place?.address || undefined}
           suppressHydrationWarning
         >
-          <MapPin className="size-4 shrink-0 text-yellow-400" />
+          <MapPin className="size-3 shrink-0 text-lime-400" />
           {place ? (
-            <span className="truncate text-neutral-500">
-              {place.neighborhood ? (
-                <span className="font-semibold text-neutral-200">{place.neighborhood}</span>
-              ) : null}
-              {place.neighborhood && (place.street || place.city) ? <span> · </span> : null}
-              <span className="font-semibold text-neutral-200">{place.street || place.city}</span>
-              {place.street && place.city ? <span>, {place.city}</span> : null}
+            <span className="truncate">
+              {place.neighborhood || place.street || place.city}
+              {place.city && place.street ? `, ${place.city}` : ""}
             </span>
           ) : (
-            <span className="truncate text-neutral-600">Looking up location…</span>
+            <span>Looking up location…</span>
           )}
+          <span className="ml-auto shrink-0 text-neutral-500" suppressHydrationWarning>
+            {today.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+          </span>
         </p>
-        {/* Fecha completa, pegada a la localización */}
-        <p
-          className="mt-1 whitespace-nowrap text-base font-bold text-neutral-100"
-          suppressHydrationWarning
-        >
-          {today.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
-        </p>
-        {/* Fila de controles: estado + millas a la izquierda, botones a la
-            derecha — todo a h-8, una sola línea alineada */}
-        <div className="mt-2 flex items-center gap-2.5 border-t border-neutral-800/60 pt-2">
-          {shift.shiftActive ? (
-            <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-extrabold tracking-wider text-emerald-400">
-              <span className="size-1.5 rounded-full bg-emerald-400" />
-              {shift.isOnBreak ? "ON BREAK" : "ON SHIFT"}
-            </span>
-          ) : (
-            <span className="flex shrink-0 items-center gap-1.5 text-[11px] font-extrabold tracking-wider text-neutral-500">
-              <span className="size-1.5 rounded-full bg-neutral-600" />
-              OFF SHIFT
-            </span>
-          )}
-          {/* Contador de millas IRS — corre solo con el turno activo */}
-          {shift.shiftActive && (
-            <span
-              title="Business miles (IRS) — saved when you end the shift"
-              className="flex h-8 shrink-0 items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 font-mono text-[11px] font-bold tabular-nums text-sky-300"
-            >
-              {shift.shiftMiles.toFixed(1)} mi
-            </span>
-          )}
-          <div className="ml-auto flex shrink-0 items-center gap-2">
-            {!shift.shiftActive ? (
-              <button
-                type="button"
-                onClick={shift.onStart}
-                className="flex h-8 items-center justify-center gap-1 rounded-lg border border-emerald-500/50 bg-emerald-500/10 px-3.5 text-xs font-bold text-emerald-300"
-              >
-                <Play className="size-3" /> START
-              </button>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={shift.onBreak}
-                  title={shift.isOnBreak ? "Resume the shift" : "Pause the shift"}
-                  className={cn(
-                    "flex h-8 items-center justify-center gap-1 rounded-lg border px-3.5 text-xs font-bold",
-                    shift.isOnBreak
-                      ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300"
-                      : "border-amber-500/50 bg-amber-500/10 text-amber-300",
-                  )}
-                >
-                  {shift.isOnBreak ? <Play className="size-3" /> : <Pause className="size-3" />}
-                  {shift.isOnBreak ? "RESUME" : "PAUSE"}
-                </button>
-                <button
-                  type="button"
-                  onClick={shift.onEnd}
-                  title="End the shift"
-                  className="flex h-8 items-center justify-center gap-1 rounded-lg border border-rose-500/50 bg-rose-500/10 px-3.5 text-xs font-bold text-rose-300"
-                >
-                  <Square className="size-3" /> END
-                </button>
-              </>
-            )}
-          </div>
-        </div>
       </div>
 
       {/* TODAY + REGISTER — juntos en una línea, bien cuadrado */}
@@ -553,22 +564,27 @@ export function EntryScreen({
           (aclaración de Miguel, 2026-10-26: las notas pueden quedar abajo;
           lo que nunca puede requerir scroll es entrar datos ni salvar). */}
       <div className="flex-1 space-y-1.5 overflow-y-auto px-4 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:content-start sm:gap-4 sm:px-8 sm:py-5">
-        {/* Platform + break */}
+        {/* Platform + break — la plataforma va en tarjeta como la del
+            clon; el botón BREAK/LUNCH se queda al lado (confirmado por
+            Miguel, 2026-10-31). El dropdown sigue siendo el mismo. */}
         <div className="flex items-center gap-2 sm:col-span-2">
-          <div className="relative flex-1">
+          <div className="relative flex-1 rounded-2xl border border-neutral-800 bg-neutral-950 p-3">
             <button
               type="button"
               onClick={() => setPlatformOpen((o) => !o)}
               aria-haspopup="listbox"
               aria-expanded={platformOpen}
-              className="flex w-full items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2"
+              className="flex w-full items-center justify-between"
             >
-              <span className="flex min-w-0 items-center gap-2">
-                <PlatformAvatar platform={draft.platform} size={24} />
-                <span className="truncate font-semibold text-white">{draft.platform}</span>
+              <span className="flex min-w-0 items-center gap-2.5">
+                <PlatformAvatar platform={draft.platform} size={32} />
+                <span className="text-left">
+                  <span className="block text-[9px] font-bold uppercase tracking-wider text-neutral-500">Platform</span>
+                  <span className="block truncate text-sm font-bold text-white">{draft.platform}</span>
+                </span>
                 <PlatformBadge platform={draft.platform} />
               </span>
-              <ChevronDown className="size-4 shrink-0 text-neutral-500" />
+              <ChevronDown className="size-5 shrink-0 text-neutral-500" />
             </button>
 
             {platformOpen && (
@@ -618,59 +634,25 @@ export function EntryScreen({
         </div>
 
         {/* ============================================== */}
-        {/* BOX 1: ECONOMÍA — money fields */}
+        {/* BOX 1: TODAY'S EARNINGS — 5 tarjetas compactas en una sola fila
+            (modelo traído del clon V8 a pedido de Miguel, 2026-10-31, para
+            recoger y organizar la página). Cada tarjeta escribe al MISMO
+            campo del draft que la caja anterior (earnings, tips, toll,
+            platformFee, extraCash); LOCATIONS, la captura GPS y el resto
+            de TODAY quedan como estaban. */}
         {/* ============================================== */}
         <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-2 sm:col-span-2">
-          {/* Box header */}
-          <div className="mb-1.5 flex items-center gap-2">
-            <DollarSign className="size-4 text-emerald-400" />
-            <span className="text-[11px] font-bold tracking-wide text-neutral-400">ECONOMY</span>
-            <div className="ml-auto h-px flex-1 bg-neutral-800" />
+          <div className="mb-1.5 flex items-center justify-between">
+            <span className="text-[11px] font-bold tracking-wide text-neutral-400">TODAY'S EARNINGS</span>
+            <span className="text-[9px] text-neutral-500">All values in USD</span>
           </div>
-
-          {/* Row 1: FARE + EXTRA CASH */}
-          <div className="flex gap-2">
-            <MoneyInput
-              size="sm"
-              label="FARE"
-              color="text-green-400"
-              value={draft.earnings}
-              onChange={(n) => set("earnings", n)}
-            />
-            <MoneyInput
-              size="sm"
-              label="EXTRA CASH"
-              color="text-green-400"
-              value={draft.extraCash}
-              onChange={(n) => set("extraCash", n)}
-            />
+          <div className="grid grid-cols-5 gap-1.5">
+            <EarningsCard icon="💼" label="FARE" color="text-green-400" value={draft.earnings} onChange={(n) => set("earnings", n)} />
+            <EarningsCard icon="⭐" label="TIPS" color="text-green-400" value={draft.tips} onChange={(n) => set("tips", n)} />
+            <EarningsCard icon="🛣️" label="TOLLS" color="text-amber-400" value={draft.toll} onChange={(n) => set("toll", n)} />
+            <EarningsCard icon="%" label="FEE" color="text-red-500" value={draft.platformFee} onChange={(n) => set("platformFee", n)} />
+            <EarningsCard icon="$" label="EXTRA" color="text-green-400" value={draft.extraCash} onChange={(n) => set("extraCash", n)} />
           </div>
-
-          {/* Row 2: TIPS + TOLLS + FEE */}
-          <div className="mt-1.5 flex gap-2">
-            <MoneyInput
-              size="sm"
-              label="TIPS"
-              color="text-green-400"
-              value={draft.tips}
-              onChange={(n) => set("tips", n)}
-            />
-            <MoneyInput
-              size="sm"
-              label="TOLLS"
-              color="text-amber-400"
-              value={draft.toll}
-              onChange={(n) => set("toll", n)}
-            />
-            <MoneyInput
-              size="sm"
-              label="FEE"
-              color="text-red-500"
-              value={draft.platformFee}
-              onChange={(n) => set("platformFee", n)}
-            />
-          </div>
-
         </section>
 
         {/* ============================================== */}
@@ -747,6 +729,69 @@ export function EntryScreen({
           )}
         </section>
 
+      </div>
+
+      {/* Tira del turno ABAJO (clock in/out + millas IRS) — modelo del
+          clon, pero FIJA (shrink-0) en la pila de abajo. En el clon esta
+          tira vive en el flujo de una página fija con overflow oculto y
+          en el teléfono queda cortada, fuera de vista, hasta que algo se
+          encoge y "sale hacia afuera"; aquí queda SIEMPRE visible, encima
+          del contador de peajes y del SAVE (nota de Miguel, 2026-10-31). */}
+      <div className="mx-4 my-1.5 flex shrink-0 items-center justify-between rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 sm:mx-8">
+        <div className="flex items-center gap-2">
+          <div className="flex h-7 w-7 items-center justify-center rounded-full border border-neutral-700 bg-neutral-900">
+            <svg className="size-3.5 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          </div>
+          {shift.shiftActive ? (
+            <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+              <span className="size-1.5 rounded-full bg-emerald-400" />
+              {shift.isOnBreak ? "ON BREAK" : "ON SHIFT"}
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5 text-xs font-bold text-neutral-400">
+              <span className="size-1.5 rounded-full bg-neutral-600" />
+              OFF SHIFT
+            </span>
+          )}
+          {/* Contador de millas IRS — corre solo con el turno activo */}
+          {shift.shiftActive && (
+            <span
+              title="Business miles (IRS) — saved when you end the shift"
+              className="flex items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 font-mono text-[11px] font-bold tabular-nums text-sky-300"
+            >
+              {shift.shiftMiles.toFixed(1)} mi
+            </span>
+          )}
+        </div>
+        {!shift.shiftActive ? (
+          <button
+            type="button"
+            onClick={shift.onStart}
+            className="flex items-center gap-1 rounded-lg bg-lime-400 px-3 py-1.5 text-xs font-bold text-black"
+          >
+            <Play className="size-3" /> START
+          </button>
+        ) : (
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              onClick={shift.onBreak}
+              title={shift.isOnBreak ? "Resume the shift" : "Pause the shift"}
+              className="flex items-center gap-1 rounded-lg border border-neutral-700 px-2.5 py-1.5 text-[10px] font-semibold text-neutral-200"
+            >
+              {shift.isOnBreak ? <Play className="size-3" /> : <Pause className="size-3" />}
+              {shift.isOnBreak ? "RESUME" : "PAUSE"}
+            </button>
+            <button
+              type="button"
+              onClick={shift.onEnd}
+              title="End the shift"
+              className="flex items-center gap-1 rounded-lg border border-rose-500/40 px-2.5 py-1.5 text-[10px] font-semibold text-rose-400"
+            >
+              <Square className="size-3" /> END
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Contador acumulativo de peajes (Miguel, 2026-10-29): fijo abajo,
