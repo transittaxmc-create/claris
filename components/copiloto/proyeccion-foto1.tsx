@@ -222,7 +222,7 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
         ? raw.filter((c: any) => c && typeof c.amount === "number").map((c: any) => ({ date: String(c.date).slice(0, 10), amount: Math.abs(Number(c.amount)) }))
         : []
     } catch { charges = [] }
-    return computeWeekBands(props.bankTxs, gps, charges, today)
+    return computeWeekBands(props.bankTxs, gps, charges, today, 12)
   }, [props.bankOk, props.bankTxs, today])
   const bandByWeek = useMemo(() => new Map(weekBands.map((w) => [w.weekStart, w])), [weekBands])
 
@@ -271,6 +271,18 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
   // plano, sin colores ni emojis, números con coma y dos decimales.
   const MESES_ES = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"]
   const stmtMoney = (n: number) => `${n < 0 ? "−$" : "$"}${Math.abs(Math.round(n * 100) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  // Banco corto (Miguel, 2026-11-01): en la fila no va el nombre
+  // completo de la cuenta — solo los últimos 4 dígitos; PayPal se
+  // queda "PayPal". El nombre completo sigue en los datos.
+  const shortBank = (name: string) => {
+    const n = String(name || "")
+    if (/paypal/i.test(n)) return "PayPal"
+    const m = n.match(/(\d{4})\s*$/)
+    if (m) return "·" + m[1]
+    if (/square/i.test(n)) return "Square"
+    if (/venmo/i.test(n)) return "Venmo"
+    return n
+  }
   const bandRow = (w: WeekBand) => {
     const d1 = w.weekStart.slice(8, 10)
     const d2 = w.weekEnd.slice(8, 10)
@@ -576,10 +588,10 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
                       {fmtFecha(d)}
                       <div style={{ fontSize: 8, color: SUB, fontWeight: 500, marginTop: 1 }}>{fmtWeekday(d)}</div>
                     </td>
-                    <td style={{ ...td, overflow: "hidden" }}>
+                    <td style={{ ...td, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
                       <span style={{ fontWeight: 600 }}>{r.tx.detail}</span>
                     </td>
-                    <td style={{ ...td, color: SUB, overflow: "hidden", textOverflow: "ellipsis" }}>{String(r.tx.bank_account || "")}</td>
+                    <td style={{ ...td, color: SUB, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{shortBank(String(r.tx.bank_account || ""))}</td>
                     <td style={{ ...td, textAlign: "right", color: "#c9cbd8", whiteSpace: "nowrap", fontSize: 10.5 }}>
                       ${money2(bankFor(d))}
                     </td>
@@ -632,14 +644,14 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
                     <div style={{ fontSize: 8, color: SUB, fontWeight: 500, marginTop: 1 }}>{fmtWeekday(line.date)}</div>
                   </td>
                   <td style={{ ...td, overflow: "hidden" }}>
-                    <span style={{ fontWeight: 600 }}>{line.label}</span>
+                    <span style={{ fontWeight: 600, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{line.label}</span>
                     {pb && pbLeft > 0.009 && (
                       <div style={{ fontSize: 9.5, color: SUB, marginTop: 1, whiteSpace: "normal" }}>
                         Original ${money2(Number(pb.amount) || 0)} · Paid ${money2(billPaidTotal(pb))} · Left ${money2(pbLeft)}
                       </div>
                     )}
                   </td>
-                  <td style={{ ...td, color: "#c9cbd8", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <td style={{ ...td, color: "#c9cbd8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     <span style={{ display: "inline-block", width: 19, textAlign: "center", marginRight: 3, fontSize: 12 }}>{catIcon(cat, line.label)}</span>
                     {cat}
                   </td>
