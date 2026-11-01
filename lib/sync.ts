@@ -97,16 +97,18 @@ export function mergeTrips<T extends SyncTrip>(
 ): { trips: T[]; deleted: Tombstones } {
   const byId = new Map<string, T>()
 
-  const consider = (t: T | null | undefined) => {
+  const consider = (t: T | null | undefined, preferLocal = false) => {
     if (!t || typeof t.id !== "string" || !t.id) return
     const prev = byId.get(t.id)
-    if (!prev || isNewer(savedAtOf(t), savedAtOf(prev))) byId.set(t.id, t)
+    if (!prev) { byId.set(t.id, t); return }
+    // Local always wins on tie or if newer
+    if (preferLocal && !isNewer(savedAtOf(t), savedAtOf(prev))) return
+    if (isNewer(savedAtOf(t), savedAtOf(prev))) byId.set(t.id, t)
   }
 
-  // Primero lo local: en caso de empate (misma hora, o datos de la versión
-  // anterior sin hora) gana lo que hay en localStorage, que es la copia viva.
-  for (const t of local) consider(t)
-  for (const t of remote) consider(t)
+  // Local first, then remote only if newer
+  for (const t of local) consider(t, true)
+  for (const t of remote) consider(t, false)
 
   const deleted = pruneTombstones(tombstones)
   for (const [id, at] of Object.entries(deleted)) {
