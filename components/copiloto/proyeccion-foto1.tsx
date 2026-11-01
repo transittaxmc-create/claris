@@ -20,7 +20,10 @@ import {
   type ProyProps,
 } from "./proyeccion-shared"
 import { billPaidTotal, billRemaining } from "./bill-payments"
-import { computeWeekCloses } from "./weekly-close"
+import { computeWeekBands } from "./weekly-close"
+import { gpsTollsFromTrips, gpsTollsFromShiftDiary } from "./toll-audit"
+import { loadShiftTolls } from "./shift-tolls"
+import { loadTrips } from "./storage"
 import { accountDisplayName } from "./registers-store"
 import { normalizeVendorName, type Expense } from "./types"
 import { platformMatch, vendorMatch, SCHEDULE_OVERRIDES_KEY, type ForecastLine, type ProbablePaid } from "./dinero-forecast"
@@ -191,10 +194,23 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
   // Una línea por semana ya cerrada (lunes a domingo) con el dinero REAL
   // de esa semana: income, gastos, neto y tolls. Récord para chequear
   // el cierre; no afecta balances ni proyecciones.
-  const weekCloses = useMemo(
-    () => (props.bankOk ? computeWeekCloses(props.bankTxs, today) : []),
-    [props.bankOk, props.bankTxs, today],
-  )
+  const weekBands = useMemo(() => {
+    if (!props.bankOk) return []
+    // Tolls USADOS/detectados: GPS de los viajes + diario del turno.
+    let gps: { date: string; amount: number | null }[] = []
+    try {
+      gps = [...gpsTollsFromTrips(loadTrips() || []), ...gpsTollsFromShiftDiary(loadShiftTolls())]
+    } catch { gps = [] }
+    // Total de screenshots del statement de E-ZPass que él subió.
+    let charges: { date: string; amount: number | null }[] = []
+    try {
+      const raw = JSON.parse(localStorage.getItem("claris_toll_statement_charges_v1") || "[]")
+      charges = Array.isArray(raw)
+        ? raw.filter((c: any) => c && typeof c.amount === "number").map((c: any) => ({ date: String(c.date).slice(0, 10), amount: Math.abs(Number(c.amount)) }))
+        : []
+    } catch { charges = [] }
+    return computeWeekBands(props.bankTxs, gps, charges, today)
+  }, [props.bankOk, props.bankTxs, today])
   const health = healthOf(fc)
   const net = fc.end - fc.start
 
@@ -569,10 +585,10 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
             </table>
           </>
         )}
-        {weekCloses.length > 0 && (
+        {weekBands.length > 0 && (
           <>
             <div style={{ background: BAND, padding: "8px 14px", fontSize: 11, fontWeight: 800, letterSpacing: 1, color: SUB }}>
-              WEEK CLOSE · MON–SUN — REAL MONEY, RECORD ONLY
+              WEEK CLOSE · SUNDAY BAND — REAL MONEY, RECORD ONLY
             </div>
             <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
               <colgroup>
@@ -580,26 +596,32 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
                 <col style={{ width: "13%" }} /><col style={{ width: "17%" }} /><col style={{ width: "20%" }} />
               </colgroup>
               <tbody>
-                {weekCloses.map((w) => (
-                  <tr key={w.weekStart} style={{ opacity: 0.8 }}>
-                    <td style={{ ...td, whiteSpace: "nowrap", fontWeight: 600, paddingLeft: 12 }}>
-                      {fmtFecha(w.weekStart)}
-                      <div style={{ fontSize: 8, color: SUB, fontWeight: 500, marginTop: 1 }}>to {fmtFecha(w.weekEnd)}</div>
-                    </td>
-                    <td style={{ ...td, overflow: "hidden" }}>
-                      <span style={{ fontWeight: 600 }}>WEEK CLOSE</span>
-                      <div style={{ fontSize: 9.5, color: SUB, marginTop: 1, whiteSpace: "normal" }}>
-                        IN {signed(w.income)} · OUT {signed(-w.expenses)} · 🛣️ TOLLS ${money2(w.tolls)}
-                      </div>
-                    </td>
-                    <td style={{ ...td, color: SUB, overflow: "hidden", textOverflow: "ellipsis" }}>Summary</td>
-                    <td style={{ ...td, textAlign: "right", color: SUB, fontSize: 10.5 }}>—</td>
-                    <td style={{ ...td, textAlign: "right", fontWeight: 600, color: w.net >= 0 ? GREEN : RED, whiteSpace: "nowrap", fontSize: 12.5 }}>
-                      {signed(w.net)}
-                    </td>
-                    <td style={{ ...td, textAlign: "right", color: SUB, fontSize: 10.5 }}>closed</td>
-                  </tr>
-                ))}
+                {weekBands.map((w) => {
+                  const MESES = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
+                  const mes = MESES[Number(w.monthKey.slice(5, 7)) - 1] || ""
+                  return (
+                    <tr key={w.weekStart} style={{ opacity: 0.85 }}>
+                      <td style={{ ...td, whiteSpace: "nowrap", fontWeight: 600, paddingLeft: 12 }}>
+                        {fmtFecha(w.weekEnd)}
+                        <div style={{ fontSize: 8, color: SUB, fontWeight: 500, marginTop: 1 }}>{fmtWeekday(w.weekEnd)} · from {fmtFecha(w.weekStart)}</div>
+                      </td>
+                      <td style={{ ...td, overflow: "hidden" }}>
+                        <span style={{ fontWeight: 600 }}>WEEK CLOSE{w.toDate ? " · SO FAR" : ""}</span>
+                        <div style={{ fontSize: 9.5, color: SUB, marginTop: 1, whiteSpace: "normal" }}>
+                          IN {signed(w.income)} · OUT {signed(-w.expenses)}
+                          <br />🛣️ TOLLS ${money2(w.tollsUsed)}{w.tollPasses > 0 ? ` · ${w.tollPasses} passes` : ""}{w.tollStmt > 0.009 && Math.abs(w.tollStmt - w.tollsUsed) > 0.009 ? ` · 📸 STMT $${money2(w.tollStmt)}` : ""}
+                          <br />{mes} ACCUM · IN {signed(w.monthIncome)} · NET {signed(w.monthNet)}
+                        </div>
+                      </td>
+                      <td style={{ ...td, color: SUB, overflow: "hidden", textOverflow: "ellipsis" }}>Summary</td>
+                      <td style={{ ...td, textAlign: "right", color: SUB, fontSize: 10.5 }}>—</td>
+                      <td style={{ ...td, textAlign: "right", fontWeight: 600, color: w.net >= 0 ? GREEN : RED, whiteSpace: "nowrap", fontSize: 12.5 }}>
+                        {signed(w.net)}
+                      </td>
+                      <td style={{ ...td, textAlign: "right", color: SUB, fontSize: 10.5 }}>{w.toDate ? "so far" : "closed"}</td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </>
