@@ -3,7 +3,7 @@
 // FOTO 1 — REGISTRO & PRONÓSTICO DE FLUJO DE CAJA (clonada idéntica).
 // Va en la pestaña Proyecciones. Datos reales del forecast de 30 días.
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react"
+import { useMemo, useState, type CSSProperties } from "react"
 import { ProyeccionForm, ProyeccionEdit } from "./proyeccion-form"
 import {
   Gauge,
@@ -167,26 +167,9 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
     notifySync()
   }
 
-  // Auto-aplicar los matches seguros en cuanto el forecast los detecta.
-  const segurosKey = fcLong.probablePaid.filter(esSeguro).map((p) => p.key).join(",")
-  useEffect(() => {
-    const seguros = fcLong.probablePaid.filter(esSeguro)
-    if (seguros.length === 0) return
-    const byId = new Map(seguros.map((p) => [p.entry.id, p]))
-    let changed = false
-    const next = readLedger().map((e) => {
-      const p = byId.get(e.id)
-      if (!p || e.status !== "projected") return e
-      changed = true
-      return { ...e, status: "actual" as CashFlowEntry["status"], date: String(p.tx.date).slice(0, 10), isManuallyEdited: true }
-    })
-    if (!changed) return
-    try {
-      localStorage.setItem(FINANCE_LEDGER_KEY, JSON.stringify(next))
-    } catch {}
-    notifySync()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [segurosKey])
+  // Los matches seguros se muestran para confirmación, pero no se aplican
+  // automáticamente. Así una actualización del banco no hace desaparecer
+  // las proyecciones mientras el usuario sigue revisando el registro.
 
   const porConfirm = fcLong.probablePaid.filter((p) => !esSeguro(p) && !dismissed.includes(p.key))
 
