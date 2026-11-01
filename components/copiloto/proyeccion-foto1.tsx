@@ -266,24 +266,32 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
     return set
   }, [pastRows, bandByWeek, today])
 
-  const MESES = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"]
-  const bandRow = (w: WeekBand) => (
-    <tr key={`band-${w.weekStart}`}>
-      <td colSpan={6} style={{ padding: "9px 12px", background: "rgba(91,140,255,.08)", borderTop: `1px solid ${BORDER}`, borderBottom: `1px solid ${BORDER}` }}>
-        <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: 0.6, color: "#e8eaf2" }}>
-          ── WEEK · MON {fmtFecha(w.weekStart)} – SUN {fmtFecha(w.weekEnd)} ──
-        </div>
-        <div style={{ fontSize: 11, color: SUB, marginTop: 2 }}>
-          IN <b style={{ color: GREEN }}>{signed(w.income)}</b> · OUT <b style={{ color: RED }}>{signed(-w.expenses)}</b> · NET{" "}
-          <b style={{ color: w.net >= 0 ? GREEN : RED }}>{signed(w.net)}</b>
-        </div>
-        <div style={{ fontSize: 11, color: SUB, marginTop: 1 }}>
-          🛣️ TOLLS ${money2(w.tollsUsed)} · {MESES[Number(w.monthKey.slice(5, 7)) - 1] || ""}: IN ${money2(w.monthIncome)} / OUT ${money2(w.monthExpenses)} / NET{" "}
-          <span style={{ color: w.monthNet >= 0 ? GREEN : RED, fontWeight: 700 }}>{signed(w.monthNet)}</span> / TOLLS ${money2(w.monthTolls)}
-        </div>
-      </td>
-    </tr>
-  )
+  // La banda TAL como la dibujó Miguel: un separador de statement —
+  // lineal, profesional, como un PDF: reglas arriba y abajo, texto
+  // plano, sin colores ni emojis, números con coma y dos decimales.
+  const MESES_ES = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"]
+  const stmtMoney = (n: number) => `${n < 0 ? "−$" : "$"}${Math.abs(Math.round(n * 100) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const bandRow = (w: WeekBand) => {
+    const d1 = w.weekStart.slice(8, 10)
+    const d2 = w.weekEnd.slice(8, 10)
+    const m1 = MESES_ES[Number(w.weekStart.slice(5, 7)) - 1] || ""
+    const m2 = MESES_ES[Number(w.weekEnd.slice(5, 7)) - 1] || ""
+    const titulo = m1 === m2 ? `SEMANA · LUN ${d1}–DOM ${d2} ${m1}` : `SEMANA · LUN ${d1} ${m1}–DOM ${d2} ${m2}`
+    const mes = MESES_ES[Number(w.monthKey.slice(5, 7)) - 1] || ""
+    return (
+      <tr key={`band-${w.weekStart}`}>
+        <td colSpan={6} style={{ padding: "10px 12px 11px", borderTop: "2px solid #454b63", borderBottom: "1px solid #454b63", background: "transparent" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.1, color: "#dfe3ee" }}>{titulo}</div>
+          <div style={{ fontSize: 11.5, color: "#a7adc2", marginTop: 3, fontVariantNumeric: "tabular-nums" }}>
+            IN {stmtMoney(w.income)} · OUT {stmtMoney(w.expenses)} · NET <span style={{ color: "#e8eaf2" }}>{stmtMoney(w.net)}</span>
+          </div>
+          <div style={{ fontSize: 11.5, color: "#a7adc2", marginTop: 2, fontVariantNumeric: "tabular-nums" }}>
+            PEAJES {stmtMoney(w.tollsUsed)} · MES {mes}: IN {stmtMoney(w.monthIncome)} / OUT {stmtMoney(w.monthExpenses)} / NET {stmtMoney(w.monthNet)} / PEAJES {stmtMoney(w.monthTolls)}
+          </div>
+        </td>
+      </tr>
+    )
+  }
 
   // ——— Pagados y parciales (Miguel, 2026-10-29) ———
   // Lo pagado NO se borra ni se desaparece sin rastro: baja al final de la
