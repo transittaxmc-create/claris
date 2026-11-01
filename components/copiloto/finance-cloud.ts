@@ -64,6 +64,28 @@ export const FINANCE_CLOUD_KEYS = [
 
 type CloudDoc = { v: number; updated_at?: string; keys: Record<string, string> }
 
+/** ESTABILIDAD (Miguel, 2026-11-01: "entro algo ahora y después se
+ *  desaparece — tiene que estar más estable"): claves cuyo vacío en UN
+ *  lado NUNCA significa "el usuario borró todo". Una copia de la app
+ *  que nunca cargó esa clave (otra pestaña vieja, un estado que se
+ *  guardó vacío por un fallo de hidratación) la trae en cero, y sin
+ *  esta regla la fusión interpretaba ese cero como un borrado masivo
+ *  y lo propagaba a la nube — así desaparecían gastos y datos ya
+ *  guardados. En estas claves, si un lado trae la lista vacía y el
+ *  otro no, manda el lado con datos. Fuera de la lista quedan las
+ *  claves que SÍ se pueden vaciar a propósito (recurrentes y sus
+ *  overrides, con el botón "Remove all projected"). */
+const NEVER_EMPTY_KEYS = new Set<string>([
+  FINANCE_LEDGER_KEY,
+  "claris_registers_v1",
+  "claris_liabilities_v1",
+  "claris_screenshot_txs_v1",
+  "ic_expenses",
+  "claris_credit_accounts_v1",
+  "claris_shift_tolls_v1",
+  "claris_receipts_v1",
+])
+
 let started = false
 /** Índice de la última foto conocida de la nube: por clave, la huella de
  *  cada item (para listas) y la huella del valor crudo. Se PERSISTE en
@@ -204,6 +226,7 @@ function threeWayArrays(
   localArr: unknown[],
   cloudArr: unknown[],
   localWins: boolean,
+  protect?: (identity: string) => boolean,
 ): unknown[] | null {
   const index = (arr: unknown[]) => {
     const map = new Map<string, unknown>()
@@ -231,8 +254,8 @@ function threeWayArrays(
       if (lChanged && cChanged) return localWins ? L.map.get(k) : C.map.get(k)
       return L.map.get(k)
     }
-    if (inB && inL && !inC) return undefined // borrado en la nube: se respeta
-    if (inB && !inL && inC) return undefined // borrado local: se respeta
+    if (inB && inL && !inC) return protect?.(k) ? L.map.get(k) : undefined // borrado en la nube: se respeta (salvo protegidos)
+    if (inB && !inL && inC) return protect?.(k) ? C.map.get(k) : undefined // borrado local: se respeta (salvo protegidos)
     if (inB) return undefined // borrado en los dos
     if (inL && inC) {
       // Agregado por los dos lados con el mismo id: gana según la regla.
@@ -275,8 +298,21 @@ function mergeValues(
     return null
   }
   const baseItems = baseEntry?.items
+  // Regla nunca-vacío: un lado en cero no borra el otro (ver el set).
+  if (NEVER_EMPTY_KEYS.has(key)) {
+    const li = itemsOfKey(key, l)
+    const ci = itemsOfKey(key, c)
+    if (li && ci && (li.length === 0) !== (ci.length === 0)) {
+      return li.length === 0 ? cloudRaw : localRaw
+    }
+  }
+  // En el ledger, los espejos del banco (ids "ai:") son datos DERIVADOS
+  // del register del servidor: si a una copia le falta uno es porque su
+  // espejo está incompleto, no porque el movimiento se haya borrado —
+  // nunca desaparecen por ausencia en un lado.
+  const protect = key === FINANCE_LEDGER_KEY ? (k: string) => k.startsWith("id:ai:") : undefined
   if (Array.isArray(l) && Array.isArray(c)) {
-    const u = threeWayArrays(baseItems, l, c, localWins)
+    const u = threeWayArrays(baseItems, l, c, localWins, protect)
     return u ? JSON.stringify(u) : null
   }
   // ic_expenses es un objeto {version, savedAt, entries:[...]}: las
