@@ -43,6 +43,8 @@ export interface WeekBand {
   monthIncome: number
   monthExpenses: number
   monthNet: number
+  /** Peajes del mes hasta ese domingo (misma regla: usados/detectados). */
+  monthTolls: number
 }
 
 export interface TollPassLike {
@@ -169,6 +171,11 @@ export function computeWeekBands(
     // hay screenshots del statement, manda el total de screenshots.
     const tollsUsed = used > 0 ? used : stmt
     const mo = monthSums(end, end)
+    const moFrom = `${end.slice(0, 7)}-01`
+    const moPasses = tollsIn(gpsTolls, moFrom, end)
+    const moUsed = r2(moPasses.reduce((t2, t) => t2 + (Number(t.amount) || 0), 0))
+    const moStmt = r2(tollsIn(stmtCharges, moFrom, end).reduce((t2, t) => t2 + (Number(t.amount) || 0), 0))
+    const monthTolls = moUsed > 0 ? moUsed : moStmt
     if (wk.income === 0 && wk.expenses === 0 && tollsUsed === 0 && stmt === 0 && !toDate) return null
     return {
       weekStart: monday,
@@ -184,6 +191,7 @@ export function computeWeekBands(
       monthIncome: mo.income,
       monthExpenses: mo.expenses,
       monthNet: r2(mo.income - mo.expenses),
+      monthTolls,
     }
   }
 
