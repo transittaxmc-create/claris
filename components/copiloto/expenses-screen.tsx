@@ -524,8 +524,11 @@ export function ExpensesScreen({
       autoDoneRef.current.add(d.id)
       let updated = bill
       for (const tx of d.txs) {
+        const amt = d.isGroup && d.share ? Math.abs(d.share) : Math.abs(Number(tx.amount) || 0)
+        // Anti-sobrepago también en la auto-clasificación (2026-11-01).
+        if (amt > billRemaining(updated) + 0.011) continue
         updated = addBillPayment(updated, {
-          amount: d.isGroup && d.share ? Math.abs(d.share) : Math.abs(Number(tx.amount) || 0),
+          amount: amt,
           accountId: accountIdFor(String(tx.bank_account || "")) || undefined,
           date: String(tx.date).slice(0, 10),
           source: "banco",

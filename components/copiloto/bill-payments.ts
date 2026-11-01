@@ -112,6 +112,25 @@ export function bankTxIdOf(tx: BankTxIn): string {
 
 const DETECT_AMOUNT_TOL = 0.011
 const DETECT_DAY_WINDOW = 7
+/** El cargo puede ser de a lo sumo 2 días ANTES de la fecha del bill:
+ *  un pago de 3+ días antes casi siempre pertenece al ciclo ANTERIOR
+ *  (así cayó el pago de $622 del ciclo del 22-oct en el bill del 29-oct,
+ *  2026-11-01). Hacia adelante se mantienen los 7 días (rezago del
+ *  banco al postear). */
+const DETECT_EARLY_DAYS = 2
+
+/** Diferencia en días (b − a) con signo. */
+function signedDayDiff(a: string, b: string): number {
+  const t = (x: string) => new Date(`${String(x).slice(0, 10)}T12:00:00`).getTime()
+  const ms = t(b) - t(a)
+  return Number.isFinite(ms) ? Math.round(ms / 86400000) : 999
+}
+
+/** ¿El cargo cae en la ventana del bill? (bill − cargo entre −7 y +2) */
+function withinDetectWindow(txDate: string, billDate: string): boolean {
+  const diff = signedDayDiff(txDate, billDate)
+  return diff <= DETECT_EARLY_DAYS && diff >= -DETECT_DAY_WINDOW
+}
 
 export type DetectedPayment = {
   /** Id estable del grupo (para descartes). */
@@ -137,7 +156,7 @@ function txMatchesBill(bill: Expense, tx: BankTxIn, remaining: number): boolean 
   if (!Number.isFinite(amt) || amt >= -0.009) return false // solo salidas
   if (Math.abs(amt) > remaining + DETECT_AMOUNT_TOL) return false
   if (!vendorFuzzyMatch(bill.vendor, tx.detail)) return false
-  if (daysBetween(tx.date, bill.date) > DETECT_DAY_WINDOW) return false
+  if (!withinDetectWindow(tx.date, bill.date)) return false
   return true
 }
 
@@ -151,8 +170,41 @@ function txMatchesBill(bill: Expense, tx: BankTxIn, remaining: number): boolean 
 export function detectBillPayments(expenses: Expense[], bankTxs: BankTxIn[]): DetectedPayment[] {
   const bills = expenses.filter(isBillOpen)
   if (bills.length === 0 || bankTxs.length === 0) return []
+  // Un cargo ya aplicado a CUALQUIER bill (abierto o ya cerrado) nunca
+  // se vuelve a proponer: si no, al cerrarse un bill su pago "flota" y
+  // se pega al ciclo siguiente (doble conteo).
+  const allBills = expenses.filter(isBill)
   const used = new Set<string>()
-  for (const b of bills) for (const p of billPayments(b)) if (p.bankTxId) used.add(p.bankTxId)
+  for (const b of allBills) for (const p of billPayments(b)) if (p.bankTxId) used.add(p.bankTxId)
+
+  // Fechas de los bills por vendedor (para el límite de ciclo de abajo).
+  const groupKeyOf = (b: Expense) => normalizeVendorName(b.vendor)
+  const datesByGroup = new Map<string, string[]>()
+  for (const b of allBills) {
+    const k = groupKeyOf(b)
+    if (!k) continue
+    const arr = datesByGroup.get(k) ?? []
+    arr.push(String(b.date).slice(0, 10))
+    datesByGroup.set(k, arr)
+  }
+  for (const arr of datesByGroup.values()) arr.sort()
+  /** Fecha del bill anterior del mismo vendedor (null si es el primero). */
+  const prevBillDateOf = (b: Expense): string | null => {
+    const arr = datesByGroup.get(groupKeyOf(b)) ?? []
+    const bd = String(b.date).slice(0, 10)
+    let prev: string | null = null
+    for (const d of arr) {
+      if (d < bd) prev = d
+      else break
+    }
+    return prev
+  }
+  /** LÍMITE DE CICLO: un cargo fechado en o antes del bill anterior del
+   *  mismo vendedor no puede ser de este bill — es del ciclo anterior. */
+  const crossesCycleBoundary = (b: Expense, tx: BankTxIn): boolean => {
+    const prev = prevBillDateOf(b)
+    return prev !== null && String(tx.date).slice(0, 10) <= prev
+  }
 
   const remainingByBill = new Map(bills.map((b) => [b.id, billRemaining(b)]))
 
@@ -161,9 +213,37 @@ export function detectBillPayments(expenses: Expense[], bankTxs: BankTxIn[]): De
   for (const tx of bankTxs) {
     const tid = bankTxIdOf(tx)
     if (used.has(tid)) continue
-    const cands: { tx: BankTxIn; billId: string }[] = []
+    const rawCands: { tx: BankTxIn; billId: string }[] = []
     for (const b of bills) {
-      if (txMatchesBill(b, tx, remainingByBill.get(b.id) ?? 0)) cands.push({ tx, billId: b.id })
+      if (crossesCycleBoundary(b, tx)) continue
+      if (txMatchesBill(b, tx, remainingByBill.get(b.id) ?? 0)) rawCands.push({ tx, billId: b.id })
+    }
+    // FIFO POR VENDEDOR (orden de Miguel, 2026-11-01): entre los bills
+    // del MISMO vendedor, el pago va al abierto más viejo que le quepa
+    // — nunca salta a un ciclo nuevo debiéndose el anterior. Si dos
+    // bills del mismo vendedor comparten la fecha más vieja, ese grupo
+    // es ambiguo y se descarta. Entre vendedores distintos sigue la
+    // regla de siempre: 2+ candidatos = ambiguo, no se sugiere.
+    const byGroup = new Map<string, { tx: BankTxIn; billId: string }[]>()
+    for (const c of rawCands) {
+      const bill = bills.find((x) => x.id === c.billId)
+      if (!bill) continue
+      const k = groupKeyOf(bill)
+      const arr = byGroup.get(k) ?? []
+      arr.push(c)
+      byGroup.set(k, arr)
+    }
+    const cands: { tx: BankTxIn; billId: string }[] = []
+    for (const arr of byGroup.values()) {
+      let minDate = "9999-12-31"
+      for (const c of arr) {
+        const bd = String(bills.find((x) => x.id === c.billId)?.date ?? "").slice(0, 10)
+        if (bd && bd < minDate) minDate = bd
+      }
+      const earliest = arr.filter(
+        (c) => String(bills.find((x) => x.id === c.billId)?.date ?? "").slice(0, 10) === minDate,
+      )
+      if (earliest.length === 1) cands.push(earliest[0])
     }
     // Ambiguo (encaja en 2+ facturas): no se sugiere, Miguel lo anota a mano.
     if (cands.length === 1) matches.set(tid, cands)
@@ -239,7 +319,8 @@ export function detectBillPayments(expenses: Expense[], bankTxs: BankTxIn[]): De
           !proposedBills.has(b.id) &&
           (remainingByBill.get(b.id) ?? 0) <= txAmt + DETECT_AMOUNT_TOL &&
           vendorFuzzyMatch(b.vendor, tx.detail) &&
-          daysBetween(tx.date, b.date) <= DETECT_DAY_WINDOW,
+          !crossesCycleBoundary(b, tx) &&
+          withinDetectWindow(tx.date, b.date),
       )
       .sort((a, b) => daysBetween(tx.date, a.date) - daysBetween(tx.date, b.date))
     if (cands.length < 2) continue

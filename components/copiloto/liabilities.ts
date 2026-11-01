@@ -389,9 +389,14 @@ export function applyDetection(
 ): Expense {
   let updated = bill
   for (const tx of d.txs) {
+    const amt = d.isGroup && d.share ? Math.abs(d.share) : Math.abs(Number(tx.amount) || 0)
+    // Protección anti-sobrepago (orden de Miguel, 2026-11-01): nunca se
+    // aplica más de lo que el bill debe AHORA — si el estado cambió
+    // desde la detección, el cargo se omite y vuelve como propuesta.
+    if (amt > billRemaining(updated) + 0.011) continue
     updated = addBillPayment(updated, {
       // Pago grupal: el cargo cubre varios bills — a este le toca su parte.
-      amount: d.isGroup && d.share ? Math.abs(d.share) : Math.abs(Number(tx.amount) || 0),
+      amount: amt,
       accountId: accountIdFor?.(String(tx.bank_account || "")) || undefined,
       date: String(tx.date).slice(0, 10),
       source: "banco",
