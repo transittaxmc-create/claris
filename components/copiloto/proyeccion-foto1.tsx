@@ -289,7 +289,6 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
     const m1 = MESES_ES[Number(w.weekStart.slice(5, 7)) - 1] || ""
     const m2 = MESES_ES[Number(w.weekEnd.slice(5, 7)) - 1] || ""
     const titulo = m1 === m2 ? `SEMANA · LUN ${d1}–DOM ${d2} ${m1}` : `SEMANA · LUN ${d1} ${m1}–DOM ${d2} ${m2}`
-    const mes = MESES_ES[Number(w.monthKey.slice(5, 7)) - 1] || ""
     return (
       <tr key={`band-${w.weekStart}`}>
         <td colSpan={6} style={{ padding: "10px 12px 11px", borderTop: "2px solid #454b63", borderBottom: "1px solid #454b63", background: "transparent" }}>
@@ -298,7 +297,7 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
             IN {stmtMoney(w.income)} · OUT {stmtMoney(w.expenses)} · NET <span style={{ color: "#e8eaf2" }}>{stmtMoney(w.net)}</span>
           </div>
           <div style={{ fontSize: 11.5, color: "#a7adc2", marginTop: 2, fontVariantNumeric: "tabular-nums" }}>
-            PEAJES {stmtMoney(w.tollsUsed)} · MES {mes}: IN {stmtMoney(w.monthIncome)} / OUT {stmtMoney(w.monthExpenses)} / NET {stmtMoney(w.monthNet)} / PEAJES {stmtMoney(w.monthTolls)}
+            PEAJES {stmtMoney(w.tollsUsed)}
           </div>
         </td>
       </tr>
