@@ -110,7 +110,7 @@ function wrapList(
     const prev = stamps[id]
     // Primera vez en este teléfono: sin hora → pierde ante una copia ya
     // sincronizada desde otro teléfono, pero se sube si no existe allá.
-    const savedAt = prev && prev.h === h ? prev.at : firstTime ? "" : now
+    const savedAt = prev && prev.h === h ? prev.at : now
     list.push({ id, savedAt, raw })
   }
   const outDeleted: Tombstones = { ...deleted }
