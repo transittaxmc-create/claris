@@ -75,16 +75,34 @@ export function removeBillPayment(e: Expense, paymentId: string): Expense {
 // Coincidencia de vendedor (difusa)
 // ---------------------------------------------------------------------------
 
+/** Palabras genéricas de razón social que el banco NO trae en el detalle
+ *  del cargo ("Mercury Financial" en el bill vs "MERCURY CARD FBT
+ *  PAYMENT" en el banco): se quitan de los dos lados antes de comparar,
+ *  si no la comparación por tokens nunca pasa y el pago nunca se aplica
+ *  solo (caso Mercury, 2026-11-01). */
+const GENERIC_VENDOR_WORDS = new Set([
+  "financial", "finanzas", "bank", "banco", "card", "cards", "tarjeta",
+  "services", "service", "servicios", "payments", "payment", "pagos",
+  "inc", "llc", "corp", "company", "co", "group", "grupo", "solutions", "usa",
+])
+
 /** "CB LIVERY" ≈ "cb livery" ≈ "CB LIVERY 12345". */
 export function vendorFuzzyMatch(a: unknown, b: unknown): boolean {
   const na = normalizeVendorName(a)
   const nb = normalizeVendorName(b)
   if (!na || !nb) return false
   if (na === nb) return true
-  const ta = na.split(" ").filter((t) => t.length > 2)
-  const tb = nb.split(" ").filter((t) => t.length > 2)
-  if (ta.length === 0 || tb.length === 0) return na.includes(nb) || nb.includes(na)
-  const [short, long] = ta.length <= tb.length ? [ta, tb] : [tb, ta]
+  const strip = (toks: string[]) => toks.filter((t) => !GENERIC_VENDOR_WORDS.has(t))
+  const rawA = na.split(" ").filter((t) => t.length > 2)
+  const rawB = nb.split(" ").filter((t) => t.length > 2)
+  const ta = strip(rawA)
+  const tb = strip(rawB)
+  // Si al quitar lo genérico un lado queda vacío, se compara con los
+  // tokens crudos (un vendor que ES solo genérico no debe casar con todo).
+  const useA = ta.length > 0 ? ta : rawA
+  const useB = tb.length > 0 ? tb : rawB
+  if (useA.length === 0 || useB.length === 0) return na.includes(nb) || nb.includes(na)
+  const [short, long] = useA.length <= useB.length ? [useA, useB] : [useB, useA]
   return short.every((t) => long.some((u) => u.includes(t) || t.includes(u)))
 }
 

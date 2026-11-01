@@ -19,13 +19,17 @@
 //     "volvían" cuando la copia buena subía otra vez. Ahora: sin una
 //     lectura buena NO se escribe nada.
 //  2. NADIE PISA A NADIE: cada ciclo baja la nube y FUSIONA contra la
-//     última foto conocida de la nube ("base"):
+//     última foto conocida de la nube ("base", persistida entre
+//     aperturas como índice de huellas por item):
 //       - cambió solo aquí  → manda lo local
 //       - cambió solo allá  → manda lo de la nube
-//       - cambiaron los dos la misma clave → se unen los items por id
-//         (listas: libro, recurrentes, gastos, bills, peajes, etc.)
-//     Un borrado hecho en un solo lado SÍ se respeta (el otro lado no
-//     cambió esa clave), así que borrar sigue funcionando.
+//       - cambiaron los dos la misma clave → fusión de items A TRES
+//         BANDAS: un item que estaba en la base y falta en un lado fue
+//         BORRADO en ese lado y no vuelve, aunque el otro lado haya
+//         tocado la misma lista (la unión simple lo resucitaba: la
+//         limpieza del 2026-11-01 rebotó tres veces por eso).
+//     Primer contacto sin índice y con datos en la nube: manda la nube
+//     tal cual — la copia local es un caché, no una segunda fuente.
 //  3. GUARDA ANTI-VACÍO: si el resultado fusionado pierde el libro y
 //     los recurrentes que la nube sí tiene, NO se sube: se baja la
 //     nube y el teléfono se recupera solo. La única excepción es el
@@ -61,9 +65,18 @@ export const FINANCE_CLOUD_KEYS = [
 type CloudDoc = { v: number; updated_at?: string; keys: Record<string, string> }
 
 let started = false
-/** Última foto conocida de la nube (de una lectura buena o de una subida
- *  confirmada). null = esta sesión aún no ha leído la nube. */
-let baseKeys: Record<string, string> | null = null
+/** Índice de la última foto conocida de la nube: por clave, la huella de
+ *  cada item (para listas) y la huella del valor crudo. Se PERSISTE en
+ *  localStorage (fuera de las claves de la nube) para que la fusión a
+ *  tres bandas también funcione entre aperturas: sin índice persistido,
+ *  cada arranque era un "primer contacto" sin memoria y un borrado
+ *  hecho en la nube resucitaba desde la copia local vieja en cuanto el
+ *  teléfono tocaba la misma lista por cualquier motivo (2026-11-01:
+ *  la limpieza de datos rebotó TRES veces por esto).
+ *  null = todavía no se ha cargado/hecho ningún índice. */
+export type BaseIndex = Record<string, { raw: string; items?: Record<string, string> }>
+let baseIdx: BaseIndex | null = null
+const BASE_IDX_STORAGE_KEY = "claris_finance_baseidx_v2"
 /** Hash de la copia local ya sincronizada (aplicada o subida). */
 let lastLocalHash = ""
 /** Esta sesión ya sincronizó datos con contenido. */
@@ -127,45 +140,132 @@ function itemIdentity(item: unknown): string | null {
   return null
 }
 
-/** Une dos listas por identidad de item. En el mismo id manda el local,
- *  salvo en el primer contacto de la sesión (localWins=false), donde
- *  manda la nube: la copia local puede venir vieja de una sesión
- *  anterior y no debe pisar una edición más nueva ya guardada.
- *  Orden: primero los items en el orden local; los que solo están en la
- *  nube se agregan al final en su orden. null si algún item no tiene
- *  identidad usable (el llamador decide el desempate). */
-function unionArrays(localArr: unknown[], cloudArr: unknown[], localWins = true): unknown[] | null {
-  const byKey = new Map<string, unknown>()
-  const cloudOrder: string[] = []
-  for (const it of cloudArr) {
-    const k = itemIdentity(it)
-    if (k === null) return null
-    if (!byKey.has(k)) cloudOrder.push(k)
-    byKey.set(k, it)
+/** Huella de un item (para saber si cambió contra la base). */
+function itemHash(item: unknown): string {
+  try {
+    return hashText(JSON.stringify(item) ?? "")
+  } catch {
+    return ""
   }
-  const localOrder: string[] = []
-  for (const it of localArr) {
-    const k = itemIdentity(it)
-    if (k === null) return null
-    if (!localOrder.includes(k)) localOrder.push(k)
-    if (localWins || !cloudOrder.includes(k)) byKey.set(k, it)
-  }
-  const seen = new Set<string>()
-  const out: unknown[] = []
-  for (const k of [...localOrder, ...cloudOrder]) {
-    if (seen.has(k)) continue
-    seen.add(k)
-    out.push(byKey.get(k))
-  }
-  return out
 }
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
   return !!v && typeof v === "object" && !Array.isArray(v)
 }
 
-/** Fusiona dos valores crudos de una misma clave. null = no fusionable. */
-function mergeValues(key: string, localRaw: string, cloudRaw: string, localWins = true): string | null {
+/** Lista de items de una clave, si el valor es una lista "por items":
+ *  un arreglo directo, las entries de ic_expenses o las accounts del
+ *  objeto de CREDIT. null si la clave no es de ese tipo. */
+function itemsOfKey(key: string, value: unknown): unknown[] | null {
+  if (Array.isArray(value)) return value
+  if (key === "ic_expenses" && isPlainObject(value) && Array.isArray(value.entries)) return value.entries as unknown[]
+  if (isPlainObject(value) && Array.isArray(value.accounts)) return value.accounts as unknown[]
+  return null
+}
+
+/** Construye el índice base de un documento: huella del valor crudo por
+ *  clave y, para claves por items, la huella de cada item por id. */
+export function indexKeys(keys: Record<string, string>): BaseIndex {
+  const out: BaseIndex = {}
+  for (const [name, raw] of Object.entries(keys)) {
+    const entry: { raw: string; items?: Record<string, string> } = { raw: hashText(raw) }
+    try {
+      const items = itemsOfKey(name, JSON.parse(raw))
+      if (items) {
+        const map: Record<string, string> = {}
+        let usable = true
+        for (const it of items) {
+          const id = itemIdentity(it)
+          if (id === null) {
+            usable = false
+            break
+          }
+          map[id] = itemHash(it)
+        }
+        if (usable) entry.items = map
+      }
+    } catch {}
+    out[name] = entry
+  }
+  return out
+}
+
+/** Fusión de listas A TRES BANDAS (base, local, nube) por identidad:
+ *  - item que estaba en la base y falta en UN lado → ese lado lo BORRÓ:
+ *    no entra, aunque el otro lado haya tocado la misma lista (antes la
+ *    unión simple lo resucitaba: así volvían los duplicados borrados).
+ *  - item nuevo en un lado → entra (agregado).
+ *  - item en los dos lados: si solo uno lo cambió contra la base, manda
+ *    ese; si lo cambiaron los dos, manda localWins (la nube en el primer
+ *    contacto, lo local en sesiones ya sincronizadas).
+ *  null si algún item no tiene identidad usable. */
+function threeWayArrays(
+  baseItems: Record<string, string> | undefined,
+  localArr: unknown[],
+  cloudArr: unknown[],
+  localWins: boolean,
+): unknown[] | null {
+  const index = (arr: unknown[]) => {
+    const map = new Map<string, unknown>()
+    const order: string[] = []
+    for (const it of arr) {
+      const k = itemIdentity(it)
+      if (k === null) return null
+      if (!map.has(k)) order.push(k)
+      map.set(k, it)
+    }
+    return { map, order }
+  }
+  const L = index(localArr)
+  const C = index(cloudArr)
+  if (!L || !C) return null
+  const pick = (k: string): unknown => {
+    const inB = baseItems ? k in baseItems : false
+    const inL = L.map.has(k)
+    const inC = C.map.has(k)
+    if (inB && inL && inC) {
+      const lChanged = itemHash(L.map.get(k)) !== baseItems![k]
+      const cChanged = itemHash(C.map.get(k)) !== baseItems![k]
+      if (lChanged && !cChanged) return L.map.get(k)
+      if (cChanged && !lChanged) return C.map.get(k)
+      if (lChanged && cChanged) return localWins ? L.map.get(k) : C.map.get(k)
+      return L.map.get(k)
+    }
+    if (inB && inL && !inC) return undefined // borrado en la nube: se respeta
+    if (inB && !inL && inC) return undefined // borrado local: se respeta
+    if (inB) return undefined // borrado en los dos
+    if (inL && inC) {
+      // Agregado por los dos lados con el mismo id: gana según la regla.
+      return JSON.stringify(L.map.get(k)) === JSON.stringify(C.map.get(k))
+        ? L.map.get(k)
+        : localWins
+          ? L.map.get(k)
+          : C.map.get(k)
+    }
+    if (inL) return L.map.get(k) // agregado local
+    if (inC) return C.map.get(k) // agregado en la nube
+    return undefined
+  }
+  const out: unknown[] = []
+  const seen = new Set<string>()
+  for (const k of [...L.order, ...C.order]) {
+    if (seen.has(k)) continue
+    seen.add(k)
+    const v = pick(k)
+    if (v !== undefined) out.push(v)
+  }
+  return out
+}
+
+/** Fusiona dos valores crudos de una misma clave usando la base.
+ *  null = no fusionable (el llamador desempata). */
+function mergeValues(
+  key: string,
+  localRaw: string,
+  cloudRaw: string,
+  baseEntry: { raw: string; items?: Record<string, string> } | undefined,
+  localWins = true,
+): string | null {
   let l: unknown
   let c: unknown
   try {
@@ -174,16 +274,24 @@ function mergeValues(key: string, localRaw: string, cloudRaw: string, localWins 
   } catch {
     return null
   }
+  const baseItems = baseEntry?.items
   if (Array.isArray(l) && Array.isArray(c)) {
-    const u = unionArrays(l, c, localWins)
+    const u = threeWayArrays(baseItems, l, c, localWins)
     return u ? JSON.stringify(u) : null
   }
-  // ic_expenses es un objeto {version, savedAt, entries:[...]}: se unen
-  // las entradas por id y manda la envoltura local.
+  // ic_expenses es un objeto {version, savedAt, entries:[...]}: las
+  // entries se fusionan a tres bandas y manda la envoltura local.
   if (key === "ic_expenses" && isPlainObject(l) && isPlainObject(c) && Array.isArray(l.entries) && Array.isArray(c.entries)) {
-    const u = unionArrays(l.entries as unknown[], c.entries as unknown[], localWins)
+    const u = threeWayArrays(baseItems, l.entries as unknown[], c.entries as unknown[], localWins)
     if (!u) return null
     return JSON.stringify({ ...c, ...l, entries: u })
+  }
+  // Objeto con lista `accounts` (CREDIT): las cuentas se fusionan a
+  // tres bandas; el resto de la envoltura manda lo local, como antes.
+  if (isPlainObject(l) && isPlainObject(c) && Array.isArray(l.accounts) && Array.isArray(c.accounts)) {
+    const u = threeWayArrays(baseItems, l.accounts as unknown[], c.accounts as unknown[], localWins)
+    if (!u) return null
+    return JSON.stringify({ ...c, ...l, accounts: u })
   }
   if (isPlainObject(l) && isPlainObject(c)) {
     return JSON.stringify({ ...c, ...l })
@@ -192,44 +300,66 @@ function mergeValues(key: string, localRaw: string, cloudRaw: string, localWins 
 }
 
 /**
- * Fusiona tres fotos del documento: `base` (última nube conocida),
- * `local` (este teléfono) y `cloud` (la nube ahora mismo).
- * `preferCloudOnConflict` se usa en el primer contacto de la sesión,
- * cuando aún no hay base confiable: en conflicto sin fusión posible
- * manda la nube, nunca la copia local.
+ * Fusiona tres fotos del documento usando el índice base persistido:
+ * `base` (huellas de la última nube conocida), `local` (este teléfono)
+ * y `cloud` (la nube ahora mismo). `preferCloudOnConflict` se usa en el
+ * primer contacto (aún no hay índice confiable): en conflicto sin
+ * fusión posible manda la nube, nunca la copia local.
  */
 export function mergeKeys(
-  base: Record<string, string>,
+  base: BaseIndex,
   local: Record<string, string>,
   cloud: Record<string, string>,
   preferCloudOnConflict = false,
 ): Record<string, string> {
-  const names = new Set<string>([...Object.keys(base), ...Object.keys(local), ...Object.keys(cloud)])
+  const names = new Set<string>([...Object.keys(local), ...Object.keys(cloud)])
   const out: Record<string, string> = {}
   for (const name of names) {
-    const b = base[name] as string | undefined
+    const b = base[name] as { raw: string; items?: Record<string, string> } | undefined
     const l = local[name] as string | undefined
     const c = cloud[name] as string | undefined
     if (l === c) {
       if (l !== undefined) out[name] = l
       continue
     }
-    if (l === b) {
-      // Solo cambió la nube (incluye borrado allá)
-      if (c !== undefined) out[name] = c
+    // Borrado de la clave entera en un lado: se respeta si el otro lado
+    // no la cambió contra la base (misma huella cruda).
+    if (l === undefined) {
+      if (!(b && c !== undefined && hashText(c) === b.raw)) {
+        if (c !== undefined && preferCloudOnConflict) out[name] = c
+        else if (c !== undefined && !b) out[name] = c
+      }
       continue
     }
-    if (c === b) {
-      // Solo cambió lo local (incluye borrado aquí)
-      if (l !== undefined) out[name] = l
+    if (c === undefined) {
+      if (!b) out[name] = l // la nube nunca la tuvo: es un alta local
+      else if (hashText(l) !== b.raw && !preferCloudOnConflict) out[name] = l
+      // si lo local no cambió y la nube la borró → se respeta el borrado
       continue
     }
-    // Cambiaron los dos (o no había base): unir por items si se puede.
-    const merged = l !== undefined && c !== undefined ? mergeValues(name, l, c, !preferCloudOnConflict) : null
-    const winner = merged ?? (preferCloudOnConflict ? (c ?? l) : (l ?? c))
+    // Cambiaron los dos (o no había base): fusión por items si se puede.
+    const merged = mergeValues(name, l, c, b, !preferCloudOnConflict)
+    const winner = merged ?? (preferCloudOnConflict ? c : l)
     if (winner !== undefined) out[name] = winner
   }
   return out
+}
+
+function loadBaseIdx(): BaseIndex | null {
+  try {
+    const raw = localStorage.getItem(BASE_IDX_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as BaseIndex
+    return parsed && typeof parsed === "object" ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+function saveBaseIdx(idx: BaseIndex): void {
+  try {
+    localStorage.setItem(BASE_IDX_STORAGE_KEY, JSON.stringify(idx))
+  } catch {}
 }
 
 /* ------------------------------------------------------------------ */
@@ -295,29 +425,36 @@ async function syncNow() {
     // queda como está y el próximo ciclo lo reintenta.
     if (!res.ok) return
     const cloud = res.keys
-    const firstContact = baseKeys === null
-    // Primer contacto: base vacía → todo se resuelve por unión de items
-    // (nada se pierde de ningún lado) y en conflicto manda la nube.
-    const base = firstContact ? {} : (baseKeys as Record<string, string>)
+    if (baseIdx === null) baseIdx = loadBaseIdx()
+    const firstContact = baseIdx === null
+    if (firstContact) baseIdx = {}
 
     // Reset total deliberado: en esta sesión ya hubo datos sincronizados
     // y las claves del libro desaparecieron del todo → limpiar la nube.
     if (keysVanished(local) && hadDataThisSession && keysHaveData(cloud)) {
       if (await postCloud({})) {
-        baseKeys = {}
+        baseIdx = {}
+        saveBaseIdx(baseIdx)
         hadDataThisSession = false
         lastLocalHash = hashOf(collectLocal())
       }
       return
     }
 
-    const merged = mergeKeys(base, local, cloud, firstContact)
+    // PRIMER CONTACTO con datos en la nube (orden de Miguel, 2026-11-01:
+    // "tienen que estar centralizados, siempre la misma información"):
+    // manda la NUBE, tal cual. La copia local sin índice es un caché
+    // viejo: fusionarla por unión resucitaba lo ya borrado en la nube.
+    // Sin datos en la nube (arranque desde cero) sí se parte de lo local.
+    const merged =
+      firstContact && keysHaveData(cloud) ? cloud : mergeKeys(baseIdx, local, cloud, firstContact)
 
     // REGLA 3 (anti-vacío): si el fusionado pierde los datos que la nube
     // sí tiene, no se sube: se baja la nube y el teléfono se recupera.
     if (!keysHaveData(merged) && keysHaveData(cloud)) {
       const changed = applyMerged(cloud)
-      baseKeys = cloud
+      baseIdx = indexKeys(cloud)
+      saveBaseIdx(baseIdx)
       lastLocalHash = hashOf(collectLocal())
       hadDataThisSession = true
       if (changed) window.dispatchEvent(new Event(FINANCE_SYNCED_EVENT))
@@ -327,7 +464,8 @@ async function syncNow() {
     if (hashOf(merged) !== hashOf(cloud)) {
       if (!(await postCloud(merged))) return
     }
-    baseKeys = merged
+    baseIdx = indexKeys(merged)
+    saveBaseIdx(baseIdx)
     const changed = applyMerged(merged)
     lastLocalHash = hashOf(collectLocal())
     if (keysHaveData(merged)) hadDataThisSession = true
