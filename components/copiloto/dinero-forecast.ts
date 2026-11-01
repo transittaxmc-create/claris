@@ -845,9 +845,8 @@ export function buildForecast(input: ForecastInput): Forecast {
         })
         continue
       }
-      // ¿Pagado/cobrado adelantado en el banco? Solo para INGRESOS.
-      // Los GASTOS siempre se proyectan (Miguel: no desaparecen).
-      if (income && win > 0) {
+      // ¿Pagado/cobrado adelantado en el banco? (estilo Quicken: monto ±15 %)
+      if (win > 0) {
         const ti = findTx(income, effAmt, d, effLabel, win, 0.15)
         if (ti >= 0) {
           usedTx.add(ti)

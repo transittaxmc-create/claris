@@ -20,10 +20,6 @@ import {
   type ProyProps,
 } from "./proyeccion-shared"
 import { billPaidTotal, billRemaining } from "./bill-payments"
-import { computeWeekBands, addDaysStr, type WeekBand } from "./weekly-close"
-import { gpsTollsFromTrips, gpsTollsFromShiftDiary } from "./toll-audit"
-import { loadShiftTolls } from "./shift-tolls"
-import { loadTrips } from "./storage"
 import { accountDisplayName } from "./registers-store"
 import { normalizeVendorName, type Expense } from "./types"
 import { platformMatch, vendorMatch, SCHEDULE_OVERRIDES_KEY, type ForecastLine, type ProbablePaid } from "./dinero-forecast"
@@ -167,9 +163,26 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
     notifySync()
   }
 
-  // Los matches seguros se muestran para confirmación, pero no se aplican
-  // automáticamente. Así una actualización del banco no hace desaparecer
-  // las proyecciones mientras el usuario sigue revisando el registro.
+  // Auto-aplicar los matches seguros en cuanto el forecast los detecta.
+  const segurosKey = fcLong.probablePaid.filter(esSeguro).map((p) => p.key).join(",")
+  useEffect(() => {
+    const seguros = fcLong.probablePaid.filter(esSeguro)
+    if (seguros.length === 0) return
+    const byId = new Map(seguros.map((p) => [p.entry.id, p]))
+    let changed = false
+    const next = readLedger().map((e) => {
+      const p = byId.get(e.id)
+      if (!p || e.status !== "projected") return e
+      changed = true
+      return { ...e, status: "actual" as CashFlowEntry["status"], date: String(p.tx.date).slice(0, 10), isManuallyEdited: true }
+    })
+    if (!changed) return
+    try {
+      localStorage.setItem(FINANCE_LEDGER_KEY, JSON.stringify(next))
+    } catch {}
+    notifySync()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [segurosKey])
 
   const porConfirm = fcLong.probablePaid.filter((p) => !esSeguro(p) && !dismissed.includes(p.key))
 
@@ -188,121 +201,6 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
         return { line: l, before, after: bal }
       })
   }, [fcLong, today])
-
-  // ——— Lista única: días reales pasados + forecast (Miguel, 2026-11-01) ———
-  // Su dibujo: UNA sola lista día por día; tras cada domingo va la banda
-  // de cierre de esa semana (2–3 líneas, profesional y claro):
-  //   WEEK · MON … – SUN …
-  //   IN $… · OUT $… · NET $…
-  //   TOLLS $… · MES: IN $… / OUT $… / NET $… / TOLLS $…
-  // La lista abre posicionada en TODAY (lo pasado queda arriba, al
-  // hacer scroll hacia arriba; el forecast sigue abajo como siempre).
-  const scrollRef = useRef<HTMLDivElement | null>(null)
-  const todayRef = useRef<HTMLDivElement | null>(null)
-  useEffect(() => {
-    const c = scrollRef.current
-    const el = todayRef.current
-    if (c && el) {
-      c.scrollTop += el.getBoundingClientRect().top - c.getBoundingClientRect().top - 4
-    }
-    // Solo al montar: no pelear con el scroll de Miguel.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  const weekBands = useMemo(() => {
-    if (!props.bankOk) return []
-    let gps: { date: string; amount: number | null }[] = []
-    try {
-      gps = [...gpsTollsFromTrips(loadTrips() || []), ...gpsTollsFromShiftDiary(loadShiftTolls())]
-    } catch { gps = [] }
-    let charges: { date: string; amount: number | null }[] = []
-    try {
-      const raw = JSON.parse(localStorage.getItem("claris_toll_statement_charges_v1") || "[]")
-      charges = Array.isArray(raw)
-        ? raw.filter((c: any) => c && typeof c.amount === "number").map((c: any) => ({ date: String(c.date).slice(0, 10), amount: Math.abs(Number(c.amount)) }))
-        : []
-    } catch { charges = [] }
-    return computeWeekBands(props.bankTxs, gps, charges, today, 12)
-  }, [props.bankOk, props.bankTxs, today])
-  const bandByWeek = useMemo(() => new Map(weekBands.map((w) => [w.weekStart, w])), [weekBands])
-
-  const mondayKey = (date: string) => addDaysStr(date, -(((new Date(`${date}T12:00:00`).getDay() + 6) % 7)))
-  const pastRows = useMemo(() => {
-    if (!props.bankOk) return []
-    const desde = addDaysStr(today, -70)
-    const clean = (props.bankTxs || []).filter((t) => {
-      const d = String(t?.date || "").slice(0, 10)
-      return /^\d{4}-\d{2}-\d{2}$/.test(d) && Number.isFinite(Number(t.amount)) && !/histórico|historico/i.test(String(t.bank_account || ""))
-    })
-    // Balance al cierre de cada día, caminando hacia atrás desde el
-    // balance real de hoy (fc.start) con los movimientos limpios: las
-    // filas cuadran exactas contra los balances (sin el import viejo).
-    const netByDate = new Map<string, number>()
-    for (const t of clean) {
-      const d = String(t.date).slice(0, 10)
-      netByDate.set(d, (netByDate.get(d) || 0) + (Number(t.amount) || 0))
-    }
-    const endOfDay = new Map<string, number>()
-    let suffix = 0
-    for (const d of [...netByDate.keys()].sort().reverse()) {
-      endOfDay.set(d, Math.round((fc.start - suffix) * 100) / 100)
-      suffix += netByDate.get(d) || 0
-    }
-    const rows = clean
-      .filter((t) => String(t.date).slice(0, 10) >= desde && String(t.date).slice(0, 10) < today)
-      .slice()
-      .sort((a, b) => (String(a.date) < String(b.date) ? -1 : String(a.date) > String(b.date) ? 1 : 0))
-    return rows.map((t, i) => {
-      const d = String(t.date).slice(0, 10)
-      const after = endOfDay.get(d) ?? fc.start
-      const before = Math.round((after - (netByDate.get(d) || 0)) * 100) / 100
-      return { tx: t, key: `past-${i}`, week: mondayKey(d), before, after }
-    })
-  }, [props.bankOk, props.bankTxs, today, fc.start])
-  // Semanas que ya reciben su banda en la sección pasada (no repetir abajo).
-  const bandedInPast = useMemo(() => {
-    const set = new Set<string>()
-    for (const r of pastRows) if (bandByWeek.has(r.week) && addDaysStr(r.week, 6) <= today) set.add(r.week)
-    return set
-  }, [pastRows, bandByWeek, today])
-
-  // La banda TAL como la dibujó Miguel: un separador de statement —
-  // lineal, profesional, como un PDF: reglas arriba y abajo, texto
-  // plano, sin colores ni emojis, números con coma y dos decimales.
-  const MESES_ES = ["ENE", "FEB", "MAR", "ABR", "MAY", "JUN", "JUL", "AGO", "SEP", "OCT", "NOV", "DIC"]
-  const stmtMoney = (n: number) => `${n < 0 ? "−$" : "$"}${Math.abs(Math.round(n * 100) / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-  // Banco corto (Miguel, 2026-11-01): en la fila no va el nombre
-  // completo de la cuenta — solo los últimos 4 dígitos; PayPal se
-  // queda "PayPal". El nombre completo sigue en los datos.
-  const shortBank = (name: string) => {
-    const n = String(name || "")
-    if (/paypal/i.test(n)) return "PayPal"
-    const m = n.match(/(\d{4})\s*$/)
-    if (m) return "·" + m[1]
-    if (/square/i.test(n)) return "Square"
-    if (/venmo/i.test(n)) return "Venmo"
-    return n
-  }
-  const bandRow = (w: WeekBand) => {
-    const d1 = w.weekStart.slice(8, 10)
-    const d2 = w.weekEnd.slice(8, 10)
-    const m1 = MESES_ES[Number(w.weekStart.slice(5, 7)) - 1] || ""
-    const m2 = MESES_ES[Number(w.weekEnd.slice(5, 7)) - 1] || ""
-    const titulo = m1 === m2 ? `SEMANA · LUN ${d1}–DOM ${d2} ${m1}` : `SEMANA · LUN ${d1} ${m1}–DOM ${d2} ${m2}`
-    return (
-      <tr key={`band-${w.weekStart}`}>
-        <td colSpan={6} style={{ padding: "10px 12px 11px", borderTop: "2px solid #454b63", borderBottom: "1px solid #454b63", background: "transparent" }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 1.1, color: "#dfe3ee" }}>{titulo}</div>
-          <div style={{ fontSize: 11.5, color: "#a7adc2", marginTop: 3, fontVariantNumeric: "tabular-nums" }}>
-            IN {stmtMoney(w.income)} · OUT {stmtMoney(w.expenses)} · NET <span style={{ color: "#e8eaf2" }}>{stmtMoney(w.net)}</span>
-          </div>
-          <div style={{ fontSize: 11.5, color: "#a7adc2", marginTop: 2, fontVariantNumeric: "tabular-nums" }}>
-            PEAJES {stmtMoney(w.tollsUsed)}
-          </div>
-        </td>
-      </tr>
-    )
-  }
 
   // ——— Pagados y parciales (Miguel, 2026-10-29) ———
   // Lo pagado NO se borra ni se desaparece sin rastro: baja al final de la
@@ -567,52 +465,7 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
         <div style={{ background: BAND, padding: "8px 14px", fontSize: 11, fontWeight: 800, letterSpacing: 1, color: SUB }}>
           FUTURE TRANSACTIONS / FORECAST
         </div>
-        <div ref={scrollRef} style={{ maxHeight: "46vh", overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", touchAction: "pan-y" }}>
-        {pastRows.length > 0 && (
-        <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
-          <colgroup>
-            <col style={{ width: "15%" }} /><col style={{ width: "21%" }} /><col style={{ width: "14%" }} />
-            <col style={{ width: "13%" }} /><col style={{ width: "17%" }} /><col style={{ width: "20%" }} />
-          </colgroup>
-          <tbody>
-            {pastRows.map((r, idx) => {
-              const d = String(r.tx.date).slice(0, 10)
-              const next = pastRows[idx + 1]
-              const w = bandByWeek.get(r.week)
-              const showBand = !!w && addDaysStr(r.week, 6) <= today && (!next || next.week !== r.week)
-              return (
-                <Fragment key={r.key}>
-                  <tr>
-                    <td style={{ ...td, whiteSpace: "nowrap", fontWeight: 600, paddingLeft: 12 }}>
-                      {fmtFecha(d)}
-                      <div style={{ fontSize: 8, color: SUB, fontWeight: 500, marginTop: 1 }}>{fmtWeekday(d)}</div>
-                    </td>
-                    <td style={{ ...td, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
-                      <span style={{ fontWeight: 600 }}>{r.tx.detail}</span>
-                    </td>
-                    <td style={{ ...td, color: SUB, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{shortBank(String(r.tx.bank_account || ""))}</td>
-                    <td style={{ ...td, textAlign: "right", color: "#c9cbd8", whiteSpace: "nowrap", fontSize: 10.5 }}>
-                      ${money2(bankFor(d))}
-                    </td>
-                    <td style={{ ...td, textAlign: "right", fontWeight: 600, color: (Number(r.tx.amount) || 0) >= 0 ? GREEN : RED, whiteSpace: "nowrap", fontSize: 12.5 }}>
-                      {signed(Number(r.tx.amount) || 0)}
-                    </td>
-                    <td style={{ ...td, textAlign: "right", whiteSpace: "nowrap" }}>
-                      <span style={{ color: SUB, fontSize: 10.5 }}>{fmtBal(r.before)}</span>
-                      <br />
-                      <span style={{ fontSize: 12.5, fontWeight: 600 }}>→ {fmtBal(r.after)}</span>
-                    </td>
-                  </tr>
-                  {showBand && w && bandRow(w)}
-                </Fragment>
-              )
-            })}
-          </tbody>
-        </table>
-        )}
-        <div ref={todayRef} style={{ background: BAND, padding: "8px 14px", fontSize: 11, fontWeight: 800, letterSpacing: 1, color: SUB }}>
-          TODAY · {fmtFecha(today)}
-        </div>
+        <div style={{ maxHeight: "46vh", overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", touchAction: "pan-y" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
           <colgroup>
             <col style={{ width: "15%" }} /><col style={{ width: "21%" }} /><col style={{ width: "14%" }} />
@@ -626,9 +479,6 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
               const cat = lineCategory(line, schedules)
               const pb = partialNoteFor(line)
               const pbLeft = pb ? billRemaining(pb) : 0
-              const wk = mondayKey(line.date)
-              const wkBand = !bandedInPast.has(wk) && addDaysStr(wk, 6) <= today ? bandByWeek.get(wk) : undefined
-              const showBand = !!wkBand && (i === futuras.length - 1 || mondayKey(futuras[i + 1].line.date) !== wk)
               return (
                 <Fragment key={line.id + i}>
                 <tr
@@ -666,7 +516,6 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
                     <span style={{ color: saldoColor(after), fontSize: 12.5, fontWeight: 600 }}>→ {fmtBal(after)}</span>
                   </td>
                 </tr>
-                {showBand && wkBand && bandRow(wkBand)}
                 </Fragment>
               )
             })}
