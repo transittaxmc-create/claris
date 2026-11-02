@@ -158,16 +158,35 @@ export interface AuditResult {
  * Returns the deduped list and how many were merged.
  */
 export function dedupeByRef(charges: TollCharge[]): { charges: TollCharge[]; merged: number } {
-  const seen = new Map<string, TollCharge>()
+  const seenRefs = new Set<string>()
+  const seenScans = new Set<string>()
   const out: TollCharge[] = []
   let merged = 0
   for (const c of charges) {
-    const ref = (c.ref || "").trim()
-    if (ref && seen.has(ref)) {
+    const ref = (c.ref || "").trim().toLowerCase()
+    // A reference number is the strongest identity for a posted charge.
+    if (ref && seenRefs.has(ref)) {
       merged++
       continue
     }
-    if (ref) seen.set(ref, c)
+    // Some screenshots omit the reference. In that case only merge an exact
+    // repeated OCR row when date, time, normalized plaza AND amount all match.
+    // Do not merge rows with no time: two legitimate crossings can share a
+    // plaza and fare on the same day.
+    const date = String(c.date || "").slice(0, 10)
+    const time = String(c.time || "").slice(0, 5)
+    const plaza = normPlaza(String(c.plaza || ""))
+    const amount = Number(c.amount)
+    const fingerprint =
+      !ref && date && /^\\d{2}:\\d{2}$/.test(time) && plaza && Number.isFinite(amount)
+        ? `${date}|${time}|${plaza}|${amount.toFixed(2)}`
+        : ""
+    if (fingerprint && seenScans.has(fingerprint)) {
+      merged++
+      continue
+    }
+    if (ref) seenRefs.add(ref)
+    if (fingerprint) seenScans.add(fingerprint)
     out.push(c)
   }
   return { charges: out, merged }
