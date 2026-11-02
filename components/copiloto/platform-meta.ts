@@ -15,6 +15,10 @@ export type PlatformMeta = {
   // Si la plataforma paga con vale, el viaje se marca isVoucher solo. Así el
   // distintivo de la lista y el VOUCHER de la tarjeta no pueden contradecirse.
   voucher?: boolean
+  // Logo de icono cuadrado que llena todo el círculo (object-cover): se ve
+  // completo y más grande, sin franjas blancas. Los wordmarks anchos NO lo
+  // llevan: van con object-contain para que no se les corte ninguna letra.
+  fill?: boolean
 }
 
 export const PLATFORM_META: Record<Platform, PlatformMeta> = {
@@ -29,17 +33,20 @@ export const PLATFORM_META: Record<Platform, PlatformMeta> = {
   Throo: { logo: "/logos/throo.svg" },
   "AKI Technology": {
     logo: "/logos/aki-technology.jpg",
+    fill: true,
     badge: "ACCESS-A-RIDE",
     badgeClass: "border-sky-400/60 text-sky-400",
   },
   "Classic Ryde": {
     logo: "/logos/classic-ryde.svg",
+    fill: true,
     badge: "VOUCHER",
     badgeClass: "border-orange-400/60 text-orange-400",
     voucher: true,
   },
   "Aventus Ride": {
     logo: "/logos/aventus-ride.svg",
+    fill: true,
     badge: "VOUCHER",
     badgeClass: "border-orange-400/60 text-orange-400",
     voucher: true,

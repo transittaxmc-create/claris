@@ -38,7 +38,7 @@ export function PlatformAvatar({
           loading="lazy"
           decoding="async"
           onError={() => setFailed(true)}
-          className="size-full object-contain"
+          className={meta.fill ? "size-full object-cover" : "size-full object-contain"}
         />
       ) : (
         <span
