@@ -7,6 +7,8 @@ import type { Trip } from "./types"
 import type { TollCharge } from "@/app/api/scan-toll-statement/route"
 import { gpsTollsFromTrips, gpsTollsFromShiftDiary, auditTolls, auditReportText, type AuditStatus } from "./toll-audit"
 import { loadShiftTolls } from "./shift-tolls"
+import { FINANCE_SYNCED_EVENT } from "./finance-sync"
+import { dedupeByRef } from "./toll-audit"
 import { currentEzpassBill, fridayOfWeek } from "./ezpass-weekly"
 import { loadOpenBills, saveOpenBills, applyPayment } from "./open-bills-store"
 
@@ -102,7 +104,8 @@ export function TollAuditScreen({ trips }: { trips: Trip[] }) {
   function persist(next: TollCharge[]) {
     setCharges(next)
     try {
-      localStorage.setItem(STORE_KEY, JSON.stringify(next))
+      localStorage.setItem(STORE_KEY, JSON.stringify(dedupeByRef(next).charges))
+      window.dispatchEvent(new Event(FINANCE_SYNCED_EVENT))
     } catch {}
   }
 
