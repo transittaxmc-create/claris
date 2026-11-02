@@ -185,6 +185,16 @@ export function reconciliarCobrosAlLibro(
   lista = lista.filter((e) => !esProyeccionPlaceholderDelDia(e, dia))
   const replacedPlaceholders = antes - lista.length
 
+  // Regla de Miguel (2026-11-02): reconciliar REEMPLAZA los cobros del día.
+  // Toda línea claris:cobro:{día}:* cuya plataforma ya no está en el conjunto
+  // nuevo SALE del libro: modificar en Earnings y re-reconciliar modifica la
+  // línea de esa plataforma — nunca deja una línea vieja ni añade una
+  // duplicada. Una línea nueva solo nace de otra plataforma o de una entrada
+  // manual (ids manual-*, que este filtro no toca).
+  const prefCobro = prefijoCobroDia(dia)
+  const idsCobroNuevos = new Set([...porPlataforma.keys()].map((p) => idDeCobro(dia, p)))
+  lista = lista.filter((e) => !String(e.id).startsWith(prefCobro) || idsCobroNuevos.has(String(e.id)))
+
   const ahora = new Date().toISOString()
   let totalNet = 0
   for (const [platform, amount] of porPlataforma) {
@@ -205,11 +215,6 @@ export function reconciliarCobrosAlLibro(
       isManuallyEdited: false,
     }
     lista = upsertMovimiento(lista, entry)
-  }
-
-  if (porPlataforma.size === 0) {
-    const pref = prefijoCobroDia(dia)
-    lista = lista.filter((e) => !String(e.id).startsWith(pref))
   }
 
   // Los recurrentes diarios de ingreso (ej. el depósito de $400) se generan
