@@ -256,6 +256,25 @@ export function ReceiptScanner({
         const sug = sugerirTipoDoc(r.vendor ? String(r.vendor) : "", r.notes ? String(r.notes) : "")
         if (sug) setDocTipo(sug)
       }
+      // Plan de pagos / payment program: prellenar recurrencia con fin por fecha o conteo
+      const prog = r.paymentProgram
+      if (prog && typeof prog === "object") {
+        const amt = Number(prog.fixedAmount)
+        if (Number.isFinite(amt) && amt > 0) setImporte(amt.toFixed(2))
+        if (prog.startDate) setFecha(String(prog.startDate).slice(0, 10))
+        const f = String(prog.frequency || "").toLowerCase()
+        if (f === "monthly" || f === "biweekly" || f === "weekly") setFreq(f as ScheduleFrequency)
+        else setFreq("monthly")
+        if (prog.endDate) {
+          setEndsMode("date")
+          setEndsDate(String(prog.endDate).slice(0, 10))
+        } else if (prog.count && Number(prog.count) > 0) {
+          setEndsMode("count")
+          setEndsCount(String(Math.floor(Number(prog.count))))
+        }
+        setDocTipo("factura")
+        setAviso({ tipo: "ok", texto: "Payment program detected. Review the amount, start and end, then save." })
+      }
       setAviso({ tipo: "ok", texto: "Document read. Review the data and save." })
     } catch (err) {
       setAviso({ tipo: "error", texto: String((err as Error)?.message || err) })
