@@ -891,7 +891,12 @@ export function RegisterDetail(props: {
           attached
             .map((r) => {
               const meta = receiptByTxId.get(r.tx!.transaction_id as string) as ReceiptMeta
-              return `<div class="rcpt"><p><b>${esc(meta.vendor)}</b> · ${esc(fmtFecha(r.date))} · $${Math.abs(r.amount).toFixed(2)} — ${esc(r.detail)}</p><img src="/api/receipt-image?id=${encodeURIComponent(meta.imageId)}" alt="Receipt"/></div>`
+              const isPdf = meta.mimeType === "application/pdf"
+              const src = `/api/receipt-image?id=${encodeURIComponent(meta.imageId)}`
+              const media = isPdf
+                ? `<iframe src="${src}" style="width:100%;height:70vh;border:1px solid #ddd;border-radius:6px;"></iframe><p><a href="${src}" target="_blank">Open PDF</a></p>`
+                : `<img src="${src}" alt="Receipt"/>`
+              return `<div class="rcpt"><p><b>${esc(meta.vendor)}</b> · ${esc(fmtFecha(r.date))} · $${Math.abs(r.amount).toFixed(2)} — ${esc(r.detail)}</p>${media}</div>`
             })
             .join("")
         : ""
@@ -1517,15 +1522,24 @@ export function RegisterDetail(props: {
                 Close
               </button>
             </div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={`/api/receipt-image?id=${viewReceipt.imageId}`}
-              alt="Attached receipt"
-              className="min-h-0 flex-1 object-contain"
-              onClick={(e) => e.stopPropagation()}
-            />
+            {viewReceipt.mimeType === "application/pdf" ? (
+              <iframe
+                src={`/api/receipt-image?id=${viewReceipt.imageId}`}
+                title="Attached statement"
+                className="min-h-0 flex-1 w-full rounded-lg border border-neutral-700 bg-white"
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={`/api/receipt-image?id=${viewReceipt.imageId}`}
+                alt="Attached receipt"
+                className="min-h-0 flex-1 object-contain"
+                onClick={(e) => e.stopPropagation()}
+              />
+            )}
             <p className="pt-2 text-center text-[10.5px] text-neutral-400">
-              Attached receipt — audit copy saved in the cloud.
+              {viewReceipt.mimeType === "application/pdf" ? "Attached statement (PDF)" : "Attached receipt"} — audit copy saved in the cloud.
             </p>
           </div>
         )}
