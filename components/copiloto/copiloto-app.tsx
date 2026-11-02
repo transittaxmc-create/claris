@@ -16,6 +16,7 @@ import { ReportsScreen } from "./reports-screen"
 import { SobresScreen } from "./sobres-screen"
 import { TollAuditScreen } from "./toll-audit-screen"
 import { CreditScreen } from "./credit-screen"
+import { Tax2026Screen } from "./tax-2026-screen"
 import { syncEzpassWeekly } from "./ezpass-weekly"
 import { detectNewTolls, rateFor } from "./toll-detect"
 import { addShiftTolls, loadShiftTolls, SHIFT_TOLLS_EVENT } from "./shift-tolls"
@@ -750,6 +751,7 @@ export function CopilotoApp() {
           {tab === "SOBRES" && <SobresScreen />}
           {tab === "TOLLAUDIT" && <TollAuditScreen trips={trips} />}
           {tab === "CREDIT" && <CreditScreen />}
+          {tab === "TAX2026" && <Tax2026Screen trips={trips} expenses={expenses} />}
           {tab === "HELP" && <HowItWorksScreen />}
           {tab !== "ENTRY" &&
             tab !== "REGISTER" &&
