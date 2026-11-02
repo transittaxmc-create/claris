@@ -395,6 +395,75 @@ export function detectBillPayments(expenses: Expense[], bankTxs: BankTxIn[]): De
     claimed.add(tid)
   }
 
+  // ------------------------------------------------------------------
+  // Pago MIXTO del mismo vendedor (regla de Miguel, 2026-11-02):
+  // varios bills abiertos del MISMO comercio (ej. CB Livery: carro $924
+  // + peajes) cubiertos por VARIOS cargos de distintas cuentas
+  // (PayPal + Citibank). El detalle del banco puede ser "PAYPAL" o
+  // "CITI" — no exige vendorFuzzyMatch estricto si es un procesador
+  // conocido. Si la suma de los cargos cubre la suma de los bills
+  // (exacta o con fee ≤ $10) y hay UNA sola combinación clara, se
+  // emite una detección por bill con su parte. Si no alcanza, no se
+  // cierra nada: solo se proponen parciales claros o nada.
+  // ------------------------------------------------------------------
+  const PROCESSORS = new Set(["paypal", "venmo", "zelle", "cash app", "square", "stripe"])
+  const isProcessor = (detail: string) => {
+    const d = String(detail || "").toLowerCase()
+    return [...PROCESSORS].some((p) => d.includes(p))
+  }
+  const vendorGroups = new Map<string, Expense[]>()
+  for (const b of bills) {
+    if (proposedBills.has(b.id) || groupBillsUsed.has(b.id)) continue
+    const k = groupKeyOf(b)
+    if (!k) continue
+    const arr = vendorGroups.get(k) ?? []
+    arr.push(b)
+    vendorGroups.set(k, arr)
+  }
+  for (const [vk, vBills] of vendorGroups) {
+    if (vBills.length < 1) continue
+    const openForVendor = vBills.filter((b) => (remainingByBill.get(b.id) ?? 0) > 0.009)
+    if (openForVendor.length === 0) continue
+    // Cargos no usados que caen en la ventana de alguno de estos bills
+    const candTxs = bankTxs.filter((tx) => {
+      const tid = bankTxIdOf(tx)
+      if (used.has(tid) || claimed.has(tid)) return false
+      const amt = Math.abs(Number(tx.amount) || 0)
+      if (!(Number(tx.amount) < 0) || amt < 0.01) return false
+      const matchesWindow = openForVendor.some((b) => withinDetectWindow(tx.date, b.date) && !crossesCycleBoundary(b, tx))
+      if (!matchesWindow) return false
+      // Acepta si el detalle matchea el vendedor O es un procesador conocido
+      return vendorFuzzyMatch(vk, tx.detail) || isProcessor(tx.detail)
+    })
+    if (candTxs.length === 0) continue
+    const totalRemaining = r2(openForVendor.reduce((s, b) => s + (remainingByBill.get(b.id) ?? 0), 0))
+    const totalTx = r2(candTxs.reduce((s, t) => s + Math.abs(Number(t.amount) || 0), 0))
+    const rest = r2(totalTx - totalRemaining)
+    // Solo auto-aplicar si la suma cubre exactamente (o con fee ≤ $10)
+    // y hay una sola combinación razonable. Si falta dinero, no se cierra.
+    if (rest < -DETECT_AMOUNT_TOL || rest > 10 + DETECT_AMOUNT_TOL) continue
+    // Emitir una detección por bill con su remaining completo (share)
+    const groupId = `mix:${vk}:${candTxs.map(bankTxIdOf).sort().join(";")}`
+    for (const bill of openForVendor) {
+      const share = remainingByBill.get(bill.id) ?? 0
+      if (share <= 0.009) continue
+      groupBillsUsed.add(bill.id)
+      out.push({
+        id: `${groupId}:${bill.id}`,
+        billId: bill.id,
+        billVendor: bill.vendor,
+        billRemaining: share,
+        txs: [...candTxs].sort((a, b) => String(a.date).localeCompare(String(b.date))),
+        total: share,
+        isSplit: candTxs.length > 1,
+        isGroup: true,
+        groupId,
+        share,
+      })
+    }
+    for (const tx of candTxs) claimed.add(bankTxIdOf(tx))
+  }
+
   return out.sort((a, b) => String(a.txs[0]?.date || "").localeCompare(String(b.txs[0]?.date || "")))
 }
 
