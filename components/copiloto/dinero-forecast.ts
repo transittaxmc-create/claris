@@ -772,12 +772,19 @@ export function buildForecast(input: ForecastInput): Forecast {
     }
     for (const d of occDates) {
       // Excepción "solo esta vez": saltar o cambiar esta ocurrencia.
-      const ov = (input.overrides || []).find((o) => o.scheduleId === s.id && o.date === d)
-      if (ov?.skip) continue
+      // Un SALTO (skip) manda sobre cualquier override de monto o etiqueta
+      // del mismo día, esté donde esté en la lista: al reconciliar
+      // Earnings se AGREGA un skip al final, y si ese día ya tenía un
+      // monto editado, el find() viejo devolvía el de monto y la
+      // ocurrencia se proyectaba ADEMÁS del cobro real — el doble conteo
+      // que Miguel reportó el 2026-11-02 ("pasan pero no reemplaza").
+      const ovs = (input.overrides || []).filter((o) => o.scheduleId === s.id && o.date === d)
+      if (ovs.some((o) => o.skip)) continue
+      const ovAmt = ovs.find((o) => Number.isFinite(Number(o.amount)) && Number(o.amount) >= 0)
+      const ovLabel = ovs.find((o) => o.label && String(o.label).trim())
       // amount 0 = el día no se trabajó: la ocurrencia queda en $0 (visible).
-      const effAmt =
-        ov && Number.isFinite(Number(ov.amount)) && Number(ov.amount) >= 0 ? r2(Number(ov.amount)) : amt
-      const effLabel = ov?.label && String(ov.label).trim() ? String(ov.label).trim() : label
+      const effAmt = ovAmt ? r2(Number(ovAmt.amount)) : amt
+      const effLabel = ovLabel ? String(ovLabel.label).trim() : label
       // Ya está en el libro (misma factura creada desde Gastos/escáner): no duplicar.
       const dup = ledger.some(
         (p) =>
