@@ -39,6 +39,8 @@ export interface ReceiptMeta {
   fingerprint: string
   /** transaction_id (bankRef) de la transacción del banco adjunta. */
   bankTxId?: string
+  /** MIME del adjunto: image/jpeg por defecto, application/pdf para statements. */
+  mimeType?: string
   createdAt: string
 }
 
@@ -140,6 +142,7 @@ export async function archiveReceipt(input: {
   accountId?: string
   image: string
   imgHash?: string
+  mimeType?: string
 }): Promise<{ ok: boolean; duplicate?: ReceiptMeta; id?: string }> {
   const existing = loadReceipts()
   const dup = findReceiptDuplicate(existing, input)
@@ -158,6 +161,7 @@ export async function archiveReceipt(input: {
     imageId: id,
     imgHash: input.imgHash || undefined,
     fingerprint: receiptFingerprint(input.vendor, input.date, input.amount),
+    mimeType: input.mimeType || "image/jpeg",
     createdAt: new Date().toISOString(),
   }
   saveReceipts([...existing, meta])
