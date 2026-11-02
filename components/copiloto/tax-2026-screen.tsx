@@ -1,7 +1,7 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { Check, Circle, Upload, FileText, AlertCircle } from "lucide-react"
+import { useEffect, useMemo, useState, useRef } from "react"
+import { Check, Circle, Upload, FileText, AlertCircle, X, Download } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { milesByHalfYear } from "./mileage-log"
 import { computeScheduleC, DEFAULT_SCHEDULE_C_OPTS, type ScheduleCOpts } from "./schedule-c-draft"
@@ -9,6 +9,7 @@ import type { Expense, Trip } from "./types"
 import { grossOf, tripDateOf } from "./types"
 
 const STORAGE_KEY = "claris_tax_2026_docs"
+const FILES_KEY = "claris_tax_2026_files"
 
 interface DocItem {
   id: string
@@ -16,6 +17,16 @@ interface DocItem {
   note: string
   required: boolean
   auto?: boolean
+}
+
+interface UploadedFile {
+  id: string
+  name: string
+  size: number
+  type: string
+  addedAt: string
+  docId?: string
+  dataUrl?: string
 }
 
 const DOC_ITEMS: DocItem[] = [
@@ -45,6 +56,26 @@ function saveDocs(d: Record<string, boolean>) {
   } catch {}
 }
 
+function loadFiles(): UploadedFile[] {
+  try {
+    const raw = localStorage.getItem(FILES_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function saveFiles(files: UploadedFile[]) {
+  try {
+    // Keep only metadata + dataUrl for small files to avoid quota issues
+    const trimmed = files.slice(-30).map((f) => ({
+      ...f,
+      dataUrl: f.dataUrl && f.dataUrl.length > 500_000 ? undefined : f.dataUrl,
+    }))
+    localStorage.setItem(FILES_KEY, JSON.stringify(trimmed))
+  } catch {}
+}
+
 export function Tax2026Screen({
   trips,
   expenses,
@@ -54,6 +85,9 @@ export function Tax2026Screen({
 }) {
   const year = 2026
   const [docs, setDocs] = useState<Record<string, boolean>>({})
+  const [files, setFiles] = useState<UploadedFile[]>([])
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [scOpts] = useState<ScheduleCOpts>(() => {
     try {
       const { h1, h2 } = milesByHalfYear(year)
@@ -65,6 +99,7 @@ export function Tax2026Screen({
 
   useEffect(() => {
     setDocs(loadDocs())
+    setFiles(loadFiles())
   }, [])
 
   const autoStatus = useMemo(() => {
@@ -93,6 +128,63 @@ export function Tax2026Screen({
     const next = { ...docs, [id]: !docs[id] }
     setDocs(next)
     saveDocs(next)
+  }
+
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const selected = e.target.files
+    if (!selected || selected.length === 0) return
+    setUploading(true)
+    const newFiles: UploadedFile[] = []
+    let processed = 0
+    const total = selected.length
+
+    Array.from(selected).forEach((file) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        const dataUrl = typeof reader.result === "string" ? reader.result : undefined
+        newFiles.push({
+          id: `f-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          name: file.name,
+          size: file.size,
+          type: file.type || "application/octet-stream",
+          addedAt: new Date().toISOString(),
+          dataUrl: file.size < 400_000 ? dataUrl : undefined,
+        })
+        processed++
+        if (processed === total) {
+          const next = [...newFiles, ...files].slice(0, 30)
+          setFiles(next)
+          saveFiles(next)
+          setUploading(false)
+          if (fileInputRef.current) fileInputRef.current.value = ""
+        }
+      }
+      reader.onerror = () => {
+        processed++
+        if (processed === total) {
+          setUploading(false)
+          if (fileInputRef.current) fileInputRef.current.value = ""
+        }
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
+  function removeFile(id: string) {
+    const next = files.filter((f) => f.id !== id)
+    setFiles(next)
+    saveFiles(next)
+  }
+
+  function downloadFile(f: UploadedFile) {
+    if (!f.dataUrl) {
+      alert("File too large to store locally. Re-upload or keep a copy elsewhere.")
+      return
+    }
+    const a = document.createElement("a")
+    a.href = f.dataUrl
+    a.download = f.name
+    a.click()
   }
 
   const sc = useMemo(() => {
@@ -167,15 +259,56 @@ export function Tax2026Screen({
           </div>
         </section>
 
-        {/* Upload note */}
-        <section className="rounded-2xl border border-dashed border-neutral-700 bg-neutral-900/20 p-3">
-          <p className="mb-1 flex items-center gap-1.5 text-[10px] font-bold text-neutral-400">
+        {/* Direct 1099 upload */}
+        <section className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-3">
+          <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold tracking-wide text-amber-300">
             <Upload className="size-3.5" /> UPLOAD 1099s & FORMS
           </p>
-          <p className="text-[10px] leading-snug text-neutral-500">
-            Use the receipt scanner (or email/Drive) to archive 1099-K, 1099-NEC, and platform summaries.
-            Mark the checklist above when done. Full OCR auto-fill of line amounts coming next.
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.csv,.xlsx"
+            multiple
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploading}
+            className="mb-2 flex w-full items-center justify-center gap-2 rounded-xl border border-amber-400/50 bg-amber-400/10 px-3 py-2.5 text-[11px] font-bold text-amber-300 active:scale-[0.98]"
+          >
+            <Upload className="size-4" />
+            {uploading ? "Uploading..." : "Choose 1099 / form files"}
+          </button>
+          <p className="mb-2 text-[9px] text-neutral-500">
+            PDF, images, or spreadsheets. Stored on this device (small files only). Mark the matching checklist item above after upload.
           </p>
+          {files.length === 0 ? (
+            <p className="text-[10px] text-neutral-600">No files uploaded yet.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {files.map((f) => (
+                <div key={f.id} className="flex items-center gap-2 rounded-xl border border-neutral-700 bg-neutral-950/60 px-2.5 py-1.5">
+                  <FileText className="size-3.5 shrink-0 text-neutral-400" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[10px] font-medium text-white">{f.name}</p>
+                    <p className="text-[9px] text-neutral-500">
+                      {(f.size / 1024).toFixed(0)} KB · {new Date(f.addedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  {f.dataUrl && (
+                    <button type="button" onClick={() => downloadFile(f)} className="p-1 text-sky-400">
+                      <Download className="size-3.5" />
+                    </button>
+                  )}
+                  <button type="button" onClick={() => removeFile(f.id)} className="p-1 text-rose-400">
+                    <X className="size-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Schedule C line status */}
