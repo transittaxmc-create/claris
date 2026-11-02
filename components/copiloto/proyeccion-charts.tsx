@@ -1,7 +1,7 @@
 "use client"
 
 import type { ForecastLine } from "./dinero-forecast"
-import { fmtFecha } from "./proyeccion-shared"
+import { fmtFecha, isTransferLine } from "./proyeccion-shared"
 
 const INK = "#f2f3f7"
 const SUB = "#9a9cb0"
@@ -25,13 +25,22 @@ export function r2(n: number) {
   return Math.round((Number(n) || 0) * 100) / 100
 }
 
-export function scaleLines(lines: ForecastLine[], sc: Scenario): ForecastLine[] {
+export function scaleLines(
+  lines: ForecastLine[],
+  sc: Scenario,
+  schedules: { id: string; category?: string; description?: string }[] = [],
+): ForecastLine[] {
   const { incomeMul, expenseMul } = SCENARIO_META[sc]
   if (incomeMul === 1 && expenseMul === 1) return lines
-  return lines.map((l) => ({
-    ...l,
-    amount: l.amount >= 0 ? r2(l.amount * incomeMul) : r2(l.amount * expenseMul),
-  }))
+  return lines.map((l) => {
+    // Internal transfers move money between accounts; they are not income or
+    // spending and must remain unchanged in every what-if scenario.
+    if (isTransferLine(l, schedules)) return l
+    return {
+      ...l,
+      amount: l.amount >= 0 ? r2(l.amount * incomeMul) : r2(l.amount * expenseMul),
+    }
+  })
 }
 
 export function balancePath(
