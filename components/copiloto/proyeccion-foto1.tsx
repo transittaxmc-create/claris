@@ -479,6 +479,21 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
               const cat = lineCategory(line, schedules)
               const pb = partialNoteFor(line)
               const pbLeft = pb ? billRemaining(pb) : 0
+              const dayDate = new Date(line.date + "T12:00:00")
+              const isSunday = dayDate.getDay() === 0
+              const nextFuture = futuras[i + 1]
+              const isLastSundayLine = isSunday && (!nextFuture || nextFuture.line.date !== line.date)
+              const weekStart = new Date(dayDate)
+              weekStart.setDate(weekStart.getDate() - 6)
+              const weekStartIso = [weekStart.getFullYear(), String(weekStart.getMonth() + 1).padStart(2, "0"), String(weekStart.getDate()).padStart(2, "0")].join("-")
+              const weekLines = isLastSundayLine ? futuras.filter((item) => item.line.date >= weekStartIso && item.line.date <= line.date) : []
+              const weekIncome = weekLines.reduce((sum, item) => sum + (item.line.amount > 0 ? item.line.amount : 0), 0)
+              const weekExpenses = weekLines.reduce((sum, item) => sum + (item.line.amount < 0 ? Math.abs(item.line.amount) : 0), 0)
+              const weekTolls = weekLines.reduce((sum, item) => {
+                const category = lineCategory(item.line, schedules)
+                return /toll|ez.?pass|peaje/i.test(category + " " + item.line.label) ? sum + Math.abs(item.line.amount) : sum
+              }, 0)
+              const weekNet = weekIncome - weekExpenses
               return (
                 <Fragment key={line.id + i}>
                 <tr
@@ -516,6 +531,18 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
                     <span style={{ color: saldoColor(after), fontSize: 12.5, fontWeight: 600 }}>→ {fmtBal(after)}</span>
                   </td>
                 </tr>
+                {isLastSundayLine && (
+                  <tr>
+                    <td colSpan={6} style={{ padding: "7px 10px", background: "rgba(91,140,255,.075)", borderTop: "1px solid rgba(91,140,255,.22)", borderBottom: "1px solid rgba(91,140,255,.22)" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 5, fontSize: 9.5, lineHeight: 1.35 }}>
+                        <div><span style={{ color: SUB }}>WEEK IN </span><b style={{ color: GREEN, fontVariantNumeric: "tabular-nums" }}>{signed(weekIncome)}</b></div>
+                        <div><span style={{ color: SUB }}>OUT </span><b style={{ color: RED, fontVariantNumeric: "tabular-nums" }}>{signed(-weekExpenses)}</b></div>
+                        <div><span style={{ color: SUB }}>NET </span><b style={{ color: weekNet >= 0 ? GREEN : RED, fontVariantNumeric: "tabular-nums" }}>{signed(weekNet)}</b></div>
+                      </div>
+                      <div style={{ marginTop: 3, fontSize: 9.5, color: SUB }}>WEEKLY TOLLS <b style={{ color: "#f5b73f", fontVariantNumeric: "tabular-nums" }}>${money2(weekTolls)}</b><span style={{ color: "#73778a" }}> · Mon–Sun total</span></div>
+                    </td>
+                  </tr>
+                )}
                 </Fragment>
               )
             })}
