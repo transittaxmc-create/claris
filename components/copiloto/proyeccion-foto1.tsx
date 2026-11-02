@@ -533,13 +533,13 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
                 </tr>
                 {isLastSundayLine && (
                   <tr>
-                    <td colSpan={6} style={{ padding: "9px 12px", background: "rgba(91,140,255,.075)", borderTop: "1px solid rgba(91,140,255,.22)", borderBottom: "1px solid rgba(91,140,255,.22)" }}>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 8, fontSize: 10.5, lineHeight: 1.4, textAlign: "center", justifyItems: "center" }}>
-                        <div><div style={{ color: SUB, fontSize: 9.5, letterSpacing: .35 }}>WEEK IN</div><b style={{ color: GREEN, fontSize: 13, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{signed(weekIncome)}</b></div>
-                        <div><div style={{ color: SUB, fontSize: 9.5, letterSpacing: .35 }}>OUT</div><b style={{ color: RED, fontSize: 13, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{signed(-weekExpenses)}</b></div>
-                        <div><div style={{ color: SUB, fontSize: 9.5, letterSpacing: .35 }}>NET</div><b style={{ color: weekNet >= 0 ? GREEN : RED, fontSize: 13, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{signed(weekNet)}</b></div>
+                    <td colSpan={6} style={{ padding: "7px 10px", background: "rgba(91,140,255,.075)", borderTop: "1px solid rgba(91,140,255,.22)", borderBottom: "1px solid rgba(91,140,255,.22)" }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 5, fontSize: 9.5, lineHeight: 1.35 }}>
+                        <div><span style={{ color: SUB }}>WEEK IN </span><b style={{ color: GREEN, fontSize: 11.5, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{signed(weekIncome)}</b></div>
+                        <div><span style={{ color: SUB }}>OUT </span><b style={{ color: RED, fontSize: 11.5, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{signed(-weekExpenses)}</b></div>
+                        <div><span style={{ color: SUB }}>NET </span><b style={{ color: weekNet >= 0 ? GREEN : RED, fontSize: 11.5, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{signed(weekNet)}</b></div>
                       </div>
-                      <div style={{ marginTop: 5, fontSize: 10.5, color: SUB, textAlign: "center" }}>WEEKLY TOLLS <b style={{ color: "#f5b73f", fontSize: 12.5, fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>${money2(weekTolls)}</b><span style={{ color: "#73778a" }}> · Mon–Sun total</span></div>
+                      <div style={{ marginTop: 3, fontSize: 9.5, color: SUB }}>WEEKLY TOLLS <b style={{ color: "#f5b73f", fontSize: 11, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>${money2(weekTolls)}</b><span style={{ color: "#73778a" }}> · Mon–Sun total</span></div>
                     </td>
                   </tr>
                 )}
