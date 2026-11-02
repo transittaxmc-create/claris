@@ -60,6 +60,7 @@ export const FINANCE_CLOUD_KEYS = [
   "claris_credit_accounts_v1",
   "claris_shift_tolls_v1",
   "claris_toll_statement_charges_v1",
+  "claris_week_tolls_v1",
   "claris_receipts_v1",
 ] as const
 

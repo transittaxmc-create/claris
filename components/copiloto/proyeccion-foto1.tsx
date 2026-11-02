@@ -26,6 +26,17 @@ import { platformMatch, vendorMatch, SCHEDULE_OVERRIDES_KEY, type ForecastLine, 
 import { useForecastInputs } from "./dinero-proyeccion"
 import { FINANCE_LEDGER_KEY, FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT } from "./finance-sync"
 import type { CashFlowEntry } from "./types"
+import { loadTrips } from "./storage"
+import { loadShiftTolls, SHIFT_TOLLS_EVENT } from "./shift-tolls"
+import {
+  WEEK_TOLLS_EVENT,
+  addDaysISO,
+  buildWeekRecord,
+  loadStatementCharges,
+  loadWeekCorrections,
+  updateWeekCorrection,
+  type WeekTollPass,
+} from "./week-tolls"
 
 const INK = "#f2f3f7"
 const SUB = "#9a9cb0"
@@ -82,6 +93,34 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
   const { fc, fcLong, today, schedules } = useForecast30(props)
   const [form, setForm] = useState<null | "income" | "expense">(null)
   const [editing, setEditing] = useState<ForecastLine | null>(null)
+
+  // ——— Registro semanal de peajes (Miguel, 2026-11-02) ———
+  // WEEKLY TOLLS de la caja semanal sale del registro macheado
+  // (GPS + statement, sin repeticiones) de week-tolls.ts, no de las
+  // etiquetas del forecast. Tocar la línea abre la semana para
+  // verificarla y corregirla.
+  const [tollTick, setTollTick] = useState(0)
+  const [tollWeek, setTollWeek] = useState<string | null>(null)
+  useEffect(() => {
+    const bump = () => setTollTick((t) => t + 1)
+    window.addEventListener(WEEK_TOLLS_EVENT, bump)
+    window.addEventListener(SHIFT_TOLLS_EVENT, bump)
+    window.addEventListener(FINANCE_SYNCED_EVENT, bump)
+    return () => {
+      window.removeEventListener(WEEK_TOLLS_EVENT, bump)
+      window.removeEventListener(SHIFT_TOLLS_EVENT, bump)
+      window.removeEventListener(FINANCE_SYNCED_EVENT, bump)
+    }
+  }, [])
+  const tollData = useMemo(() => {
+    void tollTick
+    return {
+      trips: loadTrips() ?? [],
+      diary: loadShiftTolls(),
+      charges: loadStatementCharges(),
+      corrections: loadWeekCorrections(),
+    }
+  }, [tollTick])
 
   // ——— Cuentas por pagar: reconciliación automática (2026-10-24) ———
   // El forecast cruza cada proyectado contra el banco (probablePaid).
@@ -321,6 +360,10 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
     )
   }
 
+  if (tollWeek) {
+    return <WeekTollsSheet monday={tollWeek} onClose={() => setTollWeek(null)} />
+  }
+
   // Saldo proyectado con claridad: verde = fuerte, amarillo = débil
   // (bajo el balance de hoy), rojo = negativo.
   const fmtBal = (v: number) => (v < 0 ? "-$" : "$") + money2(v)
@@ -489,10 +532,13 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
               const weekLines = isLastSundayLine ? futuras.filter((item) => item.line.date >= weekStartIso && item.line.date <= line.date) : []
               const weekIncome = weekLines.reduce((sum, item) => sum + (item.line.amount > 0 ? item.line.amount : 0), 0)
               const weekExpenses = weekLines.reduce((sum, item) => sum + (item.line.amount < 0 ? Math.abs(item.line.amount) : 0), 0)
-              const weekTolls = weekLines.reduce((sum, item) => {
-                const category = lineCategory(item.line, schedules)
-                return /toll|ez.?pass|peaje/i.test(category + " " + item.line.label) ? sum + Math.abs(item.line.amount) : sum
-              }, 0)
+              // Peajes de la semana: el registro macheado (GPS + statement,
+              // sin repeticiones, con la corrección de Miguel aplicada) —
+              // NUNCA la suma de líneas del forecast con etiqueta de peaje.
+              const weekRecord = isLastSundayLine
+                ? buildWeekRecord(weekStartIso, tollData.trips, tollData.diary, tollData.charges, tollData.corrections)
+                : null
+              const weekTolls = weekRecord ? weekRecord.total : 0
               const weekNet = weekIncome - weekExpenses
               return (
                 <Fragment key={line.id + i}>
@@ -539,7 +585,14 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
                         <div><span style={{ color: SUB }}>OUT </span><b style={{ color: RED, fontSize: 11.5, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{signed(-weekExpenses)}</b></div>
                         <div><span style={{ color: SUB }}>NET </span><b style={{ color: weekNet >= 0 ? GREEN : RED, fontSize: 11.5, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{signed(weekNet)}</b></div>
                       </div>
-                      <div style={{ marginTop: 3, fontSize: 9.5, color: SUB }}>WEEKLY TOLLS <b style={{ color: "#f5b73f", fontSize: 11, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>${money2(weekTolls)}</b><span style={{ color: "#73778a" }}> · Mon–Sun total</span></div>
+                      <button
+                        type="button"
+                        onClick={() => setTollWeek(weekStartIso)}
+                        style={{ marginTop: 3, fontSize: 9.5, color: SUB, background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left", fontFamily: "inherit" }}
+                      >
+                        WEEKLY TOLLS <b style={{ color: "#f5b73f", fontSize: 11, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>${money2(weekTolls)}</b>
+                        <span style={{ color: "#73778a" }}> · {weekRecord ? weekRecord.passes.length : 0} passes · Mon–Sun · tap to check</span>
+                      </button>
                     </td>
                   </tr>
                 )}
@@ -727,6 +780,176 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
           })}
         </div>
       )}
+    </div>
+  )
+}
+
+/* ---------- Registro semanal de peajes: verificar y corregir la semana ----------
+   Lo que se ve aquí ES lo que suma WEEKLY TOLLS en la caja: las pasadas
+   macheadas sin repeticiones (week-tolls.ts). Miguel corrige aquí: agrega
+   la pasada que faltó, quita la que no va, ajusta un monto. La corrección
+   vive en claris_week_tolls_v1 (nube); las fuentes no se tocan. */
+const TOLL_SRC_LABEL: Record<WeekTollPass["source"], string> = {
+  gps: "GPS",
+  shift: "SHIFT",
+  stmt: "E-ZPASS",
+  manual: "MANUAL",
+}
+const tollInput: CSSProperties = {
+  background: "#0e1015",
+  border: `1px solid ${BORDER}`,
+  color: INK,
+  borderRadius: 8,
+  padding: "8px 10px",
+  fontSize: 13,
+  width: "100%",
+  boxSizing: "border-box",
+}
+
+function WeekTollsSheet({ monday, onClose }: { monday: string; onClose: () => void }) {
+  const [tick, setTick] = useState(0)
+  const [amtEdit, setAmtEdit] = useState<{ key: string; value: string } | null>(null)
+  const [adding, setAdding] = useState(false)
+  const [draft, setDraft] = useState({ date: monday, time: "", plaza: "", amount: "" })
+  const sunday = addDaysISO(monday, 6)
+  const record = useMemo(() => {
+    void tick
+    return buildWeekRecord(monday, loadTrips() ?? [], loadShiftTolls(), loadStatementCharges(), loadWeekCorrections())
+  }, [monday, tick])
+  const refresh = () => setTick((t) => t + 1)
+  const onStmt = record.passes.filter((p) => p.onStatement).length
+
+  const removePass = (p: WeekTollPass) => {
+    updateWeekCorrection(monday, (w) =>
+      p.source === "manual"
+        ? { ...w, added: w.added.filter((a) => `manual:${a.id}` !== p.key) }
+        : { ...w, removed: w.removed.includes(p.key) ? w.removed : [...w.removed, p.key] },
+    )
+    refresh()
+  }
+  const saveAmount = (p: WeekTollPass) => {
+    const v = Number(amtEdit?.value)
+    if (!amtEdit || !isFinite(v) || v < 0) {
+      setAmtEdit(null)
+      return
+    }
+    const val = Math.round(v * 100) / 100
+    updateWeekCorrection(monday, (w) =>
+      p.source === "manual"
+        ? { ...w, added: w.added.map((a) => (`manual:${a.id}` === p.key ? { ...a, amount: val } : a)) }
+        : { ...w, amounts: { ...w.amounts, [p.key]: val } },
+    )
+    setAmtEdit(null)
+    refresh()
+  }
+  const addPass = () => {
+    const amount = Number(draft.amount)
+    if (!draft.plaza.trim() || !isFinite(amount) || amount <= 0) return
+    const date = draft.date >= monday && draft.date <= sunday ? draft.date : monday
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+    updateWeekCorrection(monday, (w) => ({
+      ...w,
+      added: [...w.added, { id, date, time: draft.time || "", plaza: draft.plaza.trim(), amount: Math.round(amount * 100) / 100 }],
+    }))
+    setAdding(false)
+    setDraft({ date: monday, time: "", plaza: "", amount: "" })
+    refresh()
+  }
+
+  return (
+    <div style={{ paddingBottom: 28, color: INK, maxWidth: "100%" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 14px 6px" }}>
+        <button type="button" onClick={onClose} style={btnGhost}>
+          ← Back
+        </button>
+        <h2 style={{ fontSize: 13.5, fontWeight: 800, letterSpacing: 0.8, flex: 1, minWidth: 0 }}>
+          WEEKLY TOLLS · {fmtFecha(monday)} – {fmtFecha(sunday)}
+        </h2>
+      </div>
+      <div style={{ padding: "4px 14px 0" }}>
+        <div style={{ fontSize: 24, fontWeight: 800, color: "#f5b73f", fontVariantNumeric: "tabular-nums" }}>
+          ${money2(record.total)}
+        </div>
+        <div style={{ fontSize: 10.5, color: SUB, marginTop: 2 }}>
+          {record.passes.length} passes · {onStmt} on the E-ZPass statement
+        </div>
+        <div style={{ fontSize: 10.5, color: SUB, marginTop: 6, lineHeight: 1.45 }}>
+          GPS detections and statement charges are matched one-to-one — each pass counts once. Fix anything
+          that is off: add a missed pass, remove a wrong one, adjust an amount.
+        </div>
+      </div>
+      <div style={{ padding: "8px 14px 0" }}>
+        {record.passes.length === 0 && (
+          <div style={{ fontSize: 12, color: SUB, padding: "10px 0" }}>No toll passes recorded this week yet.</div>
+        )}
+        {record.passes.map((p) => (
+          <div key={p.key} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: `1px solid ${BORDER}` }}>
+            <div style={{ minWidth: 62 }}>
+              <div style={{ fontSize: 11.5, fontWeight: 700, whiteSpace: "nowrap" }}>{fmtFecha(p.date)}</div>
+              <div style={{ fontSize: 9.5, color: SUB }}>{p.time || "—"}</div>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.plaza}</div>
+              <div style={{ fontSize: 9, color: SUB, letterSpacing: 0.4 }}>
+                {TOLL_SRC_LABEL[p.source]}
+                {p.onStatement && p.source !== "stmt" ? " · ✓ ON STATEMENT" : ""}
+                {p.corrected ? " · CORRECTED" : ""}
+              </div>
+            </div>
+            {amtEdit?.key === p.key ? (
+              <>
+                <input
+                  autoFocus
+                  inputMode="decimal"
+                  value={amtEdit.value}
+                  onChange={(e) => setAmtEdit({ key: p.key, value: e.target.value })}
+                  style={{ ...tollInput, width: 84 }}
+                />
+                <button type="button" onClick={() => saveAmount(p)} style={btnOk}>
+                  Save
+                </button>
+                <button type="button" onClick={() => setAmtEdit(null)} style={btnGhost}>
+                  ✕
+                </button>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: 12.5, fontWeight: 700, color: "#f5b73f", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }}>
+                  {p.amount === null ? "no amount" : `$${money2(p.amount)}`}
+                </div>
+                <button type="button" onClick={() => setAmtEdit({ key: p.key, value: p.amount === null ? "" : String(p.amount) })} style={btnGhost}>
+                  Edit
+                </button>
+                <button type="button" onClick={() => removePass(p)} style={{ ...btnGhost, color: RED }}>
+                  ✕
+                </button>
+              </>
+            )}
+          </div>
+        ))}
+        {adding ? (
+          <div style={{ display: "grid", gap: 8, padding: "12px 0" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <input type="date" min={monday} max={sunday} value={draft.date} onChange={(e) => setDraft({ ...draft, date: e.target.value })} style={tollInput} />
+              <input type="time" value={draft.time} onChange={(e) => setDraft({ ...draft, time: e.target.value })} style={tollInput} />
+            </div>
+            <input placeholder="Plaza / bridge / tunnel" value={draft.plaza} onChange={(e) => setDraft({ ...draft, plaza: e.target.value })} style={tollInput} />
+            <input placeholder="Amount (e.g. 7.46)" inputMode="decimal" value={draft.amount} onChange={(e) => setDraft({ ...draft, amount: e.target.value })} style={tollInput} />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button type="button" onClick={addPass} style={btnOk}>
+                Add pass
+              </button>
+              <button type="button" onClick={() => setAdding(false)} style={btnGhost}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button type="button" onClick={() => setAdding(true)} style={{ ...btnAmber, marginTop: 12 }}>
+            + Add a missed pass
+          </button>
+        )}
+      </div>
     </div>
   )
 }
