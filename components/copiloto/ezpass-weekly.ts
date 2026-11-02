@@ -1,7 +1,10 @@
 /**
  * E-ZPass weekly bill (Miguel's rule, 2026-10-19):
  *
- * - Every day, the GPS-detected tolls are totaled.
+ * - Every day, the week's tolls are totaled from the MATCHED weekly
+ *   record (week-tolls.ts: GPS + shift diary + statement, no duplicates,
+ *   Miguel's corrections applied) — one single total per week
+ *   (Miguel, 2026-11-02).
  * - They accumulate into ONE open bill due Friday (not one transaction per day).
  * - Monday $30 → Friday bill $30. Tuesday $30 more → Friday bill $60.
  * - Partial payments before Friday deduct from the bill (FIFO via open-bills-store).
@@ -14,7 +17,6 @@
  */
 "use client"
 
-import { tripDateOf } from "./types"
 import type { Trip, ScheduledEntry } from "./types"
 import {
   loadOpenBills,
@@ -24,6 +26,7 @@ import {
 } from "./open-bills-store"
 import { FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT } from "./finance-sync"
 import { loadShiftTolls } from "./shift-tolls"
+import { loadStatementCharges, loadWeekCorrections, matchedDayTotals } from "./week-tolls"
 
 const TRACK_KEY = "claris_ezpass_weekly_v1"
 const BILL_PREFIX = "E-ZPass"
@@ -110,33 +113,30 @@ function deriveStatus(original: number, remaining: number): OpenBill["status"] {
  * bill totals for display. Safe to call on every trips change.
  */
 export function syncEzpassWeekly(trips: Trip[]): { friday: string; total: number; remaining: number } | null {
-  // 1. Tolls per day (only days with tolls > 0)
-  const perDay = new Map<string, number>()
-  for (const t of trips) {
-    const toll = Number(t.toll) || 0
-    if (toll <= 0) continue
-    const day = tripDateOf(t)
-    perDay.set(day, round2((perDay.get(day) || 0) + toll))
-  }
-  // 1b. Peajes del diario del turno (entre trabajos, sin viaje activo —
-  // Miguel, 2026-10-29): también son peajes de la semana y entran al bill
-  // del viernes. Los de monto desconocido (sistema ticket) no suman $:
-  // se cobran cuando el statement los confirme.
-  try {
-    for (const st of loadShiftTolls()) {
-      const amt = Number(st.amount) || 0
-      if (amt <= 0 || !st.date) continue
-      perDay.set(st.date, round2((perDay.get(st.date) || 0) + amt))
-    }
-  } catch {}
-  if (perDay.size === 0) return null
+  // 1. Peajes por día desde el REGISTRO SEMANAL macheado (week-tolls.ts):
+  // detecciones GPS de viajes + diario del turno + cargos del statement,
+  // macheados sin repeticiones y con las correcciones de Miguel — la
+  // MISMA fuente que enseña la caja semanal de Proyecciones (Miguel,
+  // 2026-11-02: "un solo total por semana"). Antes este sync sumaba el
+  // campo toll de los viajes por su lado y los dos totales podían no
+  // coincidir. Las pasadas sin monto (sistema ticket) no suman $ hasta
+  // que el statement las confirme.
+  const perDay = matchedDayTotals(trips, loadShiftTolls(), loadStatementCharges(), loadWeekCorrections())
 
   const track = loadTrack()
   const bills = loadOpenBills()
   let changed = false
   const todayFriday = fridayOfWeek(new Date().toISOString().slice(0, 10))
 
-  for (const [day, total] of perDay) {
+  // Días a conciliar: los del registro + los que el track ya acumuló
+  // (si una corrección deja un día en cero, el bill baja también).
+  const days = new Set<string>(perDay.keys())
+  for (const friday of Object.keys(track)) {
+    for (const day of Object.keys(track[friday])) days.add(day)
+  }
+
+  for (const day of days) {
+    const total = perDay.get(day) || 0
     const friday = fridayOfWeek(day)
     const already = track[friday]?.[day] || 0
     const delta = round2(total - already)

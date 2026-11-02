@@ -253,6 +253,42 @@ export function mergeTollPasses(trips: Trip[], diary: ShiftToll[], charges: Toll
   return [...gps, ...extra].sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")))
 }
 
+/**
+ * Aplica TODAS las correcciones a las pasadas macheadas: cada pasada se
+ * corrige con el registro de SU semana (lunes de su fecha); las agregadas
+ * a mano entran con su fuente MANUAL. Esto es LA fuente única de peajes:
+ * la caja semanal y el bill del viernes leen de aquí (Miguel, 2026-11-02:
+ * "un solo total por semana").
+ */
+export function applyAllCorrections(passes: WeekTollPass[], corrections: WeekCorrection[]): WeekTollPass[] {
+  const byWeek = new Map(corrections.map((w) => [w.id, w]))
+  const out = passes
+    .filter((p) => !(byWeek.get(mondayOf(p.date))?.removed || []).includes(p.key))
+    .map((p) => {
+      const fixed = byWeek.get(mondayOf(p.date))?.amounts[p.key]
+      return typeof fixed === "number" ? { ...p, amount: fixed, corrected: true } : p
+    })
+  for (const w of corrections) {
+    const removed = new Set(w.removed)
+    for (const m of w.added) {
+      const key = `manual:${m.id}`
+      if (removed.has(key)) continue
+      const fixed = w.amounts[key]
+      out.push({
+        key,
+        date: m.date,
+        time: m.time,
+        plaza: m.plaza,
+        amount: typeof fixed === "number" ? fixed : m.amount,
+        source: "manual",
+        onStatement: false,
+        corrected: typeof fixed === "number",
+      })
+    }
+  }
+  return out.sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")))
+}
+
 /** El registro de UNA semana (lun–dom) ya macheado y con la corrección aplicada. */
 export function buildWeekRecord(
   monday: string,
@@ -262,34 +298,25 @@ export function buildWeekRecord(
   corrections: WeekCorrection[]
 ): { passes: WeekTollPass[]; total: number } {
   const sunday = addDaysISO(monday, 6)
-  const corr = corrections.find((w) => w.id === monday)
-  const removed = new Set(corr?.removed || [])
-  const amounts = corr?.amounts || {}
-
-  const passes = mergeTollPasses(trips, diary, charges)
-    .filter((p) => p.date >= monday && p.date <= sunday)
-    .filter((p) => !removed.has(p.key))
-    .map((p) => {
-      const fixed = amounts[p.key]
-      return typeof fixed === "number" ? { ...p, amount: fixed, corrected: true } : p
-    })
-
-  for (const m of corr?.added || []) {
-    const key = `manual:${m.id}`
-    if (removed.has(key)) continue
-    passes.push({
-      key,
-      date: m.date,
-      time: m.time,
-      plaza: m.plaza,
-      amount: typeof amounts[key] === "number" ? amounts[key] : m.amount,
-      source: "manual",
-      onStatement: false,
-      corrected: typeof amounts[key] === "number",
-    })
-  }
-
-  passes.sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")))
+  const passes = applyAllCorrections(mergeTollPasses(trips, diary, charges), corrections).filter(
+    (p) => p.date >= monday && p.date <= sunday
+  )
   const total = r2(passes.reduce((s, p) => s + (Number(p.amount) || 0), 0))
   return { passes, total }
+}
+
+/** Total de peajes por DÍA según el registro macheado y corregido. */
+export function matchedDayTotals(
+  trips: Trip[],
+  diary: ShiftToll[],
+  charges: TollCharge[],
+  corrections: WeekCorrection[]
+): Map<string, number> {
+  const totals = new Map<string, number>()
+  for (const p of applyAllCorrections(mergeTollPasses(trips, diary, charges), corrections)) {
+    const amt = Number(p.amount) || 0
+    if (amt <= 0) continue
+    totals.set(p.date, r2((totals.get(p.date) || 0) + amt))
+  }
+  return totals
 }

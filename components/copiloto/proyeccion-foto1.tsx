@@ -28,6 +28,8 @@ import { FINANCE_LEDGER_KEY, FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT } from 
 import type { CashFlowEntry } from "./types"
 import { loadTrips } from "./storage"
 import { loadShiftTolls, SHIFT_TOLLS_EVENT } from "./shift-tolls"
+import { loadOpenBills, saveOpenBills, applyPayment } from "./open-bills-store"
+import { syncEzpassWeekly } from "./ezpass-weekly"
 import {
   WEEK_TOLLS_EVENT,
   addDaysISO,
@@ -819,6 +821,40 @@ function WeekTollsSheet({ monday, onClose }: { monday: string; onClose: () => vo
   const refresh = () => setTick((t) => t + 1)
   const onStmt = record.passes.filter((p) => p.onStatement).length
 
+  // ——— Bill del viernes de ESTA semana (misma fuente: el registro) ———
+  const friday = addDaysISO(monday, 4)
+  const [payAmt, setPayAmt] = useState("")
+  useEffect(() => {
+    // Al abrir la semana, el bill se pone al día con el registro macheado.
+    try {
+      syncEzpassWeekly(loadTrips() ?? [])
+    } catch {}
+    refresh()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [monday])
+  const bill = useMemo(() => {
+    void tick
+    return loadOpenBills().find((b) => b.id === `ezpass-weekly-${friday}`) || null
+  }, [friday, tick])
+  const weekendTotal = record.passes
+    .filter((p) => p.date >= addDaysISO(monday, 5))
+    .reduce((s, p) => s + (Number(p.amount) || 0), 0)
+  const recordPayment = () => {
+    if (!bill || bill.remainingAmount <= 0.009) return
+    const want = payAmt ? Number(payAmt) : bill.remainingAmount
+    if (!isFinite(want) || want <= 0) return
+    const amount = Math.min(Math.round(want * 100) / 100, bill.remainingAmount)
+    const d = new Date()
+    const todayISO = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+    const res = applyPayment(loadOpenBills(), { amount, date: todayISO, note: "E-ZPass weekly", billId: bill.id })
+    saveOpenBills(res.bills)
+    try {
+      syncEzpassWeekly(loadTrips() ?? [])
+    } catch {}
+    setPayAmt("")
+    refresh()
+  }
+
   const removePass = (p: WeekTollPass) => {
     updateWeekCorrection(monday, (w) =>
       p.source === "manual"
@@ -878,6 +914,36 @@ function WeekTollsSheet({ monday, onClose }: { monday: string; onClose: () => vo
           that is off: add a missed pass, remove a wrong one, adjust an amount.
         </div>
       </div>
+      {bill && (
+        <div style={{ margin: "10px 14px 0", padding: "10px 12px", background: BAND, border: `1px solid ${BORDER}`, borderRadius: 12 }}>
+          <div style={{ fontSize: 10.5, color: SUB, letterSpacing: 0.6 }}>FRIDAY BILL · {fmtFecha(friday)}</div>
+          <div style={{ fontSize: 12.5, marginTop: 4, fontVariantNumeric: "tabular-nums" }}>
+            Bill <b>${money2(bill.originalAmount)}</b>
+            {" · "}Paid <b style={{ color: GREEN }}>${money2(bill.originalAmount - bill.remainingAmount)}</b>
+            {" · "}Left <b style={{ color: bill.remainingAmount > 0.009 ? RED : GREEN }}>${money2(bill.remainingAmount)}</b>
+            {bill.status === "paid" && <span style={{ color: GREEN }}> · ✓ PAID</span>}
+          </div>
+          {bill.remainingAmount > 0.009 && (
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+              <input
+                placeholder={`Amount — blank pays the full $${money2(bill.remainingAmount)} left`}
+                inputMode="decimal"
+                value={payAmt}
+                onChange={(e) => setPayAmt(e.target.value)}
+                style={{ ...tollInput, flex: 1 }}
+              />
+              <button type="button" onClick={recordPayment} style={btnOk}>
+                Record payment
+              </button>
+            </div>
+          )}
+          {weekendTotal > 0 && (
+            <div style={{ fontSize: 10, color: SUB, marginTop: 6 }}>
+              Sat–Sun passes (${money2(weekendTotal)}) go on next Friday's bill.
+            </div>
+          )}
+        </div>
+      )}
       <div style={{ padding: "8px 14px 0" }}>
         {record.passes.length === 0 && (
           <div style={{ fontSize: 12, color: SUB, padding: "10px 0" }}>No toll passes recorded this week yet.</div>
