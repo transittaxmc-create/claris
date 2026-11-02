@@ -29,6 +29,7 @@ const BRANDS: Record<string, BrandDef> = {
   amex: { match: /amex|american express/i, short: "Amex", logo: "/bank-logos/amex.svg", c: "#2E77BC", a: "#1C4F84", fullTile: false },
   discover: { match: /discover/i, short: "Discover", logo: "/bank-logos/discover.svg", c: "#FF6000", a: "#FFA24D", fullTile: false },
   apple: { match: /apple/i, short: "Apple Card", logo: "/bank-logos/apple-card.svg", c: "#A2AAAD", a: "#F5F5F7", fullTile: false },
+  supercom: { match: /super/i, short: "Super.com", logo: "/bank-logos/supercom.svg", c: "#0B0B0F", a: "#EC4899", fullTile: true },
   ava: { match: /\bava\b/i, short: "AVA", logo: "/bank-logos/ava.svg", c: "#4C1D95", a: "#A78BFA", fullTile: true },
   beccas: { match: /becca/i, short: "BECCAS", logo: "/bank-logos/beccas.svg", c: "#052E16", a: "#22C55E", fullTile: true },
   self: { match: /\bself\b/i, short: "Self", logo: "/bank-logos/self.svg", c: "#0B0B0F", a: "#38BDF8", fullTile: true },
