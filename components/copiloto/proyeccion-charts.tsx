@@ -53,7 +53,9 @@ export function balancePath(
   for (let i = 0; i <= days; i++) {
     const dt = new Date(t0 + i * 86400000)
     const iso = dt.toISOString().slice(0, 10)
-    if (i > 0) bal = r2(bal + (byDate.get(iso) || 0))
+    // The forecast engine applies today's scheduled/projected lines to day 0.
+    // Apply the same delta here so the chart endpoint reconciles with fc.end.
+    bal = r2(bal + (byDate.get(iso) || 0))
     out.push({ date: iso, balance: bal })
   }
   return out
