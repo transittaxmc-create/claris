@@ -20,6 +20,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { AlertTriangle, Bell, Check, CreditCard, Gauge, Plus, ShieldCheck, Trash2, X } from "lucide-react"
 import { FINANCE_SYNCED_EVENT } from "./finance-sync"
+import { bankBrandOf } from "./bank-brand"
 import {
   YEAR_END,
   buildFullSchedule,
@@ -103,6 +104,7 @@ function AccountCard({
 
   const util = acc.limit && acc.balance != null ? Math.max(0, (acc.balance / acc.limit) * 100) : null
   const utilBad = util != null && util >= 30
+  const brand = bankBrandOf(acc.name, acc.issuer)
 
   const commitBalance = () => {
     const v = balDraft.trim() === "" ? null : Math.max(0, Number(balDraft) || 0)
@@ -133,8 +135,13 @@ function AccountCard({
   return (
     <div className={`rounded-2xl border bg-neutral-950 p-3 ${acc.overdueSince && !acc.closed ? "border-rose-500/50" : "border-neutral-800"}`}>
       <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full items-start gap-2 text-left">
-        <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl bg-neutral-800 text-neutral-300">
-          <CreditCard className="size-5" />
+        <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-neutral-800 text-neutral-300">
+          {brand.logo ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={brand.logo} alt="" className="size-full object-cover" />
+          ) : (
+            <CreditCard className="size-5" />
+          )}
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-1.5">

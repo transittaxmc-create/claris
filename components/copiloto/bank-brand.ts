@@ -37,9 +37,10 @@ const BRANDS: Record<string, BrandDef> = {
   schwab: { match: /schwab/i, short: "Schwab", logo: "/bank-logos/schwab.svg", c: "#00A0DF", a: "#0067A0", fullTile: true },
   zelle: { match: /zelle/i, short: "Zelle", logo: "/bank-logos/zelle.svg", c: "#6D1ED4", a: "#A66BFF", fullTile: false },
   // Sin logo SVG en el kit: inicial con su color de marca.
-  navy: { match: /navy federal/i, short: "Navy Federal", logo: null, c: "#003A70", a: "#F2A900", fullTile: false },
-  varo: { match: /varo/i, short: "Varo", logo: null, c: "#1F5EFF", a: "#00C2A8", fullTile: false },
-  branch: { match: /branch/i, short: "Branch", logo: null, c: "#0B3C2C", a: "#69C24C", fullTile: false },
+  navy: { match: /navy federal/i, short: "Navy Federal", logo: "/bank-logos/navy-federal.svg", c: "#003A70", a: "#F2A900", fullTile: true },
+  varo: { match: /varo/i, short: "Varo", logo: "/bank-logos/varo.svg", c: "#1F5EFF", a: "#00C2A8", fullTile: true },
+  branch: { match: /branch/i, short: "Branch", logo: "/bank-logos/branch.svg", c: "#0B3C2C", a: "#69C24C", fullTile: true },
+  uberpro: { match: /uber\s*pro/i, short: "Uber Pro Card", logo: "/bank-logos/uber-pro-card.svg", c: "#000000", a: "#5B5B5B", fullTile: true },
   uber: { match: /uber/i, short: "Uber", logo: "/logos/uber.svg", c: "#000000", a: "#5B5B5B", fullTile: true },
   lyft: { match: /lyft/i, short: "Lyft", logo: "/logos/lyft.svg", c: "#FF00BF", a: "#FF6BDB", fullTile: true },
 }
