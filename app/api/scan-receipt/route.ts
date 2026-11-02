@@ -65,7 +65,15 @@ ${EXPENSE_CATEGORIES.map((c) => `   - "${c}"`).join("\n")}
 8. notes: One short line: service/account reference using ONLY the last 4 digits if an account number is visible (e.g.: "Account ·7878, 4 lines"), plus the billing cycle if shown. NEVER include a full account number.
 9. confidence: Decimal number from 0.0 to 1.0 indicating your certainty.
 
-Respond with ONLY a valid JSON object with these exact keys: vendor, dueDate, amountDue, pastDue, totalDue, date, category, notes, confidence.`
+10. paymentProgram: If the document shows an installment / payment program / payment plan with a fixed recurring amount and a start and/or end date (or a fixed number of payments), extract it as an object with these keys, otherwise null:
+    - fixedAmount: the fixed payment amount (float)
+    - startDate: program start date YYYY-MM-DD
+    - endDate: program end date YYYY-MM-DD (or null)
+    - count: number of payments if shown (integer or null)
+    - frequency: "monthly" | "biweekly" | "weekly" | "once" (best guess)
+    Example: a $22.86 fixed payment from 2026-10-29 to 2027-04-29, monthly, from Citibank.
+
+Respond with ONLY a valid JSON object with these exact keys: vendor, dueDate, amountDue, pastDue, totalDue, date, category, notes, confidence, paymentProgram.`
       : `You are an expert accountant who analyzes tickets, receipts and invoices for Uber, Lyft and transportation drivers.
 Carefully analyze the attached receipt image and extract the following fields with maximum precision in strict JSON format:
 
