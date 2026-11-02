@@ -32,7 +32,7 @@ export const PLATFORM_META: Record<Platform, PlatformMeta> = {
   },
   Throo: { logo: "/logos/throo.svg" },
   "AKI Technology": {
-    logo: "/logos/aki-technology.jpg",
+    logo: "/logos/aki-technology.svg",
     fill: true,
     badge: "ACCESS-A-RIDE",
     badgeClass: "border-sky-400/60 text-sky-400",
