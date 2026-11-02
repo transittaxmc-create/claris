@@ -187,14 +187,33 @@ export function ReceiptScanner({
 
   const escanear = useCallback(async (file: File) => {
     setLeyendo(true)
-    setAviso({ tipo: "info", texto: "Processing image…" })
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")
+    setAviso({ tipo: "info", texto: isPdf ? "Processing PDF…" : "Processing image…" })
     try {
-      const { image, mimeType } = await reducir(file)
-      setFoto(image)
+      let image: string
+      let mimeType: string
+      if (isPdf) {
+        // PDF: leer como base64 y enviar directo (el API ya sabe tratar statements de bill)
+        image = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(String(reader.result || ""))
+          reader.onerror = () => reject(new Error("Could not read PDF"))
+          reader.readAsDataURL(file)
+        })
+        mimeType = "application/pdf"
+        setFoto(null) // no preview de imagen para PDF
+      } else {
+        const reduced = await reducir(file)
+        image = reduced.image
+        mimeType = reduced.mimeType
+        setFoto(image)
+      }
       fotoHashRef.current = ""
-      hashImage(image).then((h) => {
-        fotoHashRef.current = h
-      })
+      if (!isPdf) {
+        hashImage(image).then((h) => {
+          fotoHashRef.current = h
+        })
+      }
       setDocTipo("")
       setAviso({ tipo: "info", texto: "Reading document with AI…" })
       // Reintento (Miguel, 2026-10-29): una caída de conexión o un 5xx
@@ -206,7 +225,7 @@ export function ReceiptScanner({
           res = await fetch("/api/scan-receipt", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ image, mimeType }),
+            body: JSON.stringify({ image, mimeType, ...(isPdf ? { kind: "bill" } : {}) }),
           })
           json = await res.json().catch(() => null)
         } catch {
@@ -219,15 +238,24 @@ export function ReceiptScanner({
       }
       if (!res || !res.ok || !json?.success) throw new Error(json?.error || "Could not analyze document")
       const r = json.result || {}
-      if (r.date) setFecha(String(r.date).slice(0, 10))
+      // Para PDFs/statements de bill el API devuelve amountDue / dueDate
+      const amountVal = isPdf
+        ? (r.amountDue ?? r.totalDue ?? r.amount)
+        : r.amount
+      const dateVal = isPdf ? (r.dueDate || r.date) : r.date
+      if (dateVal) setFecha(String(dateVal).slice(0, 10))
       if (r.vendor) setComercio(String(r.vendor))
-      if (r.amount != null && Number(r.amount) > 0) setImporte(Number(r.amount).toFixed(2))
+      if (amountVal != null && Number(amountVal) > 0) setImporte(Number(amountVal).toFixed(2))
       if (r.category && EXPENSE_CATEGORIES.includes(r.category as ExpenseCategory)) setCategoria(String(r.category))
       if (r.notes) setNotas(String(r.notes))
       if (typeof r.confidence === "number") setConfianza(r.confidence)
-      // Auto-seleccionar Factura/Recibo según sugerencia; Miguel revisa y puede cambiarlo.
-      const sug = sugerirTipoDoc(r.vendor ? String(r.vendor) : "", r.notes ? String(r.notes) : "")
-      if (sug) setDocTipo(sug)
+      // PDF de bill → forzar factura; si no, sugerir según texto
+      if (isPdf) {
+        setDocTipo("factura")
+      } else {
+        const sug = sugerirTipoDoc(r.vendor ? String(r.vendor) : "", r.notes ? String(r.notes) : "")
+        if (sug) setDocTipo(sug)
+      }
       setAviso({ tipo: "ok", texto: "Document read. Review the data and save." })
     } catch (err) {
       setAviso({ tipo: "error", texto: String((err as Error)?.message || err) })
@@ -365,7 +393,7 @@ export function ReceiptScanner({
       <input
         ref={uploadRef}
         type="file"
-        accept="image/*"
+        accept="image/*,application/pdf"
         className="hidden"
         onChange={(e) => {
           const f = e.target.files?.[0]
@@ -442,7 +470,7 @@ export function ReceiptScanner({
             </button>
           </div>
           <p className="mt-1.5 text-center text-[10.5px] leading-snug" style={{ color: "#8A93A3" }}>
-            TAKE PHOTO opens the camera. UPLOAD PHOTO picks a photo or screenshot you already have.
+            TAKE PHOTO opens the camera. UPLOAD PHOTO picks a photo, screenshot or PDF bill you already have.
           </p>
 
           {foto && (
