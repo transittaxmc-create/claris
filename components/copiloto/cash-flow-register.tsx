@@ -148,31 +148,57 @@ export function CashFlowRegister({
     }
   }, [])
 
-  // SYNC (toque de Miguel): además de releer el snapshot, PIDE una bajada
-  // fresca de Plaid (marca en Supabase; el servidor la ejecuta en ~1 min)
-  // y relee a los 25s y 60s para que la pantalla se actualice sola cuando
-  // la bajada entre — sin tener que volver a tocar nada.
-  const syncNow = useCallback(() => {
+  // Solicita una descarga REAL de Plaid, no solo una lectura de Supabase.
+  // Evita duplicar solicitudes si iOS dispara varios eventos al volver al frente.
+  const lastPlaidRequestAt = useRef(0)
+  const requestPlaidSync = useCallback(async (force = false) => {
+    const now = Date.now()
+    if (!force && now - lastPlaidRequestAt.current < 90_000) return false
+    lastPlaidRequestAt.current = now
     try {
-      void fetch("/api/bank/sync-request", { method: "POST" }).catch(() => {})
-    } catch {}
-    void fetchBank()
+      const r = await fetch("/api/bank/sync-request", {
+        method: "POST",
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      })
+      if (!r.ok) throw new Error("Plaid sync request failed")
+      return true
+    } catch {
+      lastPlaidRequestAt.current = 0
+      return false
+    }
+  }, [])
+
+  // SYNC manual: solicita Plaid, consulta enseguida y vuelve a consultar
+  // cuando el worker normalmente ya habrá procesado la solicitud.
+  const syncNow = useCallback(async () => {
+    await requestPlaidSync(true)
+    await fetchBank()
     window.setTimeout(() => void fetchBank(), 25000)
     window.setTimeout(() => void fetchBank(), 60000)
-  }, [fetchBank])
+  }, [fetchBank, requestPlaidSync])
 
   useEffect(() => {
-    fetchBank()
+    // Cada apertura/recarga y cada regreso a primer plano solicita una bajada
+    // fresca. Si iOS suspende la app, al volver se dispara visibilitychange.
+    void requestPlaidSync()
+    void fetchBank()
     const refresh = window.setInterval(fetchBank, 5 * 60 * 1000)
     const onVisible = () => {
-      if (document.visibilityState === "visible") fetchBank()
+      if (document.visibilityState === "visible") {
+        void requestPlaidSync()
+        void fetchBank()
+        window.setTimeout(() => void fetchBank(), 25000)
+      }
     }
     document.addEventListener("visibilitychange", onVisible)
+    window.addEventListener("pageshow", onVisible)
     return () => {
       window.clearInterval(refresh)
       document.removeEventListener("visibilitychange", onVisible)
+      window.removeEventListener("pageshow", onVisible)
     }
-  }, [fetchBank])
+  }, [fetchBank, requestPlaidSync])
 
   const loadLedger = useCallback(() => {
     try {
