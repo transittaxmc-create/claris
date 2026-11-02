@@ -578,7 +578,7 @@ export function EntryScreen({
               className="flex w-full items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2"
             >
               <span className="flex min-w-0 items-center gap-2">
-                <PlatformAvatar platform={draft.platform} size={24} />
+                <PlatformAvatar platform={draft.platform} size={30} />
                 <span className="truncate font-semibold text-white">{draft.platform}</span>
                 <PlatformBadge platform={draft.platform} />
               </span>
@@ -607,7 +607,7 @@ export function EntryScreen({
                       p === draft.platform ? "text-yellow-400" : "text-neutral-200"
                     )}
                   >
-                    <PlatformAvatar platform={p} size={22} />
+                    <PlatformAvatar platform={p} size={30} />
                     <span className="min-w-0 flex-1 truncate">{p}</span>
                     <PlatformBadge platform={p} />
                   </button>

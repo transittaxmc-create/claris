@@ -20,13 +20,13 @@ export type PlatformMeta = {
 export const PLATFORM_META: Record<Platform, PlatformMeta> = {
   Uber: { logo: "/logos/uber.svg" },
   Lyft: { logo: "/logos/lyft.svg" },
-  Limosys: {},
+  Limosys: { logo: "/logos/limosys.svg" },
   "Eco Ride": {
     logo: "/logos/eco-ride.jpg",
     badge: "ACCESS-A-RIDE",
     badgeClass: "border-sky-400/60 text-sky-400",
   },
-  Throo: { logo: "/logos/throo.jpg" },
+  Throo: { logo: "/logos/throo.svg" },
   "AKI Technology": {
     logo: "/logos/aki-technology.jpg",
     badge: "ACCESS-A-RIDE",
@@ -39,7 +39,7 @@ export const PLATFORM_META: Record<Platform, PlatformMeta> = {
     voucher: true,
   },
   "Aventus Ride": {
-    logo: "/logos/aventus-ride.jpg",
+    logo: "/logos/aventus-ride.svg",
     badge: "VOUCHER",
     badgeClass: "border-orange-400/60 text-orange-400",
     voucher: true,
