@@ -18,13 +18,14 @@ async function fromSupabase(): Promise<Response | null> {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!url || !key) return null
   try {
-    const r = await fetch(`${url}/rest/v1/app_state?id=eq.register&select=data`, {
+    const r = await fetch(`${url}/rest/v1/app_state?id=eq.register&select=data,updated_at`, {
       headers: { apikey: key, Authorization: `Bearer ${key}` },
       cache: "no-store",
     })
     if (!r.ok) return null
     const rows = await r.json()
     if (!rows?.length) return null
+    const registerUpdatedAt = typeof rows[0]?.updated_at === "string" ? rows[0].updated_at : null
     const rawTxns = rows[0]?.data?.transactions || []
     // Filas que Plaid retiró (duplicados/reemplazadas): el sync las marca
     // status="ignored" pero seguían mostrándose en los registers — ej. un
@@ -48,6 +49,7 @@ async function fromSupabase(): Promise<Response | null> {
     let balMap: Record<string, number> = {}
     let maskByName: Record<string, string> = {}
     let balOk = false
+    let balancesUpdatedAt: string | null = null
     try {
       const bRes = await fetch(`${url}/rest/v1/app_state?id=eq.balances&select=data`, {
         headers: { apikey: key, Authorization: `Bearer ${key}` },
@@ -55,6 +57,7 @@ async function fromSupabase(): Promise<Response | null> {
       })
       if (bRes.ok) {
         const bRows = await bRes.json()
+        balancesUpdatedAt = typeof bRows[0]?.updated_at === "string" ? bRows[0].updated_at : null
         const bals = bRows[0]?.data?.balances || {}
         const bestAbs: Record<string, number> = {}
         for (const [k, v] of Object.entries(bals) as any) {
@@ -99,8 +102,23 @@ async function fromSupabase(): Promise<Response | null> {
         }
       }
     }
+    // as_of represents the source data, never the time this API was read.
+    // The snapshot is only as fresh as its older component: ledger or balances.
+    const sourceTimes = [registerUpdatedAt, balancesUpdatedAt]
+      .filter((v): v is string => !!v && Number.isFinite(Date.parse(v)))
+      .map((v) => Date.parse(v))
+    const asOfMs = sourceTimes.length === 2 ? Math.min(...sourceTimes) : 0
+    const generatedAt = new Date().toISOString()
+    const ageMs = asOfMs ? Math.max(0, Date.now() - asOfMs) : null
+    const stale = ageMs === null || ageMs > 60 * 60 * 1000 || !balOk
     return NextResponse.json({
-      as_of: new Date().toISOString(),
+      as_of: asOfMs ? new Date(asOfMs).toISOString() : null,
+      generated_at: generatedAt,
+      register_updated_at: registerUpdatedAt,
+      balances_updated_at: balancesUpdatedAt,
+      age_seconds: ageMs === null ? null : Math.floor(ageMs / 1000),
+      stale,
+      freshness: stale ? "stale" : "fresh",
       total_balance: total,
       accounts: Object.values(accounts),
       transactions: txns,
