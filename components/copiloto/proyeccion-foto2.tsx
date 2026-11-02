@@ -208,7 +208,7 @@ export function ProyeccionFoto2(props: ProyProps) {
   const { fc, fcYear, today, schedules } = useForecast30(props)
   const [scenario, setScenario] = useState<Scenario>("base")
 
-  const scaledLines = useMemo(() => scaleLines(fc.lines, scenario), [fc.lines, scenario])
+  const scaledLines = useMemo(() => scaleLines(fc.lines, scenario, schedules), [fc.lines, scenario])
   const path = useMemo(
     () => balancePath(fc.start, scaledLines, today, fc.endDate),
     [fc.start, scaledLines, today, fc.endDate],
@@ -340,7 +340,7 @@ export function ProyeccionFoto2(props: ProyProps) {
 
   /* ── Mensual divergente: 12 meses de proyección, mes a mes ── */
   const monthly = useMemo(() => {
-    const linesY = scaleLines(fcYear.lines, scenario)
+    const linesY = scaleLines(fcYear.lines, scenario, schedules)
     const t0 = Date.parse(today + "T12:00:00Z")
     const base = new Date(t0)
     const out: { label: string; full: string; inn: number; outNeg: number; net: number }[] = []
