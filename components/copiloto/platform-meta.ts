@@ -33,7 +33,7 @@ export const PLATFORM_META: Record<Platform, PlatformMeta> = {
     badgeClass: "border-sky-400/60 text-sky-400",
   },
   "Classic Ryde": {
-    logo: "/logos/classic-ryde.jpg",
+    logo: "/logos/classic-ryde.svg",
     badge: "VOUCHER",
     badgeClass: "border-orange-400/60 text-orange-400",
     voucher: true,
