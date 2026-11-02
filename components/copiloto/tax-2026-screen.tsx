@@ -155,6 +155,26 @@ export function Tax2026Screen({
           const next = [...newFiles, ...files].slice(0, 30)
           setFiles(next)
           saveFiles(next)
+          // Auto-mark checklist from filenames
+          const auto: Record<string, boolean> = {}
+          for (const f of newFiles) {
+            const n = f.name.toLowerCase()
+            if (n.includes("1099-k") || n.includes("1099k") || n.includes("1099_k")) auto["1099-k"] = true
+            else if (n.includes("1099-nec") || n.includes("1099nec") || n.includes("1099_nec")) auto["1099-nec"] = true
+            else if (n.includes("1099")) auto["1099-k"] = true
+            if (n.includes("summary") || n.includes("annual") || n.includes("earnings")) auto["annual-summary"] = true
+            if (n.includes("bank") || n.includes("statement") || n.includes("stmt")) auto["bank-statements"] = true
+            if (n.includes("phone") || n.includes("verizon") || n.includes("t-mobile") || n.includes("att")) auto["phone"] = true
+            if (n.includes("tlc") || n.includes("license") || n.includes("permit")) auto["licenses"] = true
+            if (n.includes("return") || n.includes("1040") || n.includes("tax")) auto["prior-return"] = true
+          }
+          if (Object.keys(auto).length) {
+            setDocs((prev) => {
+              const merged = { ...prev, ...auto }
+              saveDocs(merged)
+              return merged
+            })
+          }
           setUploading(false)
           if (fileInputRef.current) fileInputRef.current.value = ""
         }
