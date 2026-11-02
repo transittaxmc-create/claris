@@ -462,9 +462,9 @@ export function RegisterScreen({
             type="button"
             onClick={reconciliarHaciaDinero}
             className="shrink-0 rounded-lg border border-emerald-500/40 bg-emerald-950/40 px-2 py-1 text-[9px] font-extrabold uppercase tracking-wide text-emerald-300 transition-colors hover:bg-emerald-900/50"
-            title="Send the day's net to MONEY as a projection (replaces scheduled)"
+            title="Update the day's receivables in MONEY"
           >
-            Reconcile → Money
+            Update receivables → Money
           </button>
           <button
             type="button"

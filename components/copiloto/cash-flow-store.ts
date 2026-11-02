@@ -54,7 +54,7 @@ export const ETIQUETA_ORIGEN: Record<CashFlowOrigin, string> = {
   scan: "Escaneado",
   manual: "Manual",
   bank: "Bank",
-  trip: "Cobros",
+  trip: "Receivables",
   square: "Square",
   transfer: "Internal transfer",
 }
@@ -203,14 +203,14 @@ export function reconciliarCobrosAlLibro(
     const entry: CashFlowEntry = {
       id: idDeCobro(dia, platform),
       date: dia,
-      description: `Cobro ${platform}`,
+      description: `Receivable · ${platform}`,
       source: "trip",
-      sourceLabel: `Cobros · ${platform}`,
+      sourceLabel: `Receivable · ${platform}`,
       type: "income",
       status: "projected",
       amount,
       category: "Income",
-      notes: `Reconciled from Cobros (${count} trips)`,
+      notes: `Receivable updated from Earnings (${count} trips)`,
       createdAt: ahora,
       isManuallyEdited: false,
     }

@@ -461,15 +461,15 @@ export function incomeSourceName(line: ForecastLine, schedules: SchedLite[]): st
     const m = String(e.id || "").match(/^claris:cobro:[^:]+:(.+)$/)
     if (m) return displayLabel(m[1].replace(/_/g, " ").trim())
     const sl = String(e.sourceLabel || "")
-    if (/cobros/i.test(sl) && sl.includes("·")) return displayLabel(sl.split("·").pop()!.trim())
-    const d = String(e.description || "").replace(/^cobro\s+/i, "").trim()
+    if (/receivable|cobros/i.test(sl) && sl.includes("·")) return displayLabel(sl.split("·").pop()!.trim())
+    const d = String(e.description || "").replace(/^(cobro|receivable)\s*·?\s*/i, "").trim()
     if (d && !/^income$/i.test(d)) return displayLabel(d)
   }
   if (line.scheduleId) {
     const s = schedules.find((x) => x.id === line.scheduleId)
     if (s?.description) return displayLabel(s.description)
   }
-  const lab = displayLabel(String(line.label || "").replace(/^cobro\s+/i, "").trim())
+  const lab = displayLabel(String(line.label || "").replace(/^(cobro|receivable)\s*·?\s*/i, "").trim())
   if (lab && !/^income$/i.test(lab)) return lab
   return "Other income"
 }

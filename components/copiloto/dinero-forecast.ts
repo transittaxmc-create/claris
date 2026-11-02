@@ -416,7 +416,11 @@ function ledgerProjected(entries: CashFlowEntry[], today: string): LedgerItem[] 
     if (amt < 0.01) continue
     const income = e.type === "income"
     const date = isIsoDate(e.date) ? String(e.date).slice(0, 10) : today
-    out.push({ entry: e, date, amount: r2(amt), income, label: e.description || e.category || (income ? "Income" : "Expense") })
+    const descMov = e.description || e.category || (income ? "Income" : "Expense")
+    // Término quirúrgico de Miguel (2026-11-02): lo que antes se guardó como
+    // "Cobro X" se muestra como cuenta por cobrar, sin reescribir el dato.
+    const labelMov = /^cobro\s+/i.test(descMov) ? `Receivable · ${descMov.replace(/^cobro\s+/i, "")}` : descMov
+    out.push({ entry: e, date, amount: r2(amt), income, label: labelMov })
   }
   return out
 }
