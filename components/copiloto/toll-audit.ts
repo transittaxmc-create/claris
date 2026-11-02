@@ -178,7 +178,7 @@ export function dedupeByRef(charges: TollCharge[]): { charges: TollCharge[]; mer
     const plaza = normPlaza(String(c.plaza || ""))
     const amount = Number(c.amount)
     const fingerprint =
-      !ref && date && /^\\d{2}:\\d{2}$/.test(time) && plaza && Number.isFinite(amount)
+      !ref && date && /^\d{2}:\d{2}$/.test(time) && plaza && Number.isFinite(amount)
         ? `${date}|${time}|${plaza}|${amount.toFixed(2)}`
         : ""
     if (fingerprint && seenScans.has(fingerprint)) {
