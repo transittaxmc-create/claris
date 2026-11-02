@@ -739,6 +739,12 @@ export function buildForecast(input: ForecastInput): Forecast {
       const cands: { b: ForecastBill; bi: number }[] = []
       billsIn.forEach((b, bi) => {
         if (usedBills.has(bi)) return
+        // Bill ya pagado (resta $0): no proyecta nada y NO ocupa la
+        // ocurrencia — si la tomara, la rama del bill la saltaría "como
+        // pagada" y el gasto verdadero de ese ciclo desaparecería (los
+        // bills del ciclo anterior de CB Livery se comieron los leasing
+        // de Nov 5 y Nov 12; hallazgo de la auditoría semanal 2026-11-02).
+        if (Number(b.remaining) <= 0.009) return
         // Bill cubierto por un pago grupal y AJENO a este recurrente (ej.
         // los tolls, que solo comparten comercio con el leasing): no
         // ocupa el cupo de una ocurrencia — queda libre para el bill del
