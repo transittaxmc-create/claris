@@ -121,6 +121,8 @@ export function ReceiptScanner({
   const uploadRef = useRef<HTMLInputElement>(null)
   // Huella de la foto (para el anti-duplicado de recibos adjuntos).
   const fotoHashRef = useRef<string>("")
+  // Datos crudos del archivo (para archivar PDFs de statements).
+  const rawFileRef = useRef<{ dataUrl: string; mimeType: string } | null>(null)
 
   // Accounts/registers para "Which account did it come from?" (mismos que MONEY).
   const [snapshotAccounts, setSnapshotAccounts] = useState<any[]>([])
@@ -201,11 +203,13 @@ export function ReceiptScanner({
           reader.readAsDataURL(file)
         })
         mimeType = "application/pdf"
+        rawFileRef.current = { dataUrl: image, mimeType }
         setFoto(null) // no preview de imagen para PDF
       } else {
         const reduced = await reducir(file)
         image = reduced.image
         mimeType = reduced.mimeType
+        rawFileRef.current = { dataUrl: image, mimeType }
         setFoto(image)
       }
       fotoHashRef.current = ""
@@ -367,7 +371,8 @@ export function ReceiptScanner({
     onSaveExpense(expense)
     // Adjunto de auditoría: la foto queda guardada en la nube y amarrada a
     // este gasto; el register la machea con su transacción del banco.
-    if (foto) {
+    const raw = rawFileRef.current
+    if (raw) {
       void archiveReceipt({
         expenseId: expense.id,
         vendor: nombre,
@@ -375,8 +380,9 @@ export function ReceiptScanner({
         amount: monto,
         category: categoriaFinal,
         accountId: cuentaId || undefined,
-        image: foto,
+        image: raw.dataUrl,
         imgHash: fotoHashRef.current || undefined,
+        mimeType: raw.mimeType,
       })
     }
     if (freq !== "once") {
