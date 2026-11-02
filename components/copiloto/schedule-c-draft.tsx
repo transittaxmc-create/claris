@@ -147,6 +147,38 @@ export function computeScheduleC(
   return { lines, gross: r2(gross), net: r2(net), seTax: r2(seTax), halfSE: r2(halfSE), qbi: r2(qbi) }
 }
 
+/** Estimado de impuesto de Nueva York (estado, sin ciudad — Long Island).
+ *  Brackets 2026 aproximados para single. Informativo, no asesoría. */
+export function estimateNYTax(netProfit: number): { nyTax: number; effective: number; quarterly: number } {
+  const brackets: [number, number][] = [
+    [0, 0.039],
+    [8500, 0.044],
+    [11700, 0.0515],
+    [13900, 0.054],
+    [80650, 0.059],
+    [215400, 0.0685],
+    [1077550, 0.0965],
+    [5000000, 0.103],
+    [25000000, 0.109],
+  ]
+  // NY taxable ≈ net profit (no QBI at state level, no standard deduction here for simplicity of business profit)
+  let tax = 0
+  let remaining = Math.max(0, netProfit)
+  for (let i = 0; i < brackets.length; i++) {
+    const [floor, rate] = brackets[i]
+    const ceiling = i + 1 < brackets.length ? brackets[i + 1][0] : Infinity
+    const slice = Math.min(remaining, ceiling - floor)
+    if (slice > 0) {
+      tax += slice * rate
+      remaining -= slice
+    }
+    if (remaining <= 0) break
+  }
+  const nyTax = Math.round(tax * 100) / 100
+  const effective = netProfit > 0 ? nyTax / netProfit : 0
+  return { nyTax, effective, quarterly: Math.round((nyTax / 4) * 100) / 100 }
+}
+
 const money = (n: number) =>
   `${n < 0 ? "-" : ""}$${Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
@@ -242,6 +274,31 @@ export function ScheduleCDraft({
           </label>
         ))}
       </div>
+
+      {/* Estimado NY (Long Island — solo estado) */}
+      {(() => {
+        const ny = estimateNYTax(net)
+        const total = seTax + ny.nyTax
+        return (
+          <div className="mb-3 rounded-xl border border-sky-500/30 bg-sky-500/5 p-2.5">
+            <p className="text-[10px] font-bold uppercase tracking-wide text-sky-300">Tax estimate · New York (Long Island)</p>
+            <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+              <span className="text-neutral-400">Self-employment tax (15.3%)</span>
+              <span className="text-right font-mono text-white">{money(seTax)}</span>
+              <span className="text-neutral-400">NY state tax (approx.)</span>
+              <span className="text-right font-mono text-white">{money(ny.nyTax)}</span>
+              <span className="text-neutral-400">½ SE tax deduction</span>
+              <span className="text-right font-mono text-emerald-300">−{money(halfSE)}</span>
+              <span className="font-bold text-neutral-200">Estimated total (SE + NY)</span>
+              <span className="text-right font-mono font-bold text-amber-300">{money(total)}</span>
+            </div>
+            <p className="mt-1.5 text-[9px] leading-snug text-neutral-500">
+              Long Island = NY state only (no NYC tax). Federal income tax depends on your filing status and other income.
+              Quarterly estimate ≈ {money(ny.quarterly)} state + federal. Informational only — review with a CPA.
+            </p>
+          </div>
+        )
+      })()}
 
       {/* Líneas */}
       <div className="divide-y divide-neutral-800/60">
