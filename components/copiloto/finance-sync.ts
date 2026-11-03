@@ -7,6 +7,9 @@
 //   - item nuevo o con contenido distinto  → savedAt = ahora
 //   - item igual                           → conserva el savedAt de la foto
 //   - item que estaba en la foto y ya no   → tombstone (borrado) = ahora
+// Las excepciones de recurrentes son un blob completo porque su identidad es
+// la pareja (scheduleId, date), no un id propio; también deben viajar con el
+// libro para que el forecast sea reproducible en todos los dispositivos.
 // Así la mezcla por id + tombstones de lib/sync.ts funciona igual que con
 // viajes y gastos.
 
@@ -21,6 +24,10 @@ export const FINANCE_BLOB_KEYS = [
   "claris_toll_bills",
   "claris_finance_week_v1",
   "claris_forecast_dismissed_v1",
+  // Excepciones puntuales de recurrentes (skip, monto o etiqueta por fecha).
+  // Sin esta clave, una sincronización podía borrar silenciosamente ajustes de
+  // una sola ocurrencia y el forecast volvía a mostrar el valor original.
+  "claris_schedule_overrides",
 ] as const
 /** "Probablemente pagado" que el usuario descartó (viaja con el sync). */
 export const FORECAST_DISMISSED_KEY = "claris_forecast_dismissed_v1"
