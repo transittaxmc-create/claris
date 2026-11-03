@@ -17,6 +17,14 @@ interface AnalysisResult {
   amountDue?: number
   pastDue?: number
   totalDue?: number
+  // Número de invoice que la compañía emisora le asigna a ESTE documento
+  // (ej. "CBL-1263590"). Identifica la factura, no la cuenta. (Miguel,
+  // 2026-11-03: cada factura del carro se trackea por su número y cada pago
+  // lleva la referencia a ese número.)
+  invoiceNo?: string
+  // Números de invoice que un RECIBO/CONFIRMACION DE PAGO dice estar pagando
+  // (ej. el portal lista CBL-1267227, CBL-1267226). Vacío si no lista ninguno.
+  invoiceRefs?: string[]
 }
 
 export async function POST(req: Request) {
@@ -63,7 +71,8 @@ ${EXPENSE_CATEGORIES.map((c) => `   - "${c}"`).join("\n")}
    * Fuel -> "Fuel"
    * If it fits none of the above -> "Other"
 8. notes: One short line: service/account reference using ONLY the last 4 digits if an account number is visible (e.g.: "Account ·7878, 4 lines"), plus the billing cycle if shown. NEVER include a full account number.
-9. confidence: Decimal number from 0.0 to 1.0 indicating your certainty.
+9. invoiceNo: The invoice number the issuing company printed on THIS bill (e.g.: "Invoice CBL-1263590", "Invoice # INV-2041", "Bill number 88312"). Copy it EXACTLY as printed, with its letters/prefix. This identifies this specific bill — it is NOT an account number and NOT a payment/transaction id. If the statement covers several invoices and prints several numbers, use the FIRST/main one. If no invoice number is printed, return null.
+10. confidence: Decimal number from 0.0 to 1.0 indicating your certainty.
 
 10. paymentProgram: If the document shows an installment / payment program / payment plan with a fixed recurring amount and a start and/or end date (or a fixed number of payments), extract it as an object with these keys, otherwise null:
     - fixedAmount: the fixed payment amount (float)
@@ -73,7 +82,7 @@ ${EXPENSE_CATEGORIES.map((c) => `   - "${c}"`).join("\n")}
     - frequency: "monthly" | "biweekly" | "weekly" | "once" (best guess)
     Example: a $22.86 fixed payment from 2026-10-29 to 2027-04-29, monthly, from Citibank.
 
-Respond with ONLY a valid JSON object with these exact keys: vendor, dueDate, amountDue, pastDue, totalDue, date, category, notes, confidence, paymentProgram.`
+Respond with ONLY a valid JSON object with these exact keys: vendor, dueDate, amountDue, pastDue, totalDue, date, category, notes, invoiceNo, confidence, paymentProgram.`
       : `You are an expert accountant who analyzes tickets, receipts and invoices for Uber, Lyft and transportation drivers.
 Carefully analyze the attached receipt image and extract the following fields with maximum precision in strict JSON format:
 
@@ -95,9 +104,11 @@ ${EXPENSE_CATEGORIES.map((c) => `   - "${c}"`).join("\n")}
    * Work supplies, accessories -> "Supplies"
    * If it fits none of the above -> "Other"
 5. notes: Concise summary of the main items or details (e.g.: "Regular gas 12.4 gal @ $3.29", "Burger and coffee", "Synthetic oil change").
-6. confidence: Decimal number from 0.0 to 1.0 indicating your certainty and reading sharpness.
+6. invoiceNo: If this document IS an invoice/bill (a charge pending payment, e.g. a car-leasing invoice), the invoice number the company printed on it (e.g.: "CBL-1263590"), copied EXACTLY as printed with its letters/prefix. It identifies this specific bill — it is NOT an account number. If the document is a plain paid receipt with no invoice number, return null.
+7. invoiceRefs: If this document is a PAYMENT confirmation/receipt that LISTS the invoices it pays (e.g. a leasing portal receipt listing "CBL-1267227, CBL-1267226, CBL-1268312"), return ALL those invoice numbers as an array of strings, copied exactly. Otherwise return an empty array.
+8. confidence: Decimal number from 0.0 to 1.0 indicating your certainty and reading sharpness.
 
-Respond with ONLY a valid JSON object with those exact keys.`
+Respond with ONLY a valid JSON object with those exact keys: vendor, date, amount, category, notes, invoiceNo, invoiceRefs, confidence.`
 
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent`
 
@@ -204,6 +215,24 @@ Respond with ONLY a valid JSON object with those exact keys.`
     if (typeof parsed.notes === "string") {
       const limpio = parsed.notes.replace(/\s+/g, " ").trim().slice(0, 200)
       parsed.notes = limpio || undefined
+    }
+
+    // Sanear el número de invoice y las referencias: texto corto, sin
+    // espacios internos raros; nada de blobs. Se guarda tal como la compañía
+    // lo imprime (la comparación normaliza en bill-payments.ts).
+    const cleanInvoiceNo = (v: unknown): string | undefined => {
+      if (typeof v !== "string") return undefined
+      const s = v.replace(/\s+/g, " ").trim().slice(0, 40)
+      return s && s.toLowerCase() !== "null" ? s : undefined
+    }
+    parsed.invoiceNo = cleanInvoiceNo(parsed.invoiceNo)
+    if (Array.isArray(parsed.invoiceRefs)) {
+      const refs = parsed.invoiceRefs
+        .map((r) => cleanInvoiceNo(r))
+        .filter((r): r is string => Boolean(r))
+      parsed.invoiceRefs = refs.length ? [...new Set(refs)].slice(0, 12) : undefined
+    } else {
+      parsed.invoiceRefs = undefined
     }
 
     // Statement de bill: el "amount/date" principal es lo que vence y cuándo.

@@ -59,8 +59,52 @@ export function addBillPayment(
   e: Expense,
   p: Omit<BillPayment, "id" | "createdAt">,
 ): Expense {
-  const payment = newBillPayment(p)
+  // Sello de invoice (Miguel, 2026-11-03): TODO pago aplicado a una factura
+  // queda guardado con el número de ESA factura. Es el destino con nombre
+  // del pago: si mañana se duda de un pago, el número dice a qué factura
+  // fue. Se estampa aquí, en el único punto por donde pasan todos los
+  // pagos (banco, recibo o manual), para que ninguna vía quede sin sello.
+  const payment = newBillPayment({
+    ...p,
+    invoiceNo: p.invoiceNo ?? (e.invoiceNo?.trim() ? e.invoiceNo.trim() : undefined),
+  })
   return { ...e, payments: [...billPayments(e), payment], updatedAt: new Date().toISOString() }
+}
+
+// ---------------------------------------------------------------------------
+// Números de invoice (identidad de la factura — Miguel, 2026-11-03)
+// ---------------------------------------------------------------------------
+
+/** Normaliza un número de invoice SOLO para comparar: mayúsculas y sin
+ *  caracteres que no sean letras/dígitos ("CBL-1263590" = "cbl 1263590").
+ *  Lo guardado nunca se reescribe: se guarda tal como viene impreso. */
+export function normalizeInvoiceNo(v: unknown): string {
+  return String(v ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "")
+}
+
+/** ¿Dos números de invoice son el mismo? (ambos deben existir). */
+export function invoiceNoMatches(a: unknown, b: unknown): boolean {
+  const na = normalizeInvoiceNo(a)
+  return na.length > 0 && na === normalizeInvoiceNo(b)
+}
+
+/** La factura (de cualquier estado) que ya lleva este número para este
+ *  vendedor — la identidad es vendedor + número. Null si no hay ninguna. */
+export function findBillByInvoiceNo(
+  expenses: Expense[],
+  vendor: unknown,
+  invoiceNo: unknown,
+  excludeId?: string,
+): Expense | null {
+  if (!normalizeInvoiceNo(invoiceNo)) return null
+  const hit = (expenses || []).find(
+    (b) =>
+      isBill(b) &&
+      b.id !== excludeId &&
+      invoiceNoMatches(b.invoiceNo, invoiceNo) &&
+      vendorFuzzyMatch(b.vendor, vendor),
+  )
+  return hit ?? null
 }
 
 export function removeBillPayment(e: Expense, paymentId: string): Expense {
@@ -474,13 +518,34 @@ export function detectBillPayments(expenses: Expense[], bankTxs: BankTxIn[]): De
 /**
  * Si UN solo recibo encaja en UNA sola factura abierta (vendedor + monto ≤
  * resto), se devuelve para ofrecer "¿Es pago de esta factura?".
+ *
+ * PRIORIDAD POR NÚMERO (Miguel, 2026-11-03): si el recibo lista los
+ * invoices que paga (invoiceRefs, ej. la confirmación del portal del
+ * leasing), manda el número, no el monto: la factura abierta cuyo
+ * invoiceNo aparece en la lista es la candidata, aunque el monto del
+ * recibo cubra varias (pago grupal). Solo si el número no resuelve un
+ * único destino se cae al macheo de siempre (vendedor + monto).
  */
 export function findBillForReceipt(
   expenses: Expense[],
-  receipt: { vendor: string; amount: number },
+  receipt: { vendor: string; amount: number; invoiceRefs?: string[] },
 ): Expense | null {
   const need = Math.abs(Number(receipt.amount) || 0)
   if (need <= 0) return null
+  const refs = (receipt.invoiceRefs || []).filter((r) => normalizeInvoiceNo(r))
+  if (refs.length > 0) {
+    const byNumber = expenses.filter(
+      (b) => isBillOpen(b) && b.invoiceNo && refs.some((r) => invoiceNoMatches(b.invoiceNo, r)),
+    )
+    if (byNumber.length === 1) return byNumber[0]
+    if (byNumber.length > 1) {
+      // El recibo cubre varias facturas por número: se ofrece la más vieja
+      // (FIFO) y el resto queda para registro manual — nunca se adivina
+      // un reparto sin que Miguel lo vea.
+      const sorted = [...byNumber].sort((a, b) => String(a.date).localeCompare(String(b.date)))
+      return sorted[0]
+    }
+  }
   const cands = expenses.filter(
     (b) =>
       isBillOpen(b) &&
@@ -493,18 +558,29 @@ export function findBillForReceipt(
 /** Pregunta a Miguel si el recibo es pago de la factura; devuelve el pago o null. */
 export function offerReceiptBillMatch(
   expenses: Expense[],
-  receipt: { vendor: string; amount: number; date: string; accountId?: string; id: string },
+  receipt: { vendor: string; amount: number; date: string; accountId?: string; id: string; invoiceRefs?: string[] },
 ): { bill: Expense; payment: Omit<BillPayment, "id" | "createdAt"> } | null {
   const bill = findBillForReceipt(expenses, receipt)
   if (!bill) return null
+  const remaining = billRemaining(bill)
+  const need = Math.abs(Number(receipt.amount) || 0)
+  // Pago grupal por número: el recibo puede cubrir varias facturas; a ESTA
+  // se le aplica solo su parte (lo que resta), nunca más de lo que debe.
+  const amount = Math.min(need, remaining)
+  const byNumber = Boolean(
+    bill.invoiceNo &&
+      (receipt.invoiceRefs || []).some((r) => invoiceNoMatches(bill.invoiceNo, r)),
+  )
   const ok = window.confirm(
-    `This receipt from ${receipt.vendor} (${money(Math.abs(receipt.amount))}) es pago de la factura "${bill.vendor}"?\n\nRestan ${money(billRemaining(bill))}.`,
+    byNumber
+      ? `This receipt from ${receipt.vendor} (${money(need)}) lists invoice ${bill.invoiceNo} — apply ${money(amount)} to the bill "${bill.vendor}" (${bill.invoiceNo})?\n\nRemaining on that bill: ${money(remaining)}.`
+      : `This receipt from ${receipt.vendor} (${money(need)}) es pago de la factura "${bill.vendor}"?\n\nRestan ${money(remaining)}.`,
   )
   if (!ok) return null
   return {
     bill,
     payment: {
-      amount: Math.abs(Number(receipt.amount) || 0),
+      amount,
       accountId: receipt.accountId,
       date: String(receipt.date).slice(0, 10),
       source: "recibo",

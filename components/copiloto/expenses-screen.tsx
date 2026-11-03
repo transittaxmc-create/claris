@@ -28,6 +28,7 @@ import {
   billRemaining,
   billStatus,
   detectBillPayments,
+  findBillByInvoiceNo,
   isBill,
   isBillOpen,
   learnedRuleFor,
@@ -130,6 +131,12 @@ type Draft = {
   classification?: ExpenseClassification
   // Cuenta/register de donde salió (editable; "" = sin indicar).
   accountId?: string
+  // Número de invoice que la compañía le asignó a esta factura (Miguel,
+  // 2026-11-03): lo trae el escaneo, se puede teclear/corregir a mano.
+  // No todos los documentos traen número — vacío funciona como antes.
+  invoiceNo?: string
+  // Solo del escaneo de un recibo de pago: invoices que dice cubrir.
+  invoiceRefs?: string[]
 }
 
 function emptyDraft(): Draft {
@@ -147,6 +154,7 @@ function emptyDraft(): Draft {
     endsMode: "3months",
     endDate: "",
     endsCount: "",
+    invoiceNo: "",
   }
 }
 
@@ -205,6 +213,14 @@ function ExpenseRow({
         {expense.docType === "factura" && (
           <span className="rounded-full border border-cyan-500/40 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-bold text-cyan-300">
             BILL
+          </span>
+        )}
+        {expense.invoiceNo && (
+          <span
+            className="rounded-full border border-teal-500/40 bg-teal-500/10 px-2 py-0.5 text-[9px] font-bold text-teal-300"
+            title="Invoice number assigned by the company — this bill's identity"
+          >
+            INV {expense.invoiceNo}
           </span>
         )}
         {expense.docType === "recibo" && (
@@ -297,6 +313,7 @@ function ExpenseRow({
                 <div key={p.id} className="flex items-center justify-between gap-2 text-[10px]">
                   <span className="min-w-0 truncate text-neutral-400">
                     {String(p.date).slice(0, 10)} · {money(p.amount)}
+                    {p.invoiceNo ? ` · INV ${p.invoiceNo}` : ""}
                     {p.accountId && accountNameById?.get(p.accountId)
                       ? ` · ${accountNameById.get(p.accountId)}`
                       : ""}
@@ -800,6 +817,8 @@ export function ExpensesScreen({
           endsMode: "3months",
           endDate: "",
           endsCount: "",
+          invoiceNo: result.invoiceNo || "",
+          invoiceRefs: Array.isArray(result.invoiceRefs) ? result.invoiceRefs : undefined,
           accountId: defaultAccountId || undefined,
         })
         setScanStatus("Bill detected! Review and save.")
@@ -818,6 +837,8 @@ export function ExpensesScreen({
           endsMode: "3months",
           endDate: "",
           endsCount: "",
+          invoiceNo: result.invoiceNo || "",
+          invoiceRefs: Array.isArray(result.invoiceRefs) ? result.invoiceRefs : undefined,
           accountId: defaultAccountId || undefined,
         })
         setScanStatus("Receipt detected! Review and save.")
@@ -867,6 +888,22 @@ export function ExpensesScreen({
         return
       }
     }
+    // ANTI-DUPLICADO POR NÚMERO DE INVOICE (Miguel, 2026-11-03): una
+    // factura de un vendedor con un número de invoice solo puede existir
+    // UNA vez — el número es su identidad. Si ya hay una factura con el
+    // mismo número, se anula el guardado (como con la foto repetida):
+    // escanear el mismo invoice dos veces no crea dos deudas.
+    if (draft.docType === "factura" && draft.invoiceNo?.trim()) {
+      const yaExiste = findBillByInvoiceNo(expenses, draft.vendor, draft.invoiceNo, draft.id ?? undefined)
+      if (yaExiste) {
+        window.alert(
+          `Invoice ${draft.invoiceNo.trim()} is already saved (${yaExiste.vendor} · ${yaExiste.date} · $${yaExiste.amount.toFixed(2)}).\n\nDuplicate annulled — nothing was saved.`,
+        )
+        clearScanImage()
+        setDraft(null)
+        return
+      }
+    }
     const dup = findDuplicateExpense(expenses, draft)
     if (dup) {
       const msg =
@@ -891,6 +928,10 @@ export function ExpensesScreen({
       isEditedByUser: draft.id !== null,
       scheduled: draft.docType === "factura" || ["daily", "weekly", "monthly", "annual"].includes(draft.frequency),
       classification: draft.classification,
+      // Número de invoice (identidad de la factura) y, en recibos de pago,
+      // los invoices que el pago dice cubrir. Vacío = como antes.
+      invoiceNo: draft.invoiceNo?.trim() || undefined,
+      invoiceRefs: draft.invoiceRefs?.length ? draft.invoiceRefs : undefined,
       // Account/register de donde salió (editable; el match 🏦 se limita a ella).
       accountId: draft.accountId || undefined,
       savedAt: new Date().toISOString(),
@@ -906,6 +947,7 @@ export function ExpensesScreen({
         date: expense.date,
         accountId: expense.accountId,
         id: expense.id,
+        invoiceRefs: expense.invoiceRefs,
       })
       if (hit) {
         const withPay = addBillPayment(hit.bill, hit.payment)
@@ -1016,6 +1058,8 @@ export function ExpensesScreen({
       endsMode: sched?.occurrences ? "count" : sched?.endDate ? "date" : sched ? "none" : "3months",
       endDate: sched?.endDate ?? "",
       endsCount: sched?.occurrences ? String(sched.occurrences) : "",
+      invoiceNo: ex.invoiceNo ?? "",
+      invoiceRefs: ex.invoiceRefs,
       classification: ex.classification,
       // La cuenta se puede cambiar al editar (todo editable).
       accountId: ex.accountId || defaultAccountId || undefined,
@@ -1253,6 +1297,19 @@ export function ExpensesScreen({
                 value={draft.notes}
                 onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
                 placeholder="Opcional"
+                className="rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white outline-none placeholder:text-neutral-600"
+              />
+            </label>
+
+            {/* Número de invoice de la compañía (identidad de la factura,
+                Miguel 2026-11-03): lo llena el escaneo y se puede teclear o
+                corregir. Sin número, el gasto funciona como antes. */}
+            <label className="mt-2 flex flex-col gap-1">
+              <span className="text-[10px] font-bold text-neutral-400">INVOICE #</span>
+              <input
+                value={draft.invoiceNo ?? ""}
+                onChange={(e) => setDraft({ ...draft, invoiceNo: e.target.value })}
+                placeholder="CBL-1263590 — si el documento trae número"
                 className="rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white outline-none placeholder:text-neutral-600"
               />
             </label>

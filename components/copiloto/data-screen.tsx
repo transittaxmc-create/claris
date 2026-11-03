@@ -9,6 +9,7 @@ import { MIN_SYNC_CODE_LENGTH } from "@/lib/sync"
 import { compareVersion, type VersionStatus } from "@/lib/version-check"
 import type { Trip } from "./types"
 import { FINANCE_LEDGER_KEY, FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT } from "./finance-sync"
+import { SCHEDULES_CLEAR_FLAG_KEY } from "./finance-cloud"
 import { SCHEDULE_OVERRIDES_KEY } from "./dinero-forecast"
 
 function Row({ label, value, tone = "text-white" }: { label: string; value: string; tone?: string }) {
@@ -103,6 +104,9 @@ export function DataScreen({
         (e: any) => !(e && e.status === "projected" && !String(e.id).startsWith("claris:cobro:")),
       )
       localStorage.setItem(FINANCE_LEDGER_KEY, JSON.stringify(kept))
+      // Marca de vaciado DELIBERADO (ver finance-cloud): sin ella, el
+      // candado anti-vacío no dejaría propagar este borrado a propósito.
+      localStorage.setItem(SCHEDULES_CLEAR_FLAG_KEY, String(Date.now()))
       localStorage.setItem(FINANCE_SCHEDULES_KEY, JSON.stringify([]))
       localStorage.setItem(SCHEDULE_OVERRIDES_KEY, JSON.stringify([]))
       window.dispatchEvent(new Event(FINANCE_SYNCED_EVENT))

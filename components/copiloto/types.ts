@@ -107,6 +107,12 @@ export type BillPayment = {
   bankTxId?: string
   /** Id del gasto-recibo que originó el pago, si aplica. */
   receiptId?: string
+  /** Número de invoice de la factura que este pago cancela (sistema de
+   *  Miguel, 2026-11-03): cada pago queda sellado con el número de la
+   *  factura a la que fue — el destino con nombre, para que ningún pago
+   *  se pierda ni caiga en el ciclo equivocado. Lo estampa addBillPayment
+   *  desde la factura; no se teclea a mano. */
+  invoiceNo?: string
   note?: string
   /** true = clasificado solo por aprendizaje (lleva etiqueta "auto" y se puede deshacer). */
   auto?: boolean
@@ -161,6 +167,19 @@ export type Expense = {
   originScheduleId?: string
   classification?: ExpenseClassification
   docType?: ExpenseDocType
+  /** Número de invoice que la compañía emisora le asignó a ESTA factura
+   *  (ej. "CBL-1263590" del leasing), tal como viene impreso en el
+   *  documento escaneado. Es la identidad de la factura (Miguel,
+   *  2026-11-03): no puede haber dos facturas del mismo vendedor con el
+   *  mismo número, y cada pago aplicado queda sellado con este número.
+   *  No todos los documentos traen número: sin número, la factura sigue
+   *  funcionando como antes (macheo por vendedor/monto). */
+  invoiceNo?: string
+  /** Solo en RECIBOS de pago: los números de invoice que ese pago dice
+   *  cubrir (ej. la confirmación del portal del leasing lista los
+   *  invoices que pagó). Se usa para ofrecer el macheo por número,
+   *  que manda sobre el macheo por monto. */
+  invoiceRefs?: string[]
   /** Register/cuenta de donde salió el gasto (id de registers-store). */
   accountId?: string
   /** Pagos aplicados (solo facturas). La factura se cancela sola al completarse. */

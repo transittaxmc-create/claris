@@ -8,6 +8,8 @@ import { localDateKey } from "@/lib/dates"
 import { sugerirTipoDoc } from "./cash-flow-store"
 import { accountBalance, accountDisplayName, buildRegisters } from "./registers-store"
 import { archiveReceipt, findReceiptDuplicate, hashImage, loadReceipts } from "./receipts"
+import { loadExpenses } from "./storage"
+import { findBillByInvoiceNo } from "./bill-payments"
 
 const NAVY = "#082A4F"
 const ORANGE = "#F86810"
@@ -95,6 +97,10 @@ export function ReceiptScanner({
   const [comercio, setComercio] = useState("")
   const [categoria, setCategoria] = useState<string>(EXPENSE_CATEGORIES[0])
   const [notas, setNotas] = useState("")
+  // Número de invoice de la compañía (identidad de la factura, Miguel
+  // 2026-11-03) y, en confirmaciones de pago, los invoices que cubre.
+  const [invoiceNo, setInvoiceNo] = useState("")
+  const [invoiceRefs, setInvoiceRefs] = useState<string[]>([])
   const [fecha, setFecha] = useState(localDateKey(new Date()))
   const [verCategorias, setVerCategorias] = useState(false)
   // Empty until user chooses — Easy Pass / Tower look like receipts but are Bills
@@ -252,6 +258,8 @@ export function ReceiptScanner({
       if (amountVal != null && Number(amountVal) > 0) setImporte(Number(amountVal).toFixed(2))
       if (r.category && EXPENSE_CATEGORIES.includes(r.category as ExpenseCategory)) setCategoria(String(r.category))
       if (r.notes) setNotas(String(r.notes))
+      if (r.invoiceNo) setInvoiceNo(String(r.invoiceNo))
+      if (Array.isArray(r.invoiceRefs) && r.invoiceRefs.length) setInvoiceRefs(r.invoiceRefs.map(String))
       if (typeof r.confidence === "number") setConfianza(r.confidence)
       // PDF de bill → forzar factura; si no, sugerir según texto
       if (isPdf) {
@@ -305,6 +313,18 @@ export function ReceiptScanner({
         setAviso({
           tipo: "error",
           texto: `This receipt is already saved (${dup.vendor} · ${dup.date} · $${dup.amount.toFixed(2)}). Duplicate annulled — nothing was saved.`,
+        })
+        return
+      }
+    }
+    // ANTI-DUPLICADO POR NÚMERO DE INVOICE (Miguel, 2026-11-03): el mismo
+    // número para el mismo vendedor solo puede existir una vez.
+    if (direccion === "gasto" && docTipo === "factura" && invoiceNo.trim()) {
+      const yaExiste = findBillByInvoiceNo(loadExpenses() || [], nombre, invoiceNo)
+      if (yaExiste) {
+        setAviso({
+          tipo: "error",
+          texto: `Invoice ${invoiceNo.trim()} is already saved (${yaExiste.vendor} · ${yaExiste.date} · $${yaExiste.amount.toFixed(2)}). Duplicate annulled — nothing was saved.`,
         })
         return
       }
@@ -363,6 +383,9 @@ export function ReceiptScanner({
       isEditedByUser: false,
       scheduled: docTipo === "factura" || freq !== "once",
       docType: docTipo || undefined,
+      // Identidad por número de invoice (Miguel, 2026-11-03).
+      invoiceNo: invoiceNo.trim() || undefined,
+      invoiceRefs: invoiceRefs.length ? invoiceRefs : undefined,
       scanned: true,
       // Register/cuenta de donde salió (la indica Miguel; va directo a ese register).
       accountId: cuentaId || undefined,
@@ -757,6 +780,24 @@ export function ReceiptScanner({
               style={{ background: "#fff", border: `1px solid ${LINE}`, color: "#1F2937" }}
             />
           </label>
+
+          {direccion === "gasto" && (
+            <label className="mt-3 block">
+              <span className="text-[11px] font-bold uppercase tracking-wider" style={{ color: "#6B7280" }}>Invoice #</span>
+              <input
+                value={invoiceNo}
+                onChange={(e) => setInvoiceNo(e.target.value)}
+                placeholder="CBL-1263590 — if the document shows a number"
+                className="mt-1 w-full rounded-xl px-3 py-2.5 text-sm outline-none"
+                style={{ background: "#fff", border: `1px solid ${LINE}`, color: "#1F2937" }}
+              />
+              {invoiceRefs.length > 0 && (
+                <span className="mt-1 block text-[10px] leading-snug" style={{ color: "#8A93A3" }}>
+                  This payment covers invoice{invoiceRefs.length > 1 ? "s" : ""}: {invoiceRefs.join(", ")}
+                </span>
+              )}
+            </label>
+          )}
 
           <button
             type="button"

@@ -72,7 +72,7 @@ import {
 } from "@/lib/sync"
 import { localDateKey } from "@/lib/dates"
 import { compareVersion } from "@/lib/version-check"
-import { applyMergedFinance, collectLocalFinance, financeCounts } from "./finance-sync"
+import { applyMergedFinance, collectLocalFinance, financeCounts, FINANCE_SYNCED_EVENT } from "./finance-sync"
 import { queueDualSync, flushDualSyncQueue } from "./dual-sync"
 
 const PRODUCCION_URL = "https://claris-lime.vercel.app"
@@ -307,6 +307,56 @@ export function CopilotoApp() {
     const timer = window.setTimeout(() => persist(trips, expenses), 250)
     return () => window.clearTimeout(timer)
   }, [trips, expenses, hydrated, persist])
+
+  // ADOPCIÓN DE GASTOS DESDE LA NUBE (arreglo de raíz, Miguel 2026-11-03):
+  // finance-cloud fusiona la nube en el localStorage y avisa con
+  // FINANCE_SYNCED_EVENT, pero esta raíz seguía mostrando — y volviendo a
+  // guardar — su estado en memoria, que podía ser la copia vieja: el pago
+  // del carro aparecía al abrir (llegaba la nube) y desaparecía al minuto
+  // (esta raíz republicaba su lista vieja y la fusión la ratificaba).
+  // Ahora, con cada aviso, el estado adopta lo guardado SOLO donde lo
+  // guardado es igual o más nuevo (updatedAt manda; más pagos con la
+  // misma fecha también): un editado local recién hecho nunca se pisa
+  // (su updatedAt es el más nuevo), y lo que la nube corrigió entra.
+  // Los borrados en sesión no se fuerzan aquí: siguen el curso normal
+  // de la fusión entre aperturas.
+  useEffect(() => {
+    if (!hydrated) return
+    const adopt = () => {
+      const stored = loadExpenses() ?? []
+      const cur = expensesRef.current
+      if (!stored.length) return
+      const curById = new Map(cur.map((e) => [e.id, e]))
+      let changed = false
+      const seen = new Set<string>()
+      const next: Expense[] = []
+      for (const s of stored) {
+        seen.add(s.id)
+        const c = curById.get(s.id)
+        if (!c) {
+          next.push(s)
+          changed = true
+          continue
+        }
+        const sAt = String(s.updatedAt || "")
+        const cAt = String(c.updatedAt || "")
+        const sMorePays = (s.payments?.length || 0) > (c.payments?.length || 0)
+        if ((sAt > cAt || (sMorePays && sAt >= cAt)) && JSON.stringify(s) !== JSON.stringify(c)) {
+          next.push(s)
+          changed = true
+        } else {
+          next.push(c)
+        }
+      }
+      for (const c of cur) if (!seen.has(c.id)) next.push(c)
+      if (changed) {
+        expensesRef.current = next
+        setExpenses(next)
+      }
+    }
+    window.addEventListener(FINANCE_SYNCED_EVENT, adopt)
+    return () => window.removeEventListener(FINANCE_SYNCED_EVENT, adopt)
+  }, [hydrated])
 
   useEffect(() => {
     if (!hydrated) return
@@ -807,6 +857,7 @@ export function CopilotoApp() {
                 date: e.date,
                 accountId: e.accountId,
                 id: e.id,
+                invoiceRefs: e.invoiceRefs,
               })
               if (hit) {
                 const withPay = addBillPayment(hit.bill, hit.payment)

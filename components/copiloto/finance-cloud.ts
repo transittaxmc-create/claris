@@ -88,6 +88,33 @@ const NEVER_EMPTY_KEYS = new Set<string>([
   "claris_receipts_v1",
 ])
 
+/** Marca de "vaciado deliberado" de los recurrentes (Miguel, 2026-11-03):
+ *  los recurrentes NO pueden entrar al candado anti-vacío de arriba sin
+ *  más, porque su vaciado SÍ es una acción legítima ("Remove all
+ *  projected"). La distinción: los botones de borrado a propósito dejan
+ *  esta marca (con hora) ANTES de vaciar; un cero accidental (una copia
+ *  que falló al hidratar y guardó la lista vacía) no la trae. Sin marca
+ *  fresca, un lado en cero NO borra los recurrentes del otro lado. */
+export const SCHEDULES_CLEAR_FLAG_KEY = "claris_schedules_clear_flag_v1"
+const SCHEDULES_CLEAR_WINDOW_MS = 5 * 60 * 1000
+
+function schedulesClearIsDeliberate(): boolean {
+  try {
+    const raw = localStorage.getItem(SCHEDULES_CLEAR_FLAG_KEY)
+    if (!raw) return false
+    const at = Number(raw)
+    return Number.isFinite(at) && Date.now() - at < SCHEDULES_CLEAR_WINDOW_MS
+  } catch {
+    return false
+  }
+}
+
+export function consumeSchedulesClearFlag(): void {
+  try {
+    localStorage.removeItem(SCHEDULES_CLEAR_FLAG_KEY)
+  } catch {}
+}
+
 let started = false
 /** Índice de la última foto conocida de la nube: por clave, la huella de
  *  cada item (para listas) y la huella del valor crudo. Se PERSISTE en
@@ -308,6 +335,18 @@ function mergeValues(
       return li.length === 0 ? cloudRaw : localRaw
     }
   }
+  // Recurrentes: candado anti-vacío CON marca (ver SCHEDULES_CLEAR_FLAG):
+  // un cero sin marca fresca no borra al otro lado; con marca, el vaciado
+  // es deliberado y sigue su curso normal por la fusión a tres bandas.
+  if (key === FINANCE_SCHEDULES_KEY && Array.isArray(l) && Array.isArray(c)) {
+    if ((l.length === 0) !== (c.length === 0)) {
+      if (schedulesClearIsDeliberate()) {
+        consumeSchedulesClearFlag()
+      } else {
+        return l.length === 0 ? cloudRaw : localRaw
+      }
+    }
+  }
   // En el ledger, los espejos del banco (ids "ai:") son datos DERIVADOS
   // del register del servidor: si a una copia le falta uno es porque su
   // espejo está incompleto, no porque el movimiento se haya borrado —
@@ -322,7 +361,42 @@ function mergeValues(
   if (key === "ic_expenses" && isPlainObject(l) && isPlainObject(c) && Array.isArray(l.entries) && Array.isArray(c.entries)) {
     const u = threeWayArrays(baseItems, l.entries as unknown[], c.entries as unknown[], localWins)
     if (!u) return null
-    return JSON.stringify({ ...c, ...l, entries: u })
+    // LA VERSIÓN MÁS NUEVA DE CADA GASTO GANA (regla de Miguel,
+    // 2026-11-03: "cuando la nube trae un pago más nuevo, ese gana").
+    // La fusión a tres bandas decide por la base, pero la raíz de la app
+    // persiste Gastos desde su estado en memoria: una copia cuyo estado
+    // nunca adoptó la nube vuelve a escribir su versión vieja y la base
+    // la ratifica como "cambio local" — así rebotaron TRES veces los
+    // pagos corregidos de las facturas del leasing (el fósil de $302
+    // reemplazaba al pago bueno de $919). Defensa: si el mismo gasto
+    // existe en los dos lados con contenido distinto, manda la copia
+    // con el updatedAt más nuevo — un pago/editado deliberado siempre
+    // estampa updatedAt al guardarse (saveExpense), y una copia vieja
+    // trae el updatedAt viejo. Los borrados NO se tocan: si la fusión
+    // decidió que el gasto no va, no resucita por esta regla.
+    const byIdOf = (arr: unknown[]) => {
+      const m = new Map<string, unknown>()
+      for (const it of arr) {
+        const id = itemIdentity(it)
+        if (id) m.set(id, it)
+      }
+      return m
+    }
+    const lById = byIdOf(l.entries as unknown[])
+    const cById = byIdOf(c.entries as unknown[])
+    const updatedAtOf = (it: unknown): string =>
+      isPlainObject(it) && typeof it.updatedAt === "string" ? it.updatedAt : ""
+    const reconciled = u.map((it) => {
+      const id = itemIdentity(it)
+      if (!id) return it
+      const lv = lById.get(id)
+      const cv = cById.get(id)
+      if (lv === undefined || cv === undefined) return it
+      if (JSON.stringify(lv) === JSON.stringify(cv)) return it
+      const newer = updatedAtOf(lv) > updatedAtOf(cv) ? lv : updatedAtOf(cv) > updatedAtOf(lv) ? cv : it
+      return newer
+    })
+    return JSON.stringify({ ...c, ...l, entries: reconciled })
   }
   // Objeto con lista `accounts` (CREDIT): las cuentas se fusionan a
   // tres bandas; el resto de la envoltura manda lo local, como antes.

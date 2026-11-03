@@ -20,6 +20,7 @@ import {
   type ProyProps,
 } from "./proyeccion-shared"
 import { billPaidTotal, billRemaining } from "./bill-payments"
+import { SCHEDULES_CLEAR_FLAG_KEY } from "./finance-cloud"
 import { accountDisplayName } from "./registers-store"
 import { normalizeVendorName, type Expense } from "./types"
 import { platformMatch, vendorMatch, SCHEDULE_OVERRIDES_KEY, type ForecastLine, type ProbablePaid } from "./dinero-forecast"
@@ -159,6 +160,9 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
         (e) => !(e && e.status === "projected" && !String(e.id).startsWith("claris:cobro:")),
       )
       localStorage.setItem(FINANCE_LEDGER_KEY, JSON.stringify(kept))
+      // Marca de vaciado DELIBERADO: sin ella, el candado anti-vacío de
+      // finance-cloud no dejaría propagar este borrado a propósito.
+      localStorage.setItem(SCHEDULES_CLEAR_FLAG_KEY, String(Date.now()))
       localStorage.setItem(FINANCE_SCHEDULES_KEY, JSON.stringify([]))
       localStorage.setItem(SCHEDULE_OVERRIDES_KEY, JSON.stringify([]))
     } catch {}
