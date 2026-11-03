@@ -409,9 +409,19 @@ interface LedgerItem {
 }
 
 function ledgerProjected(entries: CashFlowEntry[], today: string): LedgerItem[] {
-  const out: LedgerItem[] = []
+  const byId = new Map<string, CashFlowEntry>()
   for (const e of entries || []) {
     if (!e || e.status !== "projected") continue
+    const id = String(e.id || "")
+    if (!id) continue
+    // La lista persistida conserva el último asiento escrito; usar el último
+    // duplicado evita que una copia antigua sobrescriba el dato actual.
+    byId.set(id, e)
+  }
+
+  const out: LedgerItem[] = []
+  const semanticKeys = new Set<string>()
+  for (const e of byId.values()) {
     const amt = Math.abs(Number(e.amount) || 0)
     if (amt < 0.01) continue
     const income = e.type === "income"
@@ -420,6 +430,11 @@ function ledgerProjected(entries: CashFlowEntry[], today: string): LedgerItem[] 
     // Término quirúrgico de Miguel (2026-11-02): lo que antes se guardó como
     // "Cobro X" se muestra como cuenta por cobrar, sin reescribir el dato.
     const labelMov = /^cobro\s+/i.test(descMov) ? `Receivable · ${descMov.replace(/^cobro\s+/i, "")}` : descMov
+    // Dos copias del mismo asiento pueden tener IDs distintos después de una
+    // importación o una mezcla nube/local. En el forecast son una sola deuda.
+    const semanticKey = `${income ? "in" : "out"}|${date}|${r2(amt)}|${String(labelMov).trim().toLowerCase()}`
+    if (semanticKeys.has(semanticKey)) continue
+    semanticKeys.add(semanticKey)
     out.push({ entry: e, date, amount: r2(amt), income, label: labelMov })
   }
   return out
@@ -567,9 +582,23 @@ export function buildForecast(input: ForecastInput): Forecast {
   // lo que esté en ese estado queda macheado solo, sin recordatorios.
   // ------------------------------------------------------------------
   const ledger = ledgerProjected(input.entries, today)
-  const billsIn: ForecastBill[] = (input.bills || []).filter(
-    (b) => b && isIsoDate(b.date) && Number.isFinite(Number(b.remaining)),
-  )
+  const scheduleById = new Map<string, ScheduledEntry>()
+  for (const s of input.schedules || []) {
+    const id = String(s?.id || "")
+    if (!id) continue
+    // La lista persistida conserva el último recurrente escrito; usar el último
+    // duplicado evita que una copia antigua sobrescriba el dato actual.
+    scheduleById.set(id, s)
+  }
+  const schedules = [...scheduleById.values()]
+  const billKeys = new Set<string>()
+  const billsIn: ForecastBill[] = (input.bills || []).filter((b) => {
+    if (!b || !isIsoDate(b.date) || !Number.isFinite(Number(b.remaining))) return false
+    const key = `${String(b.scheduleId || "")}|${String(b.date).slice(0, 10)}|${r2(Number(b.remaining))}|${String(b.vendor || "").trim().toLowerCase()}`
+    if (billKeys.has(key)) return false
+    billKeys.add(key)
+    return true
+  })
   const usedBills = new Set<number>()
   const groupCoveredEntry = new Map<string, ForecastBankTx>()
   const groupCoveredBill = new Set<number>()
@@ -723,7 +752,7 @@ export function buildForecast(input: ForecastInput): Forecast {
 
   // 2) Recurrentes (claris_scheduled_entries)
   let recurringCount = 0
-  for (const s of input.schedules || []) {
+  for (const s of schedules) {
     const amt = r2(Math.abs(Number(s?.amount) || 0))
     if (!s || amt < 0.01) continue
     const income = s.kind === "income"
