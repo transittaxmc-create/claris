@@ -116,6 +116,7 @@ export function CopilotoApp() {
   const expenseTombstonesRef = useRef<Tombstones>({})
   const savedTimer = useRef<number | null>(null)
   const autoSynced = useRef(false)
+  const syncInFlight = useRef(false)
 
   useEffect(() => {
     tripsRef.current = trips
@@ -468,6 +469,8 @@ export function CopilotoApp() {
 
   const runSync = useCallback(
     async (code: string, silent = false) => {
+      if (syncInFlight.current) return
+      syncInFlight.current = true
       setSyncing(true)
       if (!silent) setSyncMessage(null)
       const result = await syncWithCloud<Trip>(
@@ -509,6 +512,7 @@ export function CopilotoApp() {
         setSyncMessage(`No se pudo sincronizar: ${result.message}`)
       }
       setSyncing(false)
+      syncInFlight.current = false
       refreshInfo()
     },
     [persist, refreshInfo],
@@ -518,6 +522,23 @@ export function CopilotoApp() {
     if (!hydrated || !syncCode || autoSynced.current) return
     autoSynced.current = true
     runSync(syncCode, true)
+  }, [hydrated, syncCode, runSync])
+
+  // Una pestaña instalada y el navegador pueden tener almacenes separados.
+  // Al volver al primer plano, siempre reconciliamos contra la copia remota
+  // antes de mostrar cambios locales antiguos; el mutex evita dos pushes en
+  // paralelo que se pisen entre sí.
+  useEffect(() => {
+    if (!hydrated || !syncCode) return
+    const reconcile = () => {
+      if (document.visibilityState === "visible") runSync(syncCode, true)
+    }
+    window.addEventListener("focus", reconcile)
+    document.addEventListener("visibilitychange", reconcile)
+    return () => {
+      window.removeEventListener("focus", reconcile)
+      document.removeEventListener("visibilitychange", reconcile)
+    }
   }, [hydrated, syncCode, runSync])
 
   function exportJson() {
