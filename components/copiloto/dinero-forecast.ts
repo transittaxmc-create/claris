@@ -345,6 +345,20 @@ export function paidWindow(freq: ScheduleFrequency | undefined): number {
   return 10
 }
 
+/** Monday of the week containing `iso` (local, Monday-start). */
+export function weekStartOf(iso: string): string {
+  const [y, m, d] = parts(iso)
+  const dt = new Date(y, m - 1, d, 12)
+  const dow = (dt.getDay() + 6) % 7
+  dt.setDate(dt.getDate() - dow)
+  return keyOf(dt)
+}
+
+/** True if two ISO dates fall in the same Monday-start week. */
+export function sameWeek(a: string, b: string): boolean {
+  return weekStartOf(a) === weekStartOf(b)
+}
+
 // ---------------------------------------------------------------------------
 // Starting balance
 // ---------------------------------------------------------------------------
@@ -481,7 +495,7 @@ export function buildForecast(input: ForecastInput): Forecast {
   // los payouts de plataformas varían en monto (±8 %) y la descripción del
   // banco rara vez comparte tokens con "Cobro Uber". Basta que ambos
   // mencionen la plataforma.
-  const findTx = (income: boolean, amount: number, date: string, label: string, window: number, pct: number): number => {
+  const findTx = (income: boolean, amount: number, date: string, label: string, window: number, pct: number, requireSameWeek = true): number => {
     let best = -1
     let bestGap = Infinity
     for (let i = 0; i < txPool.length; i++) {
@@ -490,7 +504,11 @@ export function buildForecast(input: ForecastInput): Forecast {
       const amt = Number(t.amount) || 0
       if (income ? amt <= 0 : amt >= 0) continue
       if (income && !isDestinationAccount(t.bank_account)) continue
-      const gap = Math.abs(diffDays(String(t.date).slice(0, 10), date))
+      const tDate = String(t.date).slice(0, 10)
+      // Miguel 2026-11-03: un pago de otra semana NO oculta la proyección de esta semana.
+      // Solo se considera "ya pagado" si el movimiento es de la misma semana que la ocurrencia.
+      if (requireSameWeek && !sameWeek(tDate, date)) continue
+      const gap = Math.abs(diffDays(tDate, date))
       if (gap > window) continue
       if (!amountClose(amt, amount, pct)) continue
       if (!vendorMatch(t.detail, label)) continue
@@ -791,11 +809,12 @@ export function buildForecast(input: ForecastInput): Forecast {
           let bestGap = Infinity
           for (const d of occDates) {
             if (billForOcc.has(d)) continue
-            const gap = Math.abs(diffDays(String(b.date).slice(0, 10), d))
-            // El bill de ciclo auto SOLO puede caer en SU ocurrencia exacta:
-            // si un bill real ya la tomó, el placeholder se suprime — jamás
-            // se corre al ciclo siguiente.
-            if (exactOnly ? gap === 0 : gap <= 31 && gap < bestGap) {
+            const bDate = String(b.date).slice(0, 10)
+            const gap = Math.abs(diffDays(bDate, d))
+            // El bill de ciclo auto SOLO puede caer en SU ocurrencia exacta.
+            // Bills reales: solo misma semana (Miguel 2026-11-03). Un bill
+            // de la semana anterior no puede "comerse" la ocurrencia de esta semana.
+            if (exactOnly ? gap === 0 : (sameWeek(bDate, d) && gap < bestGap)) {
               bestGap = gap
               bestD = d
             }
