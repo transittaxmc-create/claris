@@ -370,6 +370,8 @@ const ALL_KEYS = [
   "claris_toll_bills",
   // Cash Flow Register (Libro Mayor) — asientos reales y proyectados.
   "claris_cash_flow_entries",
+  // Excepciones puntuales de recurrentes usadas por Proyecciones.
+  "claris_schedule_overrides",
 ]
 
 // Build the full export document (version 2) in the exact shape the original
