@@ -1,0 +1,180 @@
+"use client"
+
+import { useEffect, useMemo, useRef, useState } from "react"
+import { grossOf, type Trip } from "./types"
+
+// Cajita de producción por hora para TODAY (Miguel, 2026-11-04).
+// Compacta, debajo de la línea TODAY, para ver de un vistazo cuánto va
+// en la hora en curso sin mirar el cronómetro.
+//
+// Reglas:
+// - Cada punto es una hora en punto (9, 10, 11...). El número es el GROSS
+//   de los viajes GUARDADOS en esa hora (el mismo GROSS de arriba).
+// - Un viaje en camino todavía no suma: suma cuando se guarda, al
+//   completar el drop-off. La hora en curso se llena sola con cada viaje
+//   guardado.
+// - La línea corre sola para dejar la hora actual a la vista.
+// - Al tocar la caja se abre la lista del día hora por hora: esa es la
+//   estadística de la noche. Nada de promedios ni metas.
+// - Privacidad: si los montos están tapados en TODAY, aquí también se
+//   tapan (amountsVisible viene del mismo toque que muestra el GROSS).
+
+export type HourBucket = { hour: number; total: number; trips: number }
+
+export function hourOfTrip(t: Trip): number | null {
+  const m = /^(\d{1,2}):(\d{2})/.exec(t.time || "")
+  if (!m) return null
+  const h = Number(m[1])
+  if (h < 0 || h > 23) return null
+  return h
+}
+
+export function buildHourBuckets(trips: Trip[], currentHour: number): HourBucket[] {
+  const byHour = new Map<number, { total: number; trips: number }>()
+  for (const t of trips) {
+    const h = hourOfTrip(t)
+    if (h === null) continue
+    const e = byHour.get(h) || { total: 0, trips: 0 }
+    e.total = Math.round((e.total + grossOf(t)) * 100) / 100
+    e.trips += 1
+    byHour.set(h, e)
+  }
+  const hours = [...byHour.keys()]
+  const start = hours.length ? Math.min(...hours) : currentHour
+  const out: HourBucket[] = []
+  for (let h = start; h <= currentHour; h++) {
+    const e = byHour.get(h)
+    out.push({ hour: h, total: e ? e.total : 0, trips: e ? e.trips : 0 })
+  }
+  return out
+}
+
+function hour12(h: number): number {
+  const n = ((h % 24) + 24) % 24
+  return n % 12 === 0 ? 12 : n % 12
+}
+
+function suffix(h: number): string {
+  const n = ((h % 24) + 24) % 24
+  return n < 12 ? "AM" : "PM"
+}
+
+// "9–10 AM", "11 AM–12 PM", "11 PM–12 AM": la hora en punto, como la dice Miguel.
+export function hourRangeLabel(h: number): string {
+  return `${hour12(h)} ${suffix(h)}–${hour12(h + 1)} ${suffix(h + 1)}`
+}
+
+export function HourlyStrip({ trips, amountsVisible }: { trips: Trip[]; amountsVisible: boolean }) {
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30000)
+    return () => clearInterval(id)
+  }, [])
+  const [open, setOpen] = useState(false)
+  const scrollRef = useRef<HTMLDivElement>(null)
+
+  const currentHour = now.getHours()
+  const buckets = useMemo(() => buildHourBuckets(trips, currentHour), [trips, currentHour])
+  const dayTotal = useMemo(() => buckets.reduce((s, b) => s + b.total, 0), [buckets])
+  const current = buckets[buckets.length - 1]
+  const minutes = now.getMinutes()
+
+  // La línea se aplana cuando los montos están tapados: la forma no delata cifras.
+  const shown = amountsVisible ? buckets : buckets.map((b) => ({ ...b, total: 0 }))
+  const max = Math.max(1, ...shown.map((b) => b.total))
+  const w = Math.max(buckets.length * 46, 120)
+  const h = 44
+  const points = shown.map((b, i) => {
+    const x = buckets.length === 1 ? w / 2 : 14 + (i * (w - 28)) / (buckets.length - 1)
+    const y = h - 12 - (b.total / max) * (h - 20)
+    return { x, y, hour: b.hour, last: i === buckets.length - 1 }
+  })
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (el) el.scrollLeft = el.scrollWidth
+  }, [buckets.length])
+
+  const money = (n: number) => `$${n.toFixed(2)}`
+  const masked = "••••••"
+
+  return (
+    <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-2 sm:col-span-2">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        title="Ver el día hora por hora"
+        className="w-full text-left"
+      >
+        <div className="flex items-baseline justify-between gap-2">
+          <span className="text-[10px] font-bold tracking-wide text-neutral-400">
+            HORA {current ? hourRangeLabel(current.hour) : ""}
+          </span>
+          <span className="text-[10px] text-neutral-500">van {minutes} min</span>
+        </div>
+        <div className="mt-0.5 flex items-baseline justify-between gap-2">
+          <span className="font-mono text-lg font-black tabular-nums text-emerald-300">
+            {amountsVisible && current ? money(current.total) : masked}
+          </span>
+          <span className="font-mono text-xs font-bold tabular-nums text-neutral-300">
+            hoy {amountsVisible ? money(dayTotal) : masked}
+          </span>
+        </div>
+        <div
+          ref={scrollRef}
+          className="mt-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
+          <svg width={w} height={h} className="block" aria-hidden="true">
+            {points.length > 1 && (
+              <polyline
+                fill="none"
+                stroke="#34d399"
+                strokeWidth="2"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                points={points.map((p) => `${p.x},${p.y}`).join(" ")}
+              />
+            )}
+            {points.map((p) => (
+              <g key={p.hour}>
+                <circle cx={p.x} cy={p.y} r={p.last ? 4.5 : 3} fill={p.last ? "#bef264" : "#34d399"} />
+                <text x={p.x} y={h - 1} textAnchor="middle" fontSize="8" fill="#737373">
+                  {hour12(p.hour)}
+                </text>
+              </g>
+            ))}
+          </svg>
+        </div>
+        <p className="mt-1 text-center text-[9px] text-neutral-500">
+          {trips.length === 0
+            ? "Todavía no hay viajes guardados hoy"
+            : open
+              ? "toca para cerrar"
+              : "toca para ver el día hora por hora"}
+        </p>
+      </button>
+      {open && (
+        <div className="mt-1 border-t border-neutral-800 pt-1">
+          {buckets.map((b) => (
+            <div key={b.hour} className="flex items-center justify-between py-0.5 text-[11px]">
+              <span className="font-mono text-neutral-400">{hourRangeLabel(b.hour)}</span>
+              <span className="text-neutral-500">
+                {b.trips} {b.trips === 1 ? "viaje" : "viajes"}
+              </span>
+              <span className="w-20 text-right font-mono font-bold tabular-nums text-white">
+                {amountsVisible ? money(b.total) : masked}
+              </span>
+            </div>
+          ))}
+          <div className="flex items-center justify-between border-t border-neutral-800 pt-1 text-[11px] font-bold">
+            <span className="text-neutral-300">TOTAL DEL DÍA</span>
+            <span className="font-mono tabular-nums text-emerald-300">
+              {amountsVisible ? money(dayTotal) : masked}
+            </span>
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}
