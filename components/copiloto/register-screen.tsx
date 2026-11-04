@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils"
 import { localDateKey } from "@/lib/dates"
 import { type Trip, type TollBill, grossOf, netOf, money, tripDateOf } from "./types"
 import { reconciliarCobrosAlLibro } from "./cash-flow-store"
+import { HourlyEarningsChart } from "./hourly-earnings-chart"
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
 import { isVoucherPlatform } from "./platform-meta"
 import {
@@ -497,8 +498,12 @@ export function RegisterScreen({
         {showDetail && (
           <div className="space-y-2.5">
             <GrossByPlatformCard total={totals.gross} groups={platformGroups} />
+            <HourlyEarningsChart trips={tripsForDay} date={selectedDate} />
             <ReconciliationPanel summary={summary} groups={platformGroups} />
           </div>
+        )}
+        {!showDetail && (
+          <HourlyEarningsChart trips={tripsForDay} date={selectedDate} />
         )}
 
         <div className="space-y-3 pt-1">
