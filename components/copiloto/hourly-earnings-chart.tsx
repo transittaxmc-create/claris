@@ -11,10 +11,9 @@ function hourOf(time: string): number | null {
   return h >= 0 && h <= 23 ? h : null
 }
 
-function label(h: number): string {
+function shortLabel(h: number): string {
   const next = (h + 1) % 24
-  const fmt = (n: number) => String(n).padStart(2, "0")
-  return `${fmt(h)}–${fmt(next)}`
+  return `${h}-${next}`
 }
 
 export function HourlyEarningsChart({
@@ -26,7 +25,8 @@ export function HourlyEarningsChart({
 }) {
   const now = new Date()
   const currentHour = now.getHours()
-  const isToday = date === now.toISOString().slice(0, 10) || date === `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
+  const isToday = date === todayStr
 
   const buckets = useMemo(() => {
     const map = new Map<number, number>()
@@ -36,7 +36,6 @@ export function HourlyEarningsChart({
       if (h == null) continue
       map.set(h, (map.get(h) || 0) + grossOf(t))
     }
-    // Show from earliest trip hour to latest (or current if today), min 6 hours window
     let minH = 24
     let maxH = -1
     for (const h of map.keys()) {
@@ -48,12 +47,11 @@ export function HourlyEarningsChart({
       maxH = Math.max(maxH, currentHour)
     }
     if (minH > maxH) {
-      minH = isToday ? Math.max(0, currentHour - 2) : 8
-      maxH = isToday ? Math.min(23, currentHour + 3) : 20
+      minH = isToday ? Math.max(0, currentHour - 1) : 8
+      maxH = isToday ? Math.min(23, currentHour + 2) : 18
     }
-    // Expand a bit for context
-    minH = Math.max(0, minH - 1)
-    maxH = Math.min(23, maxH + 1)
+    minH = Math.max(0, minH)
+    maxH = Math.min(23, maxH)
 
     const list: { hour: number; amount: number }[] = []
     for (let h = minH; h <= maxH; h++) {
@@ -68,66 +66,53 @@ export function HourlyEarningsChart({
   useEffect(() => {
     if (!scrollRef.current || !isToday) return
     const el = scrollRef.current.querySelector(`[data-hour="${currentHour}"]`)
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" })
-    }
+    if (el) el.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" })
   }, [currentHour, isToday, buckets.length])
 
   if (buckets.length === 0) return null
 
   return (
-    <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-2.5">
-      <div className="mb-1.5 flex items-center justify-between">
-        <span className="text-[10px] font-bold tracking-wide text-neutral-500">GROSS BY HOUR</span>
-        <span className="text-[9px] text-neutral-600">$ per hour block</span>
-      </div>
+    <div className="rounded-xl border border-neutral-800 bg-neutral-900/30 px-2 py-1.5">
       <div
         ref={scrollRef}
-        className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex items-end gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {buckets.map((b) => {
           const pct = Math.round((b.amount / maxAmt) * 100)
           const active = isToday && b.hour === currentHour
+          const barH = Math.max(6, Math.round((pct / 100) * 28))
           const color =
             b.amount === 0
               ? "bg-neutral-800"
-              : pct >= 80
-                ? "bg-emerald-500"
-                : pct >= 50
+              : pct >= 75
+                ? "bg-emerald-400"
+                : pct >= 45
                   ? "bg-yellow-400"
-                  : pct >= 25
+                  : pct >= 20
                     ? "bg-orange-400"
-                    : "bg-sky-500"
+                    : "bg-sky-400"
           return (
             <div
               key={b.hour}
               data-hour={b.hour}
               className={cn(
-                "flex w-14 shrink-0 flex-col items-center gap-1 rounded-xl border px-1 py-1.5",
-                active ? "border-yellow-400/70 bg-yellow-400/10" : "border-neutral-800 bg-neutral-950/50",
+                "flex w-11 shrink-0 flex-col items-center gap-0.5 rounded-lg px-0.5 py-1",
+                active && "bg-yellow-400/15 ring-1 ring-yellow-400/60",
               )}
             >
-              <span className={cn("text-[9px] font-bold", active ? "text-yellow-300" : "text-neutral-500")}>
-                {label(b.hour)}
+              <span className={cn("text-[8px] font-bold leading-none", active ? "text-yellow-300" : "text-neutral-500")}>
+                {shortLabel(b.hour)}
               </span>
-              <div className="flex h-16 w-full items-end justify-center">
-                <div
-                  className={cn("w-3.5 rounded-sm transition-all", color)}
-                  style={{ height: `${Math.max(4, pct)}%` }}
-                />
+              <div className="flex h-7 w-full items-end justify-center">
+                <div className={cn("w-2.5 rounded-sm", color)} style={{ height: barH }} />
               </div>
-              <span className={cn("text-[10px] font-bold tabular-nums", b.amount > 0 ? "text-white" : "text-neutral-600")}>
-                ${b.amount.toFixed(0)}
+              <span className={cn("text-[9px] font-bold tabular-nums leading-none", b.amount > 0 ? "text-white" : "text-neutral-600")}>
+                {b.amount > 0 ? `$${Math.round(b.amount)}` : "—"}
               </span>
             </div>
           )
         })}
       </div>
-      {isToday && (
-        <p className="mt-1 text-[9px] text-neutral-600">
-          Current hour {label(currentHour)} updates as you complete trips.
-        </p>
-      )}
-    </section>
+    </div>
   )
 }
