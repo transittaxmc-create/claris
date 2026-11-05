@@ -82,13 +82,6 @@ export function HourlyStrip({ trips, amountsVisible }: { trips: Trip[]; amountsV
   // La línea se aplana cuando los montos están tapados: la forma no delata cifras.
   const shown = amountsVisible ? buckets : buckets.map((b) => ({ ...b, total: 0 }))
   const max = Math.max(1, ...shown.map((b) => b.total))
-  const w = Math.max(buckets.length * 46, 120)
-  const h = 44
-  const points = shown.map((b, i) => {
-    const x = buckets.length === 1 ? w / 2 : 14 + (i * (w - 28)) / (buckets.length - 1)
-    const y = h - 12 - (b.total / max) * (h - 20)
-    return { x, y, hour: b.hour, last: i === buckets.length - 1 }
-  })
 
   useEffect(() => {
     const el = scrollRef.current
@@ -123,28 +116,39 @@ export function HourlyStrip({ trips, amountsVisible }: { trips: Trip[]; amountsV
         </div>
         <div
           ref={scrollRef}
-          className="mt-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="mt-1 flex items-end gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          <svg width={w} height={h} className="block" aria-hidden="true">
-            {points.length > 1 && (
-              <polyline
-                fill="none"
-                stroke="#34d399"
-                strokeWidth="2"
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                points={points.map((p) => `${p.x},${p.y}`).join(" ")}
-              />
-            )}
-            {points.map((p) => (
-              <g key={p.hour}>
-                <circle cx={p.x} cy={p.y} r={p.last ? 4.5 : 3} fill={p.last ? "#bef264" : "#34d399"} />
-                <text x={p.x} y={h - 1} textAnchor="middle" fontSize="8" fill="#737373">
-                  {hour12(p.hour)}
-                </text>
-              </g>
-            ))}
-          </svg>
+          {shown.map((b) => {
+            const pct = Math.round((b.total / max) * 100)
+            const active = b.hour === currentHour
+            const barH = Math.max(4, Math.round((pct / 100) * 22))
+            const color =
+              b.total === 0
+                ? "bg-neutral-800"
+                : pct >= 75
+                  ? "bg-emerald-400"
+                  : pct >= 45
+                    ? "bg-yellow-400"
+                    : pct >= 20
+                      ? "bg-orange-400"
+                      : "bg-sky-400"
+            return (
+              <div
+                key={b.hour}
+                className={`flex w-9 shrink-0 flex-col items-center gap-0.5 rounded-md px-0.5 py-0.5 ${active ? "bg-yellow-400/15 ring-1 ring-yellow-400/50" : ""}`}
+              >
+                <span className={`text-[7px] font-bold leading-none ${active ? "text-yellow-300" : "text-neutral-500"}`}>
+                  {hour12(b.hour)}
+                </span>
+                <div className="flex h-5 w-full items-end justify-center">
+                  <div className={`w-2 rounded-sm ${color}`} style={{ height: barH }} />
+                </div>
+                <span className={`text-[8px] font-bold tabular-nums leading-none ${b.total > 0 ? "text-white" : "text-neutral-600"}`}>
+                  {amountsVisible && b.total > 0 ? `$${Math.round(b.total)}` : "·"}
+                </span>
+              </div>
+            )
+          })}
         </div>
         <p className="mt-1 text-center text-[9px] text-neutral-500">
           {trips.length === 0
