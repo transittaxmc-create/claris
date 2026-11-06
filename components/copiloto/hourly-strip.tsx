@@ -80,7 +80,7 @@ export function HourlyStrip({ trips, amountsVisible }: { trips: Trip[]; amountsV
   const minutes = now.getMinutes()
 
   // La línea se aplana cuando los montos están tapados: la forma no delata cifras.
-  const shown = amountsVisible ? buckets : buckets.map((b) => ({ ...b, total: 0 }))
+  const shown = buckets
   const max = Math.max(1, ...shown.map((b) => b.total))
 
   useEffect(() => {
@@ -144,7 +144,7 @@ export function HourlyStrip({ trips, amountsVisible }: { trips: Trip[]; amountsV
                   <div className={`w-2 rounded-sm ${color}`} style={{ height: barH }} />
                 </div>
                 <span className={`text-[8px] font-bold tabular-nums leading-none ${b.total > 0 ? "text-white" : "text-neutral-600"}`}>
-                  {amountsVisible && b.total > 0 ? `$${Math.round(b.total)}` : "·"}
+                  {b.total > 0 ? `$${Math.round(b.total)}` : "—"}
                 </span>
               </div>
             )
