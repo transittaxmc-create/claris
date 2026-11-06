@@ -92,7 +92,7 @@ export function HourlyStrip({ trips, amountsVisible }: { trips: Trip[]; amountsV
   const masked = "••••••"
 
   return (
-    <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-2 sm:col-span-2">
+    <section className="mt-2 rounded-xl border border-neutral-800 bg-neutral-900/30 px-1.5 py-1 sm:col-span-2">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
