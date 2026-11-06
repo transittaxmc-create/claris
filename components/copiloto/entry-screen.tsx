@@ -565,8 +565,6 @@ export function EntryScreen({
           (aclaración de Miguel, 2026-10-26: las notas pueden quedar abajo;
           lo que nunca puede requerir scroll es entrar datos ni salvar). */}
       <div className="flex-1 space-y-1.5 overflow-y-auto px-4 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:content-start sm:gap-4 sm:px-8 sm:py-5">
-        {/* Producción por hora — cajita compacta debajo de TODAY (Miguel, 2026-11-04) */}
-        <HourlyStrip trips={todayTrips} amountsVisible={showGross} />
         {/* Platform + break — EXACTAMENTE como estaba en V7, con los
             logos originales de cada plataforma (orden de Miguel,
             2026-10-31: "en la V7 prefiero dejarla como está esa parte").
@@ -839,6 +837,7 @@ export function EntryScreen({
         >
           {storageSaved ? "STORAGE OK ✓" : lowAccuracy ? "⚠️ FIX GPS FIRST" : "+ SAVE TO DISK"}
         </button>
+        <HourlyStrip trips={todayTrips} amountsVisible={showGross} />
       </div>
     </div>
   )
