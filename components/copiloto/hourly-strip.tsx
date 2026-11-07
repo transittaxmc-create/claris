@@ -92,31 +92,42 @@ export function HourlyStrip({ trips, amountsVisible }: { trips: Trip[]; amountsV
   const masked = "••••••"
 
   return (
-    <section className="mt-2 rounded-xl border border-neutral-800 bg-neutral-900/30 px-1.5 py-1 sm:col-span-2">
+    <section className="mt-2 rounded-2xl border border-neutral-800 bg-neutral-900/60 p-2.5 shadow-[0_10px_30px_rgba(0,0,0,0.2)] sm:col-span-2">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
-        title="Ver el día hora por hora"
+        title="Ver la producción hora por hora"
         className="w-full text-left"
       >
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="text-[10px] font-bold tracking-wide text-neutral-400">
-            HORA {current ? hourRangeLabel(current.hour) : ""}
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[10px] font-bold tracking-[0.14em] text-neutral-300">
+            PRODUCCIÓN POR HORA
           </span>
-          <span className="text-[10px] text-neutral-500">van {minutes} min</span>
+          <span className="rounded-full bg-yellow-400/10 px-2 py-0.5 text-[9px] font-bold text-yellow-300">
+            {open ? "OCULTAR" : "VER DETALLE"}
+          </span>
         </div>
-        <div className="mt-0.5 flex items-baseline justify-between gap-2">
-          <span className="font-mono text-lg font-black tabular-nums text-emerald-300">
-            {amountsVisible && current ? money(current.total) : masked}
-          </span>
-          <span className="font-mono text-xs font-bold tabular-nums text-neutral-300">
-            hoy {amountsVisible ? money(dayTotal) : masked}
-          </span>
+        <div className="mt-2 grid grid-cols-[1.15fr_0.85fr] gap-2">
+          <div className="rounded-lg border border-yellow-400/25 bg-yellow-400/10 px-2.5 py-2">
+            <p className="text-[9px] font-bold uppercase tracking-wide text-yellow-200/80">Hora actual</p>
+            <p className="mt-0.5 text-[11px] font-semibold text-neutral-200">{current ? hourRangeLabel(current.hour) : "—"}</p>
+            <p className="mt-1 font-mono text-xl font-black tabular-nums text-yellow-300">
+              {amountsVisible && current ? money(current.total) : masked}
+            </p>
+            <p className="text-[9px] text-neutral-400">van {minutes} min · {current?.trips ?? 0} viajes</p>
+          </div>
+          <div className="rounded-lg border border-neutral-800 bg-black/30 px-2.5 py-2">
+            <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">Total hoy</p>
+            <p className="mt-1 font-mono text-xl font-black tabular-nums text-emerald-300">
+              {amountsVisible ? money(dayTotal) : masked}
+            </p>
+            <p className="text-[9px] text-neutral-400">{trips.length} {trips.length === 1 ? "viaje" : "viajes"}</p>
+          </div>
         </div>
         <div
           ref={scrollRef}
-          className="mt-1 flex items-end gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="mt-2 flex items-end gap-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" 
         >
           {shown.map((b) => {
             const pct = Math.round((b.total / max) * 100)
@@ -154,8 +165,8 @@ export function HourlyStrip({ trips, amountsVisible }: { trips: Trip[]; amountsV
           {trips.length === 0
             ? "Todavía no hay viajes guardados hoy"
             : open
-              ? "toca para cerrar"
-              : "toca para ver el día hora por hora"}
+              ? "Toca arriba para cerrar el detalle"
+              : "Toca arriba para ver cada hora"}
         </p>
       </button>
       {open && (
