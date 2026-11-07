@@ -837,7 +837,7 @@ export function EntryScreen({
         >
           {storageSaved ? "STORAGE OK ✓" : lowAccuracy ? "⚠️ FIX GPS FIRST" : "+ SAVE TO DISK"}
         </button>
-        <HourlyStrip trips={todayTrips} amountsVisible={showGross} />
+        <HourlyStrip trips={todayTrips} amountsVisible={showGross} clockIn={shift.clockIn} />
       </div>
     </div>
   )

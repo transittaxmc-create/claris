@@ -359,6 +359,7 @@ export function useShift() {
     isOnBreak,
     working,
     measureStart: shift.measureStart,
+    clockIn: shift.clockIn,
     activeHoursDecimal,
     shiftMiles: shift.miles,
     hourlyGoal,

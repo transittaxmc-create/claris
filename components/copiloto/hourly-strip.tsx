@@ -29,7 +29,7 @@ export function hourOfTrip(t: Trip): number | null {
   return h
 }
 
-export function buildHourBuckets(trips: Trip[], currentHour: number): HourBucket[] {
+export function buildHourBuckets(trips: Trip[], currentHour: number, clockIn: number | null = null): HourBucket[] {
   const byHour = new Map<number, { total: number; trips: number }>()
   for (const t of trips) {
     const h = hourOfTrip(t)
@@ -40,7 +40,8 @@ export function buildHourBuckets(trips: Trip[], currentHour: number): HourBucket
     byHour.set(h, e)
   }
   const hours = [...byHour.keys()]
-  const start = hours.length ? Math.min(...hours) : currentHour
+  const clockInHour = clockIn != null ? new Date(clockIn).getHours() : null
+  const start = clockInHour != null ? Math.min(clockInHour, currentHour) : hours.length ? Math.min(...hours) : currentHour
   const out: HourBucket[] = []
   for (let h = start; h <= currentHour; h++) {
     const e = byHour.get(h)
@@ -64,7 +65,7 @@ export function hourRangeLabel(h: number): string {
   return `${hour12(h)} ${suffix(h)}–${hour12(h + 1)} ${suffix(h + 1)}`
 }
 
-export function HourlyStrip({ trips, amountsVisible }: { trips: Trip[]; amountsVisible: boolean }) {
+export function HourlyStrip({ trips, amountsVisible, clockIn }: { trips: Trip[]; amountsVisible: boolean; clockIn: number | null }) {
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 30000)
@@ -74,7 +75,7 @@ export function HourlyStrip({ trips, amountsVisible }: { trips: Trip[]; amountsV
   const scrollRef = useRef<HTMLDivElement>(null)
 
   const currentHour = now.getHours()
-  const buckets = useMemo(() => buildHourBuckets(trips, currentHour), [trips, currentHour])
+  const buckets = useMemo(() => buildHourBuckets(trips, currentHour, clockIn), [trips, currentHour, clockIn])
   const dayTotal = useMemo(() => buckets.reduce((s, b) => s + b.total, 0), [buckets])
   const current = buckets[buckets.length - 1]
   const minutes = now.getMinutes()
