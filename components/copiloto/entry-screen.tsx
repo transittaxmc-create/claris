@@ -7,7 +7,6 @@ import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip, gross
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
 import { isVoucherPlatform } from "./platform-meta"
 import type { ShiftApi } from "./shift"
-import { HourlyStrip } from "./hourly-strip"
 import {
   captureLocation,
   GpsAccuracyError,
@@ -821,7 +820,12 @@ export function EntryScreen({
       </div>
 
       {/* Sticky record button con calidad y feedback */}
-      <div className="shrink-0 border-t border-neutral-800 bg-black px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2 sm:px-8 sm:py-5">
+      {/* Barra SAVE pegada abajo (Miguel, 2026-11-09): sin la franja negra
+          vacía que quedaba bajo el botón — el padding inferior grande y el
+          strip por hora salieron de aquí; la barra baja y la página llena
+          la pantalla hasta la navegación. El safe-area lo maneja el
+          BottomNav, que es el último elemento. */}
+      <div className="shrink-0 border-t border-neutral-800 bg-black px-4 pb-2 pt-2 sm:px-8 sm:py-5">
         <button
           type="button"
           onClick={handleSave}
@@ -837,7 +841,6 @@ export function EntryScreen({
         >
           {storageSaved ? "STORAGE OK ✓" : lowAccuracy ? "⚠️ FIX GPS FIRST" : "+ SAVE TO DISK"}
         </button>
-        <HourlyStrip trips={todayTrips} amountsVisible={showGross} />
       </div>
     </div>
   )
