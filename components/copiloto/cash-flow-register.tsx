@@ -18,12 +18,14 @@ import {
 import {
   money,
   migrateCategory,
+  resolveSplitsForSave,
   type CashFlowEntry,
   type CashFlowOrigin,
   type CashFlowSource,
   type CashFlowStatus,
   type CashFlowType,
 } from "./types"
+import { SplitEditor } from "./split-editor"
 import {
   buildRegisters,
   accountBalance,
@@ -949,6 +951,7 @@ export function EntryModal(props: {
   onClose: () => void
 }) {
   const { editingEntry, setEditingEntry, entries, onSave, onClose } = props
+  const [splitError, setSplitError] = useState("")
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 sm:items-center" onClick={onClose}>
       <div
@@ -1056,16 +1059,29 @@ export function EntryModal(props: {
               </select>
             </div>
           )}
-          <div>
-            <label className="text-[10px] font-bold uppercase text-neutral-400">Category</label>
-            <input
-              type="text"
-              value={editingEntry.category || ""}
-              onChange={(e) => setEditingEntry({ ...editingEntry, category: e.target.value })}
-              placeholder="e.g. Fuel, EZPass, Insurance"
-              className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400"
-            />
-          </div>
+          {!editingEntry.splits && (
+            <div>
+              <label className="text-[10px] font-bold uppercase text-neutral-400">Category</label>
+              <input
+                type="text"
+                value={editingEntry.category || ""}
+                onChange={(e) => setEditingEntry({ ...editingEntry, category: e.target.value })}
+                placeholder="e.g. Fuel, EZPass, Insurance"
+                className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400"
+              />
+            </div>
+          )}
+          {/* División por categorías estilo Quicken (Miguel, 2026-11-09):
+              la misma entrada repartida en varias categorías. */}
+          <SplitEditor
+            key={editingEntry.id}
+            kind={editingEntry.type}
+            total={Math.abs(editingEntry.amount || 0)}
+            initialCategory={editingEntry.category || ""}
+            splits={editingEntry.splits ?? null}
+            onChange={(s) => setEditingEntry({ ...editingEntry, splits: s ?? undefined })}
+          />
+          {splitError && <p className="text-[12px] font-semibold text-[#ff5d6c]">{splitError}</p>}
           <div className="flex gap-2 pt-2">
             <button
               type="button"
@@ -1077,21 +1093,45 @@ export function EntryModal(props: {
             <button
               type="button"
               onClick={() => {
+                // División por categorías (Quicken split): debe cuadrar
+                // a $0.00 de diferencia para guardar.
+                const resolved = resolveSplitsForSave(
+                  editingEntry.splits ?? null,
+                  Math.abs(editingEntry.amount || 0),
+                  (editingEntry.category || "").trim() || "Other",
+                )
+                if (!resolved.ok) {
+                  setSplitError(resolved.error)
+                  return
+                }
+                setSplitError("")
+                const finalEntry: CashFlowEntry = {
+                  ...editingEntry,
+                  category: resolved.category,
+                  splits: resolved.splits,
+                }
                 // Una categoría escrita a mano entra a la lista compartida
                 // (claris_custom_categories): queda disponible en TODOS
                 // los formularios de entrada, no solo en este.
-                const cat = (editingEntry.category || "").trim()
-                if (cat) {
-                  try {
-                    const rawCats = JSON.parse(localStorage.getItem("claris_custom_categories") || "[]")
-                    const list: string[] = Array.isArray(rawCats) ? rawCats : []
-                    if (!list.some((c) => String(c).toLowerCase() === cat.toLowerCase())) {
-                      localStorage.setItem("claris_custom_categories", JSON.stringify([...list, cat]))
-                      window.dispatchEvent(new Event(FINANCE_SYNCED_EVENT))
+                const catsToRegister = [
+                  ...(resolved.category !== "Split" ? [resolved.category] : []),
+                  ...((resolved.splits ?? []).map((s) => s.category) as string[]),
+                ]
+                try {
+                  const rawCats = JSON.parse(localStorage.getItem("claris_custom_categories") || "[]")
+                  const list: string[] = Array.isArray(rawCats) ? rawCats : []
+                  const nextCats = [...list]
+                  for (const cat of catsToRegister) {
+                    if (cat && !nextCats.some((c) => String(c).toLowerCase() === cat.toLowerCase())) {
+                      nextCats.push(cat)
                     }
-                  } catch {}
-                }
-                onSave(editingEntry)
+                  }
+                  if (nextCats.length !== list.length) {
+                    localStorage.setItem("claris_custom_categories", JSON.stringify(nextCats))
+                    window.dispatchEvent(new Event(FINANCE_SYNCED_EVENT))
+                  }
+                } catch {}
+                onSave(finalEntry)
               }}
               className="flex-1 rounded-xl bg-yellow-400 py-2.5 text-xs font-black text-black"
             >

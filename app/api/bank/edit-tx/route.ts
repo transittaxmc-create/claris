@@ -45,6 +45,24 @@ export async function POST(req: Request) {
     if (typeof body.description === "string") t.description = body.description
     if (typeof body.category === "string") t.category = body.category
     if (typeof body.notes === "string") t.notes = body.notes
+    // División por categorías estilo Quicken (Miguel, 2026-11-09):
+    // splits: null la borra; un arreglo con 2+ líneas válidas la guarda.
+    if ("splits" in body) {
+      if (body.splits === null) {
+        delete t.splits
+      } else if (Array.isArray(body.splits)) {
+        const lines: { category: string; amount: number; invoiceNo?: string }[] = []
+        for (const s of body.splits) {
+          const amount = Math.round((Number(s?.amount) || 0) * 100) / 100
+          const category = String(s?.category || "").trim().slice(0, 60)
+          if (!(amount > 0) || !category) continue
+          const invoiceNo = String(s?.invoiceNo || "").trim().slice(0, 40)
+          lines.push(invoiceNo ? { category, amount, invoiceNo } : { category, amount })
+        }
+        if (lines.length >= 2) t.splits = lines
+        else delete t.splits
+      }
+    }
     if (typeof body.date === "string" && body.date.length >= 10) t.date = body.date.slice(0, 10)
     if (typeof body.amount === "number" && Number.isFinite(body.amount)) {
       t.amount = Math.round(body.amount * 100) / 100

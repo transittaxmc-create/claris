@@ -6,7 +6,8 @@
 // una vez → libro (CashFlowEntry projected); recurrente → ScheduledEntry.
 
 import { useMemo, useState, type CSSProperties } from "react"
-import { CUSTOM_CATEGORIES_KEY, EXPENSE_CATEGORIES, resolveScheduleEnds, type CashFlowEntry, type ScheduleEnds, type ScheduledEntry } from "./types"
+import { CUSTOM_CATEGORIES_KEY, EXPENSE_CATEGORIES, resolveScheduleEnds, resolveSplitsForSave, type CashFlowEntry, type ScheduleEnds, type ScheduledEntry, type TxSplit } from "./types"
+import { SplitEditor } from "./split-editor"
 import { FINANCE_LEDGER_KEY, FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT } from "./finance-sync"
 import { etiquetaCombinada } from "./cash-flow-store"
 import { SCHEDULE_OVERRIDES_KEY, todayKey, type ForecastLine, type ScheduleOverride } from "./dinero-forecast"
@@ -249,6 +250,7 @@ export function ProyeccionForm(props: {
   const [kind, setKind] = useState<"income" | "expense">(props.initialKind)
   const [description, setDescription] = useState("")
   const [category, setCategory] = useState<string>(props.initialKind === "income" ? "Income" : "Other")
+  const [splits, setSplits] = useState<TxSplit[] | null>(null)
   const [amount, setAmount] = useState("")
   const [date, setDate] = useState(todayKey())
   const [freq, setFreq] = useState<Freq>("once")
@@ -263,6 +265,7 @@ export function ProyeccionForm(props: {
   const switchKind = (k: "income" | "expense") => {
     setKind(k)
     setCategory(k === "income" ? "Income" : "Other")
+    setSplits(null)
     setError("")
   }
 
@@ -280,6 +283,11 @@ export function ProyeccionForm(props: {
       setError("Pick the date.")
       return
     }
+    const resolved = resolveSplitsForSave(splits, amt, category)
+    if (!resolved.ok) {
+      setError(resolved.error)
+      return
+    }
     if (freq === "once") {
       const entry: CashFlowEntry = {
         id: `manual-${Date.now().toString(36)}`,
@@ -291,7 +299,8 @@ export function ProyeccionForm(props: {
         source: "projection",
         origin: "manual",
         sourceLabel: etiquetaCombinada("manual", kind === "expense" ? "factura" : null),
-        category,
+        category: resolved.category,
+        ...(resolved.splits ? { splits: resolved.splits } : {}),
         notes: "",
         createdAt: new Date().toISOString(),
       }
@@ -305,7 +314,8 @@ export function ProyeccionForm(props: {
         id: `sch-${Date.now().toString(36)}`,
         kind,
         description: desc,
-        category,
+        category: resolved.category,
+        ...(resolved.splits ? { splits: resolved.splits } : {}),
         amount: amt,
         startDate: date,
         frequency: freq,
@@ -385,8 +395,13 @@ export function ProyeccionForm(props: {
           placeholder={kind === "income" ? "E.g. Uber payout, deposit…" : "E.g. Rent, CB Livery, AT&T…"}
         />
 
-        {/* Categoría: dropdown + añadir la que no esté (como en Gastos) */}
-        <CategorySelect kind={kind} value={category} onChange={setCategory} fieldStyle={input} labelStyle={label} />
+        {/* Categoría: dropdown + añadir la que no esté (como en Gastos).
+            Con división activa, la categoría simple se reemplaza por las
+            líneas de la división (Quicken split, Miguel 2026-11-09). */}
+        {splits === null && (
+          <CategorySelect kind={kind} value={category} onChange={setCategory} fieldStyle={input} labelStyle={label} />
+        )}
+        <SplitEditor kind={kind} total={amt} initialCategory={category} splits={splits} onChange={setSplits} />
 
         {/* Monto */}
         <div style={label}>AMOUNT</div>
@@ -492,6 +507,7 @@ export function ProyeccionEdit(props: {
   const [category, setCategory] = useState<string>(
     entry ? entry.category || "Other" : props.schedule?.category || "Other",
   )
+  const [splits, setSplits] = useState<TxSplit[] | null>(() => entry?.splits ?? props.schedule?.splits ?? null)
   const [amount, setAmount] = useState(String(Math.abs(line.amount) || ""))
   const [date, setDate] = useState(entry ? entry.date : line.date)
   const [endsInit] = useState(() => endsStateFromSchedule(props.schedule))
@@ -521,9 +537,22 @@ export function ProyeccionEdit(props: {
       setError("Pick the date.")
       return
     }
+    const resolved = resolveSplitsForSave(splits, amt, category)
+    if (!resolved.ok) {
+      setError(resolved.error)
+      return
+    }
     const next = readList<CashFlowEntry>(FINANCE_LEDGER_KEY).map((e) =>
       e.id === entry.id
-        ? { ...e, description: description.trim(), category, amount: amt, date, isManuallyEdited: true }
+        ? {
+            ...e,
+            description: description.trim(),
+            category: resolved.category,
+            splits: resolved.splits,
+            amount: amt,
+            date,
+            isManuallyEdited: true,
+          }
         : e,
     )
     try {
@@ -567,6 +596,11 @@ export function ProyeccionEdit(props: {
 
   const saveScheduleAll = () => {
     if (!props.schedule || !validate()) return
+    const resolved = resolveSplitsForSave(splits, amt, category)
+    if (!resolved.ok) {
+      setError(resolved.error)
+      return
+    }
     const anchor = props.schedule.startDate || props.schedule.nextDate || line.date
     const ends = endsValue(endsMode, anchor, endsDate, endsCount)
     const next = readList<ScheduledEntry>(FINANCE_SCHEDULES_KEY).map((s) =>
@@ -574,7 +608,8 @@ export function ProyeccionEdit(props: {
         ? {
             ...s,
             description: description.trim(),
-            category,
+            category: resolved.category,
+            splits: resolved.splits,
             amount: amt,
             // El fin elegido manda: se limpia el otro campo para que no
             // convivan una fecha vieja y un conteo nuevo.
@@ -681,8 +716,18 @@ export function ProyeccionEdit(props: {
         <div style={label}>DESCRIPTION</div>
         <input style={input} value={description} onChange={(e) => setDescription(e.target.value)} />
 
-        {/* Categoría: dropdown + añadir la que no esté (como en Gastos) */}
-        <CategorySelect kind={kind} value={category} onChange={setCategory} fieldStyle={input} labelStyle={label} />
+        {/* Categoría: dropdown + añadir la que no esté (como en Gastos).
+            Con división activa, la categoría simple se reemplaza por las
+            líneas de la división (Quicken split, Miguel 2026-11-09). */}
+        {splits === null && (
+          <CategorySelect kind={kind} value={category} onChange={setCategory} fieldStyle={input} labelStyle={label} />
+        )}
+        <SplitEditor kind={kind} total={amt} initialCategory={category} splits={splits} onChange={setSplits} />
+        {isSchedule && splits !== null && (
+          <div style={{ fontSize: 11.5, color: SUB, marginTop: 8 }}>
+            The split saves with “Save for all”.
+          </div>
+        )}
 
         <div style={label}>AMOUNT</div>
         <div style={{ position: "relative" }}>

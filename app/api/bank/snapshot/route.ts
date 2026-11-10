@@ -38,6 +38,7 @@ async function fromSupabase(): Promise<Response | null> {
       bank_account: t.account || t.bankRef || "unknown",
       detail: t.description || t.merchant || "",
       category: t.category || null,
+      splits: Array.isArray(t.splits) ? t.splits : undefined,
       notes: typeof t.notes === "string" ? t.notes : "",
       ts: typeof t.ts === "string" ? t.ts : "",
       amount: Number(t.amount) || 0,

@@ -73,6 +73,84 @@ export type ScheduledEntry = {
   frequency: ScheduleFrequency
   nextDate: string
   active: boolean
+  /** División por categorías estilo Quicken (Miguel, 2026-11-09): UNA
+   *  transacción repartida en varias categorías. Cuando existe, la suma
+   *  de las líneas es el monto total y `category` queda "Split". */
+  splits?: TxSplit[]
+}
+
+/** Una línea de la división por categorías de una transacción (Quicken
+ *  split): su categoría, su monto y, si la línea es una factura, su
+ *  número de invoice. La transacción sigue siendo UNA sola. */
+export type TxSplit = {
+  category: string
+  amount: number
+  invoiceNo?: string
+}
+
+export const SPLIT_CATEGORY = "Split"
+
+export function round2(n: number): number {
+  return Math.round((Number(n) || 0) * 100) / 100
+}
+
+export function splitsSum(splits?: TxSplit[] | null): number {
+  if (!Array.isArray(splits)) return 0
+  return round2(splits.reduce((a, s) => a + (Number(s?.amount) || 0), 0))
+}
+
+/** Normaliza líneas de división: descarta montos en cero, recorta textos.
+ *  Devuelve undefined si no quedan líneas válidas. */
+export function normalizeSplits(raw?: TxSplit[] | null): TxSplit[] | undefined {
+  if (!Array.isArray(raw)) return undefined
+  const out: TxSplit[] = []
+  for (const s of raw) {
+    const amount = round2(Number(s?.amount) || 0)
+    if (!(amount > 0)) continue
+    const category = String(s?.category || "").trim() || "Other"
+    const invoiceNo = String(s?.invoiceNo || "").trim().slice(0, 40)
+    out.push(invoiceNo ? { category, amount, invoiceNo } : { category, amount })
+  }
+  return out.length ? out : undefined
+}
+
+/** Resuelve qué se guarda al guardar una transacción con el editor de
+ *  división abierto (o cerrado):
+ *  - Sin división (null): se guarda la categoría simple de siempre.
+ *  - Una línea por el total: equivale a la categoría simple de esa línea.
+ *  - Dos o más líneas: deben sumar el total (la diferencia debe ser
+ *    $0.00, como en Quicken); se guardan las líneas y la categoría de la
+ *    transacción queda "Split". */
+export function resolveSplitsForSave(
+  splits: TxSplit[] | null,
+  total: number,
+  fallbackCategory: string,
+): { ok: true; category: string; splits?: TxSplit[] } | { ok: false; error: string } {
+  if (splits === null) return { ok: true, category: fallbackCategory }
+  const lines = normalizeSplits(splits)
+  if (!lines) return { ok: true, category: fallbackCategory }
+  const sum = splitsSum(lines)
+  const diff = round2(Math.abs(total) - sum)
+  if (Math.abs(diff) > 0.011) {
+    return {
+      ok: false,
+      error: `The split does not add up: difference $${Math.abs(diff).toFixed(2)} ${diff > 0 ? "left to categorize" : "over the total"}.`,
+    }
+  }
+  if (lines.length === 1) return { ok: true, category: lines[0].category }
+  return { ok: true, category: SPLIT_CATEGORY, splits: lines }
+}
+
+/** Montos por categoría de una transacción: si tiene división, una
+ *  entrada por línea (con el monto de la línea); si no, su categoría. */
+export function categoryAmountsOf(x: {
+  category?: string | null
+  amount: number
+  splits?: TxSplit[] | null
+}): [string, number][] {
+  const lines = normalizeSplits(x.splits)
+  if (lines && lines.length >= 2) return lines.map((s) => [s.category, s.amount] as [string, number])
+  return [[String(x.category || "Other"), Math.abs(Number(x.amount) || 0)]]
 }
 
 export type TollBill = {
@@ -141,6 +219,8 @@ export type CashFlowEntry = {
   status: CashFlowStatus
   amount: number
   category?: string
+  /** División por categorías estilo Quicken (ver TxSplit). */
+  splits?: TxSplit[]
   classification?: ExpenseClassification
   isManuallyEdited?: boolean
   notes?: string

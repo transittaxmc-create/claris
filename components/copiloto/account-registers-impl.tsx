@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react"
 import { cn } from "@/lib/utils"
-import { money, EXPENSE_CATEGORIES, type CashFlowEntry } from "./types"
+import { money, EXPENSE_CATEGORIES, categoryAmountsOf, resolveSplitsForSave, type CashFlowEntry, type TxSplit } from "./types"
+import { SplitEditor } from "./split-editor"
 import { fmtFecha, fmtWeekday, catIcon } from "./proyeccion-shared"
 import type { RegisterAccount, DueItem } from "./registers-store"
 import { accountDisplayName, last4Of, accountIdFor } from "./registers-store"
@@ -51,6 +52,8 @@ export interface BankTx {
   pending_transaction_id?: string | null
   /** Comentario de origen/destino (auditoría): lo escribe Miguel o la AI al reconciliar. */
   notes?: string
+  /** División por categorías estilo Quicken (ver TxSplit en types). */
+  splits?: TxSplit[]
   /** Hora real del movimiento que reporta el banco (Plaid datetime, UTC). */
   ts?: string
 }
@@ -391,15 +394,17 @@ function saldoColorBank(after: number, ref: number): string {
 }
 
 function topCats(
-  ls: { category: string | null; amount: number }[],
+  ls: { category: string | null; amount: number; splits?: TxSplit[] }[],
   sign: 1 | -1,
 ): [string, number][] {
   const m = new Map<string, number>()
   for (const l of ls) {
     if (sign === 1 && l.amount <= 0) continue
     if (sign === -1 && l.amount >= 0) continue
-    const c = l.category || "Other"
-    m.set(c, (m.get(c) || 0) + Math.abs(l.amount))
+    // Con división (Quicken split), cada línea cuenta en SU categoría.
+    for (const [c, v] of categoryAmountsOf(l)) {
+      m.set(c, (m.get(c) || 0) + v)
+    }
   }
   return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4)
 }
@@ -1626,6 +1631,7 @@ export function BankTxEdit(props: {
   const [fecha, setFecha] = useState(String(tx.date || "").slice(0, 10))
   const [confirmDel, setConfirmDel] = useState(false)
   const [nota, setNota] = useState(tx.notes || "")
+  const [splits, setSplits] = useState<TxSplit[] | null>(tx.splits && tx.splits.length ? tx.splits : null)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState("")
 
@@ -1638,6 +1644,8 @@ export function BankTxEdit(props: {
     if (!desc.trim()) return setErr("Description is missing.")
     if (!amt || amt <= 0) return setErr("Amount is missing.")
     if (!fecha) return setErr("Date is missing.")
+    const resolved = resolveSplitsForSave(splits, amt, cat.trim() || (tipo === "ingreso" ? "Income" : "Other"))
+    if (!resolved.ok) return setErr(resolved.error)
     setSaving(true)
     setErr("")
     try {
@@ -1647,7 +1655,8 @@ export function BankTxEdit(props: {
         body: JSON.stringify({
           transaction_id: tx.transaction_id,
           description: desc.trim(),
-          category: cat.trim() || (tipo === "ingreso" ? "Income" : "Other"),
+          category: resolved.category,
+          splits: resolved.splits ?? null,
           notes: nota.trim(),
           amount: tipo === "ingreso" ? amt : -amt,
           date: fecha,
@@ -1710,7 +1719,7 @@ export function BankTxEdit(props: {
         <input className={inputCls} value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Name / detail" />
       </div>
 
-      {tipo === "gasto" && (
+      {tipo === "gasto" && splits === null && (
         <div>
           <label className={labelCls}>Category</label>
           <div className="flex flex-wrap gap-1.5">
@@ -1733,12 +1742,23 @@ export function BankTxEdit(props: {
         </div>
       )}
 
-      {tipo === "ingreso" && (
+      {tipo === "ingreso" && splits === null && (
         <div>
           <label className={labelCls}>Category</label>
           <input className={inputCls} value={cat} onChange={(e) => setCat(e.target.value)} placeholder="Income" />
         </div>
       )}
+
+      {/* División por categorías estilo Quicken (Miguel, 2026-11-09):
+          la misma transacción repartida en varias categorías. */}
+      <SplitEditor
+        key={tx.transaction_id || tx.detail}
+        kind={tipo === "ingreso" ? "income" : "expense"}
+        total={parseFloat(monto.replace(/[^0-9.]/g, "")) || 0}
+        initialCategory={cat}
+        splits={splits}
+        onChange={setSplits}
+      />
 
       <div>
         <label className={labelCls}>Comment · origin / destination</label>
