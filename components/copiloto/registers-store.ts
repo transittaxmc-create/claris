@@ -95,6 +95,12 @@ const SEED_MANUAL: Array<{ id: string; name: string }> = [
   // balance editable (Aventus Ride paga ahí); si se vincula de verdad,
   // buildRegisters la deduplica contra el snapshot.
   { id: "manual:branch", name: "Branch" },
+  // PenFed: cuenta real de Miguel (Free Checking …8027), NO conectada a
+  // Plaid y descartada por él como principal (2026-11-13). Existe como
+  // cuenta fija con su register y balance editable, igual que Navy
+  // Federal y Varo; si Plaid la trae algún día, buildRegisters la
+  // deduplica contra el snapshot.
+  { id: "manual:penfed", name: "PenFed" },
 ]
 
 function normName(n: string) {
