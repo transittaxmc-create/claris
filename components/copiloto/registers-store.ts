@@ -1,4 +1,4 @@
-// Registers store — snapshot + manual. Main = máscara ···6393 (Miguel).
+// Registers store — snapshot + manual. Main = máscara ···2144 (Miguel, 2026-11-13).
 
 export type AccountKind = "bank" | "card"
 
@@ -101,6 +101,14 @@ const SEED_MANUAL: Array<{ id: string; name: string }> = [
   // Federal y Varo; si Plaid la trae algún día, buildRegisters la
   // deduplica contra el snapshot.
   { id: "manual:penfed", name: "PenFed" },
+  // Citibank ·2144: la NUEVA cuenta principal (★) de Miguel desde
+  // 2026-11-13, por su orden explícita ("la cuenta nueva que pusimos
+  // de Citibank hoy es la primaria hoy… para que la cambie"). NO
+  // aparece en ningún feed de Plaid, así que entra como cuenta fija
+  // manual con su register y balance editable (mismo patrón que
+  // PenFed); si Plaid la trae algún día, buildRegisters la deduplica
+  // contra el snapshot y la ★ sigue a la cuenta de dígitos 2144.
+  { id: "manual:citi-2144", name: "Citibank ···2144" },
 ]
 
 function normName(n: string) {
@@ -148,8 +156,8 @@ export function last4Of(name: string): string | null {
 
 /**
  * "Otros fondos" (Miguel, 2026-10-25; ampliado 2026-10-26): para
- * PROYECCIÓN cuentan Citibank (la principal ★, Access ·6393 — es la
- * base y no se lista), PayPal, Uber, Lyft y Branch. Branch y Lyft no
+ * PROYECCIÓN cuentan Citibank (la principal ★, Citibank ·2144
+ * desde 2026-11-13 — es la base y no se lista), PayPal, Uber, Lyft y Branch. Branch y Lyft no
  * se pueden conectar: son editables a mano, y el balance que Miguel
  * ponga entra a la proyección con su switch; si no pone nada ($0),
  * no cuenta nada — no hay nada pendiente. Todas las demás cuentas
@@ -240,27 +248,30 @@ export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAcc
     regs.push({ ...m, dueDay: st.dueDays[m.id] ?? m.dueDay ?? null, isMain: false })
   }
 
-  // Principal: CitiBank …6393 (Miguel). Múltiples criterios por si el nombre varía.
+  // Principal: Citibank ·2144 (Miguel, orden explícita 2026-11-13; antes
+  // era Access ·6393). Múltiples criterios por si el nombre varía.
   // Si hay varios "Access Account" (…6393 y …3830), se queda con el de mayor balance.
   const accessAccounts = regs.filter((r) => /access account/i.test(String(r.name)))
   const topAccess = accessAccounts.sort((a, b) =>
     Math.abs(balById.get(b.id) ?? 0) - Math.abs(balById.get(a.id) ?? 0)
   )[0]
-  const exactCiti = regs.find((r) => String(r.name).includes("6393"))
+  const exactCiti = regs.find((r) => String(r.name).includes("2144"))
     || topAccess
     || regs.find((r) => /citi/i.test(String(r.name)))
   let mainId = st.mainId
   // Las cuentas semilla (Venmo, Square Checking, Lyft, Branch…) NUNCA son
-  // la Principal: la ★ es de Citibank ·6393. Si un mainId viejo apunta a
-  // una semilla, es el residuo del fallback de abajo (ver comentario) —
-  // se limpia, no se respeta (Miguel, 2026-10-29: "en algún lado todavía
-  // se guarda Venmo como primary… quita eso").
-  if (mainId && SEED_MANUAL.some((s) => s.id === mainId)) {
+  // la Principal: la ★ es de Citibank ·2144. ÚNICA excepción:
+  // manual:citi-2144, que ES la principal por orden de Miguel
+  // (2026-11-13) aunque viva como cuenta fija manual. Si un mainId
+  // viejo apunta a OTRA semilla, es el residuo del fallback de abajo
+  // (ver comentario) — se limpia, no se respeta (Miguel, 2026-10-29:
+  // "en algún lado todavía se guarda Venmo como primary… quita eso").
+  if (mainId && mainId !== "manual:citi-2144" && SEED_MANUAL.some((s) => s.id === mainId)) {
     mainId = null
     st.mainId = null
     saveState(st)
   }
-  // CitiBank 6393 es siempre la Principal (Miguel). Se corrige en cada carga:
+  // Citibank ·2144 es siempre la Principal (Miguel, 2026-11-13). Se corrige en cada carga:
   // si existe en los datos, la ★ va ahí, sin importar lo que haya guardado.
   if (exactCiti) {
     if (mainId !== exactCiti.id) {
@@ -276,7 +287,7 @@ export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAcc
     // mainId, Venmo salía PRIMARY al abrir MONEY, y al llegar el snapshot
     // se corregía solo a ·6393. Ese flash es el que veía Miguel
     // (2026-10-29). Sin snapshot: no se asigna ni se guarda ninguna ★;
-    // la guardada (·6393) se aplica en cuanto su cuenta aparece.
+    // la guardada (·2144) se aplica en cuanto su cuenta aparece.
     mainId = (regs.find((r) => r.kind === "bank" && r.source === "snapshot") || regs.find((r) => r.kind === "bank") || regs[0])?.id ?? null
     if (mainId) {
       st.mainId = mainId

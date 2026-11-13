@@ -117,7 +117,7 @@ export function HowItWorksScreen() {
       <Section title="5. MONEY — registers and projections">
         <ul className="list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
           <li>
-            <B>One register per account</B> (Quicken style). <B>CitiBank …6393 ★</B> is the main
+            <B>One register per account</B> (Quicken style). <B>CitiBank …2144 ★</B> is the main
             account. Accounts with no transactions are hidden, never deleted.
           </li>
           <li>
