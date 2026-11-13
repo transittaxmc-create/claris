@@ -400,10 +400,14 @@ export function startingBalance(
     const value = r2(Number(mainBal) + extras.reduce((s, x) => s + x.balance, 0))
     return { value, mainId: main.id, mainBalance: r2(Number(mainBal)), extras, usedFallback: false }
   }
-  // Sin saldo de la principal: suma de bancos (comportamiento anterior), avisado en la UI.
+  // Sin saldo de la principal: suma SOLO de los bancos que cuentan en la
+  // proyección (la principal + los fondos activos que trae otherFundIds),
+  // avisado en la UI. Una cuenta apagada en DATA → ACCOUNTS cuenta $0
+  // también aquí (Miguel, 2026-11-13).
+  const memberIds = new Set<string>([...(main ? [main.id] : []), ...otherFundIds])
   let sum = 0
   for (const r of registers) {
-    if (r.kind !== "bank") continue
+    if (r.kind !== "bank" || !memberIds.has(r.id)) continue
     const b = balances[r.id]
     if (b !== null && b !== undefined && Number.isFinite(Number(b))) sum += Number(b)
   }

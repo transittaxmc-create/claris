@@ -1,4 +1,8 @@
-// Registers store — snapshot + manual. Main = máscara ···2144 (Miguel, 2026-11-13).
+// Registers store — snapshot + manual. La ★ (isMain) sale de las banderas
+// de cuenta que Miguel mueve en DATA → ACCOUNTS (account-flags.ts); el
+// default es Citibank ···2144 (Miguel, 2026-11-13).
+
+import { clearPrimaryIf, resolveAccountFlags, setPrimaryAccountRaw } from "./account-flags"
 
 export type AccountKind = "bank" | "card"
 
@@ -155,13 +159,11 @@ export function last4Of(name: string): string | null {
 }
 
 /**
- * "Otros fondos" (Miguel, 2026-10-25; ampliado 2026-10-26): para
- * PROYECCIÓN cuentan Citibank (la principal ★, Citibank ·2144
- * desde 2026-11-13 — es la base y no se lista), PayPal, Uber, Lyft y Branch. Branch y Lyft no
- * se pueden conectar: son editables a mano, y el balance que Miguel
- * ponga entra a la proyección con su switch; si no pone nada ($0),
- * no cuenta nada — no hay nada pendiente. Todas las demás cuentas
- * son individuales, de control, y NUNCA entran a la proyección.
+ * Cuentas que históricamente podían ser "otros fondos" de la proyección
+ * (Miguel, 2026-10-25; ampliado 2026-10-26). Desde 2026-11-13 la
+ * membresía de Proyecciones la mandan los switches de DATA → ACCOUNTS
+ * (account-flags.ts); esta lista solo se usa para ofrecer candidatas en
+ * el detalle de la cuenta principal.
  */
 export function esFondoPermitido(r: { name?: string | null }): boolean {
   return /paypal|uber|lyft|branch/i.test(String(r?.name || ""))
@@ -248,51 +250,29 @@ export function buildRegisters(snapshotAccounts: SnapshotAccount[]): RegisterAcc
     regs.push({ ...m, dueDay: st.dueDays[m.id] ?? m.dueDay ?? null, isMain: false })
   }
 
-  // Principal: Citibank ·2144 (Miguel, orden explícita 2026-11-13; antes
-  // era Access ·6393). Múltiples criterios por si el nombre varía.
-  // Si hay varios "Access Account" (…6393 y …3830), se queda con el de mayor balance.
-  const accessAccounts = regs.filter((r) => /access account/i.test(String(r.name)))
-  const topAccess = accessAccounts.sort((a, b) =>
-    Math.abs(balById.get(b.id) ?? 0) - Math.abs(balById.get(a.id) ?? 0)
-  )[0]
-  const exactCiti = regs.find((r) => String(r.name).includes("2144"))
-    || topAccess
-    || regs.find((r) => /citi/i.test(String(r.name)))
-  let mainId = st.mainId
-  // Las cuentas semilla (Venmo, Square Checking, Lyft, Branch…) NUNCA son
-  // la Principal: la ★ es de Citibank ·2144. ÚNICA excepción:
-  // manual:citi-2144, que ES la principal por orden de Miguel
-  // (2026-11-13) aunque viva como cuenta fija manual. Si un mainId
-  // viejo apunta a OTRA semilla, es el residuo del fallback de abajo
-  // (ver comentario) — se limpia, no se respeta (Miguel, 2026-10-29:
-  // "en algún lado todavía se guarda Venmo como primary… quita eso").
-  if (mainId && mainId !== "manual:citi-2144" && SEED_MANUAL.some((s) => s.id === mainId)) {
-    mainId = null
-    st.mainId = null
-    saveState(st)
-  }
-  // Citibank ·2144 es siempre la Principal (Miguel, 2026-11-13). Se corrige en cada carga:
-  // si existe en los datos, la ★ va ahí, sin importar lo que haya guardado.
-  if (exactCiti) {
-    if (mainId !== exactCiti.id) {
-      mainId = exactCiti.id
-      st.mainId = mainId
-      saveState(st)
-    }
-  } else if ((snapshotAccounts || []).length > 0 && (!mainId || !regs.some((r) => r.id === mainId))) {
-    // Fallback SOLO con datos reales del banco ya cargados. Antes corría
-    // también con el snapshot VACÍO (la app recién abierta, antes de que
-    // baje el snapshot): los únicos registers eran las semillas manuales
-    // y el primero de tipo "bank" es Venmo — quedaba GUARDADO como
-    // mainId, Venmo salía PRIMARY al abrir MONEY, y al llegar el snapshot
-    // se corregía solo a ·6393. Ese flash es el que veía Miguel
-    // (2026-10-29). Sin snapshot: no se asigna ni se guarda ninguna ★;
-    // la guardada (·2144) se aplica en cuanto su cuenta aparece.
-    mainId = (regs.find((r) => r.kind === "bank" && r.source === "snapshot") || regs.find((r) => r.kind === "bank") || regs[0])?.id ?? null
-    if (mainId) {
-      st.mainId = mainId
-      saveState(st)
-    }
+  // Principal (★): la elige Miguel en DATA → ACCOUNTS (diseño suyo,
+  // 2026-11-13) y vive en claris_account_flags_v1 — ya NO se fuerza por
+  // dígitos en cada carga. Si la cuenta primaria no está en ESTA lista
+  // (el snapshot aún no baja, o una pantalla construye una lista parcial
+  // de nombres), se usa la heurística histórica SOLO como ★ temporal de
+  // pantalla, sin guardarla en ningún lado: en cuanto la primaria real
+  // aparece en la lista, manda ella.
+  const flags = resolveAccountFlags(regs)
+  let mainId: string | null = null
+  if (flags.primaryId && regs.some((r) => r.id === flags.primaryId)) {
+    mainId = flags.primaryId
+  } else if ((snapshotAccounts || []).length > 0) {
+    // Si hay varios "Access Account" (…6393 y …3830), se queda con el de mayor balance.
+    const accessAccounts = regs.filter((r) => /access account/i.test(String(r.name)))
+    const topAccess = accessAccounts.sort((a, b) =>
+      Math.abs(balById.get(b.id) ?? 0) - Math.abs(balById.get(a.id) ?? 0)
+    )[0]
+    const exactCiti = regs.find((r) => String(r.name).includes("2144"))
+      || topAccess
+      || regs.find((r) => /citi/i.test(String(r.name)))
+    mainId = exactCiti?.id
+      ?? (regs.find((r) => r.kind === "bank" && r.source === "snapshot") || regs.find((r) => r.kind === "bank") || regs[0])?.id
+      ?? null
   }
   for (const r of regs) r.isMain = r.id === mainId
 
@@ -358,6 +338,8 @@ export function deleteManualAccount(id: string) {
   delete st.dueDays[id]
   if (st.mainId === id) st.mainId = null
   saveState(st)
+  // Si era la primaria de las banderas, la ★ vuelve al default (·2144).
+  clearPrimaryIf(id)
 }
 
 export function setManualBalance(id: string, balance: number) {
@@ -382,6 +364,8 @@ export function setMainAccount(id: string) {
   const st = loadState()
   st.mainId = id
   saveState(st)
+  // La ★ de verdad vive en las banderas de cuenta (DATA → ACCOUNTS).
+  setPrimaryAccountRaw(id)
 }
 
 export function hideSnapshotAccount(id: string) {

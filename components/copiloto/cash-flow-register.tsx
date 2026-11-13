@@ -35,11 +35,17 @@ import {
   addManualAccount,
   deleteManualAccount,
   setManualBalance,
-  setMainAccount,
   setDueDay,
   upcomingDues,
   type RegisterAccount,
 } from "./registers-store"
+import {
+  ACCOUNT_FLAGS_EVENT,
+  clearOpenAccount,
+  peekOpenAccount,
+  resolveAccountFlags,
+  setPrimaryAccount,
+} from "./account-flags"
 import { matchTransfers, looksLikeTransfer, type TransferReport } from "./transfer-matcher"
 import { LiabilitiesEntryCard, LiabilitiesScreen } from "./liabilities-screen"
 import { SHOTS_CHANGED_EVENT, loadShotTxs, pendingShotsSum } from "./screenshot-txs"
@@ -83,7 +89,6 @@ interface AutoRecon {
 }
 
 const RECON_KEY = "claris_autorecon_v1"
-const OTHER_FUNDS_KEY = "claris_other_funds_v1"
 
 function loadJson<T>(key: string, fallback: T): T {
   try {
@@ -110,9 +115,6 @@ export function CashFlowRegister({
     { kind: "home" } | { kind: "account"; id: string } | { kind: "transfers" } | { kind: "liabilities" }
   >({ kind: "home" })
   const [showAddAccount, setShowAddAccount] = useState(false)
-  const [otherFunds, setOtherFunds] = useState<string[]>(() =>
-    typeof window === "undefined" ? [] : loadJson<string[]>(OTHER_FUNDS_KEY, []),
-  )
   const [autoRecon, setAutoRecon] = useState<AutoRecon[]>(() =>
     typeof window === "undefined" ? [] : loadJson<AutoRecon[]>(RECON_KEY, []),
   )
@@ -243,7 +245,6 @@ export function CashFlowRegister({
   useEffect(() => {
     const onSynced = () => {
       loadLedger()
-      setOtherFunds(loadJson<string[]>(OTHER_FUNDS_KEY, []))
     }
     window.addEventListener(FINANCE_SYNCED_EVENT, onSynced)
     return () => window.removeEventListener(FINANCE_SYNCED_EVENT, onSynced)
@@ -260,6 +261,43 @@ export function CashFlowRegister({
     () => buildRegisters(bankAccounts as any),
     [bankAccounts, showAddAccount, entries],
   )
+
+  // Switches de cuentas (Miguel, 2026-11-13): cuáles cuentas están ACTIVAS
+  // (aparecen en MONEY y cuentan en Proyecciones) y cuál es la PRIMARIA
+  // viven en las banderas de account-flags.ts, que él mueve en
+  // DATA → ACCOUNTS. Aquí solo se leen.
+  const [flagsTick, setFlagsTick] = useState(0)
+  useEffect(() => {
+    const onFlags = () => setFlagsTick((t) => t + 1)
+    window.addEventListener(ACCOUNT_FLAGS_EVENT, onFlags)
+    window.addEventListener("storage", onFlags)
+    return () => {
+      window.removeEventListener(ACCOUNT_FLAGS_EVENT, onFlags)
+      window.removeEventListener("storage", onFlags)
+    }
+  }, [])
+  const accountFlags = useMemo(
+    () => resolveAccountFlags(registers),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [registers, flagsTick],
+  )
+  /** Fondos que suman a la proyección además de la primaria: las cuentas
+   *  activas. Es lo que antes era "otros fondos", ahora mandado por los
+   *  switches — la matemática de startingBalance no cambia. */
+  const forecastFunds = useMemo(
+    () => accountFlags.activeIds.filter((id) => id !== accountFlags.primaryId),
+    [accountFlags],
+  )
+
+  // Pedido de abrir un register desde DATA → ACCOUNTS: se consume cuando
+  // la cuenta ya existe en la lista (el snapshot pudo tardar más).
+  useEffect(() => {
+    const openId = peekOpenAccount()
+    if (openId && registers.some((r) => r.id === openId)) {
+      clearOpenAccount()
+      setView({ kind: "account", id: openId })
+    }
+  }, [registers])
 
   // Plan B (Miguel, 2026-10-25): el balance de cada cuenta del banco se
   // CALCULA — Plaid + los provisionales de screenshot que Plaid aún no
@@ -302,7 +340,12 @@ export function CashFlowRegister({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [registers, bankAccounts, bankTxs, shotsTick])
 
-  const dues = useMemo(() => upcomingDues(registers), [registers])
+  // Vencimientos que entran a la proyección: SOLO de cuentas activas —
+  // una cuenta apagada no aporta ni su balance ni sus pagos proyectados.
+  const dues = useMemo(
+    () => upcomingDues(registers).filter((d) => accountFlags.activeIds.includes(d.accountId)),
+    [registers, accountFlags],
+  )
 
   const transferReport: TransferReport = useMemo(() => {
     const txs = bankTxs.map((t) => ({
@@ -709,23 +752,8 @@ export function CashFlowRegister({
             bankTxs={bankTxs}
             bankOk={!bankError && bankAccounts.length > 0}
             onSyncBank={fetchBank}
-            otherFunds={otherFunds.filter((id) => {
-              // Proyección (Miguel, 2026-10-25; Branch 2026-10-26): SOLO
-              // Citibank ★ + PayPal, Uber, Lyft y Branch cuentan. Lo demás
-              // es control individual y no entra, aunque haya quedado
-              // marcado de antes.
-              const r = registers.find((x) => x.id === id)
-              return r ? esFondoPermitido(r) : false
-            })}
-            onToggleOtherFund={(id) => {
-              setOtherFunds((prev) => {
-                const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-                try {
-                  localStorage.setItem(OTHER_FUNDS_KEY, JSON.stringify(next))
-                } catch {}
-                return next
-              })
-            }}
+            otherFunds={forecastFunds}
+            activeIds={accountFlags.activeIds}
             onMarkPaid={handleMarkPaid}
             onConfirmWithAdjustment={handleConfirmWithAdjustment}
             dues={dues}
@@ -783,9 +811,10 @@ export function CashFlowRegister({
             otherFunds={
               activeAccount.isMain
                 ? (() => {
-                    // Miguel (2026-10-25; Branch agregada 2026-10-26): en fondos
-                    // de proyección solo PayPal, Uber, Lyft y Branch. Si hay
-                    // duplicados por nombre, se muestra el vivo (mayor |balance|).
+                    // Candidatas históricas a fondos de proyección. Si hay
+                    // duplicados por nombre, se muestra el vivo (mayor
+                    // |balance|). "checked" = la cuenta está ACTIVA en los
+                    // switches de DATA → ACCOUNTS (ahí se manda ahora).
                     const cands = registers.filter(
                       (r) => r.id !== activeAccount.id && r.kind === "bank" && esFondoPermitido(r),
                     )
@@ -813,20 +842,11 @@ export function CashFlowRegister({
                     return picked.map((r) => ({
                       reg: r,
                       balance: balances[r.id] ?? null,
-                      checked: otherFunds.includes(r.id),
+                      checked: forecastFunds.includes(r.id),
                     }))
                   })()
                 : []
             }
-            onToggleOtherFund={(id) => {
-              setOtherFunds((prev) => {
-                const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-                try {
-                  localStorage.setItem(OTHER_FUNDS_KEY, JSON.stringify(next))
-                } catch {}
-                return next
-              })
-            }}
             onOpenScanner={onOpenScanner ? () => onOpenScanner() : undefined}
             onBack={() => setView({ kind: "home" })}
             onAddBill={() => handleOpenAddModal("expense", "projected")}
@@ -890,7 +910,9 @@ export function CashFlowRegister({
               saveEntries(entries.map((e) => (e.id === id ? { ...e, amount: n } : e)))
             }}
             onSetMain={(id) => {
-              setMainAccount(id)
+              // La ★ vive en las banderas (DATA → ACCOUNTS): moverla aquí
+              // es el mismo ajuste, y buildRegisters la lee de ahí.
+              setPrimaryAccount(id, registers)
               setBankAccounts((prev) => [...prev])
             }}
             onSaveDueDay={(id, day) => {

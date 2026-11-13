@@ -20,6 +20,7 @@ import {
   type BackupCounts,
   type FullBackup,
 } from "./backup"
+import { AccountsPanel } from "./accounts-panel"
 
 function Row({ label, value, tone = "text-white" }: { label: string; value: string; tone?: string }) {
   return (
@@ -62,6 +63,7 @@ export function DataScreen({
   onConnectSync,
   onSyncNow,
   onDisconnectSync,
+  onOpenAccountRegister,
 }: {
   trips: Trip[]
   info: StorageInfo | null
@@ -82,6 +84,8 @@ export function DataScreen({
   onConnectSync: (code: string) => void
   onSyncNow: () => void
   onDisconnectSync: () => void
+  /** Abrir el register de una cuenta desde DATA → ACCOUNTS. */
+  onOpenAccountRegister?: (id: string) => void
 }) {
   const [codeDraft, setCodeDraft] = useState("")
   const [confirmReset, setConfirmReset] = useState(false)
@@ -293,6 +297,9 @@ export function DataScreen({
             el navegador, IndexedDB devuelve los trips al abrir la app.
           </p>
         </section>
+
+        {/* Cuentas: switches de activa y ★ primaria (Miguel, 2026-11-13) */}
+        <AccountsPanel onOpenAccount={onOpenAccountRegister} />
 
         {/* Metas del tablero */}
         <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">

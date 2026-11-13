@@ -117,8 +117,10 @@ export function HowItWorksScreen() {
       <Section title="5. MONEY — registers and projections">
         <ul className="list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
           <li>
-            <B>One register per account</B> (Quicken style). <B>CitiBank …2144 ★</B> is the main
-            account. Accounts with no transactions are hidden, never deleted.
+            <B>One register per account</B> (Quicken style). The <B>★ main account</B> is the one
+            you pick in <B>DATA → ACCOUNTS</B> — tap the ★ on any account there to make it the main
+            one, and use its switch to choose which accounts show in MONEY and count in
+            Projections. Accounts are hidden, never deleted.
           </li>
           <li>
             <B>Real bank balance first, projected second — never mixed</B> in the same view. Only

@@ -24,6 +24,7 @@ import { CURRENT_PICKUP_KEY } from "./geo"
 import { TripEditSheet } from "./trip-edit-sheet"
 import { ReceiptScanner } from "./receipt-scanner"
 import { checkScanInbox, pickupScanInboxFile } from "./scan-inbox"
+import { requestOpenAccount } from "./account-flags"
 import { useShift } from "./shift"
 import { guardarMovimiento, movimientoDeGasto } from "./cash-flow-store"
 import { startFinanceCloud } from "./finance-cloud"
@@ -835,6 +836,10 @@ export function CopilotoApp() {
               onConnectSync={connectSync}
               onSyncNow={() => syncCode && runSync(syncCode)}
               onDisconnectSync={disconnectSync}
+              onOpenAccountRegister={(id) => {
+                requestOpenAccount(id)
+                setTab("FINANCE")
+              }}
             />
           )}
           {tab === "DASH" && <DashScreen trips={trips} expenses={expenses} shift={shift} />}

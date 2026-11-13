@@ -136,6 +136,9 @@ export function RegistersHome(props: {
   onSyncBank?: () => void
   otherFunds?: string[]
   onToggleOtherFund?: (id: string) => void
+  /** Switches de DATA → ACCOUNTS (2026-11-13): la lista de MONEY muestra
+   *  SOLO las cuentas activas. Sin la prop, se muestran todas (como antes). */
+  activeIds?: string[]
   onMarkPaid?: (e: CashFlowEntry, paidDate: string) => void
   onPatchEntry?: (id: string, patch: Partial<CashFlowEntry>) => void
   onAddEntry?: (dateIso: string) => void
@@ -144,9 +147,15 @@ export function RegistersHome(props: {
   const { registers, balances, dues, pairCount, looseCount } = props
   const [vista, setVista] = useState(0)
 
+  // Cuentas VISIBLES en MONEY: solo las activas de los switches. El resto
+  // de la pantalla (forecast, conteos) sigue trabajando con la lista
+  // completa — una cuenta apagada conserva su register y sus datos.
+  const activeSet = props.activeIds ? new Set(props.activeIds) : null
+  const visibleRegs = activeSet ? registers.filter((r) => activeSet.has(r.id)) : registers
+
   let available = 0
   let owe = 0
-  for (const r of registers) {
+  for (const r of visibleRegs) {
     const bal = balances[r.id]
     if (bal === null || bal === undefined) continue
     if (r.kind === "card") owe += Math.abs(bal)
@@ -233,7 +242,7 @@ export function RegistersHome(props: {
     if (n.includes("lyft")) return 3
     return 4
   }
-  const ordered = [...registers].sort((a, b) => {
+  const ordered = [...visibleRegs].sort((a, b) => {
     const ra = fixedRank(a)
     const rb = fixedRank(b)
     if (ra !== rb) return ra - rb
