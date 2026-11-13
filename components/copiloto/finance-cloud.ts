@@ -39,6 +39,21 @@
 // El primer contacto de una sesión (todavía no hay "base") prefiere la
 // nube en los conflictos y une las listas por id, para no perder nada
 // de ningún lado.
+//
+// MODO LOCAL — LA NUBE QUEDÓ APAGADA (Miguel, 2026-11-13): las copias
+// en Supabase pisaban y hacían desaparecer los datos del teléfono, y el
+// proyecto llegó a su cuota (402 desde el 2026-11-10). Nuevo modelo:
+// el localStorage de ESTE teléfono es la única fuente de verdad y
+// NADA externo puede pisarlo. El pase a otro teléfono se hace a mano
+// con SUBIR / RESTAURAR (DATA → BACKUP, módulo backup.ts): un archivo
+// completo que Miguel guarda en su carpeta de Google Drive y restaura
+// en el otro teléfono. Por eso startFinanceCloud() ya no arranca el
+// ciclo: no hay lecturas ni escrituras del documento finance en la
+// nube. El código de fusión queda en el archivo, sin usar, por si
+// algún día Miguel ordena volver a encenderlo.
+
+/** Interruptor del sync con Supabase. Apagado desde el 2026-11-13. */
+const FINANCE_CLOUD_ENABLED = false
 
 import { FINANCE_LEDGER_KEY, FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT, hashText } from "./finance-sync"
 
@@ -598,6 +613,11 @@ function schedulePush() {
 export function startFinanceCloud() {
   if (started || typeof window === "undefined") return
   started = true
+
+  // MODO LOCAL (2026-11-13): sin sync con Supabase — ni bajar ni subir
+  // el documento finance. Los datos de este teléfono mandan y solo se
+  // mueven a otro teléfono con el respaldo manual (backup.ts).
+  if (!FINANCE_CLOUD_ENABLED) return
 
   void syncNow()
 

@@ -11,6 +11,15 @@ import type { Trip } from "./types"
 import { FINANCE_LEDGER_KEY, FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT } from "./finance-sync"
 import { SCHEDULES_CLEAR_FLAG_KEY } from "./finance-cloud"
 import { SCHEDULE_OVERRIDES_KEY } from "./dinero-forecast"
+import {
+  applyFullBackup,
+  backupCounts,
+  buildFullBackup,
+  downloadFullBackup,
+  parseFullBackup,
+  type BackupCounts,
+  type FullBackup,
+} from "./backup"
 
 function Row({ label, value, tone = "text-white" }: { label: string; value: string; tone?: string }) {
   return (
@@ -154,6 +163,60 @@ export function DataScreen({
   }, [])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // SUBIR / RESTAURAR (modelo local, Miguel 2026-11-13): los datos viven
+  // SOLO en este teléfono. SUBIR descarga el respaldo completo (archivo
+  // JSON) para guardarlo en la carpeta de Google Drive; RESTAURAR toma
+  // ese archivo en el otro teléfono y lo deja igual que el primero.
+  const restoreInputRef = useRef<HTMLInputElement>(null)
+  const [pendingRestore, setPendingRestore] = useState<{ doc: FullBackup; counts: BackupCounts } | null>(null)
+  const [backupNote, setBackupNote] = useState<string | null>(null)
+  const [backupBusy, setBackupBusy] = useState(false)
+
+  const subirRespaldo = async () => {
+    setBackupBusy(true)
+    try {
+      const doc = await buildFullBackup()
+      downloadFullBackup(doc)
+      const c = backupCounts(doc)
+      setBackupNote(
+        `Backup created: ${c.entries} entries · ${c.expenses} expenses · ${c.trips} trips. Save the downloaded file in your Google Drive folder.`,
+      )
+    } catch {
+      setBackupNote("Couldn't create the backup. Try again.")
+    } finally {
+      setBackupBusy(false)
+    }
+  }
+
+  const elegirRestaurar = async (file: File) => {
+    try {
+      const doc = parseFullBackup(await file.text())
+      if (!doc) {
+        setPendingRestore(null)
+        setBackupNote("That file is not a valid Copiloto backup — nothing was changed.")
+        return
+      }
+      setBackupNote(null)
+      setPendingRestore({ doc, counts: backupCounts(doc) })
+    } catch {
+      setPendingRestore(null)
+      setBackupNote("Couldn't read that file — nothing was changed.")
+    }
+  }
+
+  const confirmarRestaurar = async () => {
+    if (!pendingRestore) return
+    setBackupBusy(true)
+    try {
+      await applyFullBackup(pendingRestore.doc)
+      // Recargar: la app entera vuelve a leer desde el respaldo aplicado.
+      window.location.reload()
+    } catch {
+      setBackupBusy(false)
+      setBackupNote("Restore failed — the data on this phone was not replaced.")
+    }
+  }
+
   useEffect(() => {
     onRefreshInfo()
   }, [onRefreshInfo])
@@ -266,6 +329,81 @@ export function DataScreen({
             <Save className="size-4 text-sky-400" />
             <h2 className="text-xs font-bold tracking-wide text-neutral-200">BACKUP</h2>
           </div>
+
+          {/* SUBIR / RESTAURAR — transferencia entre teléfonos vía Google Drive.
+              Modelo local (2026-11-13): este teléfono manda; el archivo es el puente. */}
+          <div className="mb-2 rounded-xl border border-emerald-800/60 bg-emerald-950/20 p-2.5">
+            <p className="text-[10px] font-bold tracking-wide text-emerald-300">PHONE TRANSFER · GOOGLE DRIVE</p>
+            <p className="mt-1 text-[10px] leading-tight text-neutral-400">
+              Your data lives <strong className="text-neutral-200">only on this phone</strong>.{" "}
+              <strong className="text-emerald-300">SUBIR</strong> downloads the complete backup file — save it in
+              your Google Drive folder. On the other phone,{" "}
+              <strong className="text-emerald-300">RESTAURAR</strong> with that file and it becomes the same.
+            </p>
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={subirRespaldo}
+                disabled={backupBusy}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-500 py-2.5 text-[11px] font-extrabold text-black disabled:opacity-60"
+              >
+                <Upload className="size-3.5" /> SUBIR RESPALDO
+              </button>
+              <button
+                type="button"
+                onClick={() => restoreInputRef.current?.click()}
+                disabled={backupBusy}
+                className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-emerald-600/60 py-2.5 text-[11px] font-extrabold text-emerald-300 disabled:opacity-60"
+              >
+                <Download className="size-3.5" /> RESTAURAR
+              </button>
+              <input
+                ref={restoreInputRef}
+                type="file"
+                accept="application/json,.json"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) void elegirRestaurar(file)
+                  e.target.value = ""
+                }}
+              />
+            </div>
+            {backupNote && (
+              <p className="mt-2 text-[10px] font-semibold leading-tight text-neutral-300">{backupNote}</p>
+            )}
+            {pendingRestore && (
+              <div className="mt-2 rounded-xl border border-amber-500/50 bg-amber-500/10 p-2.5">
+                <p className="text-[11px] font-bold text-amber-200">
+                  Backup from {fmtTime(pendingRestore.doc.exportedAt)}
+                </p>
+                <p className="mt-0.5 text-[10px] leading-tight text-neutral-300">
+                  {pendingRestore.counts.entries} entries · {pendingRestore.counts.expenses} expenses ·{" "}
+                  {pendingRestore.counts.trips} trips. Restoring{" "}
+                  <strong className="text-amber-200">REPLACES all data on this phone</strong> with the backup.
+                </p>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={confirmarRestaurar}
+                    disabled={backupBusy}
+                    className="flex-1 rounded-xl bg-amber-500 py-2.5 text-[11px] font-extrabold text-black disabled:opacity-60 active:scale-[0.99]"
+                  >
+                    {backupBusy ? "RESTORING…" : "YES, RESTORE"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPendingRestore(null)}
+                    disabled={backupBusy}
+                    className="flex-1 rounded-xl border border-neutral-700 py-2.5 text-[11px] font-bold text-neutral-300"
+                  >
+                    CANCEL
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="flex gap-2">
             <button
               type="button"
