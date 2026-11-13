@@ -70,7 +70,10 @@ export function MoneyAccountCard(props: {
       style={brandStyle(brand)}
       className={cn(
         "money-card relative flex w-full flex-col overflow-hidden rounded-[14px] text-left transition-transform active:scale-[.985]",
-        main ? "money-card-main min-h-[118px] gap-2.5 px-4 py-3.5" : "min-h-[96px] gap-2.5 p-3",
+        // Alto justo (Miguel 2026-11-13): sin min-h ni relleno vertical de
+        // sobra — el cuadro abraza el contenido y su fila alta es el logo,
+        // cuyo tamaño NO se tocó (lg 42px / sm 34px en BankLogo).
+        main ? "money-card-main gap-1.5 px-4 py-2.5" : "gap-1.5 px-3 py-2",
       )}
     >
       {main && (
