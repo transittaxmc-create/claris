@@ -23,6 +23,7 @@ import { addShiftTolls, loadShiftTolls, SHIFT_TOLLS_EVENT } from "./shift-tolls"
 import { CURRENT_PICKUP_KEY } from "./geo"
 import { TripEditSheet } from "./trip-edit-sheet"
 import { ReceiptScanner } from "./receipt-scanner"
+import { checkScanInbox, pickupScanInboxFile } from "./scan-inbox"
 import { useShift } from "./shift"
 import { guardarMovimiento, movimientoDeGasto } from "./cash-flow-store"
 import { startFinanceCloud } from "./finance-cloud"
@@ -104,6 +105,28 @@ export function CopilotoApp() {
   const [scannerOpen, setScannerOpen] = useState(false)
   /** Document type preseleccionado al abrir el escáner desde un register. */
   const [scannerHint, setScannerHint] = useState<ExpenseDocType | "">("")
+  // Buzón de fotos del escáner (atajo de iOS): ids esperando en el buzón,
+  // la foto ya recogida lista para el escáner, y si Miguel descartó el aviso.
+  const [inboxIds, setInboxIds] = useState<string[]>([])
+  const [inboxFile, setInboxFile] = useState<File | null>(null)
+  const [inboxDismissed, setInboxDismissed] = useState(false)
+
+  const refreshScanInbox = useCallback(() => {
+    checkScanInbox()
+      .then((list) => setInboxIds(list.map((x) => x.id)))
+      .catch(() => {})
+  }, [])
+
+  // Revisa el buzón al abrir la app y cada vez que vuelve a primer plano.
+  useEffect(() => {
+    refreshScanInbox()
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") refreshScanInbox()
+    }
+    document.addEventListener("visibilitychange", onVisibility)
+    return () => document.removeEventListener("visibilitychange", onVisibility)
+  }, [refreshScanInbox])
+
   const [mas, setMas] = useState(false)
   const [copiaVieja, setCopiaVieja] = useState<string | null>(null)
   // Sha de producción cuando ESTA copia es una versión de prueba más nueva.
@@ -845,7 +868,12 @@ export function CopilotoApp() {
       {scannerOpen && (
         <ReceiptScanner
           initialDocTipo={scannerHint}
-          onClose={() => setScannerOpen(false)}
+          initialFile={inboxFile}
+          onClose={() => {
+            setScannerOpen(false)
+            setInboxFile(null)
+            refreshScanInbox()
+          }}
           onSaveExpense={(e) => {
             saveExpense(e)
             // ¿Este recibo escaneado es pago de una factura abierta? Se ofrece
@@ -967,6 +995,34 @@ export function CopilotoApp() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {inboxIds.length > 0 && !scannerOpen && !inboxDismissed && (
+        <div className="fixed inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-40 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                const file = await pickupScanInboxFile(inboxIds[0])
+                setInboxFile(file)
+                setScannerOpen(true)
+              } catch {
+                refreshScanInbox()
+              }
+            }}
+            className="flex-1 rounded-2xl bg-yellow-400 px-4 py-3 text-left text-[14px] font-extrabold text-black shadow-lg active:scale-[0.98]"
+          >
+            📥 Foto recibida — Escanear{inboxIds.length > 1 ? ` (${inboxIds.length})` : ""}
+          </button>
+          <button
+            type="button"
+            aria-label="Descartar aviso de foto recibida"
+            onClick={() => setInboxDismissed(true)}
+            className="rounded-2xl bg-neutral-800 px-3 py-3 text-[14px] font-bold text-neutral-300 shadow-lg active:scale-[0.98]"
+          >
+            ✕
+          </button>
         </div>
       )}
 

@@ -76,6 +76,7 @@ function aplicarTecla(actual: string, tecla: string): string {
 
 export function ReceiptScanner({
   initialDocTipo,
+  initialFile,
   onClose,
   onSaveExpense,
   onSaveIncome,
@@ -83,6 +84,8 @@ export function ReceiptScanner({
 }: {
   /** Preselección de tipo de documento al abrir desde un register (factura/recibo). */
   initialDocTipo?: ExpenseDocType | ""
+  /** Foto que llega del buzón (atajo de iOS): se escanea una sola vez al abrir. */
+  initialFile?: File | null
   onClose: () => void
   onSaveExpense: (e: Expense) => void
   onSaveIncome: (e: { description: string; category: string; amount: number; date: string; notes?: string }) => void
@@ -294,6 +297,15 @@ export function ReceiptScanner({
       setLeyendo(false)
     }
   }, [])
+
+  // Foto del buzón (atajo de iOS): se procesa una sola vez, al montar.
+  const initialFileHandled = useRef(false)
+  useEffect(() => {
+    if (initialFile && !initialFileHandled.current) {
+      initialFileHandled.current = true
+      escanear(initialFile)
+    }
+  }, [initialFile, escanear])
 
   function guardar() {
     if (!listo) return
