@@ -74,7 +74,14 @@ export function MoneyAccountCard(props: {
         // misma fila — el balance ya no va en su propia línea debajo. El
         // alto del cuadro ≈ el alto del logo (lg 42px / sm 34px en
         // BankLogo, tamaño NO tocado) + el relleno vertical mínimo actual.
-        main ? "money-card-main gap-2.5 px-4 py-2.5" : "gap-2.5 px-3 py-2",
+        // La PRINCIPAL ocupa la fila completa de la cuadrícula (corrección
+        // 2026-11-13, foto de Miguel 21:15): en media fila su balance de
+        // 26px dejaba la columna del nombre en ~0 y el nombre salía tapado
+        // tras el balance ("Citibank…" se veía como una sola "C"). A fila
+        // completa, nombre (truncado con … si hace falta) y balance entero
+        // caben en la misma línea sin tocarse. Solo aplica cuando la
+        // cuadrícula tiene 2 columnas (≥361px, como en el padre).
+        main ? "money-card-main gap-2.5 px-4 py-2.5 min-[361px]:col-span-2" : "gap-2.5 px-3 py-2",
       )}
     >
       {props.onToggleFund && (
@@ -103,7 +110,7 @@ export function MoneyAccountCard(props: {
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="flex min-w-0 items-center gap-1.5">
           {main && <Star className="size-3.5 shrink-0 fill-[#f5b84c] text-[#f5b84c]" />}
-          <span className={cn("truncate font-extrabold text-[#f2f3f7]", main ? "text-base" : "text-sm")}>
+          <span className={cn("min-w-0 truncate font-extrabold text-[#f2f3f7]", main ? "text-base" : "text-sm")}>
             {main ? props.name : brand.id === "generic" ? props.name : brand.short}
           </span>
         </span>
@@ -122,7 +129,7 @@ export function MoneyAccountCard(props: {
       </span>
       <span
         className={cn(
-          "shrink-0 font-extrabold",
+          "shrink-0 whitespace-nowrap font-extrabold",
           MONEY_FONT_MONO,
           main ? "text-[26px]" : "text-[17px]",
           props.balance === null ? "text-[#66687c]" : props.balance < 0 ? "text-[#ff5d6c]" : "text-[#2fbf71]",
