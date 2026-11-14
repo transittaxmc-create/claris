@@ -165,12 +165,208 @@ export function HowItWorksScreen() {
       <Section title="7. MORE">
         <P>
           <B>Expenses</B> (receipt scan + manual) · <B>Envelopes</B> (rent, leasing, phone) ·{" "}
-          <B>Pending deposits</B> (money held by platforms) · <B>Data</B> (reset — only from the
-          phone) · this manual.
+          <B>Pending deposits</B> (money held by platforms) · <B>Data</B> (backup, sync, reset) ·
+          this manual.
         </P>
       </Section>
 
-      <Section title="8. Standing rules">
+      {/* ───────────────────────────────────────────────────────────── */}
+      <Section title="8. DATA & BACKUP — dónde viven los datos y cómo cambiar de teléfono">
+        <P>
+          <B>Implementado: 2026-11-13 · Autor: Miguel / Copiloto V7</B>
+        </P>
+
+        <P>
+          <B>Dónde vive cada dato:</B>
+        </P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>
+            <B>Viajes (trips):</B> en este teléfono — localStorage{" "}
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">ic_tip_tracker</code>{" "}
+            + copia en IndexedDB. Si el navegador borra caché, IndexedDB devuelve los viajes al
+            abrir la app.
+          </li>
+          <li>
+            <B>Gastos (expenses):</B>{" "}
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">ic_expenses</code>{" "}
+            (localStorage) + copia IndexedDB.
+          </li>
+          <li>
+            <B>Ledger / proyecciones / recurrentes:</B>{" "}
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">claris_cash_flow_entries</code>{" "}
+            ·{" "}
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">claris_scheduled_entries</code>{" "}
+            (localStorage).
+          </li>
+          <li>
+            <B>Fotos de recibos y statements:</B> servidor Vercel Blob (almacén de archivos de
+            Vercel). Se suben vía{" "}
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">/api/receipt-image</code>{" "}
+            al escanear. El ID de cada imagen queda guardado dentro de{" "}
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">claris_receipts_v1</code>.
+            Para auditoría del IRS, las fotos se pueden subir también a Google Drive (ver paso 3
+            abajo).
+          </li>
+          <li>
+            <B>Respaldos completos (backup JSON):</B> Google Drive del usuario — carpeta{" "}
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">
+              Copiloto_Auditoria_Recibos
+            </code>
+            . El archivo incluye TODOS los datos de la app: trips, expenses, ledger, cuentas,
+            configuración.
+          </li>
+          <li>
+            <B>Sync entre teléfonos (código privado):</B> Vercel Blob — archivo cifrado{" "}
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">
+              claris-sync-&lt;hash&gt;.enc
+            </code>
+            . El servidor solo ve el hash y texto cifrado; nunca ve los datos en claro.
+          </li>
+          <li>
+            <B>Banco (Plaid):</B> Vercel Blob — snapshot en{" "}
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">bank-snapshot.json</code>.
+            Se refresca automáticamente cada 5 minutos en la app.
+          </li>
+          <li>
+            <B>Tokens Google Drive:</B> Vercel Blob —{" "}
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">gdrive-tokens.json</code>
+            . Solo el servidor los lee; el teléfono solo ve si está conectado o no.
+          </li>
+        </ul>
+
+        <P>
+          <B>Procedimiento para cambiar de teléfono (paso a paso):</B>
+        </P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>
+            <B>Paso 1 — Conectar Google Drive (solo la primera vez):</B> ir a DATA → BACKUP →
+            sección PHONE TRANSFER. Presionar <B>Conectar Drive →</B> (botón gris pequeño arriba a
+            la derecha). Google pide permiso para "ver y administrar solo los archivos que creó esta
+            app". Aceptar. La app regresa y el botón cambia a{" "}
+            <B>✓ Drive · desconectar</B>.
+          </li>
+          <li>
+            <B>Paso 2 — SUBIR a Drive:</B> presionar <B>SUBIR A DRIVE</B>. La app construye el
+            respaldo completo y lo sube directamente a Google Drive sin descargar nada al teléfono.
+            El archivo queda en la carpeta{" "}
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">
+              Copiloto_Auditoria_Recibos
+            </code>{" "}
+            con nombre{" "}
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">
+              copiloto-respaldo-YYYY-MM-DD.json
+            </code>
+            . Si ya existe un archivo con el mismo nombre, se sobreescribe.
+          </li>
+          <li>
+            <B>Paso 3 — En el otro teléfono, abrir la app y conectar Drive:</B> igual que el paso
+            1. Usar la misma cuenta de Google.
+          </li>
+          <li>
+            <B>Paso 4 — RESTAURAR desde Drive:</B> presionar <B>RESTAURAR DRIVE</B>. La app lista
+            los respaldos disponibles en la carpeta. Elegir el archivo deseado (el más reciente
+            aparece primero). Se muestra un resumen: fecha, # entradas, # gastos, # viajes. Presionar{" "}
+            <B>SÍ, RESTAURAR</B> para confirmar. La app se recarga y queda idéntica al teléfono
+            original.
+          </li>
+          <li>
+            <B>Sin Drive conectado:</B> el botón SUBIR descarga el archivo JSON al teléfono (igual
+            que antes). El botón RESTAURAR pide elegir un archivo local. Ambos modos siguen
+            funcionando.
+          </li>
+        </ul>
+
+        <P>
+          <B>Procedimiento para fotos de recibos y statements (auditoría IRS):</B>
+        </P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>
+            Escanear recibo o statement con la cámara desde EXPENSES → botón de cámara. La foto se
+            sube a Vercel Blob automáticamente y la IA extrae monto, fecha, vendor.
+          </li>
+          <li>
+            Para tenerlas en Google Drive (recomendado para auditoría): subir el respaldo completo
+            con SUBIR A DRIVE — el backup JSON contiene los IDs de todas las imágenes, que están en
+            el servidor Vercel Blob. Las fotos en sí se pueden descargar desde DOWNLOAD ALL (FULL
+            BACKUP) o desde el registro de gastos.
+          </li>
+          <li>
+            <B>Carpeta en Drive:</B>{" "}
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">
+              Copiloto_Auditoria_Recibos
+            </code>{" "}
+            — nombre diseñado para identificar de inmediato que es documentación de auditoría.
+          </li>
+        </ul>
+
+        <P>
+          <B>Rutas API nuevas (implementadas 2026-11-13):</B>
+        </P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">GET /api/gdrive/status</code>{" "}
+            → si Drive está conectado.
+          </li>
+          <li>
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">GET /api/gdrive/auth</code>{" "}
+            → inicia el flujo OAuth2 de Google.
+          </li>
+          <li>
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">GET /api/gdrive/callback</code>{" "}
+            → Google redirige aquí tras autorizar; guarda tokens en Vercel Blob.
+          </li>
+          <li>
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">POST /api/gdrive/upload</code>{" "}
+            → sube un archivo a la carpeta de Drive.
+          </li>
+          <li>
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">GET /api/gdrive/restore</code>{" "}
+            → lista o descarga respaldos de Drive.
+          </li>
+          <li>
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">DELETE /api/gdrive/disconnect</code>{" "}
+            → borra los tokens (desconecta Drive).
+          </li>
+          <li>
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">
+              GET/POST/DELETE /api/sync
+            </code>{" "}
+            → sync entre teléfonos. <B>Reparado 2026-11-13</B>: antes usaba Supabase (quota
+            agotada); ahora usa Vercel Blob.
+          </li>
+        </ul>
+
+        <P>
+          <B>Variables de entorno requeridas en Vercel (para Google Drive):</B>
+        </P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">GOOGLE_CLIENT_ID</code>{" "}
+            — de Google Cloud Console, proyecto OAuth2.
+          </li>
+          <li>
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">GOOGLE_CLIENT_SECRET</code>{" "}
+            — mismo proyecto.
+          </li>
+          <li>
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">GOOGLE_REDIRECT_URI</code>{" "}
+            = https://claris-lime.vercel.app/api/gdrive/callback
+          </li>
+          <li>
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">BLOB_READ_WRITE_TOKEN</code>{" "}
+            — Vercel Blob (ya configurado; lo usan también bank snapshot y receipt images).
+          </li>
+        </ul>
+
+        <P>
+          <B>Notas de seguridad:</B> el backup JSON no está cifrado (es un archivo privado en tu
+          Drive personal). El sync entre teléfonos SÍ está cifrado con AES-GCM-256 derivado de tu
+          código privado — el servidor nunca ve los datos en claro. Los tokens de Drive se guardan
+          en Vercel Blob con nombre no-adivinable y solo el servidor los lee.
+        </P>
+      </Section>
+
+      <Section title="10. Standing rules">
         <ul className="list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
           <li>
             <B>Steady:</B> screens are fixed — no lateral shifting when typing, on every screen.
