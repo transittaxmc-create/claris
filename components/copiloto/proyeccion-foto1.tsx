@@ -85,6 +85,23 @@ function billEscaneado(b: Expense): boolean {
   return Boolean(b.scanned) || Boolean(b.isAiGenerated) || b.confidence != null
 }
 
+/** Plataforma dueña de un cobro transferido desde Earnings (Uber, Lyft,
+ * Aventus Ride…): la marquita dice DE QUIÉN es el dinero, no "RECEIVABLES".
+ * Sale de la descripción "Receivable · {plataforma}" que deja el propio
+ * reconciliado de Earnings; el id claris:cobro:{fecha}:{plataforma} es el
+ * respaldo. Pedido textual de Miguel (2026-11-14): "que diga en
+ * Proyecciones de que ese income es de Uber o es de Lyft o es de
+ * Aventus… de dónde viene ese income". */
+function plataformaDeCobro(e: CashFlowEntry): string | null {
+  const m =
+    String(e.description || "").match(/^(?:Receivable|Cobros?)\s*·\s*(.+)$/i) ||
+    String(e.sourceLabel || "").match(/^(?:Receivable|Cobros?)\s*·\s*(.+)$/i)
+  if (m && m[1].trim()) return m[1].trim().toUpperCase()
+  const idm = String(e.id || "").match(/^claris:cobro:\d{4}-\d{2}-\d{2}:(.+)$/)
+  if (idm && idm[1].trim()) return idm[1].trim().replace(/[-_]+/g, " ").toUpperCase()
+  return null
+}
+
 function marcaOrigen(
   line: ForecastLine,
   schedules: readonly { id: string }[],
@@ -92,6 +109,7 @@ function marcaOrigen(
 ): string | null {
   if (line.entry) {
     const origin = origenDe(line.entry)
+    if (origin === "trip") return plataformaDeCobro(line.entry) ?? ETIQUETA_ORIGEN[origin].toUpperCase()
     if (origin !== "manual") return ETIQUETA_ORIGEN[origin].toUpperCase()
     // Nació en la página de Gastos (escrita a mano allí): vino transferida
     // aunque su origen guardado diga "manual" (igual que las escritas
