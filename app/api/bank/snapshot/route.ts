@@ -11,7 +11,41 @@
 // frontend: { date, bank_account, detail, category, amount (con signo),
 // daily_balance }. Los montos legacy ya vienen con signo (gasto negativo).
 import { NextResponse } from "next/server"
+import { get } from "@vercel/blob"
 import { listPlaidItems, plaidConfigured } from "@/lib/plaid"
+
+// Fase 2 (2026-11-13): el snapshot fresco vive en el Blob privado — lo
+// publica el sync de la VM (POST /api/bank/publish) tras cada bajada de
+// Plaid, ya armado con esta misma forma. Se sirve PRIMERO; Supabase
+// queda solo como respaldo si el Blob aún no tiene nada publicado.
+async function fromBlob(): Promise<Response | null> {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) return null
+  try {
+    const result = await get("bank/snapshot.json", { access: "private" })
+    if (!result || result.statusCode !== 200 || !result.stream) return null
+    const text = await new Response(result.stream).text()
+    const j = JSON.parse(text)
+    if (!j || !Array.isArray(j.transactions) || !Array.isArray(j.accounts)) return null
+    // La frescura se calcula al servir, igual que en fromSupabase: manda
+    // el as_of guardado; generated_at / age_seconds / stale se recalculan.
+    const asOfMs =
+      typeof j.as_of === "string" && Number.isFinite(Date.parse(j.as_of)) ? Date.parse(j.as_of) : 0
+    const ageMs = asOfMs ? Math.max(0, Date.now() - asOfMs) : null
+    const stale = ageMs === null || ageMs > 60 * 60 * 1000
+    return NextResponse.json(
+      {
+        ...j,
+        generated_at: new Date().toISOString(),
+        age_seconds: ageMs === null ? null : Math.floor(ageMs / 1000),
+        stale,
+        freshness: stale ? "stale" : "fresh",
+      },
+      { headers: { "Cache-Control": "no-store" } },
+    )
+  } catch {
+    return null
+  }
+}
 
 async function fromSupabase(): Promise<Response | null> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -150,7 +184,13 @@ async function fromPlaid(): Promise<Response | null> {
 }
 
 export async function GET() {
-  // Supabase primero: tiene los datos completos del daily sync (7 cuentas).
+  // Blob primero (Fase 2): es el snapshot fresco que publica el sync de
+  // la VM tras cada bajada de Plaid — el registro completo, al día.
+  const blobRes = await fromBlob()
+  if (blobRes) return blobRes
+
+  // Supabase: tiene los datos completos del daily sync (7 cuentas), pero
+  // quedó congelado el 2026-11-10 (cuota de egress); solo es respaldo.
   // Plaid directo (via plaid_items) puede estar incompleto si no se conectaron todos los bancos en el app.
   const sbRes = await fromSupabase()
   if (sbRes) return sbRes
