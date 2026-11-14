@@ -69,23 +69,14 @@ export function MoneyAccountCard(props: {
       aria-label={props.name}
       style={brandStyle(brand)}
       className={cn(
-        "money-card relative flex w-full flex-col overflow-hidden rounded-[14px] text-left transition-transform active:scale-[.985]",
-        // Alto justo (Miguel 2026-11-13): sin min-h ni relleno vertical de
-        // sobra — el cuadro abraza el contenido y su fila alta es el logo,
-        // cuyo tamaño NO se tocó (lg 42px / sm 34px en BankLogo).
-        main ? "money-card-main gap-1.5 px-4 py-2.5" : "gap-1.5 px-3 py-2",
+        "money-card relative flex w-full items-center overflow-hidden rounded-[14px] text-left transition-transform active:scale-[.985]",
+        // UNA sola línea (Miguel 2026-11-13): logo, nombre y balance en la
+        // misma fila — el balance ya no va en su propia línea debajo. El
+        // alto del cuadro ≈ el alto del logo (lg 42px / sm 34px en
+        // BankLogo, tamaño NO tocado) + el relleno vertical mínimo actual.
+        main ? "money-card-main gap-2.5 px-4 py-2.5" : "gap-2.5 px-3 py-2",
       )}
     >
-      {main && (
-        <span className="flex items-center gap-1 text-[11px] font-extrabold tracking-[.08em] text-[#f5b84c]">
-          <Star className="size-3 fill-[#f5b84c] text-[#f5b84c]" /> PRINCIPAL
-        </span>
-      )}
-      {typeof props.count === "number" && (
-        <span className={cn("absolute right-3 top-2.5 text-[10px] font-bold text-[#66687c]", MONEY_FONT_MONO)}>
-          {props.count} mov.
-        </span>
-      )}
       {props.onToggleFund && (
         <span
           role="switch"
@@ -108,19 +99,30 @@ export function MoneyAccountCard(props: {
           />
         </span>
       )}
-      {/* pr: deja sitio al contador "N mov." de la esquina */}
-      <span className={cn("flex min-w-0 items-center gap-2.5", typeof props.count === "number" && !main && "pr-11")}>
-        <BankLogo brand={brand} name={props.name} size={main ? "lg" : "sm"} />
-        <span className="flex min-w-0 flex-col">
+      <BankLogo brand={brand} name={props.name} size={main ? "lg" : "sm"} />
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="flex min-w-0 items-center gap-1.5">
+          {main && <Star className="size-3.5 shrink-0 fill-[#f5b84c] text-[#f5b84c]" />}
           <span className={cn("truncate font-extrabold text-[#f2f3f7]", main ? "text-base" : "text-sm")}>
             {main ? props.name : brand.id === "generic" ? props.name : brand.short}
           </span>
-          <span className={cn("truncate text-[10px] text-[#66687c]", MONEY_FONT_MONO)}>{props.subtitle}</span>
+        </span>
+        <span className="flex min-w-0 items-baseline gap-1.5">
+          {main && (
+            <span className="shrink-0 text-[9px] font-extrabold tracking-[.08em] text-[#f5b84c]">PRINCIPAL</span>
+          )}
+          {/* El contador "N mov." cierra esta misma línea (antes flotaba en
+              la esquina, donde ahora va el balance): el truncate corta
+              primero el contador y conserva los dígitos de la cuenta. */}
+          <span className={cn("truncate text-[10px] text-[#66687c]", MONEY_FONT_MONO)}>
+            {props.subtitle}
+            {typeof props.count === "number" ? ` · ${props.count} mov.` : ""}
+          </span>
         </span>
       </span>
       <span
         className={cn(
-          "font-extrabold",
+          "shrink-0 font-extrabold",
           MONEY_FONT_MONO,
           main ? "text-[26px]" : "text-[17px]",
           props.balance === null ? "text-[#66687c]" : props.balance < 0 ? "text-[#ff5d6c]" : "text-[#2fbf71]",
