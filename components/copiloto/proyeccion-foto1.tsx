@@ -26,7 +26,8 @@ import { normalizeVendorName, type Expense } from "./types"
 import { platformMatch, vendorMatch, SCHEDULE_OVERRIDES_KEY, type ForecastLine, type ProbablePaid } from "./dinero-forecast"
 import { useForecastInputs } from "./dinero-proyeccion"
 import { FINANCE_LEDGER_KEY, FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT } from "./finance-sync"
-import type { CashFlowEntry } from "./types"
+import type { CashFlowEntry, CashFlowOrigin } from "./types"
+import { ETIQUETA_ORIGEN, origenDe } from "./cash-flow-store"
 import { loadTrips } from "./storage"
 import { loadShiftTolls, SHIFT_TOLLS_EVENT } from "./shift-tolls"
 import { loadOpenBills, saveOpenBills, applyPayment } from "./open-bills-store"
@@ -66,6 +67,28 @@ function notifySync() {
   try {
     window.dispatchEvent(new Event(FINANCE_SYNCED_EVENT))
   } catch {}
+}
+
+// ——— Marquita de origen (Miguel, 2026-11-14) ———
+// Las filas que llegaron TRANSFERIDAS de otra página (origen ≠ manual)
+// llevan el nombre del origen en chiquito bajo la descripción, para
+// identificarlas de un vistazo al reconciliar. SOLO display: no toca
+// datos, montos, fechas, columnas ni saldos. Las líneas de recurrente
+// puro no se marcan: el objeto ScheduledEntry no trae origen.
+function marcaOrigen(line: ForecastLine, schedules: readonly { id: string }[]): string | null {
+  let origin: CashFlowOrigin | null = null
+  if (line.entry) {
+    origin = origenDe(line.entry)
+  } else if (line.scheduleId) {
+    const s = schedules.find((x) => x.id === line.scheduleId) as unknown as
+      | { origin?: CashFlowOrigin; sourceLabel?: string; source?: string }
+      | undefined
+    if (s && (s.origin || s.sourceLabel || s.source)) {
+      origin = origenDe({ origin: s.origin, sourceLabel: s.sourceLabel, source: s.source } as unknown as CashFlowEntry)
+    }
+  }
+  if (!origin || origin === "manual") return null
+  return ETIQUETA_ORIGEN[origin].toUpperCase()
 }
 
 function MiniChart({ points }: { points: number[] }) {
@@ -528,6 +551,7 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
               const cat = lineCategory(line, schedules)
               const pb = partialNoteFor(line)
               const pbLeft = pb ? billRemaining(pb) : 0
+              const tagOrigen = marcaOrigen(line, schedules)
               const dayDate = new Date(line.date + "T12:00:00")
               const isSunday = dayDate.getDay() === 0
               const nextFuture = futuras[i + 1]
@@ -561,6 +585,11 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
                   </td>
                   <td style={{ ...td, overflow: "hidden" }}>
                     <span style={{ fontWeight: 600, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{line.label}</span>
+                    {tagOrigen && (
+                      <div style={{ fontSize: 9.5, color: SUB, marginTop: 1, whiteSpace: "normal" }}>
+                        {tagOrigen}
+                      </div>
+                    )}
                     {pb && pbLeft > 0.009 && (
                       <div style={{ fontSize: 9.5, color: SUB, marginTop: 1, whiteSpace: "normal" }}>
                         Original ${money2(Number(pb.amount) || 0)} · Paid ${money2(billPaidTotal(pb))} · Left ${money2(pbLeft)}
@@ -630,6 +659,11 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
                       </td>
                       <td style={{ ...td, overflow: "hidden" }}>
                         <span style={{ fontWeight: 600, color: "#c9cbd8" }}>{bill.vendor}</span>
+                        {bill.scanned && (
+                          <div style={{ fontSize: 9.5, color: SUB, marginTop: 1, whiteSpace: "normal" }}>
+                            {ETIQUETA_ORIGEN.scan.toUpperCase()}
+                          </div>
+                        )}
                         <div style={{ fontSize: 9.5, color: GREEN, fontWeight: 700, marginTop: 1 }}>
                           ✓ PAID{lastPay ? ` · ${fmtFecha(String(lastPay.date).slice(0, 10))}` : ""}{from ? ` · ${from}` : ""}
                         </div>
