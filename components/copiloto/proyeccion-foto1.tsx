@@ -70,25 +70,49 @@ function notifySync() {
 }
 
 // ——— Marquita de origen (Miguel, 2026-11-14) ———
-// Las filas que llegaron TRANSFERIDAS de otra página (origen ≠ manual)
-// llevan el nombre del origen en chiquito bajo la descripción, para
-// identificarlas de un vistazo al reconciliar. SOLO display: no toca
-// datos, montos, fechas, columnas ni saldos. Las líneas de recurrente
-// puro no se marcan: el objeto ScheduledEntry no trae origen.
-function marcaOrigen(line: ForecastLine, schedules: readonly { id: string }[]): string | null {
-  let origin: CashFlowOrigin | null = null
+// Las filas que llegaron TRANSFERIDAS de otra página llevan el nombre
+// del origen en chiquito bajo la descripción, para identificarlas de un
+// vistazo al reconciliar. SOLO display: no toca datos, montos, fechas,
+// columnas ni saldos.
+// Completada el mismo día (la primera versión casi no se veía en su
+// teléfono): también se marca la ocurrencia de un recurrente cuando la
+// carga un bill REAL de la página de Gastos (escaneado → ESCANEADO;
+// escrito en Gastos → EXPENSES) y la entrada del libro nacida en Gastos
+// escrita a mano (id claris:gasto: con origen manual → EXPENSES).
+// El recurrente puro y el bill de ciclo auto-creado NO se marcan:
+// nacen en la propia Proyecciones, no vienen transferidos.
+function billEscaneado(b: Expense): boolean {
+  return Boolean(b.scanned) || Boolean(b.isAiGenerated) || b.confidence != null
+}
+
+function marcaOrigen(
+  line: ForecastLine,
+  schedules: readonly { id: string }[],
+  bill?: { bill: Expense; auto: boolean } | null,
+): string | null {
   if (line.entry) {
-    origin = origenDe(line.entry)
-  } else if (line.scheduleId) {
+    const origin = origenDe(line.entry)
+    if (origin !== "manual") return ETIQUETA_ORIGEN[origin].toUpperCase()
+    // Nació en la página de Gastos (escrita a mano allí): vino transferida
+    // aunque su origen guardado diga "manual" (igual que las escritas
+    // directo en Proyecciones, que NO llevan este id y no se marcan).
+    if (String(line.entry.id).startsWith("claris:gasto:")) return "EXPENSES"
+    return null
+  }
+  if (line.scheduleId) {
+    // La ocurrencia la carga un bill real de Gastos: la marca es la del bill.
+    if (bill && !bill.auto) {
+      return billEscaneado(bill.bill) ? ETIQUETA_ORIGEN.scan.toUpperCase() : "EXPENSES"
+    }
     const s = schedules.find((x) => x.id === line.scheduleId) as unknown as
       | { origin?: CashFlowOrigin; sourceLabel?: string; source?: string }
       | undefined
     if (s && (s.origin || s.sourceLabel || s.source)) {
-      origin = origenDe({ origin: s.origin, sourceLabel: s.sourceLabel, source: s.source } as unknown as CashFlowEntry)
+      const origin = origenDe({ origin: s.origin, sourceLabel: s.sourceLabel, source: s.source } as unknown as CashFlowEntry)
+      if (origin !== "manual") return ETIQUETA_ORIGEN[origin].toUpperCase()
     }
   }
-  if (!origin || origin === "manual") return null
-  return ETIQUETA_ORIGEN[origin].toUpperCase()
+  return null
 }
 
 function MiniChart({ points }: { points: number[] }) {
@@ -290,6 +314,31 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
         if (b) return b
       }
       return null
+    }
+  }, [billsDetail])
+  // Bill REAL detrás de una línea, para la marquita de origen: a diferencia
+  // del desglose de parciales, aquí cuentan TODOS los bills (pagados o no).
+  // Una ocurrencia cargada por un bill toma la fecha del bill, así que la
+  // búsqueda es por recurrente+fecha o, si el bill no está enlazado, por
+  // comercio+fecha (la misma regla con que el forecast lo asigna).
+  const billDeLinea = useMemo(() => {
+    const bySched = new Map<string, { bill: Expense; auto: boolean }>()
+    for (const item of billsDetail) {
+      if (item.bill.originScheduleId) {
+        bySched.set(`${item.bill.originScheduleId}|${String(item.bill.date).slice(0, 10)}`, item)
+      }
+    }
+    return (line: ForecastLine): { bill: Expense; auto: boolean } | null => {
+      if (!line.scheduleId) return null
+      const linked = bySched.get(`${line.scheduleId}|${String(line.date).slice(0, 10)}`)
+      if (linked) return linked
+      const found = billsDetail.find(
+        (item) =>
+          !item.auto &&
+          String(item.bill.date).slice(0, 10) === String(line.date).slice(0, 10) &&
+          vendorMatch(item.bill.vendor, line.label),
+      )
+      return found ?? null
     }
   }, [billsDetail])
   const paidBills = useMemo(() => {
@@ -551,7 +600,7 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
               const cat = lineCategory(line, schedules)
               const pb = partialNoteFor(line)
               const pbLeft = pb ? billRemaining(pb) : 0
-              const tagOrigen = marcaOrigen(line, schedules)
+              const tagOrigen = marcaOrigen(line, schedules, billDeLinea(line))
               const dayDate = new Date(line.date + "T12:00:00")
               const isSunday = dayDate.getDay() === 0
               const nextFuture = futuras[i + 1]
