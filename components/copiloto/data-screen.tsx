@@ -175,18 +175,136 @@ export function DataScreen({
   const [pendingRestore, setPendingRestore] = useState<{ doc: FullBackup; counts: BackupCounts } | null>(null)
   const [backupNote, setBackupNote] = useState<string | null>(null)
   const [backupBusy, setBackupBusy] = useState(false)
+  // Google Drive estado
+  const [gdriveConnected, setGdriveConnected] = useState<boolean | null>(null)
+  const [showDriveBackups, setShowDriveBackups] = useState(false)
+  const [driveBackupList, setDriveBackupList] = useState<{ id: string; name: string; createdTime: string }[]>([])
+
+  // Checar conexión Google Drive al abrir la pantalla
+  useEffect(() => {
+    fetch("/api/gdrive/status", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d: { connected: boolean }) => setGdriveConnected(d.connected))
+      .catch(() => setGdriveConnected(false))
+  }, [])
+
+  // Detectar ?gdrive_ok=1 en la URL (regreso del OAuth)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get("gdrive_ok") === "1") {
+      setGdriveConnected(true)
+      setBackupNote("✅ Google Drive conectado. Ahora puedes subir tu respaldo directamente.")
+      // Limpiar el query param
+      window.history.replaceState({}, "", window.location.pathname)
+    }
+    if (params.get("gdrive_error")) {
+      setBackupNote(`⚠️ Error conectando Google Drive: ${params.get("gdrive_error")}`)
+      window.history.replaceState({}, "", window.location.pathname)
+    }
+  }, [])
+
+  const conectarDrive = () => {
+    window.location.href = "/api/gdrive/auth?return=/"
+  }
+
+  const desconectarDrive = async () => {
+    await fetch("/api/gdrive/disconnect", { method: "DELETE" })
+    setGdriveConnected(false)
+    setBackupNote("Google Drive desconectado.")
+  }
 
   const subirRespaldo = async () => {
     setBackupBusy(true)
+    setBackupNote(null)
     try {
       const doc = await buildFullBackup()
-      downloadFullBackup(doc)
       const c = backupCounts(doc)
-      setBackupNote(
-        `Backup created: ${c.entries} entries · ${c.expenses} expenses · ${c.trips} trips. Save the downloaded file in your Google Drive folder.`,
-      )
+      const filename = backupFileName(doc)
+
+      if (gdriveConnected) {
+        // Subir directo a Google Drive
+        setBackupNote("⬆️ Subiendo a Google Drive…")
+        const res = await fetch("/api/gdrive/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filename, content: JSON.stringify(doc) }),
+        })
+        if (res.ok) {
+          setBackupNote(
+            `✅ Respaldo subido a Google Drive: ${c.entries} entradas · ${c.expenses} gastos · ${c.trips} viajes. Archivo: ${filename}`,
+          )
+        } else {
+          // Fallback a descarga local si Drive falla
+          downloadFullBackup(doc)
+          setBackupNote("⚠️ No se pudo subir a Drive. Se descargó el archivo localmente.")
+        }
+      } else {
+        // Sin Drive: descarga local
+        downloadFullBackup(doc)
+        setBackupNote(
+          `Backup descargado: ${c.entries} entradas · ${c.expenses} gastos · ${c.trips} viajes. Guárdalo en tu Google Drive.`,
+        )
+      }
     } catch {
-      setBackupNote("Couldn't create the backup. Try again.")
+      setBackupNote("No se pudo crear el respaldo. Intenta de nuevo.")
+    } finally {
+      setBackupBusy(false)
+    }
+  }
+
+  const restaurarDesdeDrive = async () => {
+    setBackupBusy(true)
+    setBackupNote("⬇️ Buscando respaldos en Google Drive…")
+    try {
+      const res = await fetch("/api/gdrive/restore?list=1", { cache: "no-store" })
+      if (!res.ok) {
+        setBackupNote("No se encontraron respaldos en Google Drive.")
+        setBackupBusy(false)
+        return
+      }
+      const data = (await res.json()) as { files?: { id: string; name: string; createdTime: string }[] }
+      if (!data.files || data.files.length === 0) {
+        setBackupNote("No hay respaldos en Google Drive todavía. Presiona SUBIR primero.")
+        setBackupBusy(false)
+        return
+      }
+      setDriveBackupList(data.files)
+      setShowDriveBackups(true)
+      setBackupNote(null)
+    } catch {
+      setBackupNote("Error al conectar con Google Drive.")
+    } finally {
+      setBackupBusy(false)
+    }
+  }
+
+  const restaurarArchivosDrive = async (filename: string) => {
+    setShowDriveBackups(false)
+    setBackupBusy(true)
+    setBackupNote(`⬇️ Descargando ${filename} de Google Drive…`)
+    try {
+      const res = await fetch(`/api/gdrive/restore?filename=${encodeURIComponent(filename)}`, { cache: "no-store" })
+      if (!res.ok) {
+        setBackupNote("No se pudo descargar el respaldo de Drive.")
+        setBackupBusy(false)
+        return
+      }
+      const data = (await res.json()) as { content?: string }
+      if (!data.content) {
+        setBackupNote("El respaldo en Drive está vacío o dañado.")
+        setBackupBusy(false)
+        return
+      }
+      const doc = parseFullBackup(data.content)
+      if (!doc) {
+        setBackupNote("El archivo en Drive no es un respaldo válido de Copiloto.")
+        setBackupBusy(false)
+        return
+      }
+      setBackupNote(null)
+      setPendingRestore({ doc, counts: backupCounts(doc) })
+    } catch {
+      setBackupNote("Error al restaurar desde Drive.")
     } finally {
       setBackupBusy(false)
     }
@@ -337,15 +455,34 @@ export function DataScreen({
             <h2 className="text-xs font-bold tracking-wide text-neutral-200">BACKUP</h2>
           </div>
 
-          {/* SUBIR / RESTAURAR — transferencia entre teléfonos vía Google Drive.
-              Modelo local (2026-11-13): este teléfono manda; el archivo es el puente. */}
+          {/* SUBIR / RESTAURAR — Google Drive directo (1 clic). */}
           <div className="mb-2 rounded-xl border border-emerald-800/60 bg-emerald-950/20 p-2.5">
-            <p className="text-[10px] font-bold tracking-wide text-emerald-300">PHONE TRANSFER · GOOGLE DRIVE</p>
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold tracking-wide text-emerald-300">PHONE TRANSFER · GOOGLE DRIVE</p>
+              {/* Estado de conexión */}
+              {gdriveConnected === true && (
+                <button
+                  type="button"
+                  onClick={desconectarDrive}
+                  className="rounded-full border border-neutral-700 px-2 py-0.5 text-[10px] font-bold text-neutral-400 hover:text-rose-400"
+                >
+                  ✓ Drive · desconectar
+                </button>
+              )}
+              {gdriveConnected === false && (
+                <button
+                  type="button"
+                  onClick={conectarDrive}
+                  className="rounded-full border border-sky-700 bg-sky-950/50 px-2 py-0.5 text-[10px] font-bold text-sky-300 hover:bg-sky-900/60"
+                >
+                  Conectar Drive →
+                </button>
+              )}
+            </div>
             <p className="mt-1 text-[10px] leading-tight text-neutral-400">
-              Your data lives <strong className="text-neutral-200">only on this phone</strong>.{" "}
-              <strong className="text-emerald-300">SUBIR</strong> downloads the complete backup file — save it in
-              your Google Drive folder. On the other phone,{" "}
-              <strong className="text-emerald-300">RESTAURAR</strong> with that file and it becomes the same.
+              {gdriveConnected
+                ? "Drive conectado. Presiona SUBIR para guardar directo en tu Drive — sin descargar nada. En el otro teléfono, RESTAURAR baja el último respaldo automático."
+                : "Conecta Google Drive para subir y restaurar con 1 clic. Sin Drive, el botón descarga el archivo localmente."}
             </p>
             <div className="mt-2 flex gap-2">
               <button
@@ -354,15 +491,17 @@ export function DataScreen({
                 disabled={backupBusy}
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-500 py-2.5 text-[11px] font-extrabold text-black disabled:opacity-60"
               >
-                <Upload className="size-3.5" /> SUBIR RESPALDO
+                <Upload className="size-3.5" />
+                {backupBusy ? "SUBIENDO…" : gdriveConnected ? "SUBIR A DRIVE" : "SUBIR RESPALDO"}
               </button>
               <button
                 type="button"
-                onClick={() => restoreInputRef.current?.click()}
+                onClick={gdriveConnected ? restaurarDesdeDrive : () => restoreInputRef.current?.click()}
                 disabled={backupBusy}
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-emerald-600/60 py-2.5 text-[11px] font-extrabold text-emerald-300 disabled:opacity-60"
               >
-                <Download className="size-3.5" /> RESTAURAR
+                <Download className="size-3.5" />
+                {backupBusy ? "BUSCANDO…" : gdriveConnected ? "RESTAURAR DRIVE" : "RESTAURAR"}
               </button>
               <input
                 ref={restoreInputRef}
@@ -376,6 +515,34 @@ export function DataScreen({
                 }}
               />
             </div>
+
+            {/* Lista de respaldos en Drive para elegir */}
+            {showDriveBackups && driveBackupList.length > 0 && (
+              <div className="mt-2 rounded-xl border border-sky-800/60 bg-sky-950/20 p-2">
+                <p className="mb-1.5 text-[10px] font-bold text-sky-300">RESPALDOS EN GOOGLE DRIVE</p>
+                <div className="space-y-1">
+                  {driveBackupList.map((f) => (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => void restaurarArchivosDrive(f.name)}
+                      className="flex w-full items-center justify-between rounded-lg border border-sky-700/40 bg-sky-900/20 px-2.5 py-1.5 text-left hover:bg-sky-900/40"
+                    >
+                      <span className="text-[10px] font-bold text-sky-200">{f.name}</span>
+                      <span className="text-[10px] text-neutral-400">{fmtTime(f.createdTime)}</span>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowDriveBackups(false)}
+                  className="mt-2 w-full rounded-lg border border-neutral-700 py-1 text-[10px] font-bold text-neutral-400"
+                >
+                  CANCELAR
+                </button>
+              </div>
+            )}
+
             {backupNote && (
               <p className="mt-2 text-[10px] font-semibold leading-tight text-neutral-300">{backupNote}</p>
             )}
@@ -385,9 +552,9 @@ export function DataScreen({
                   Backup from {fmtTime(pendingRestore.doc.exportedAt)}
                 </p>
                 <p className="mt-0.5 text-[10px] leading-tight text-neutral-300">
-                  {pendingRestore.counts.entries} entries · {pendingRestore.counts.expenses} expenses ·{" "}
-                  {pendingRestore.counts.trips} trips. Restoring{" "}
-                  <strong className="text-amber-200">REPLACES all data on this phone</strong> with the backup.
+                  {pendingRestore.counts.entries} entradas · {pendingRestore.counts.expenses} gastos ·{" "}
+                  {pendingRestore.counts.trips} viajes. Restaurar{" "}
+                  <strong className="text-amber-200">REEMPLAZA todo en este teléfono</strong> con el respaldo.
                 </p>
                 <div className="mt-2 flex gap-2">
                   <button
@@ -396,7 +563,7 @@ export function DataScreen({
                     disabled={backupBusy}
                     className="flex-1 rounded-xl bg-amber-500 py-2.5 text-[11px] font-extrabold text-black disabled:opacity-60 active:scale-[0.99]"
                   >
-                    {backupBusy ? "RESTORING…" : "YES, RESTORE"}
+                    {backupBusy ? "RESTAURANDO…" : "SÍ, RESTAURAR"}
                   </button>
                   <button
                     type="button"
@@ -404,7 +571,7 @@ export function DataScreen({
                     disabled={backupBusy}
                     className="flex-1 rounded-xl border border-neutral-700 py-2.5 text-[11px] font-bold text-neutral-300"
                   >
-                    CANCEL
+                    CANCELAR
                   </button>
                 </div>
               </div>
