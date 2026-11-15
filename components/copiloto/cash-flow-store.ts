@@ -255,6 +255,46 @@ export function reconciliarCobrosAlLibro(
   }
 }
 
+/** Fechas (yyyy-mm-dd) con al menos un cobro claris:cobro:* todavía
+ *  PROYECTADO en el libro — la cuenta por cobrar sigue viva en MONEY. */
+export function fechasConCobroProyectado(entries: CashFlowEntry[]): string[] {
+  const out = new Set<string>()
+  for (const e of entries || []) {
+    if (!e || e.status !== "projected") continue
+    const m = String(e.id || "").match(/^claris:cobro:(\d{4}-\d{2}-\d{2}):/)
+    if (m) out.add(m[1])
+  }
+  return [...out]
+}
+
+/** Fechas que la reconciliación AUTOMÁTICA (al cambiar los viajes) debe
+ *  refrescar en MONEY — regla de Miguel, 2026-11-15:
+ *  - HOY, como siempre: solo si hoy tiene neto > 0.
+ *  - Cualquier día ANTERIOR cuya cuenta por cobrar TODAVÍA esté en MONEY
+ *    (cobro proyectado vivo) y cuyos viajes estén cargados con neto > 0:
+ *    se actualiza igual que hoy, porque antes de que la semana cierre
+ *    pueden cambiar montos (un tip, una entrada corregida).
+ *  - Un día cuyo cobro ya salió de MONEY (pagado o borrado) NO se toca
+ *    solo: no revive sin que Miguel le dé al botón de ese día; si al
+ *    darle revive y duplica, él lo borra (su decisión, 2026-11-15). */
+export function fechasReconciliacionAuto(
+  trips: Trip[],
+  hoy: string,
+  libro: CashFlowEntry[],
+): string[] {
+  const lista = trips || []
+  const conNeto = (d: string) =>
+    lista.some((t) => tripDateOf(t) === d && (netOf(t) || 0) > 0)
+  const fechas = new Set<string>()
+  if (conNeto(hoy)) fechas.add(hoy)
+  const conViajes = new Set(lista.map((t) => tripDateOf(t)))
+  for (const d of fechasConCobroProyectado(libro)) {
+    if (d === hoy) continue
+    if (conViajes.has(d) && conNeto(d)) fechas.add(d)
+  }
+  return [...fechas].sort()
+}
+
 export function leerLibroMayor(): CashFlowEntry[] {
   try {
     const raw = localStorage.getItem(LEDGER_KEY)

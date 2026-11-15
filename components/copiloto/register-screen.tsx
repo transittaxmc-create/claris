@@ -18,7 +18,7 @@ import {
 import { cn } from "@/lib/utils"
 import { localDateKey } from "@/lib/dates"
 import { type Trip, type TollBill, grossOf, netOf, money, tripDateOf } from "./types"
-import { reconciliarCobrosAlLibro } from "./cash-flow-store"
+import { fechasReconciliacionAuto, leerLibroMayor, reconciliarCobrosAlLibro } from "./cash-flow-store"
 import { HourlyOverlay } from "./hourly-overlay"
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
 import { isVoucherPlatform } from "./platform-meta"
@@ -343,17 +343,23 @@ export function RegisterScreen({
     onCloseDay()
   }
 
-  // Reconciliación automática del día (restaurada 2026-10-24, pedido de
-  // Miguel): lo que se va ganando HOY en EARNINGS entra solo a MONEY y
-  // REEMPLAZA el ingreso proyectado de hoy, sin esperar al botón. La
-  // función es idempotente (upsert por id + override de salto al
-  // recurrente diario), así que correrla con cada cambio de viajes solo
-  // actualiza los montos. El botón queda para reenviar un día a mano.
+  // Reconciliación automática (restaurada 2026-10-24, pedido de Miguel):
+  // lo que se va ganando en EARNINGS entra solo a MONEY y REEMPLAZA el
+  // ingreso proyectado del día, sin esperar al botón. La función es
+  // idempotente (upsert por id + override de salto al recurrente diario),
+  // así que correrla con cada cambio de viajes solo actualiza los montos.
+  // El botón queda para reenviar un día a mano.
+  // Ampliada 2026-11-15 (regla de Miguel): ya no corre SOLO para hoy —
+  // también refresca cualquier día anterior cuya cuenta por cobrar
+  // todavía esté en MONEY, porque antes de que la semana cierre pueden
+  // cambiar montos de días pasados (un tip, una entrada corregida). Un
+  // día cuyo cobro ya salió de MONEY no revive solo; revive únicamente
+  // si Miguel le da al botón de ese día (fechasReconciliacionAuto).
   useEffect(() => {
     const today = localDateKey(new Date())
-    const hayNetoHoy = trips.some((t) => tripDateOf(t) === today && (netOf(t) || 0) > 0)
-    if (!hayNetoHoy) return
-    reconciliarCobrosAlLibro(trips, today)
+    for (const fecha of fechasReconciliacionAuto(trips, today, leerLibroMayor())) {
+      reconciliarCobrosAlLibro(trips, fecha)
+    }
   }, [trips])
 
   function reconciliarHaciaDinero() {
