@@ -39,6 +39,11 @@ export interface ForecastDue {
 
 export interface ForecastLine {
   id: string
+  /** Identidad estable del renglón para la marca manual de Miguel
+   *  (2026-11-15): `e:{entryId}` en asientos del libro (la misma aunque el
+   *  renglón pase de futuro a vencido); en recurrentes y tarjetas, el propio
+   *  id de la línea, que ya lleva la fecha de la ocurrencia. */
+  key: string
   date: string
   label: string
   /** Con signo: + ingreso, − gasto. */
@@ -49,6 +54,9 @@ export interface ForecastLine {
   frequency?: ScheduleFrequency
   /** Para vencidos: fecha original de la factura. */
   originalDate?: string
+  /** Marcado por Miguel HOY con el check: se sigue viendo, pero ya no
+   *  cuenta en ningún total ni en el balance; mañana desaparece. */
+  checked?: boolean
 }
 
 export interface ForecastDay {
@@ -103,6 +111,12 @@ export interface ForecastInput {
   horizonDays: number
   /** Claves de "probablemente pagado" que el usuario descartó. */
   dismissedPaid?: string[]
+  /** Marcas manuales (Miguel, 2026-11-15): key del renglón → fecha en que
+   *  lo marcó. Marcado un día antes de hoy = el renglón ya no sale;
+   *  marcado hoy = sale visible pero no cuenta. Sin marca, un renglón
+   *  vencido se queda en la lista contando hasta que él lo marque o el
+   *  dinero caiga en el banco. */
+  checkedRows?: Record<string, string>
   /** Excepciones de "solo esta vez" sobre un recurring (edición o salto). */
   overrides?: ScheduleOverride[]
   /** Bills reales/abiertos: si uno cae en el ciclo de un recurrente de
@@ -137,7 +151,9 @@ export interface Forecast {
   lowest: { date: string; balance: number }
   overdueExpenseTotal: number
   overdueExpenseCount: number
-  /** Income con fecha pasada que no llegaron: NO incluidos en el total. */
+  /** Legado (hasta 2026-11-14): ingresos vencidos no contados. Desde el
+   *  2026-11-15, por orden de Miguel, el ingreso vencido se queda en la
+   *  lista principal contando hasta su check — esta lista queda vacía. */
   overdueIncome: ForecastLine[]
   overdueIncomeTotal: number
   probablePaid: ProbablePaid[]
@@ -746,6 +762,7 @@ export function buildForecast(input: ForecastInput): Forecast {
     if (p.date < today) {
       const od: ForecastLine = {
         id: `od:${p.entry.id}`,
+        key: `e:${p.entry.id}`,
         date: today,
         label: p.label,
         amount: p.income ? p.amount : -p.amount,
@@ -753,13 +770,16 @@ export function buildForecast(input: ForecastInput): Forecast {
         entry: p.entry,
         originalDate: p.date,
       }
-      // Factura vencida: sigue por pagar → se resta HOY. Ingreso atrasado: no se cuenta.
-      if (p.income) overdueIncome.push(od)
-      else lines.push(od)
+      // Vencido = se queda en la lista CONTANDO (gasto resta, ingreso suma)
+      // hasta que Miguel lo marque con el check o el dinero caiga en el
+      // banco (su orden del 2026-11-15; antes el ingreso vencido salía de
+      // la lista y dejaba de contar, y había que re-entrarlo cada día).
+      lines.push(od)
       continue
     }
     lines.push({
       id: `pj:${p.entry.id}`,
+      key: `e:${p.entry.id}`,
       date: p.date,
       label: p.label,
       amount: p.income ? p.amount : -p.amount,
@@ -904,6 +924,7 @@ export function buildForecast(input: ForecastInput): Forecast {
         recurringCount++
         lines.push({
           id: `rc:${s.id}:${d}`,
+          key: `rc:${s.id}:${d}`,
           date: bDate < today ? today : bDate,
           label: effLabel,
           amount: -remaining,
@@ -926,6 +947,7 @@ export function buildForecast(input: ForecastInput): Forecast {
       recurringCount++
       lines.push({
         id: `rc:${s.id}:${d}`,
+        key: `rc:${s.id}:${d}`,
         date: d,
         label: effLabel,
         amount: income ? effAmt : -effAmt,
@@ -951,11 +973,24 @@ export function buildForecast(input: ForecastInput): Forecast {
     cardCount++
     lines.push({
       id: `cd:${d.accountId}:${dt}`,
+      key: `cd:${d.accountId}:${dt}`,
       date: dt,
       label: `Payment · ${d.accountName || d.accountId}`,
       amount: -amt,
       kind: "card",
     })
+  }
+
+  // 3b) Marcas manuales de Miguel (2026-11-15): el renglón marcado un día
+  // anterior a hoy ya no sale; el marcado HOY sale visible con la marca,
+  // pero no cuenta en totales ni en el balance. Nada se quita solo por
+  // pasar el día: sin marca, el renglón se queda contando.
+  const checkedRows = input.checkedRows || {}
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const markedOn = checkedRows[lines[i].key]
+    if (!markedOn) continue
+    if (markedOn < today) lines.splice(i, 1)
+    else lines[i].checked = true
   }
 
   // 4) Orden por fecha (estable: vencidos y quiebres antes entre fechas iguales).
@@ -969,6 +1004,7 @@ export function buildForecast(input: ForecastInput): Forecast {
   let overdueExpenseTotal = 0
   let overdueExpenseCount = 0
   for (const ln of lines) {
+    if (ln.checked) continue
     if (ln.amount >= 0) {
       incomeTotal = r2(incomeTotal + ln.amount)
       incomeCount++
@@ -991,7 +1027,7 @@ export function buildForecast(input: ForecastInput): Forecast {
   for (let i = 0; i <= horizon; i++) {
     const dayLines: ForecastLine[] = []
     while (li < lines.length && lines[li].date === cursor) dayLines.push(lines[li++])
-    const delta = r2(dayLines.reduce((s, x) => s + x.amount, 0))
+    const delta = r2(dayLines.reduce((s, x) => s + (x.checked ? 0 : x.amount), 0))
     bal = r2(bal + delta)
     if (bal < lowest.balance) lowest = { date: cursor, balance: bal }
     days.push({ date: cursor, lines: dayLines, delta, balance: bal })

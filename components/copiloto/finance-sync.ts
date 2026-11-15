@@ -24,6 +24,8 @@ export const FINANCE_BLOB_KEYS = [
   "claris_toll_bills",
   "claris_finance_week_v1",
   "claris_forecast_dismissed_v1",
+  "claris_forecast_checked_v1",
+  "claris_reconciled_log_v1",
   // Excepciones puntuales de recurrentes (skip, monto o etiqueta por fecha).
   // Sin esta clave, una sincronización podía borrar silenciosamente ajustes de
   // una sola ocurrencia y el forecast volvía a mostrar el valor original.
@@ -31,6 +33,14 @@ export const FINANCE_BLOB_KEYS = [
 ] as const
 /** "Probablemente pagado" que el usuario descartó (viaja con el sync). */
 export const FORECAST_DISMISSED_KEY = "claris_forecast_dismissed_v1"
+/** Marcas manuales de Proyecciones (Miguel, 2026-11-15): renglón → fecha en
+ *  que ÉL lo marcó con el check. Ese día deja de contar; al día siguiente
+ *  desaparece de la lista. Sin marca, el renglón se queda contando. */
+export const FORECAST_CHECKED_KEY = "claris_forecast_checked_v1"
+/** Registro de reconciliaciones con el banco (Miguel, 2026-11-15): cada
+ *  proyectado que cayó en el banco queda asentado con lo proyectado, lo que
+ *  llegó y la diferencia. Solo récord: no afecta ningún saldo. */
+export const RECONCILED_LOG_KEY = "claris_reconciled_log_v1"
 /** Foto de la última sincronización (solo local, nunca viaja). */
 export const FINANCE_SYNC_STATE_KEY = "claris_finance_sync_state_v1"
 /** Evento que avisa a las pantallas de DINERO que relean localStorage. */

@@ -143,7 +143,7 @@ export function useForecast30(props: ProyProps): {
   today: string
   schedules: ReturnType<typeof useForecastInputs>["schedules"]
 } {
-  const { schedules, overrides, dismissed } = useForecastInputs()
+  const { schedules, overrides, dismissed, checkedRows } = useForecastInputs()
   const bills = useForecastBills()
   const shots = useForecastShots()
   const today = todayKey()
@@ -166,8 +166,9 @@ export function useForecast30(props: ProyProps): {
         dismissedPaid: dismissed,
         overrides,
         bills,
+        checkedRows,
       }),
-    [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, dismissed, overrides, bills, shots],
+    [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, dismissed, overrides, bills, shots, checkedRows],
   )
   const fcLong = useMemo(
     () =>
@@ -184,8 +185,9 @@ export function useForecast30(props: ProyProps): {
         dismissedPaid: dismissed,
         overrides,
         bills,
+        checkedRows,
       }),
-    [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, dismissed, overrides, bills, shots],
+    [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, dismissed, overrides, bills, shots, checkedRows],
   )
   // Año completo para la gráfica mensual (mes a mes) de la foto 2.
   const fcYear = useMemo(
@@ -203,8 +205,9 @@ export function useForecast30(props: ProyProps): {
         dismissedPaid: dismissed,
         overrides,
         bills,
+        checkedRows,
       }),
-    [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, dismissed, overrides, bills, shots],
+    [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, dismissed, overrides, bills, shots, checkedRows],
   )
   return { fc, fcLong, fcYear, today, schedules }
 }

@@ -179,7 +179,7 @@ export function RegistersHome(props: {
     (n) => accountIdFor(n),
   )
 
-  const { schedules, dismissed } = useForecastInputs()
+  const { schedules, dismissed, checkedRows } = useForecastInputs()
   const proyectadoMes = (() => {
     const today = todayKey()
     const inicio = startingBalance(registers, balances, props.otherFunds || [])
@@ -200,6 +200,7 @@ export function RegistersHome(props: {
       today,
       horizonDays: daysToEndOfMonth(today),
       dismissedPaid: dismissed,
+      checkedRows,
     })
   })()
 

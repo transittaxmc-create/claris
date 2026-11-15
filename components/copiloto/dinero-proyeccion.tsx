@@ -26,7 +26,7 @@ import {
   type Forecast,
   type ScheduleOverride,
 } from "./dinero-forecast"
-import { FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT, FORECAST_DISMISSED_KEY } from "./finance-sync"
+import { FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT, FORECAST_CHECKED_KEY, FORECAST_DISMISSED_KEY } from "./finance-sync"
 import { loadShotTxs } from "./screenshot-txs"
 
 type Horizon = "mes" | 30 | 60 | 90
@@ -109,10 +109,13 @@ export function useForecastInputs(): {
   overrides: ScheduleOverride[]
   dismissed: string[]
   setDismissed: (next: string[]) => void
+  checkedRows: Record<string, string>
+  setCheckedRows: (next: Record<string, string>) => void
 } {
   const [schedules, setSchedules] = useState<ScheduledEntry[]>([])
   const [overrides, setOverrides] = useState<ScheduleOverride[]>([])
   const [dismissed, setDismissedState] = useState<string[]>([])
+  const [checkedRows, setCheckedRowsState] = useState<Record<string, string>>({})
   useEffect(() => {
     const load = () => {
       const sch = readList<ScheduledEntry>(FINANCE_SCHEDULES_KEY)
@@ -123,6 +126,18 @@ export function useForecastInputs(): {
       setSchedules(sch)
       setOverrides(readList<ScheduleOverride>(SCHEDULE_OVERRIDES_KEY))
       setDismissedState(readList<string>(FORECAST_DISMISSED_KEY).filter((x) => typeof x === "string"))
+      try {
+        const raw = JSON.parse(localStorage.getItem(FORECAST_CHECKED_KEY) || "{}")
+        const clean: Record<string, string> = {}
+        if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+          for (const [k, v] of Object.entries(raw)) {
+            if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) clean[k] = v
+          }
+        }
+        setCheckedRowsState(clean)
+      } catch {
+        setCheckedRowsState({})
+      }
     }
     load()
     window.addEventListener(FINANCE_SYNCED_EVENT, load)
@@ -138,7 +153,13 @@ export function useForecastInputs(): {
       localStorage.setItem(FORECAST_DISMISSED_KEY, JSON.stringify(next))
     } catch {}
   }
-  return { schedules, overrides, dismissed, setDismissed }
+  const setCheckedRows = (next: Record<string, string>) => {
+    setCheckedRowsState(next)
+    try {
+      localStorage.setItem(FORECAST_CHECKED_KEY, JSON.stringify(next))
+    } catch {}
+  }
+  return { schedules, overrides, dismissed, setDismissed, checkedRows, setCheckedRows }
 }
 
 // ---------------------------------------------------------------------------
@@ -540,7 +561,7 @@ export function DineroProyeccion(props: {
   const [adjustingKey, setAdjustingKey] = useState<string | null>(null)
   const [adjustReason, setAdjustReason] = useState("")
   // Recurrentes y descartes: se releen al montar y cuando el sync trae cambios.
-  const { schedules, overrides, dismissed, setDismissed } = useForecastInputs()
+  const { schedules, overrides, dismissed, setDismissed, checkedRows } = useForecastInputs()
   const [sheet, setSheet] = useState<
     { mode: "create" } | { mode: "edit"; schedule: ScheduledEntry; date: string } | null
   >(null)
@@ -746,8 +767,9 @@ export function DineroProyeccion(props: {
         horizonDays,
         dismissedPaid: dismissed,
         overrides,
+        checkedRows,
       }),
-    [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, horizonDays, dismissed, overrides],
+    [inicio.value, props.entries, schedules, props.dues, props.balances, props.bankOk, props.bankTxs, today, horizonDays, dismissed, overrides, checkedRows],
   )
 
   const descartar = (key: string) => {

@@ -25,7 +25,7 @@ import { accountDisplayName } from "./registers-store"
 import { normalizeVendorName, type Expense } from "./types"
 import { platformMatch, vendorMatch, SCHEDULE_OVERRIDES_KEY, type ForecastLine, type ProbablePaid } from "./dinero-forecast"
 import { useForecastInputs } from "./dinero-proyeccion"
-import { FINANCE_LEDGER_KEY, FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT } from "./finance-sync"
+import { FINANCE_LEDGER_KEY, FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT, RECONCILED_LOG_KEY } from "./finance-sync"
 import type { CashFlowEntry, CashFlowOrigin } from "./types"
 import { ETIQUETA_ORIGEN, origenDe } from "./cash-flow-store"
 import { loadTrips } from "./storage"
@@ -67,6 +67,51 @@ function notifySync() {
   try {
     window.dispatchEvent(new Event(FINANCE_SYNCED_EVENT))
   } catch {}
+}
+
+// ——— Registro de reconciliaciones con el banco (Miguel, 2026-11-15) ———
+// Cuando un proyectado cae en el banco y se reconcilia (solo, por match
+// seguro, o confirmado por él en TO CONFIRM), queda asentado aquí con lo
+// proyectado, lo que llegó y la diferencia. Solo récord en pantalla:
+// no afecta ningún saldo ni toca el libro.
+interface RecRecord {
+  id: string
+  date: string
+  label: string
+  projected: number
+  bank: number
+  income: boolean
+  detail: string
+}
+function loadRecLog(): RecRecord[] {
+  try {
+    const raw = localStorage.getItem(RECONCILED_LOG_KEY)
+    const parsed = raw ? JSON.parse(raw) : []
+    return Array.isArray(parsed) ? parsed.filter((r) => r && typeof r.id === "string") : []
+  } catch {
+    return []
+  }
+}
+function appendRecLog(recs: RecRecord[]) {
+  if (recs.length === 0) return
+  try {
+    const cur = loadRecLog()
+    const seen = new Set(cur.map((r) => r.id))
+    const fresh = recs.filter((r) => !seen.has(r.id))
+    if (fresh.length === 0) return
+    localStorage.setItem(RECONCILED_LOG_KEY, JSON.stringify([...fresh, ...cur].slice(0, 200)))
+  } catch {}
+}
+function recRecordOf(p: ProbablePaid): RecRecord {
+  return {
+    id: String(p.entry.id),
+    date: String(p.tx.date).slice(0, 10),
+    label: p.entry.description || "Transaction",
+    projected: Math.abs(Number(p.entry.amount) || 0),
+    bank: Math.abs(Number(p.tx.amount) || 0),
+    income: p.entry.type === "income",
+    detail: String(p.tx.detail || ""),
+  }
 }
 
 // ——— Marquita de origen (Miguel, 2026-11-14) ———
@@ -195,7 +240,27 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
   // Match EXACTO al centavo — y en ingresos, con comercio o plataforma
   // identificable — se marca pagado SOLO. Lo demás espera abajo en
   // POR CONFIRMAR: nada se cierra por adivinanza.
-  const { dismissed, setDismissed } = useForecastInputs()
+  const { dismissed, setDismissed, checkedRows, setCheckedRows } = useForecastInputs()
+  // Marca manual (Miguel, 2026-11-15): tocar el check de un renglón lo
+  // marca con la fecha de HOY — deja de contar al momento y mañana ya no
+  // sale. Tocar otra vez el mismo día deshace la marca.
+  const toggleCheck = (line: ForecastLine) => {
+    const next = { ...checkedRows }
+    if (next[line.key] === today) delete next[line.key]
+    else next[line.key] = today
+    setCheckedRows(next)
+    notifySync()
+  }
+  const [recTick, setRecTick] = useState(0)
+  const recLog = useMemo(() => {
+    void recTick
+    const desde = new Date(`${today}T12:00:00`)
+    desde.setDate(desde.getDate() - 60)
+    const desdeISO = desde.toISOString().slice(0, 10)
+    return loadRecLog()
+      .filter((r) => String(r.date).slice(0, 10) >= desdeISO)
+      .sort((a, b) => (String(b.date) < String(a.date) ? -1 : 1))
+  }, [recTick, today])
   const [adjustingKey, setAdjustingKey] = useState<string | null>(null)
   const [adjustReason, setAdjustReason] = useState("")
 
@@ -270,6 +335,8 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
     try {
       localStorage.setItem(FINANCE_LEDGER_KEY, JSON.stringify(next))
     } catch {}
+    appendRecLog([recRecordOf(p)])
+    setRecTick((t) => t + 1)
     notifySync()
   }
 
@@ -280,13 +347,17 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
     if (seguros.length === 0) return
     const byId = new Map(seguros.map((p) => [p.entry.id, p]))
     let changed = false
+    const flipped: ProbablePaid[] = []
     const next = readLedger().map((e) => {
       const p = byId.get(e.id)
       if (!p || e.status !== "projected") return e
       changed = true
+      flipped.push(p)
       return { ...e, status: "actual" as CashFlowEntry["status"], date: String(p.tx.date).slice(0, 10), isManuallyEdited: true }
     })
     if (!changed) return
+    appendRecLog(flipped.map(recRecordOf))
+    setRecTick((t) => t + 1)
     try {
       localStorage.setItem(FINANCE_LEDGER_KEY, JSON.stringify(next))
     } catch {}
@@ -307,7 +378,7 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
       .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
       .map((l: ForecastLine) => {
         const before = bal
-        bal = Math.round((bal + l.amount) * 100) / 100
+        bal = Math.round((bal + (l.checked ? 0 : l.amount)) * 100) / 100
         return { line: l, before, after: bal }
       })
   }, [fcLong, today])
@@ -397,6 +468,7 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
   const desglose = useMemo(() => {
     const inc = new Map<string, number>(), exp = new Map<string, number>()
     for (const l of fc.lines) {
+      if (l.checked) continue
       const c = lineCategory(l, schedules)
       if (l.amount > 0) inc.set(c, (inc.get(c) || 0) + l.amount)
       else exp.set(c, (exp.get(c) || 0) + Math.abs(l.amount))
@@ -627,8 +699,8 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
               weekStart.setDate(weekStart.getDate() - 6)
               const weekStartIso = [weekStart.getFullYear(), String(weekStart.getMonth() + 1).padStart(2, "0"), String(weekStart.getDate()).padStart(2, "0")].join("-")
               const weekLines = isLastSundayLine ? futuras.filter((item) => item.line.date >= weekStartIso && item.line.date <= line.date) : []
-              const weekIncome = weekLines.reduce((sum, item) => sum + (item.line.amount > 0 ? item.line.amount : 0), 0)
-              const weekExpenses = weekLines.reduce((sum, item) => sum + (item.line.amount < 0 ? Math.abs(item.line.amount) : 0), 0)
+              const weekIncome = weekLines.reduce((sum, item) => sum + (!item.line.checked && item.line.amount > 0 ? item.line.amount : 0), 0)
+              const weekExpenses = weekLines.reduce((sum, item) => sum + (!item.line.checked && item.line.amount < 0 ? Math.abs(item.line.amount) : 0), 0)
               // Peajes de la semana: el registro macheado (GPS + statement,
               // sin repeticiones, con la corrección de Miguel aplicada) —
               // NUNCA la suma de líneas del forecast con etiqueta de peaje.
@@ -651,17 +723,39 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
                     <div style={{ fontSize: 8, color: SUB, fontWeight: 500, marginTop: 1 }}>{fmtWeekday(line.date)}</div>
                   </td>
                   <td style={{ ...td, overflow: "hidden" }}>
-                    <span style={{ fontWeight: 600, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{line.label}</span>
-                    {tagOrigen && (
-                      <div style={{ fontSize: 9.5, color: SUB, marginTop: 1, whiteSpace: "normal" }}>
-                        {tagOrigen}
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 5 }}>
+                      {(line.entry || line.scheduleId) && (
+                        <button
+                          type="button"
+                          aria-label={line.checked ? "Checked — tap to undo" : "Check off — stop counting"}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleCheck(line)
+                          }}
+                          style={{ flex: "0 0 auto", width: 17, height: 17, marginTop: 1, borderRadius: "50%", border: `1.5px solid ${line.checked ? GREEN : "#4a4e5e"}`, background: line.checked ? GREEN : "transparent", color: "#0b0d12", fontSize: 11, fontWeight: 900, lineHeight: 1, padding: 0, cursor: "pointer" }}
+                        >
+                          {line.checked ? "✓" : ""}
+                        </button>
+                      )}
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <span style={{ fontWeight: 600, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", ...(line.checked ? { color: SUB } : undefined) }}>{line.label}</span>
+                        {tagOrigen && (
+                          <div style={{ fontSize: 9.5, color: SUB, marginTop: 1, whiteSpace: "normal" }}>
+                            {tagOrigen}
+                          </div>
+                        )}
+                        {pb && pbLeft > 0.009 && (
+                          <div style={{ fontSize: 9.5, color: SUB, marginTop: 1, whiteSpace: "normal" }}>
+                            Original ${money2(Number(pb.amount) || 0)} · Paid ${money2(billPaidTotal(pb))} · Left ${money2(pbLeft)}
+                          </div>
+                        )}
+                        {line.checked && (
+                          <div style={{ fontSize: 9.5, color: GREEN, fontWeight: 700, marginTop: 1, whiteSpace: "normal" }}>
+                            ✓ CHECKED · NO LONGER COUNTS
+                          </div>
+                        )}
                       </div>
-                    )}
-                    {pb && pbLeft > 0.009 && (
-                      <div style={{ fontSize: 9.5, color: SUB, marginTop: 1, whiteSpace: "normal" }}>
-                        Original ${money2(Number(pb.amount) || 0)} · Paid ${money2(billPaidTotal(pb))} · Left ${money2(pbLeft)}
-                      </div>
-                    )}
+                    </div>
                   </td>
                   <td style={{ ...td, color: "#c9cbd8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     <span style={{ display: "inline-block", width: 19, textAlign: "center", marginRight: 3, fontSize: 12 }}>{catIcon(cat, line.label)}</span>
@@ -670,7 +764,7 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
                   <td style={{ ...td, textAlign: "right", color: "#c9cbd8", whiteSpace: "nowrap", fontSize: 10.5 }}>
                     ${money2(bankFor(line.date))}
                   </td>
-                  <td style={{ ...td, textAlign: "right", fontWeight: 600, color: line.amount >= 0 ? GREEN : RED, whiteSpace: "nowrap", fontSize: 12.5, paddingLeft: 2 }}>
+                  <td style={{ ...td, textAlign: "right", fontWeight: 600, color: line.checked ? SUB : line.amount >= 0 ? GREEN : RED, whiteSpace: "nowrap", fontSize: 12.5, paddingLeft: 2 }}>
                     {signed(line.amount)}
                   </td>
                   <td style={{ ...td, textAlign: "right", whiteSpace: "nowrap" }}>
@@ -749,6 +843,37 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
           </>
         )}
         </div>
+
+        {/* RECONCILIADO CON EL BANCO — lo que cayó y se macheó, con la
+            diferencia entre lo proyectado y lo que llegó (Miguel,
+            2026-11-15). Solo récord: no afecta ningún saldo. */}
+        {recLog.length > 0 && (
+          <>
+            <div style={{ background: BAND, padding: "8px 14px", fontSize: 11, fontWeight: 800, letterSpacing: 1, color: GREEN }}>
+              ✓ RECONCILED WITH THE BANK — RECORD ONLY, DOES NOT AFFECT THE BALANCE
+            </div>
+            {recLog.map((r) => {
+              const diff = Math.round((r.bank - r.projected) * 100) / 100
+              const hasDiff = Math.abs(diff) > 0.011
+              return (
+                <div key={r.id} style={{ padding: "8px 14px", borderBottom: "1px solid #1a1c24" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
+                    <span style={{ fontSize: 11.5, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.label}</span>
+                    <span style={{ fontSize: 11.5, fontWeight: 700, color: r.income ? GREEN : RED, whiteSpace: "nowrap" }}>{signed(r.income ? r.bank : -r.bank)}</span>
+                  </div>
+                  <div style={{ fontSize: 10, color: SUB, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    Bank {fmtFecha(r.date)} · Projected ${money2(r.projected)} · Arrived ${money2(r.bank)}{r.detail ? ` · ${r.detail}` : ""}
+                  </div>
+                  {hasDiff && (
+                    <div style={{ fontSize: 10, fontWeight: 700, color: "#f5b73f", marginTop: 2 }}>
+                      Difference: ${money2(Math.abs(diff))} {diff < 0 ? "less" : "more"}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </>
+        )}
 
         {/* FORECAST BREAKDOWN */}
         <div style={{ padding: "14px 14px 10px", borderTop: `1px solid ${BORDER}` }}>

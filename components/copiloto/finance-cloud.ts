@@ -64,6 +64,8 @@ export const FINANCE_CLOUD_KEYS = [
   "claris_schedule_overrides",
   "claris_other_funds_v1",
   "claris_forecast_dismissed_v1",
+  "claris_forecast_checked_v1",
+  "claris_reconciled_log_v1",
   "claris_registers_v1",
   "claris_liabilities_v1",
   "claris_screenshot_txs_v1",
