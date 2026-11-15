@@ -542,7 +542,16 @@ export function CopilotoApp() {
   }, [])
 
   const runSync = useCallback(
-    async (code: string, silent = false) => {
+    // R12 (2026-11-15): includeFinance=false en la sincronización
+    // AUTOMÁTICA (al cargar y al volver a primer plano). Las finanzas
+    // viven en el teléfono (local-first, 2026-11-13): el sync automático
+    // NO manda el DINERO local ni aplica el resultado localmente — el
+    // servidor conserva su copia tal cual. Fusionar el blob entero por
+    // "último que escribe gana" desde una copia vieja es lo que borró las
+    // proyecciones el 2026-11-01 y el 2026-11-09. Solo el sync EXPLÍCITO
+    // (botón Sync Now / conectar código) incluye finanzas. Los viajes y
+    // los gastos sí siguen sincronizándose en ambas rutas.
+    async (code: string, silent = false, includeFinance = true) => {
       if (syncInFlight.current) return
       syncInFlight.current = true
       setSyncing(true)
@@ -554,10 +563,10 @@ export function CopilotoApp() {
         expensesRef.current,
         expenseTombstonesRef.current,
         // DINERO (libro, recurrentes, cuentas) en el mismo documento cifrado.
-        collectLocalFinance(),
+        includeFinance ? collectLocalFinance() : undefined,
       )
       if (result.ok && Array.isArray(result.trips)) {
-        applyMergedFinance(result.finance)
+        if (includeFinance) applyMergedFinance(result.finance)
         const fin = financeCounts(result.finance)
         const next = result.trips as Trip[]
         const nextExp = (result.expenses ?? []) as Expense[]
@@ -574,7 +583,9 @@ export function CopilotoApp() {
         setSyncMessage(
           result.financeSkipped
             ? `Synced · ${next.length} trips and ${nextExp.length} expenses. MONEY was not uploaded: the document exceeds the server limit.`
-            : `Synced · ${next.length} trips, ${nextExp.length} expenses, ${fin.ledger} movements and ${fin.schedules} recurring`,
+            : includeFinance
+              ? `Synced · ${next.length} trips, ${nextExp.length} expenses, ${fin.ledger} movements and ${fin.schedules} recurring`
+              : `Synced · ${next.length} trips and ${nextExp.length} expenses.`,
         )
       } else if (result.reason === "not_configured") {
         setSyncTone("info")
@@ -595,17 +606,18 @@ export function CopilotoApp() {
   useEffect(() => {
     if (!hydrated || !syncCode || autoSynced.current) return
     autoSynced.current = true
-    runSync(syncCode, true)
+    runSync(syncCode, true, false)
   }, [hydrated, syncCode, runSync])
 
   // Una pestaña instalada y el navegador pueden tener almacenes separados.
-  // Al volver al primer plano, siempre reconciliamos contra la copia remota
-  // antes de mostrar cambios locales antiguos; el mutex evita dos pushes en
-  // paralelo que se pisen entre sí.
+  // Al volver al primer plano se sincronizan solo viajes y gastos; las
+  // finanzas NO se fusionan automáticamente (R12) — el sync explícito
+  // (botón Sync Now / conectar código) es el único que las incluye.
+  // El mutex evita dos pushes en paralelo que se pisen entre sí.
   useEffect(() => {
     if (!hydrated || !syncCode) return
     const reconcile = () => {
-      if (document.visibilityState === "visible") runSync(syncCode, true)
+      if (document.visibilityState === "visible") runSync(syncCode, true, false)
     }
     window.addEventListener("focus", reconcile)
     document.addEventListener("visibilitychange", reconcile)

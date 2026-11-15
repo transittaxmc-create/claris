@@ -11,15 +11,18 @@
 //  1. Parte de la cuenta principal, no del total de todas las cuentas.
 //  2. Los recurrentes (claris_scheduled_entries) SÍ entran: se expanden por fecha.
 //  3. Horizonte de fechas: nada más allá del fin del horizonte.
-//  4. Facturas vencidas (fecha < hoy) se cobran HOY. Ingresos atrasados NO se
-//     cuentan (no se cuenta dinero que no llegó) — se muestran aparte.
+//  4. Facturas vencidas (fecha < hoy) se cobran HOY. Ingresos atrasados
+//     TAMBIÉN se quedan en la lista principal contando (orden de Miguel,
+//     2026-11-15, cambio 5c6b0ba): hasta que el dinero caiga en el banco
+//     o él marque el renglón con el check. Antes salían de la lista y
+//     dejaban de contar — eso quedó obsoleto.
 //  5. Lo que ya salió del banco no se resta dos veces ("probablemente pagado").
 //  6. Un recurrente que ya está como factura en el libro no se duplica.
 //  7. Pagos de tarjeta (día de pago) entran como gasto.
 // Solo lee. Nunca escribe en el libro: confirmar "pagado" es acción del usuario.
 // ============================================================================
 
-import type { CashFlowEntry, ScheduledEntry, ScheduleFrequency } from "./types"
+import type { CashFlowEntry, ScheduledEntry, ScheduleFrequency, TxSplit } from "./types"
 
 export type ForecastKind = "proj" | "rec" | "card" | "overdue"
 
@@ -57,6 +60,13 @@ export interface ForecastLine {
   /** Marcado por Miguel HOY con el check: se sigue viendo, pero ya no
    *  cuenta en ningún total ni en el balance; mañana desaparece. */
   checked?: boolean
+  /** División por categorías (Quicken split) de esta ocurrencia, cuando
+   *  viene de un override "solo esta fecha" (R28): las líneas suman el
+   *  monto de la ocurrencia y la categoría pasa a ser "Split". */
+  splits?: TxSplit[]
+  /** Categoría de esta ocurrencia cuando un override "solo esta fecha"
+   *  la cambió (R28): manda sobre la categoría del recurrente. */
+  category?: string
 }
 
 export interface ForecastDay {
@@ -70,6 +80,11 @@ export interface ProbablePaid {
   key: string
   entry: CashFlowEntry
   tx: ForecastBankTx
+  /** Monto PROYECTADO que macheó (el resto del bill tras R1, no el total
+   *  de la entrada): es el que manda en esSeguro, en TO CONFIRM y en el
+   *  log de reconciliación. Sin él, un bill pagado a medias mostraría
+   *  una "diferencia" fantasma igual a lo ya pagado. */
+  amount?: number
 }
 
 /** Un bill REAL (de POR PAGAR o escaneado en Gastos) que puede mandar sobre
@@ -133,6 +148,14 @@ export interface ScheduleOverride {
   label?: string
   /** true = esta ocurrencia no se proyecta. */
   skip?: boolean
+  /** División por categorías editada "solo esta fecha" (R28): se guarda
+   *  con el override y se aplica a la ocurrencia; antes se perdía en
+   *  silencio al guardar. Solo vale cuando la ocurrencia proyecta el
+   *  monto del override (sin bill que mande). */
+  splits?: TxSplit[]
+  /** Categoría editada "solo esta fecha" (R28): manda sobre la del
+   *  recurrente para esa ocurrencia. */
+  category?: string
 }
 
 export const SCHEDULE_OVERRIDES_KEY = "claris_schedule_overrides"
@@ -183,6 +206,21 @@ const ISO_RE = /^(\d{4})-(\d{2})-(\d{2})/
 
 export function isIsoDate(s: unknown): boolean {
   return ISO_RE.test(String(s || ""))
+}
+
+/** Fecha ISO válida Y REAL: el regex solo acepta el formato, pero
+ *  "2026-02-30" o "2026-13-40" también lo pasan (R36). Esta verifica
+ *  que el día exista de verdad en ese mes y año. La usa la validación
+ *  de la capa de datos (R13). */
+export function isRealIsoDate(s: unknown): boolean {
+  const m = String(s || "").match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) return false
+  const y = Number(m[1])
+  const mo = Number(m[2])
+  const d = Number(m[3])
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return false
+  const dt = new Date(y, mo - 1, d, 12)
+  return dt.getFullYear() === y && dt.getMonth() === mo - 1 && dt.getDate() === d
 }
 
 function pad(n: number): string {
@@ -282,6 +320,22 @@ export function amountClose(a: number, b: number, pct: number): boolean {
   return Math.abs(x - y) <= Math.max(0.011, y * pct)
 }
 
+/** Ajuste firmado al confirmar un "probablemente pagado" con diferencia
+ *  (R6, 2026-11-15): el ajuste es lo que FALTA o SOBRA en el libro para
+ *  llegar a lo que el banco muestra, con signo. Proyectado −$100 y banco
+ *  −$102 en un GASTO → ajuste GASTO $2 (el libro queda −$102);
+ *  proyectado +$100 y banco +$102 en un INGRESO → ajuste INGRESO $2
+ *  (el libro queda +$102). El error viejo usaba valores absolutos y el
+ *  tipo salía al revés en gastos. `projectedSigned` lleva signo
+ *  (+ ingreso, − gasto); `bankSigned` es el monto del banco con signo. */
+export function signedAdjustment(
+  projectedSigned: number,
+  bankSigned: number,
+): { type: "income" | "expense"; amount: number; signed: number } {
+  const signed = Math.round((bankSigned - projectedSigned) * 100) / 100
+  return { type: signed < 0 ? "expense" : "income", amount: Math.abs(signed), signed }
+}
+
 // ---------------------------------------------------------------------------
 // Expansión de recurrentes
 // ---------------------------------------------------------------------------
@@ -355,7 +409,11 @@ export function expandSchedule(s: ScheduledEntry, from: string, to: string): str
 
 /** Ventana (days) para considerar un recurring "already paid" por el banco. */
 export function paidWindow(freq: ScheduleFrequency | undefined): number {
-  if (freq === "daily") return 0
+  // R3 (2026-11-15): el diario tenía ventana 0 y el guarda `if (win > 0)`
+  // lo dejaba sin macheo nunca — el Depósito $400 se contaba dos veces
+  // (proyectado + ya en el banco). 3 días cubre el rezago del banco sin
+  // adivinar: el monto sigue exigiendo match (ver findTx).
+  if (freq === "daily") return 3
   if (freq === "weekly") return 3
   if (freq === "biweekly") return 5
   return 10
@@ -442,7 +500,7 @@ interface LedgerItem {
   label: string
 }
 
-function ledgerProjected(entries: CashFlowEntry[], today: string): LedgerItem[] {
+function ledgerProjected(entries: CashFlowEntry[], today: string, bills?: ForecastBill[]): LedgerItem[] {
   const byId = new Map<string, CashFlowEntry>()
   for (const e of entries || []) {
     if (!e || e.status !== "projected") continue
@@ -471,7 +529,40 @@ function ledgerProjected(entries: CashFlowEntry[], today: string): LedgerItem[] 
     semanticKeys.add(semanticKey)
     out.push({ entry: e, date, amount: r2(amt), income, label: labelMov })
   }
-  return out
+  // R1 (2026-11-15): un bill con pago parcial NO proyecta el total — la
+  // entrada del libro proyecta lo que RESTA del bill, y un bill ya pagado
+  // del todo no proyecta nada. El ajuste va DESPUÉS de la dedup semántica:
+  // dos copias del mismo asiento se colapsan por su monto original antes
+  // de ajustarse (si se ajustara antes, las copias quedarían con montos
+  // distintos y ambas proyectarían). Cada bill ajusta UNA sola entrada
+  // (la más cercana en fecha); si el monto de la entrada es MENOR que el
+  // resto, no se ajusta — no es el mismo bill.
+  if (bills && bills.length > 0) {
+    const usedBill = new Set<number>()
+    for (const item of out) {
+      if (item.income) continue
+      let best = -1
+      let bestGap = Infinity
+      bills.forEach((b, bi) => {
+        if (usedBill.has(bi)) return
+        if (!vendorMatch(b.vendor, item.label)) return
+        const gap = Math.abs(diffDays(String(b.date).slice(0, 10), item.date))
+        if (gap > 3) return
+        const remaining = r2(Number(b.remaining) || 0)
+        if (remaining > 0.009 && item.amount < remaining) return
+        if (gap < bestGap) {
+          bestGap = gap
+          best = bi
+        }
+      })
+      if (best >= 0) {
+        usedBill.add(best)
+        item.amount = r2(Number(bills[best].remaining) || 0)
+      }
+    }
+  }
+  // Un bill pagado del todo deja la entrada en $0: fuera del forecast.
+  return out.filter((p) => p.amount >= 0.01)
 }
 
 /** Regla de DESTINO FINAL de Miguel (2026-10-29): un INGRESO proyectado solo
@@ -515,9 +606,42 @@ export function buildForecast(input: ForecastInput): Forecast {
   // los payouts de plataformas varían en monto (±8 %) y la descripción del
   // banco rara vez comparte tokens con "Cobro Uber". Basta que ambos
   // mencionen la plataforma.
-  const findTx = (income: boolean, amount: number, date: string, label: string, window: number, pct: number, requireSameWeek = true): number => {
+  const findTx = (
+    income: boolean,
+    amount: number,
+    date: string,
+    label: string,
+    window: number,
+    pct: number,
+    requireSameWeek = true,
+    // R2/R4: el macheo de VENCIDOS acepta un pago exacto al centavo
+    // hasta 60 días después de la fecha de la entrada, en cualquier
+    // semana. Sin esto, un pago tardío nunca macheaba.
+    allowOverdueExact = false,
+    // R3: la etiqueta no tiene tokens significativos (ej. "Deposit") —
+    // el monto + la fecha son la evidencia. Solo para el chequeo de
+    // recurrentes "ya pagado en el banco".
+    allowGenericLabel = false,
+  ): number => {
     let best = -1
     let bestGap = Infinity
+    // Un abono en Citibank que es la pata neta de una transferencia
+    // PayPal → Citibank (salida de PayPal ≈ abono / 0.9825, por el fee
+    // instantáneo de 1.75%) es una TRANSFERENCIA INTERNA con origen ya
+    // probado — nunca es el depósito de un cobro (quién paga manda).
+    // La usan el intento de fee y el intento de vencido exacto.
+    const esPataPayPal = (t: ForecastBankTx): boolean => {
+      if (!/citi|access/i.test(String(t.bank_account ?? ""))) return false
+      const amt = Number(t.amount) || 0
+      return bankTxs.some((o) => {
+        const oAmt = Number(o.amount) || 0
+        if (oAmt >= 0) return false
+        if (!/paypal/i.test(String(o.bank_account ?? ""))) return false
+        if (Math.abs(Math.abs(oAmt) * 0.9825 - amt) > 0.02) return false
+        const dg = diffDays(String(t.date).slice(0, 10), String(o.date).slice(0, 10))
+        return dg >= -2 && dg <= 3
+      })
+    }
     for (let i = 0; i < txPool.length; i++) {
       if (usedTx.has(i)) continue
       const t = txPool[i]
@@ -531,7 +655,10 @@ export function buildForecast(input: ForecastInput): Forecast {
       const gap = Math.abs(diffDays(tDate, date))
       if (gap > window) continue
       if (!amountClose(amt, amount, pct)) continue
-      if (!vendorMatch(t.detail, label)) continue
+      // R3: una etiqueta sin tokens significativos nunca puede machear
+      // por comercio ("Deposit" es palabra vacía) — el monto y la fecha
+      // son la evidencia. Solo cuando el llamador lo permite.
+      if (!vendorMatch(t.detail, label) && !(allowGenericLabel && vendorTokens(label).length === 0)) continue
       if (gap < bestGap) {
         bestGap = gap
         best = i
@@ -568,24 +695,10 @@ export function buildForecast(input: ForecastInput): Forecast {
     // el cobro NO se esconde: queda visible como ingreso del día.
     if (best < 0 && income) {
       const feeCap = Math.max(3.25, amount * 0.02) + 0.011
-      // Un abono en Citibank que es la pata neta de una transferencia
-      // PayPal → Citibank (salida de PayPal ≈ abono / 0.9825, por el fee
-      // instantáneo de 1.75%) es una TRANSFERENCIA INTERNA con origen ya
-      // probado — nunca es el depósito de un cobro (quién paga manda).
-      // Sin este guarda, el cobro Aventus Ride de $43 (27-oct) se escondía
-      // contra el abono +$40.62 que era la pata de una transferencia PayPal.
-      const esPataPayPal = (t: ForecastBankTx): boolean => {
-        if (!/citi|access/i.test(String(t.bank_account ?? ""))) return false
-        const amt = Number(t.amount) || 0
-        return bankTxs.some((o) => {
-          const oAmt = Number(o.amount) || 0
-          if (oAmt >= 0) return false
-          if (!/paypal/i.test(String(o.bank_account ?? ""))) return false
-          if (Math.abs(Math.abs(oAmt) * 0.9825 - amt) > 0.02) return false
-          const dg = diffDays(String(t.date).slice(0, 10), String(o.date).slice(0, 10))
-          return dg >= -2 && dg <= 3
-        })
-      }
+      // El guarda anti-pata-PayPal vive arriba (lo comparten este intento
+      // y el de vencido exacto): sin él, el cobro Aventus Ride de $43
+      // (27-oct) se escondía contra el abono +$40.62 que era la pata de
+      // una transferencia PayPal.
       for (let i = 0; i < txPool.length; i++) {
         if (usedTx.has(i)) continue
         const t = txPool[i]
@@ -597,6 +710,30 @@ export function buildForecast(input: ForecastInput): Forecast {
         const fee = amount - amt
         if (fee <= 0 || fee > feeCap) continue
         if (esPataPayPal(t)) continue
+        if (gap < bestGap) {
+          bestGap = gap
+          best = i
+        }
+      }
+    }
+    // Cuarto intento — SOLO para vencidos (R2/R4): el pago llegó tarde
+    // (otra semana, >3 días después) pero es el MISMO monto al centavo
+    // y cae entre la fecha de la entrada y hoy (≤ 60 días). Sin nombre:
+    // el monto exacto + la ventana de fecha son la prueba. Los ingresos
+    // exigen cuenta destino y el guarda anti-pata-PayPal. Un abono MENOR
+    // por fee NO entra aquí: eso es el intento de fee (R7, sin tocar).
+    if (best < 0 && allowOverdueExact) {
+      for (let i = 0; i < txPool.length; i++) {
+        if (usedTx.has(i)) continue
+        const t = txPool[i]
+        const amt = Number(t.amount) || 0
+        if (income ? amt <= 0 : amt >= 0) continue
+        if (income && !isDestinationAccount(t.bank_account)) continue
+        const tDate = String(t.date).slice(0, 10)
+        const gap = diffDays(date, tDate)
+        if (gap < 0 || gap > 60) continue
+        if (Math.abs(Math.abs(amt) - Math.abs(amount)) > 0.011) continue
+        if (income && esPataPayPal(t)) continue
         if (gap < bestGap) {
           bestGap = gap
           best = i
@@ -619,7 +756,6 @@ export function buildForecast(input: ForecastInput): Forecast {
   // normal (POR CONFIRMAR). Corre en cada cálculo: al abrir la app todo
   // lo que esté en ese estado queda macheado solo, sin recordatorios.
   // ------------------------------------------------------------------
-  const ledger = ledgerProjected(input.entries, today)
   const scheduleById = new Map<string, ScheduledEntry>()
   for (const s of input.schedules || []) {
     const id = String(s?.id || "")
@@ -637,6 +773,9 @@ export function buildForecast(input: ForecastInput): Forecast {
     billKeys.add(key)
     return true
   })
+  // Los bills van ANTES que el libro: ledgerProjected ajusta cada entrada
+  // al resto de su bill (R1) y el macheo grupal usa esos restos.
+  const ledger = ledgerProjected(input.entries, today, billsIn)
   const usedBills = new Set<number>()
   const groupCoveredEntry = new Map<string, ForecastBankTx>()
   const groupCoveredBill = new Set<number>()
@@ -748,14 +887,17 @@ export function buildForecast(input: ForecastInput): Forecast {
     // Pago grupal: esta entrada la cubre un cargo que pagó varios bills.
     const gTx = !p.income && !dismissed.has(key) ? groupCoveredEntry.get(p.entry.id) : undefined
     if (gTx) {
-      probablePaid.push({ key, entry: p.entry, tx: gTx })
+      probablePaid.push({ key, entry: p.entry, tx: gTx, amount: p.amount })
       continue
     }
     if (!dismissed.has(key)) {
-      const ti = findTx(p.income, p.amount, p.date, p.label, 10, 0.02)
+      // R2/R4: si la entrada ya venció, el pago puede haber caído en
+      // otra semana y días después — el intento de vencido exacto lo
+      // busca por monto al centavo (sin aflojar el monto).
+      const ti = findTx(p.income, p.amount, p.date, p.label, 10, 0.02, true, p.date < today)
       if (ti >= 0) {
         usedTx.add(ti)
-        probablePaid.push({ key, entry: p.entry, tx: txPool[ti] })
+        probablePaid.push({ key, entry: p.entry, tx: txPool[ti], amount: p.amount })
         continue
       }
     }
@@ -867,6 +1009,13 @@ export function buildForecast(input: ForecastInput): Forecast {
       // amount 0 = el día no se trabajó: la ocurrencia queda en $0 (visible).
       const effAmt = ovAmt ? r2(Number(ovAmt.amount)) : amt
       const effLabel = ovLabel ? String(ovLabel.label).trim() : label
+      // R28: la división y la categoría editadas "solo esta fecha" viajan
+      // con la ocurrencia. Los splits solo valen cuando la línea proyecta
+      // el monto del override (rama común); en la rama del bill manda el
+      // resto del bill y los splits no suman ese monto.
+      const ovSplit = ovs.find((o) => Array.isArray(o.splits) && o.splits.length > 0)
+      const ovCategory = ovs.find((o) => o.category && String(o.category).trim())?.category
+      const ovCategoryField = ovCategory ? { category: String(ovCategory).trim() } : {}
       // Ya está en el libro (misma factura creada desde Gastos/escáner): no duplicar.
       const dup = ledger.some(
         (p) =>
@@ -916,7 +1065,9 @@ export function buildForecast(input: ForecastInput): Forecast {
         // sería contarlo dos veces. Macheo automático en cada cálculo
         // (Miguel, 2026-10-29: "tan pronto cierre y abra la aplicación,
         // va a machear todo lo que está así").
-        const tiBill = findTx(false, remaining, bDate, bill.vendor, 10, 0.02)
+        // R2/R4: un bill vencido también puede haberse pagado días
+        // después en otra semana — mismo intento de vencido exacto.
+        const tiBill = findTx(false, remaining, bDate, bill.vendor, 10, 0.02, true, bDate < today)
         if (tiBill >= 0) {
           usedTx.add(tiBill)
           continue
@@ -931,13 +1082,16 @@ export function buildForecast(input: ForecastInput): Forecast {
           kind: bDate < today ? "overdue" : "rec",
           scheduleId: s.id,
           frequency: s.frequency,
+          ...ovCategoryField,
           ...(bDate < today ? { originalDate: bDate } : {}),
         })
         continue
       }
       // ¿Pagado/cobrado adelantado en el banco? (estilo Quicken: monto ±15 %)
       if (win > 0) {
-        const ti = findTx(income, effAmt, d, effLabel, win, 0.15)
+        // R3: la etiqueta genérica ("Deposit") no bloquea el macheo del
+        // recurrente diario — el monto + la fecha son la evidencia.
+        const ti = findTx(income, effAmt, d, effLabel, win, 0.15, true, false, true)
         if (ti >= 0) {
           usedTx.add(ti)
           recurringPaidSkipped++
@@ -954,6 +1108,8 @@ export function buildForecast(input: ForecastInput): Forecast {
         kind: "rec",
         scheduleId: s.id,
         frequency: s.frequency,
+        ...ovCategoryField,
+        ...(ovSplit?.splits ? { splits: ovSplit.splits } : {}),
       })
     }
   }

@@ -28,6 +28,7 @@ import {
   tripToEntry,
 } from "./storage"
 import { FINANCE_LEDGER_KEY } from "./finance-sync"
+import { isValidLedgerEntry } from "./cash-flow-store"
 
 /** Marca del archivo: RESTAURAR solo acepta archivos con esta marca. */
 export const BACKUP_APP_MARKER = "copiloto"
@@ -41,6 +42,9 @@ export type FullBackup = {
   keys: Record<string, string>
   /** Viajes en su formato de entrada crudo (el mismo de ic_tip_tracker). */
   trips: Record<string, any>[]
+  /** Entradas inválidas del libro descartadas al validar (R13): el
+   *  conteo queda aquí para que la pantalla de RESTAURAR pueda avisarlo. */
+  droppedInvalidEntries?: number
 }
 
 export type BackupCounts = { entries: number; expenses: number; trips: number }
@@ -128,12 +132,35 @@ export function parseFullBackup(text: string): FullBackup | null {
   }
   // Tiene que traer datos de verdad de la app, no un objeto vacío.
   if (!Object.keys(keys).some((k) => isAppKey(k))) return null
+  // R13 (2026-11-15): las entradas inválidas del libro (monto $0 o
+  // negativo, fecha imposible, sin descripción) NO se restauran — se
+  // descartan y se cuentan. El resto del respaldo se aplica tal cual.
+  let droppedInvalidEntries = 0
+  const ledgerRaw = keys[FINANCE_LEDGER_KEY]
+  if (typeof ledgerRaw === "string" && ledgerRaw) {
+    try {
+      const parsed = JSON.parse(ledgerRaw)
+      if (Array.isArray(parsed)) {
+        const kept = parsed.filter((e) => {
+          if (isValidLedgerEntry(e)) return true
+          droppedInvalidEntries++
+          return false
+        })
+        if (droppedInvalidEntries > 0) keys[FINANCE_LEDGER_KEY] = JSON.stringify(kept)
+      }
+    } catch {
+      // Libro ilegible: se deja como está (el lector del libro lo trata
+      // como vacío, igual que hoy) — nunca se bloquea el respaldo entero
+      // por una sola clave.
+    }
+  }
   return {
     app: BACKUP_APP_MARKER,
     version: typeof doc.version === "number" ? doc.version : BACKUP_VERSION,
     exportedAt: doc.exportedAt,
     keys,
     trips: doc.trips.filter((t: unknown) => !!t && typeof t === "object") as Record<string, any>[],
+    ...(droppedInvalidEntries > 0 ? { droppedInvalidEntries } : {}),
   }
 }
 

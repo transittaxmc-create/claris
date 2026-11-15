@@ -11,6 +11,8 @@
 // - El balance real de Plaid nunca se toca: la vista suma los
 //   provisionales APARTE ("Con screenshots: …").
 
+import { accountIdFor } from "./registers-store"
+
 export interface ShotTx {
   id: string
   /** RegisterAccount.id de la cuenta dueña del screenshot. */
@@ -206,6 +208,37 @@ export function reconcileShots(
     return true
   })
   return { kept, replaced }
+}
+
+/**
+ * Provisionales del FORECAST que Plaid aún no trae (R5, 2026-11-15):
+ * los que ya tienen su gemelo real (misma cuenta, monto exacto al
+ * centavo, fecha ±2 días; ±5 para source="payment") quedan FUERA del
+ * pool del forecast. Sin esto, un pago real + su provisional podían
+ * machear dos líneas proyectadas distintas. Es la misma regla que ya
+ * usan los balances (pendingShotsSum), aplicada al pool del forecast.
+ * `bankTxs` son los reales del forecast (bank_account = nombre visible
+ * de la cuenta, o id "snap:..." — se aceptan ambos). Con pool vacío
+ * (banco no disponible) quedan todos: el provisional es la única
+ * evidencia que hay.
+ */
+export function filterReconciledShots(
+  shots: ShotTx[],
+  bankTxs: { date: string; amount: number; bank_account?: string }[],
+): ShotTx[] {
+  const byAccount = new Map<string, BankTxLike[]>()
+  for (const t of bankTxs || []) {
+    const raw = String(t.bank_account || "")
+    const id = raw.startsWith("snap:") ? raw : accountIdFor(raw)
+    const list = byAccount.get(id) || []
+    list.push({ date: String(t.date).slice(0, 10), amount: Number(t.amount) || 0 })
+    byAccount.set(id, list)
+  }
+  let kept = [...(shots || [])]
+  for (const [accountId, txs] of byAccount) {
+    kept = reconcileShots(kept, accountId, txs).kept
+  }
+  return kept
 }
 
 // ===== Guardia ENTRE cuentas (Miguel, 2026-10-29) =====

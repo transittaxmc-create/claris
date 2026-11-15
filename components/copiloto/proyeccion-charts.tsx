@@ -51,6 +51,9 @@ export function balancePath(
 ): { date: string; balance: number }[] {
   const byDate = new Map<string, number>()
   for (const l of lines) {
+    // R21 (2026-11-15): un renglón marcado con el check no mueve la
+    // curva — sin esto, el extremo del camino no cuadraba con fc.end.
+    if (l.checked) continue
     const d = String(l.date).slice(0, 10)
     byDate.set(d, (byDate.get(d) || 0) + l.amount)
   }

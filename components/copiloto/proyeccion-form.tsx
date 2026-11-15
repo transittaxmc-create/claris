@@ -6,7 +6,7 @@
 // una vez → libro (CashFlowEntry projected); recurrente → ScheduledEntry.
 
 import { useMemo, useState, type CSSProperties } from "react"
-import { CUSTOM_CATEGORIES_KEY, EXPENSE_CATEGORIES, resolveScheduleEnds, resolveSplitsForSave, type CashFlowEntry, type ScheduleEnds, type ScheduledEntry, type TxSplit } from "./types"
+import { CUSTOM_CATEGORIES_KEY, EXPENSE_CATEGORIES, isDuplicateSchedule, resolveScheduleEnds, resolveSplitsForSave, type CashFlowEntry, type ScheduleEnds, type ScheduledEntry, type TxSplit } from "./types"
 import { SplitEditor } from "./split-editor"
 import { FINANCE_LEDGER_KEY, FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT } from "./finance-sync"
 import { etiquetaCombinada } from "./cash-flow-store"
@@ -323,6 +323,20 @@ export function ProyeccionForm(props: {
         active: true,
         ...(ends ?? {}),
       }
+      // R27 (2026-11-15): no guardar un recurrente duplicado (mismo
+      // tipo + comercio + monto + frecuencia) — el mismo cobro dos veces
+      // proyectaba doble. Los inactivos no cuentan.
+      if (
+        isDuplicateSchedule(readList<ScheduledEntry>(FINANCE_SCHEDULES_KEY), {
+          kind,
+          description: desc,
+          amount: amt,
+          frequency: freq,
+        })
+      ) {
+        setError("That recurrent entry already exists (same name, amount and frequency).")
+        return
+      }
       const next = [...readList<ScheduledEntry>(FINANCE_SCHEDULES_KEY), sched]
       try {
         localStorage.setItem(FINANCE_SCHEDULES_KEY, JSON.stringify(next))
@@ -579,13 +593,27 @@ export function ProyeccionEdit(props: {
   const saveOverride = (skip = false) => {
     if (!line.scheduleId) return
     if (!skip && !validate()) return
+    // R28 (2026-11-15): "Save only this date" también guarda los splits
+    // editados (antes se descartaban) — el override lleva splits y
+    // categoría, y el motor los pone en la ocurrencia.
+    let ovSplits: TxSplit[] | undefined
+    let ovCategory: string | undefined
+    if (!skip) {
+      const resolved = resolveSplitsForSave(splits, amt, category)
+      if (!resolved.ok) {
+        setError(resolved.error)
+        return
+      }
+      ovSplits = resolved.splits
+      ovCategory = resolved.category
+    }
     const ovs = readList<ScheduleOverride>(SCHEDULE_OVERRIDES_KEY).filter(
       (o) => !(o.scheduleId === line.scheduleId && o.date === line.date),
     )
     ovs.push(
       skip
         ? { scheduleId: line.scheduleId, date: line.date, skip: true }
-        : { scheduleId: line.scheduleId, date: line.date, amount: amt, label: description.trim() },
+        : { scheduleId: line.scheduleId, date: line.date, amount: amt, label: description.trim(), splits: ovSplits, category: ovCategory },
     )
     try {
       localStorage.setItem(SCHEDULE_OVERRIDES_KEY, JSON.stringify(ovs))
@@ -723,11 +751,6 @@ export function ProyeccionEdit(props: {
           <CategorySelect kind={kind} value={category} onChange={setCategory} fieldStyle={input} labelStyle={label} />
         )}
         <SplitEditor kind={kind} total={amt} initialCategory={category} splits={splits} onChange={setSplits} />
-        {isSchedule && splits !== null && (
-          <div style={{ fontSize: 11.5, color: SUB, marginTop: 8 }}>
-            The split saves with “Save for all”.
-          </div>
-        )}
 
         <div style={label}>AMOUNT</div>
         <div style={{ position: "relative" }}>

@@ -79,6 +79,30 @@ export type ScheduledEntry = {
   splits?: TxSplit[]
 }
 
+/** ¿Ya existe un recurrente ACTIVO igual a este? Mismo tipo (ingreso/
+ *  gasto), mismo comercio (descripción normalizada), mismo monto al
+ *  centavo y misma frecuencia (R27, 2026-11-15). Dos recurrentes
+ *  idénticos se expanden dos veces y duplican la proyección. Los
+ *  inactivos no cuentan: un recurrente apagado no duplica nada. */
+export function isDuplicateSchedule(
+  existing: ScheduledEntry[] | null | undefined,
+  cand: { kind: "income" | "expense"; description: string; amount: number; frequency: ScheduleFrequency },
+): ScheduledEntry | null {
+  const norm = (s: unknown) => String(s || "").trim().toLowerCase().replace(/\s+/g, " ")
+  const desc = norm(cand.description)
+  const amt = Math.round((Number(cand.amount) || 0) * 100) / 100
+  if (!desc || !(amt > 0)) return null
+  for (const s of existing || []) {
+    if (!s || s.active === false) continue
+    if (s.kind !== cand.kind) continue
+    if (s.frequency !== cand.frequency) continue
+    if (Math.round((Number(s.amount) || 0) * 100) / 100 !== amt) continue
+    if (norm(s.description) !== desc) continue
+    return s
+  }
+  return null
+}
+
 /** Una línea de la división por categorías de una transacción (Quicken
  *  split): su categoría, su monto y, si la línea es una factura, su
  *  número de invoice. La transacción sigue siendo UNA sola. */
@@ -480,7 +504,18 @@ export function tripDateOf(t: Trip): string {
   const value = raw?.datetime
   if (typeof value === "string" && value.length >= 10) {
     const directDate = value.slice(0, 10)
-    if (/^\d{4}-\d{2}-\d{2}$/.test(directDate)) return directDate
+    if (/^\d{4}-\d{2}-\d{2}$/.test(directDate)) {
+      // R26 (2026-11-15): un datetime con zona ("Z" o ±HH:MM) es un
+      // instante, no una fecha local — su fecha es la LOCAL del teléfono.
+      // Un viaje de las 21:30 EST sellado "…T02:30:00Z" es del día 14,
+      // no del 15. Los datetime ingenuos (sin zona, sellados en local
+      // desde este arreglo) se leen tal cual.
+      if (/[Zz]$|[+-]\d{2}:?\d{2}$/.test(value.trim())) {
+        const parsed = new Date(value)
+        if (!Number.isNaN(parsed.getTime())) return localDateKey(parsed)
+      }
+      return directDate
+    }
     const parsed = new Date(value)
     if (!Number.isNaN(parsed.getTime())) return localDateKey(parsed)
   }

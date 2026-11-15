@@ -39,3 +39,18 @@ export function localTimeLabel(input: Date | string | number): string {
   if (Number.isNaN(d.getTime())) return "00:00"
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
+
+// "YYYY-MM-DDTHH:mm:ss" en hora LOCAL, sin zona (ingenuo). Para sellar
+// un instante con el reloj del teléfono: un viaje guardado a las 21:30
+// EST debe leerse 21:30 del mismo día, no 02:30 UTC del día siguiente
+// (R26, 2026-11-15). Nunca lleva "Z" ni desplazamiento.
+export function localDateTimeKey(input: Date | string | number = new Date()): string {
+  const d =
+    input instanceof Date
+      ? input
+      : typeof input === "number"
+        ? new Date(input)
+        : new Date(String(input))
+  if (Number.isNaN(d.getTime())) return localDateTimeKey(new Date())
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}

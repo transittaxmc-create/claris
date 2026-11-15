@@ -228,7 +228,7 @@ export function ProyeccionFoto2(props: ProyProps) {
   const events = useMemo(
     () =>
       scaledLines
-        .filter((l) => l.date >= today)
+        .filter((l) => l.date >= today && !l.checked)
         .sort((a, b) => (a.date < b.date ? -1 : 1))
         .slice(0, 8),
     [scaledLines, today],
@@ -351,6 +351,9 @@ export function ProyeccionFoto2(props: ProyProps) {
       let outAmt = 0
       for (const l of linesY) {
         if (!String(l.date).startsWith(ym)) continue
+        // R21 (2026-11-15): un renglón marcado con el check no cuenta
+        // en el mensual — ni en IN, ni en OUT, ni en NET.
+        if (l.checked) continue
         if (isTransferLine(l, schedules)) continue
         if (l.amount > 0) inn += l.amount
         else outAmt += Math.abs(l.amount)

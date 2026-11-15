@@ -1,6 +1,7 @@
 import { type Trip, type Platform, type Reconciliation, type LocationPoint, normalizePlatformName, grossOf, type Expense, stampExpense } from "./types"
 import { round2, reconciliationMatches } from "./reconciliation"
 import { parseTombstones, pruneTombstones, type Tombstones } from "@/lib/sync"
+import { localDateTimeKey } from "@/lib/dates"
 
 // Reads and writes the exact same localStorage key/format used by the
 // original IslandCity Tip Tracker export, so this redesign stays compatible
@@ -157,7 +158,12 @@ export function tripToEntry(t: Trip): RawEntry {
   return {
     ...base,
     id: t.id,
-    datetime: (base.datetime as string) ?? new Date().toISOString(),
+    // R26 (2026-11-15): el sello es la fecha/hora LOCAL del teléfono, sin
+    // zona. Antes era `new Date().toISOString()` (UTC): un viaje guardado
+    // a las 21:30 EST quedaba "…T02:30:00Z" y se fechaba al día siguiente.
+    // Los viajes viejos con "Z" NO se reescriben: tripDateOf ya los lee
+    // en fecha local.
+    datetime: (base.datetime as string) ?? localDateTimeKey(),
     platform: t.platform,
     platformType: t.isVoucher ? "VOUCHER" : (base.platformType ?? "RIDESHARE"),
     earnings: t.earnings,

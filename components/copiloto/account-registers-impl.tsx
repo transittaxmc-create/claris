@@ -24,6 +24,7 @@ import {
   findCrossAccountMatches,
   loadShotAudits,
   loadShotTxs,
+  filterReconciledShots,
   reconcileShots,
   saveShotAudit,
   saveShotTxs,
@@ -179,7 +180,7 @@ export function RegistersHome(props: {
     (n) => accountIdFor(n),
   )
 
-  const { schedules, dismissed, checkedRows } = useForecastInputs()
+  const { schedules, overrides, dismissed, checkedRows } = useForecastInputs()
   const proyectadoMes = (() => {
     const today = todayKey()
     const inicio = startingBalance(registers, balances, props.otherFunds || [])
@@ -191,7 +192,9 @@ export function RegistersHome(props: {
       balances,
       bankTxs: props.bankOk ? props.bankTxs || [] : [],
       // Provisionales de screenshot = evidencia de pago (macheo automático).
-      shots: loadShotTxs().map((s) => ({
+      // R5: solo los que Plaid aún no trae (los ya macheados por su
+      // gemelo real quedan fuera del pool).
+      shots: filterReconciledShots(loadShotTxs(), props.bankOk ? props.bankTxs || [] : []).map((s) => ({
         date: String(s.date).slice(0, 10),
         amount: Number(s.amount) || 0,
         detail: s.detail,
@@ -200,6 +203,10 @@ export function RegistersHome(props: {
       today,
       horizonDays: daysToEndOfMonth(today),
       dismissedPaid: dismissed,
+      // R19 (2026-11-15): el strip pasaba el forecast SIN overrides, así
+      // que contaba el Depósito $400 (y cualquier "solo esta fecha") que
+      // Foto 1 ya saltaba. Con overrides, el strip y Foto 1 cuadran.
+      overrides,
       checkedRows,
     })
   })()

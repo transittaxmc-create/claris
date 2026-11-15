@@ -5,7 +5,7 @@
 import type { CashFlowEntry, CashFlowOrigin, Expense, Trip, ScheduledEntry, ScheduleOverride } from "./types"
 import { netOf, tripDateOf, migrateCategory } from "./types"
 import { FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT } from "./finance-sync"
-import { SCHEDULE_OVERRIDES_KEY } from "./dinero-forecast"
+import { SCHEDULE_OVERRIDES_KEY, isRealIsoDate } from "./dinero-forecast"
 
 export const LEDGER_KEY = "claris_cash_flow_entries"
 
@@ -16,11 +16,29 @@ export function sinSemillas(entries: CashFlowEntry[] | null | undefined): CashFl
   return entries.filter((e) => e && !IDS_SEMILLA.has(String(e.id)))
 }
 
+/** ¿La entrada del libro es válida para guardarse? (R13, 2026-11-15):
+ *  monto finito MAYOR que $0, fecha ISO válida Y REAL (2026-02-30 no
+ *  existe) y descripción no vacía. Lo inválido se RECHAZA — nunca se
+ *  "arregla" un número en silencio. La usa upsertMovimiento (toda
+ *  escritura del libro pasa por ahí) y parseFullBackup (RESTAURAR). */
+export function isValidLedgerEntry(e: unknown): e is CashFlowEntry {
+  if (!e || typeof e !== "object") return false
+  const entry = e as CashFlowEntry
+  const amount = Number(entry.amount)
+  if (!Number.isFinite(amount) || !(amount > 0)) return false
+  if (!isRealIsoDate(entry.date)) return false
+  if (!String(entry.description || "").trim()) return false
+  return true
+}
+
 export function upsertMovimiento(
   entries: CashFlowEntry[] | null | undefined,
   nuevo: CashFlowEntry,
 ): CashFlowEntry[] {
   const lista = Array.isArray(entries) ? entries : []
+  // R13: una entrada inválida no entra al libro — se devuelve la lista
+  // tal cual, sin escribir nada.
+  if (!isValidLedgerEntry(nuevo)) return lista
   const existe = lista.some((e) => e?.id === nuevo.id)
   return existe ? lista.map((e) => (e?.id === nuevo.id ? nuevo : e)) : [nuevo, ...lista]
 }
@@ -153,6 +171,12 @@ export function esProyeccionPlaceholderDelDia(entry: CashFlowEntry, date: string
   if (entry.type !== "income") return false
   if (String(entry.date || "").slice(0, 10) !== String(date).slice(0, 10)) return false
   if (String(entry.id).startsWith("claris:cobro:")) return false
+  // R11 (2026-11-15): las entradas MANUALES nunca son placeholders del
+  // sistema — el filtro viejo las borraba porque también llevan
+  // source "projection". Se distinguen por id (manual-*) y por origen
+  // real (origenDe): solo lo que NO es manual puede ser placeholder.
+  if (String(entry.id).startsWith("manual-")) return false
+  if (origenDe(entry) === "manual") return false
   if (entry.source === "projection" || entry.source === "manual") return true
   return false
 }

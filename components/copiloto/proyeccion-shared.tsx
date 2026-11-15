@@ -4,7 +4,7 @@
 // Forecast = foto 2). Misma matemática de dinero-forecast.ts.
 
 import { useEffect, useMemo, useState } from "react"
-import type { CashFlowEntry, Expense } from "./types"
+import { SPLIT_CATEGORY, normalizeSplits, type CashFlowEntry, type Expense } from "./types"
 import type { DueItem, RegisterAccount } from "./registers-store"
 import {
   buildForecast,
@@ -19,27 +19,23 @@ import { useForecastInputs } from "./dinero-proyeccion"
 import { loadCycleBills, loadExternalBills } from "./liabilities"
 import { billRemaining } from "./bill-payments"
 import { FINANCE_SYNCED_EVENT } from "./finance-sync"
-import { loadShotTxs, SHOTS_CHANGED_EVENT } from "./screenshot-txs"
+import { filterReconciledShots, loadShotTxs, SHOTS_CHANGED_EVENT, type ShotTx } from "./screenshot-txs"
 
 /** Provisionales de screenshot como evidencia de pago para el forecast
  *  (Miguel, 2026-10-29): un cargo que solo existe en screenshot ya afectó
  *  el balance calculado, así que el forecast lo machea como pagado en
- *  cada cálculo — automático al abrir la app, sin esperar a Plaid. */
-export function useForecastShots(): ForecastBankTx[] {
-  const [shots, setShots] = useState<ForecastBankTx[]>([])
+ *  cada cálculo — automático al abrir la app, sin esperar a Plaid.
+ *  R5 (2026-11-15): solo entran los provisionales SIN gemelo real — los
+ *  que Plaid ya trae quedan fuera del pool (misma regla que los
+ *  balances), para que un pago real + su foto no macheen dos líneas. */
+export function useForecastShots(bankTxs?: ForecastBankTx[]): ForecastBankTx[] {
+  const [raw, setRaw] = useState<ShotTx[]>([])
   useEffect(() => {
     const load = () => {
       try {
-        setShots(
-          loadShotTxs().map((s) => ({
-            date: String(s.date).slice(0, 10),
-            amount: Number(s.amount) || 0,
-            detail: s.detail,
-            bank_account: s.accountId,
-          })),
-        )
+        setRaw(loadShotTxs())
       } catch {
-        setShots([])
+        setRaw([])
       }
     }
     load()
@@ -50,7 +46,30 @@ export function useForecastShots(): ForecastBankTx[] {
       window.removeEventListener(FINANCE_SYNCED_EVENT, load)
     }
   }, [])
-  return shots
+  // La firma estabiliza bankTxs (el padre crea el array en cada render)
+  // para no recalcular en bucle: mismo contenido = mismo resultado.
+  const bankSig = useMemo(
+    () =>
+      (bankTxs || [])
+        .map((t) => `${String(t.date).slice(0, 10)}|${Number(t.amount) || 0}|${String(t.bank_account || "")}`)
+        .join(";"),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [bankTxs],
+  )
+  const bankStable = useMemo(
+    () => bankTxs || [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [bankSig],
+  )
+  return useMemo(() => {
+    const kept = filterReconciledShots(raw, bankStable)
+    return kept.map((s) => ({
+      date: String(s.date).slice(0, 10),
+      amount: Number(s.amount) || 0,
+      detail: s.detail,
+      bank_account: s.accountId,
+    }))
+  }, [raw, bankStable])
 }
 
 /** Bills que mandan sobre el recurrente (regla de Miguel, 2026-10-25):
@@ -145,7 +164,7 @@ export function useForecast30(props: ProyProps): {
 } {
   const { schedules, overrides, dismissed, checkedRows } = useForecastInputs()
   const bills = useForecastBills()
-  const shots = useForecastShots()
+  const shots = useForecastShots(props.bankOk ? props.bankTxs : [])
   const today = todayKey()
   const inicio = useMemo(
     () => startingBalance(props.registers, props.balances, props.otherFunds),
@@ -256,6 +275,11 @@ export function lineCategory(
   schedules: { id: string; category?: string }[],
 ): string {
   if (line.entry?.category) return line.entry.category
+  // R28: una ocurrencia con categoría editada "solo esta fecha" lleva esa
+  // categoría (y con división de 2+ líneas, "Split" — igual que una
+  // entrada del libro con splits, cuya category ya es "Split").
+  if (line.category) return line.category
+  if ((normalizeSplits(line.splits)?.length ?? 0) >= 2) return SPLIT_CATEGORY
   if (line.scheduleId) {
     const s = schedules.find((x) => x.id === line.scheduleId)
     if (s?.category) return s.category
@@ -484,6 +508,9 @@ export function flowGroups(lines: ForecastLine[], schedules: SchedLite[]): FlowG
   let transfersTotal = 0
   let transfersCount = 0
   for (const l of lines) {
+    // R21 (2026-11-15): un renglón marcado con el check NO cuenta en
+    // Foto 2 — ni en Sources/Uses, ni en los totales, ni en transfers.
+    if (l.checked) continue
     if (isTransferLine(l, schedules)) {
       transfersTotal += Math.abs(l.amount)
       transfersCount++

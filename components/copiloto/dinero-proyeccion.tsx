@@ -27,7 +27,7 @@ import {
   type ScheduleOverride,
 } from "./dinero-forecast"
 import { FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT, FORECAST_CHECKED_KEY, FORECAST_DISMISSED_KEY } from "./finance-sync"
-import { loadShotTxs } from "./screenshot-txs"
+import { filterReconciledShots, loadShotTxs } from "./screenshot-txs"
 
 type Horizon = "mes" | 30 | 60 | 90
 const HORIZONS: { value: Horizon; label: string }[] = [
@@ -757,7 +757,9 @@ export function DineroProyeccion(props: {
         // Sin banco no hay auto-match (nunca se da por pagado algo sin evidencia).
         bankTxs: props.bankOk ? props.bankTxs : [],
         // Provisionales de screenshot = evidencia de pago (macheo automático).
-        shots: loadShotTxs().map((s) => ({
+        // R5: solo los que Plaid aún no trae (los ya macheados por su
+        // gemelo real quedan fuera del pool).
+        shots: filterReconciledShots(loadShotTxs(), props.bankOk ? props.bankTxs : []).map((s) => ({
           date: String(s.date).slice(0, 10),
           amount: Number(s.amount) || 0,
           detail: s.detail,
@@ -1090,8 +1092,13 @@ function ProjectionRegister(props: {
     out.push({ line: null, amount: 0, balAcum: acum, balProy: proy, date: firstDate, marker: "open" })
     for (const d of fc.days) {
       for (const ln of d.lines) {
-        proy = r2(proy + ln.amount)
-        if (ln.kind === "proj" || ln.kind === "overdue") acum = r2(acum + ln.amount)
+        // R34 (2026-11-15): un renglón marcado con el check NO mueve
+        // ningún saldo — el monto se sigue viendo en la fila, pero el
+        // acumulado y el proyectado lo saltan (igual que el motor y que
+        // Foto 1). Sin esto, el cierre final ≠ fc.end del encabezado.
+        const amt = ln.checked ? 0 : ln.amount
+        proy = r2(proy + amt)
+        if (ln.kind === "proj" || ln.kind === "overdue") acum = r2(acum + amt)
         out.push({ line: ln, amount: ln.amount, balAcum: acum, balProy: proy, date: ln.date })
       }
       if (d.lines.length === 0) {

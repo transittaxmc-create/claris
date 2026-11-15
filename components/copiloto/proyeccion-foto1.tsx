@@ -23,7 +23,7 @@ import { billPaidTotal, billRemaining } from "./bill-payments"
 import { SCHEDULES_CLEAR_FLAG_KEY } from "./finance-cloud"
 import { accountDisplayName } from "./registers-store"
 import { normalizeVendorName, type Expense } from "./types"
-import { platformMatch, vendorMatch, SCHEDULE_OVERRIDES_KEY, type ForecastLine, type ProbablePaid } from "./dinero-forecast"
+import { platformMatch, signedAdjustment, vendorMatch, weekStartOf, SCHEDULE_OVERRIDES_KEY, type ForecastLine, type ProbablePaid } from "./dinero-forecast"
 import { useForecastInputs } from "./dinero-proyeccion"
 import { FINANCE_LEDGER_KEY, FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT, RECONCILED_LOG_KEY } from "./finance-sync"
 import type { CashFlowEntry, CashFlowOrigin } from "./types"
@@ -107,7 +107,9 @@ function recRecordOf(p: ProbablePaid): RecRecord {
     id: String(p.entry.id),
     date: String(p.tx.date).slice(0, 10),
     label: p.entry.description || "Transaction",
-    projected: Math.abs(Number(p.entry.amount) || 0),
+    // Lo proyectado que macheó es p.amount (el resto del bill tras R1),
+    // no el total de la entrada.
+    projected: p.amount ?? Math.abs(Number(p.entry.amount) || 0),
     bank: Math.abs(Number(p.tx.amount) || 0),
     income: p.entry.type === "income",
     detail: String(p.tx.detail || ""),
@@ -301,7 +303,10 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
   }
 
   const esSeguro = (p: ProbablePaid): boolean => {
-    const diff = Math.abs(Math.abs(Number(p.tx.amount) || 0) - Math.abs(Number(p.entry.amount) || 0))
+    // Lo proyectado que macheó es p.amount (el resto del bill tras R1),
+    // no el total de la entrada.
+    const projAmt = p.amount ?? Math.abs(Number(p.entry.amount) || 0)
+    const diff = Math.abs(Math.abs(Number(p.tx.amount) || 0) - projAmt)
     if (diff > 0.011) return false
     if (p.entry.type === "expense") return true
     return vendorMatch(p.tx.detail, p.entry.description) || platformMatch(p.tx.detail, p.entry.description)
@@ -315,22 +320,29 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
         : e,
     )
     if (ajuste && Math.abs(ajuste.diff) > 0.011) {
-      const diff = ajuste.diff
-      const adj = {
+      // R6 (2026-11-15): el ajuste se calcula con montos CON SIGNO
+      // (proyectado vs banco). En un gasto, banco $102 vs proyectado $100
+      // → ajuste GASTO $2 (el libro queda −$102). El código viejo usaba
+      // valores absolutos y el tipo salía al revés en gastos. p.amount es
+      // lo proyectado que macheó (el resto del bill tras R1).
+      const projAmt = p.amount ?? Math.abs(Number(p.entry.amount) || 0)
+      const projSigned = p.entry.type === "income" ? projAmt : -projAmt
+      const adj = signedAdjustment(projSigned, Number(p.tx.amount) || 0)
+      const adjEntry = {
         id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `adj-${Date.now()}`,
         date: paidDate,
         description: `Adjustment: ${ajuste.reason}`,
         source: "manual",
         sourceLabel: "Match adjustment",
-        type: diff < 0 ? "expense" : "income",
+        type: adj.type,
         status: "actual",
-        amount: Math.abs(diff),
+        amount: adj.amount,
         category: /fee/i.test(ajuste.reason) ? "Bank fees" : "Adjustment",
-        notes: `Balances "${p.entry.description || "entry"}": bank vs projected diff ${diff < 0 ? "-" : "+"}$${Math.abs(diff).toFixed(2)}`,
+        notes: `Balances "${p.entry.description || "entry"}": bank vs projected diff ${adj.signed < 0 ? "-" : "+"}$${adj.amount.toFixed(2)}`,
         createdAt: new Date().toISOString(),
         isManuallyEdited: true,
       } as unknown as CashFlowEntry
-      next = [adj, ...next]
+      next = [adjEntry, ...next]
     }
     try {
       localStorage.setItem(FINANCE_LEDGER_KEY, JSON.stringify(next))
@@ -539,51 +551,39 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
 
   return (
     <div style={{ paddingBottom: 28, color: INK, overflowX: "hidden", maxWidth: "100%" }}>
-      {/* Encabezado como la foto */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 14px 10px" }}>
-        <span style={{ fontSize: 17, color: SUB }}>⚙️</span>
-        <h2 style={{ fontSize: 13.5, fontWeight: 800, letterSpacing: 0.8, textAlign: "center", flex: 1, minWidth: 0 }}>
-          CASH FLOW REGISTER & FORECAST
-        </h2>
-        <span style={{ fontSize: 17, color: SUB }}>🔔</span>
-      </div>
-
-      {/* PROJECTION SUMMARY */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "6px 14px 8px" }}>
-        <span style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: 1.2, color: SUB }}>PROJECTION SUMMARY</span>
-        <span style={{ fontSize: 12.5, fontWeight: 800, letterSpacing: 1.2, color: SUB }}>
-          HEALTH: <span style={{ color: health.color }}>{health.label}</span>
-        </span>
-      </div>
-      <div style={{ margin: "0 12px", background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, padding: "16px 14px" }}>
-        <div style={{ display: "flex", gap: 10 }}>
-          <div style={{ flex: 1.15, minWidth: 0 }}>
-            <div style={{ fontSize: 10.5, color: SUB, letterSpacing: 0.4, marginBottom: 3 }}>
-              STARTING BALANCE TODAY ({fmtFecha(today)}):
-            </div>
-            <div style={{ fontSize: 25, fontWeight: 800, marginBottom: 13 }}>{fc.start < 0 ? "-$" : "$"}{money2(fc.start)}</div>
-            <div style={{ fontSize: 10.5, color: SUB, letterSpacing: 0.4, marginBottom: 3 }}>PROJECTED INCOME (30D):</div>
-            <div style={{ fontSize: 19, fontWeight: 800, color: GREEN, marginBottom: 13 }}>{signed(fc.incomeTotal)}</div>
-            <div style={{ fontSize: 10.5, color: SUB, letterSpacing: 0.4, marginBottom: 3 }}>PROJECTED EXPENSES (30D):</div>
-            <div style={{ fontSize: 19, fontWeight: 800, color: RED }}>{signed(-fc.expenseTotal)}</div>
+      {/* Tira resumen de 5 columnas, clonada de la foto (2026-11-15):
+          STARTING BAL. | INCOME (30D) | EXPENSES (30D) | ENDING BAL. |
+          medidor pequeño + HEALTH. Mismos valores que la tarjeta de dos
+          columnas que reemplaza; sin línea NET FLOW (no está en la foto).
+          El encabezado "CASH FLOW REGISTER & FORECAST" y la fila
+          "PROJECTION SUMMARY" tampoco están en la foto: fuera. La tira
+          REAL BANK | PROJECTED MONTH vive arriba (MONEY) y se queda. */}
+      <div style={{ margin: "12px 12px 0", background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, padding: "12px 8px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 6, alignItems: "center" }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 9, color: SUB, letterSpacing: 0.4, fontWeight: 700, whiteSpace: "nowrap" }}>STARTING BAL.</div>
+            <div style={{ fontSize: 13, fontWeight: 800, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{fc.start < 0 ? "-$" : "$"}{money2(fc.start)}</div>
           </div>
-          <div style={{ flex: 1, minWidth: 0, textAlign: "left" }}>
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <Gauge health={health} size={104} />
-              <div style={{ fontSize: 10.5, fontWeight: 800, color: health.color, marginTop: -2, marginBottom: 10 }}>
-                HEALTH: {health.label}
-              </div>
-            </div>
-            <div style={{ fontSize: 10.5, color: SUB, letterSpacing: 0.4, marginBottom: 3 }}>
-              FORECAST ENDING BALANCE ({fmtFecha(fc.endDate)}):
-            </div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 9, color: SUB, letterSpacing: 0.4, fontWeight: 700, whiteSpace: "nowrap" }}>INCOME (30D):</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: GREEN, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{signed(fc.incomeTotal)}</div>
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 9, color: SUB, letterSpacing: 0.4, fontWeight: 700, whiteSpace: "nowrap" }}>EXPENSES (30D):</div>
+            <div style={{ fontSize: 13, fontWeight: 800, color: RED, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{signed(-fc.expenseTotal)}</div>
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 9, color: SUB, letterSpacing: 0.4, fontWeight: 700, whiteSpace: "nowrap" }}>ENDING BAL.</div>
             {/* El saldo final SÍ puede ser negativo (es proyectado) y
                 debe VERSE negativo: antes se imprimía con money2() que
                 usa Math.abs y botaba el signo — se veía +$8,247.32
                 cuando la cuenta daba −$8,247.32. */}
-            <div style={{ fontSize: 25, fontWeight: 800, marginBottom: 6, color: fc.end < 0 ? RED : undefined }}>{fc.end < 0 ? "-$" : "$"}{money2(fc.end)}</div>
-            <div style={{ fontSize: 11.5, color: SUB }}>
-              NET FLOW: <b style={{ color: net >= 0 ? GREEN : RED }}>{signed(net)}</b>
+            <div style={{ fontSize: 13, fontWeight: 800, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", color: fc.end < 0 ? RED : undefined }}>{fc.end < 0 ? "-$" : "$"}{money2(fc.end)}</div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 0 }}>
+            <Gauge health={health} size={50} />
+            <div style={{ fontSize: 8.5, fontWeight: 800, color: health.color, marginTop: -3, whiteSpace: "nowrap" }}>
+              HEALTH: {health.label}
             </div>
           </div>
         </div>
@@ -686,25 +686,36 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
             {futuras.length === 0 && (
               <tr><td colSpan={6} style={{ ...td, color: SUB }}>No future transactions scheduled.</td></tr>
             )}
+            {futuras.length > 0 && futuras[0].line.date > fc.endDate && (
+              <tr>
+                <td colSpan={6} style={{ padding: "7px 10px", background: "rgba(52,209,123,.08)", borderTop: "1px solid rgba(52,209,123,.25)", borderBottom: "1px solid rgba(52,209,123,.25)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: 10.5 }}>
+                    <span style={{ color: SUB, fontWeight: 800, letterSpacing: 1 }}>30-DAY SUBTOTAL · {fmtFecha(fc.endDate).toUpperCase()}</span>
+                    <b style={{ color: saldoColor(fc.start), fontSize: 12.5, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{fmtBal(fc.start)}</b>
+                  </div>
+                  <div style={{ fontSize: 9.5, color: SUB, marginTop: 1 }}>Running balance at 30 days — matches ENDING BAL. in the strip above.</div>
+                </td>
+              </tr>
+            )}
             {futuras.map(({ line, before, after }, i) => {
               const cat = lineCategory(line, schedules)
               const pb = partialNoteFor(line)
               const pbLeft = pb ? billRemaining(pb) : 0
               const tagOrigen = marcaOrigen(line, schedules, billDeLinea(line))
-              const dayDate = new Date(line.date + "T12:00:00")
-              const isSunday = dayDate.getDay() === 0
+              // R22 (2026-11-15): la banda se renderiza tras la ÚLTIMA
+              // línea de CADA semana (lunes–domingo), tenga o no línea en
+              // domingo. Antes solo existía si la semana tenía línea en
+              // domingo — semanas de lunes a sábado quedaban sin banda.
               const nextFuture = futuras[i + 1]
-              const isLastSundayLine = isSunday && (!nextFuture || nextFuture.line.date !== line.date)
-              const weekStart = new Date(dayDate)
-              weekStart.setDate(weekStart.getDate() - 6)
-              const weekStartIso = [weekStart.getFullYear(), String(weekStart.getMonth() + 1).padStart(2, "0"), String(weekStart.getDate()).padStart(2, "0")].join("-")
-              const weekLines = isLastSundayLine ? futuras.filter((item) => item.line.date >= weekStartIso && item.line.date <= line.date) : []
+              const weekStartIso = weekStartOf(line.date)
+              const isLastLineOfWeek = !nextFuture || weekStartOf(nextFuture.line.date) !== weekStartIso
+              const weekLines = isLastLineOfWeek ? futuras.filter((item) => item.line.date >= weekStartIso && item.line.date <= line.date) : []
               const weekIncome = weekLines.reduce((sum, item) => sum + (!item.line.checked && item.line.amount > 0 ? item.line.amount : 0), 0)
               const weekExpenses = weekLines.reduce((sum, item) => sum + (!item.line.checked && item.line.amount < 0 ? Math.abs(item.line.amount) : 0), 0)
               // Peajes de la semana: el registro macheado (GPS + statement,
               // sin repeticiones, con la corrección de Miguel aplicada) —
               // NUNCA la suma de líneas del forecast con etiqueta de peaje.
-              const weekRecord = isLastSundayLine
+              const weekRecord = isLastLineOfWeek
                 ? buildWeekRecord(weekStartIso, tollData.trips, tollData.diary, tollData.charges, tollData.corrections)
                 : null
               const weekTolls = weekRecord ? weekRecord.total : 0
@@ -773,7 +784,7 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
                     <span style={{ color: saldoColor(after), fontSize: 12.5, fontWeight: 600 }}>→ {fmtBal(after)}</span>
                   </td>
                 </tr>
-                {isLastSundayLine && (
+                {isLastLineOfWeek && (
                   <tr>
                     <td colSpan={6} style={{ padding: "7px 10px", background: "rgba(91,140,255,.075)", borderTop: "1px solid rgba(91,140,255,.22)", borderBottom: "1px solid rgba(91,140,255,.22)" }}>
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 5, fontSize: 9.5, lineHeight: 1.35 }}>
@@ -789,6 +800,21 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
                         WEEKLY TOLLS <b style={{ color: "#f5b73f", fontSize: 11, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>${money2(weekTolls)}</b>
                         <span style={{ color: "#73778a" }}> · {weekRecord ? weekRecord.passes.length : 0} passes · Mon–Sun · tap to check</span>
                       </button>
+                    </td>
+                  </tr>
+                )}
+                {/* R20 (2026-11-15): subtotal a 30 días — el saldo
+                    acumulado al final del horizonte del encabezado
+                    (fc.endDate) debe ser igual al ENDING BAL. de la tira
+                    de arriba. La tabla sigue siendo de 90 días. */}
+                {line.date <= fc.endDate && (!nextFuture || nextFuture.line.date > fc.endDate) && (
+                  <tr>
+                    <td colSpan={6} style={{ padding: "7px 10px", background: "rgba(52,209,123,.08)", borderTop: "1px solid rgba(52,209,123,.25)", borderBottom: "1px solid rgba(52,209,123,.25)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: 10.5 }}>
+                        <span style={{ color: SUB, fontWeight: 800, letterSpacing: 1 }}>30-DAY SUBTOTAL · {fmtFecha(fc.endDate).toUpperCase()}</span>
+                        <b style={{ color: saldoColor(after), fontSize: 12.5, fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{fmtBal(after)}</b>
+                      </div>
+                      <div style={{ fontSize: 9.5, color: SUB, marginTop: 1 }}>Running balance at 30 days — matches ENDING BAL. in the strip above.</div>
                     </td>
                   </tr>
                 )}
@@ -930,7 +956,9 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
             It showed up at the bank but with a difference or no clear merchant. You confirm or dismiss it.
           </p>
           {porConfirm.map((p) => {
-            const entryAmt = Math.abs(Number(p.entry.amount) || 0)
+            // Lo proyectado que macheó es p.amount (el resto del bill
+            // tras R1), no el total de la entrada.
+            const entryAmt = p.amount ?? Math.abs(Number(p.entry.amount) || 0)
             const bankAmt = Math.abs(Number(p.tx.amount) || 0)
             const diff = Math.round((bankAmt - entryAmt) * 100) / 100
             const hasDiff = Math.abs(diff) > 0.011
