@@ -430,6 +430,40 @@ export function limpiarCobrosSinViajes(
   })
 }
 
+export type ValidacionCobros = {
+  ok: boolean
+  warnings: string[]
+  diasFantasma: string[]
+  cobrosSinViaje: number
+}
+
+/** Valida que los cobros proyectados tengan viajes reales. */
+export function validarCobros(trips: Trip[], libro: CashFlowEntry[]): ValidacionCobros {
+  const warnings: string[] = []
+  const conNeto = new Set<string>()
+  for (const t of trips || []) {
+    if ((netOf(t) || 0) > 0) conNeto.add(tripDateOf(t))
+  }
+  const diasFantasma: string[] = []
+  let cobrosSinViaje = 0
+  for (const e of libro || []) {
+    if (!e || e.status !== "projected") continue
+    const m = String(e.id || "").match(/^claris:cobro:(\d{4}-\d{2}-\d{2}):/)
+    if (!m) continue
+    if (!conNeto.has(m[1])) {
+      cobrosSinViaje++
+      if (!diasFantasma.includes(m[1])) diasFantasma.push(m[1])
+    }
+    if ((Number(e.amount) || 0) <= 0) {
+      warnings.push(`Cobro con monto ≤ 0: ${e.id}`)
+    }
+  }
+  if (diasFantasma.length > 0) {
+    warnings.push(`Cobros sin viajes: ${diasFantasma.join(", ")} (${cobrosSinViaje} líneas)`)
+  }
+  return { ok: warnings.length === 0, warnings, diasFantasma, cobrosSinViaje }
+}
+
 export function leerLibroMayor(): CashFlowEntry[] {
   try {
     const raw = localStorage.getItem(LEDGER_KEY)
