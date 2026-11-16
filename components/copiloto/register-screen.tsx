@@ -294,6 +294,22 @@ function addDays(date: string, days: number): string {
   return localDateKey(next)
 }
 
+
+function BreakButton() {
+  const [on, setOn] = useState(false)
+  return (
+    <button
+      type="button"
+      onClick={() => setOn((b) => !b)}
+      className={on
+        ? "ml-1 rounded-full border border-orange-400 bg-orange-400/15 px-2 py-0.5 text-[9px] font-bold text-orange-400"
+        : "ml-1 rounded-full border border-neutral-700 px-2 py-0.5 text-[9px] font-bold text-neutral-500"}
+    >
+      {on ? "ON BREAK" : "BREAK"}
+    </button>
+  )
+}
+
 export function RegisterScreen({
   trips,
   onEdit,
@@ -451,6 +467,7 @@ export function RegisterScreen({
             >
               {dayClosed ? "DAY CLOSED" : "DAY OPEN"}
             </span>
+            <BreakButton />
           </div>
           <button
             type="button"
