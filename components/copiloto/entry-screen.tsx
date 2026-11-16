@@ -5,6 +5,7 @@ import { ChevronDown, MapPin, Coffee, Loader2, X, AlertTriangle, RotateCw, Edit2
 import { cn } from "@/lib/utils"
 import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip, grossOf, tripDateOf } from "./types"
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
+import { NumPad } from "./num-pad"
 import { isVoucherPlatform } from "./platform-meta"
 import type { ShiftApi } from "./shift"
 import {
@@ -187,6 +188,7 @@ function EarningsCard({
   value,
   onChange,
   inputId,
+  onActivate,
 }: {
   icon: string
   label: string
@@ -194,6 +196,7 @@ function EarningsCard({
   value: number
   onChange: (n: number) => void
   inputId?: string
+  onActivate?: () => void
 }) {
   // null = no se está editando -> se muestra el valor numérico real.
   const [text, setText] = useState<string | null>(null)
@@ -222,7 +225,7 @@ function EarningsCard({
         spellCheck={false}
         aria-label={label}
         value={display}
-        onFocus={() => setText(moneyTextFromNumber(value))}
+        onFocus={() => { setText(moneyTextFromNumber(value)); onActivate?.() }}
         onBlur={() => {
           const clean = normalizeMoneyText(display)
           setText(null)
@@ -265,6 +268,7 @@ export function EntryScreen({
   })
 
   const [platformOpen, setPlatformOpen] = useState(false)
+  const [activeField, setActiveField] = useState<string | null>(null)
   const [onBreak, setOnBreak] = useState(false)
   const [capturing, setCapturing] = useState<null | "pickup" | "dropoff">(null)
   const [geoError, setGeoError] = useState<string | null>(null)
@@ -675,12 +679,26 @@ export function EntryScreen({
             <span className="text-[9px] text-neutral-500">All values in USD</span>
           </div>
           <div className="grid grid-cols-5 gap-1.5">
-            <EarningsCard icon="💼" label="FARE" color="text-green-400" value={draft.earnings} onChange={(n) => set("earnings", n)} inputId="fare-input" />
+            <EarningsCard icon="💼" label="FARE" color="text-green-400" value={draft.earnings} onChange={(n) => set("earnings", n)} inputId="fare-input" onActivate={() => setActiveField("fare")} />
             <EarningsCard icon="⭐" label="TIPS" color="text-green-400" value={draft.tips} onChange={(n) => set("tips", n)} />
             <EarningsCard icon="🛣️" label="TOLLS" color="text-amber-400" value={draft.toll} onChange={(n) => set("toll", n)} />
             <EarningsCard icon="%" label="FEE" color="text-red-500" value={draft.platformFee} onChange={(n) => set("platformFee", n)} />
             <EarningsCard icon="$" label="EXTRA" color="text-green-400" value={draft.extraCash} onChange={(n) => set("extraCash", n)} />
           </div>
+          {activeField && (
+            <div className="mt-2">
+              <NumPad
+                onKey={(k) => {
+                  const el = document.getElementById("fare-input") as HTMLInputElement | null
+                  if (!el) return
+                  if (k === "back") el.value = el.value.slice(0, -1)
+                  else el.value += k
+                  el.dispatchEvent(new Event("input", { bubbles: true }))
+                }}
+                onDone={() => setActiveField(null)}
+              />
+            </div>
+          )}
         </section>
 
         {/* ============================================== */}
