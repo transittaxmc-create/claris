@@ -218,7 +218,8 @@ function EarningsCard({
       <input
         id={inputId}
         type="text"
-        inputMode="decimal"
+        inputMode={inputId === "fare-input" ? "none" : "decimal"}
+        readOnly={inputId === "fare-input"}
         enterKeyHint="done"
         autoComplete="off"
         autoCorrect="off"
@@ -269,6 +270,7 @@ export function EntryScreen({
 
   const [platformOpen, setPlatformOpen] = useState(false)
   const [activeField, setActiveField] = useState<string | null>(null)
+  const [fareText, setFareText] = useState("")
   const [onBreak, setOnBreak] = useState(false)
   const [capturing, setCapturing] = useState<null | "pickup" | "dropoff">(null)
   const [geoError, setGeoError] = useState<string | null>(null)
@@ -689,13 +691,14 @@ export function EntryScreen({
             <div className="mt-2">
               <NumPad
                 onKey={(k) => {
-                  const el = document.getElementById("fare-input") as HTMLInputElement | null
-                  if (!el) return
-                  if (k === "back") el.value = el.value.slice(0, -1)
-                  else el.value += k
-                  el.dispatchEvent(new Event("input", { bubbles: true }))
+                  setFareText((cur) => {
+                    const next = k === "back" ? cur.slice(0, -1) : cur + k
+                    const num = Number(next) || 0
+                    set("earnings", num)
+                    return next
+                  })
                 }}
-                onDone={() => setActiveField(null)}
+                onDone={() => { setActiveField(null); setFareText("") }}
               />
             </div>
           )}
