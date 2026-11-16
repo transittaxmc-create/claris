@@ -319,6 +319,30 @@ export function fechasReconciliacionAuto(
   return [...fechas].sort()
 }
 
+/** Borra cobros proyectados de días que YA NO tienen viajes con neto > 0.
+ *  Evita fantasmas cuando se borran o se cambian de fecha los viajes.
+ *  Miguel 2026-11-15: "no hay un viaje... están apareciendo, no es real". */
+export function limpiarCobrosSinViajes(
+  trips: Trip[],
+  libro: CashFlowEntry[],
+): CashFlowEntry[] {
+  const conNeto = new Set<string>()
+  for (const t of trips || []) {
+    if ((netOf(t) || 0) > 0) conNeto.add(tripDateOf(t))
+  }
+  const fechasConCobro = fechasConCobroProyectado(libro)
+  const aBorrar = fechasConCobro.filter((d) => !conNeto.has(d))
+  if (aBorrar.length === 0) return libro
+  const prefijos = new Set(aBorrar.map((d) => prefijoCobroDia(d)))
+  return libro.filter((e) => {
+    const id = String(e.id || "")
+    for (const pref of prefijos) {
+      if (id.startsWith(pref)) return false
+    }
+    return true
+  })
+}
+
 export function leerLibroMayor(): CashFlowEntry[] {
   try {
     const raw = localStorage.getItem(LEDGER_KEY)
