@@ -593,31 +593,20 @@ export function EntryScreen({
             2026-10-31: "en la V7 prefiero dejarla como está esa parte").
             La tarjeta del clon NO se aplicó aquí. */}
         <div className="flex items-center gap-1.5 sm:col-span-2">
-          {quickPlatforms.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setDraft((d) => ({ ...d, platform: p as any, isVoucher: isVoucherPlatform(p as any) }))}
-              className={cn(
-                "flex h-9 min-w-0 flex-1 items-center justify-center gap-1 rounded-lg border px-1.5 text-[10px] font-bold transition-colors",
-                draft.platform === p
-                  ? "border-yellow-400 bg-yellow-400/15 text-yellow-300"
-                  : "border-neutral-700 bg-neutral-900 text-neutral-300"
-              )}
-            >
-              <PlatformAvatar platform={p as any} size={16} />
-              <span className="truncate">{p.split(" ")[0]}</span>
-            </button>
-          ))}
-          <div className="relative">
+          <div className="relative min-w-0 flex-[1.1]">
             <button
               type="button"
               onClick={() => setPlatformOpen((o) => !o)}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-700 bg-neutral-900 text-neutral-400"
+              aria-haspopup="listbox"
+              aria-expanded={platformOpen}
+              className="flex h-9 w-full items-center justify-between gap-1 rounded-lg border border-neutral-800 bg-neutral-900 px-2"
             >
-              <ChevronDown className="size-4" />
+              <span className="flex min-w-0 items-center gap-1.5">
+                <PlatformAvatar platform={draft.platform} size={18} />
+                <span className="truncate text-xs font-semibold text-white">{draft.platform}</span>
+              </span>
+              <ChevronDown className="size-3.5 shrink-0 text-neutral-500" />
             </button>
-
             {platformOpen && (
               <div
                 role="listbox"
@@ -630,8 +619,6 @@ export function EntryScreen({
                     role="option"
                     aria-selected={p === draft.platform}
                     onClick={() => {
-                      // Una plataforma de vale marca el viaje como VOUCHER sin
-                      // que el usuario tenga que tocar nada más.
                       setDraft((d) => ({ ...d, platform: p, isVoucher: isVoucherPlatform(p) }))
                       setPlatformOpen(false)
                     }}
@@ -640,7 +627,7 @@ export function EntryScreen({
                       p === draft.platform ? "text-yellow-400" : "text-neutral-200"
                     )}
                   >
-                    <PlatformAvatar platform={p} size={30} />
+                    <PlatformAvatar platform={p} size={24} />
                     <span className="min-w-0 flex-1 truncate">{p}</span>
                     <PlatformBadge platform={p} />
                   </button>
@@ -648,8 +635,22 @@ export function EntryScreen({
               </div>
             )}
           </div>
-
-          </div>
+          {quickPlatforms.map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setDraft((d) => ({ ...d, platform: p as any, isVoucher: isVoucherPlatform(p as any) }))}
+              className={cn(
+                "flex h-9 min-w-0 flex-1 flex-col items-center justify-center gap-0 rounded-lg border px-0.5 text-[8px] font-bold leading-tight transition-colors",
+                draft.platform === p
+                  ? "border-yellow-400 bg-yellow-400/15 text-yellow-300"
+                  : "border-neutral-700 bg-neutral-900 text-neutral-300"
+              )}
+            >
+              <PlatformAvatar platform={p as any} size={14} />
+              <span className="max-w-full truncate">{p.split(" ")[0]}</span>
+            </button>
+          ))}
         </div>
 
         {/* ============================================== */}
