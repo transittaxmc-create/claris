@@ -884,21 +884,6 @@ export function EntryScreen({
           la pantalla hasta la navegación. El safe-area lo maneja el
           BottomNav, que es el último elemento. */}
       <div className="shrink-0 border-t border-neutral-800 bg-black px-4 pb-2 pt-2 sm:px-8 sm:py-5">
-        <div className="mb-2 flex justify-end">
-          <button
-            type="button"
-            onClick={() => setOnBreak((b) => !b)}
-            className={cn(
-              "flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[10px] font-bold",
-              onBreak
-                ? "border-orange-400 bg-orange-400/15 text-orange-400"
-                : "border-neutral-700 bg-neutral-900 text-neutral-400"
-            )}
-          >
-            <Coffee className="size-3" />
-            {onBreak ? "ON BREAK" : "BREAK"}
-          </button>
-        </div>
         <button
           type="button"
           onClick={handleSave}
