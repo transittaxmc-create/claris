@@ -9,7 +9,7 @@ import { useMemo, useState, type CSSProperties } from "react"
 import { CUSTOM_CATEGORIES_KEY, EXPENSE_CATEGORIES, isDuplicateSchedule, resolveScheduleEnds, resolveSplitsForSave, type CashFlowEntry, type ScheduleEnds, type ScheduledEntry, type TxSplit } from "./types"
 import { SplitEditor } from "./split-editor"
 import { FINANCE_LEDGER_KEY, FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT } from "./finance-sync"
-import { etiquetaCombinada } from "./cash-flow-store"
+import { etiquetaCombinada, marcarCobroBorrado } from "./cash-flow-store"
 import { SCHEDULE_OVERRIDES_KEY, todayKey, type ForecastLine, type ScheduleOverride } from "./dinero-forecast"
 import { fmtFecha, fmtWeekday } from "./proyeccion-shared"
 
@@ -582,6 +582,9 @@ export function ProyeccionEdit(props: {
       setConfirmDelete(true)
       return
     }
+    // Lápida (2026-11-15): si era un cobro de Earnings, que el auto no lo
+    // regenere; solo el botón "Update receivables → Money" lo trae de vuelta.
+    if (String(entry.id).startsWith("claris:cobro:")) marcarCobroBorrado(entry.id)
     const next = readList<CashFlowEntry>(FINANCE_LEDGER_KEY).filter((e) => e.id !== entry.id)
     try {
       localStorage.setItem(FINANCE_LEDGER_KEY, JSON.stringify(next))

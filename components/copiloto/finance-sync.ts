@@ -26,6 +26,10 @@ export const FINANCE_BLOB_KEYS = [
   "claris_forecast_dismissed_v1",
   "claris_forecast_checked_v1",
   "claris_reconciled_log_v1",
+  // Lápidas de cobros borrados (2026-11-15): sin esta clave, el sync
+  // explícito no llevaría la marca al otro teléfono y el auto de allá
+  // reviviría el cobro borrado. Igual que la marca de checks.
+  "claris_cobro_deleted_v1",
   // Excepciones puntuales de recurrentes (skip, monto o etiqueta por fecha).
   // Sin esta clave, una sincronización podía borrar silenciosamente ajustes de
   // una sola ocurrencia y el forecast volvía a mostrar el valor original.

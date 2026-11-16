@@ -61,6 +61,79 @@ export function prefijoCobroDia(date: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// LÁPIDA DE COBROS BORRADOS (2026-11-15)
+//  - Cuando Miguel borra un cobro claris:cobro:{fecha}:{plataforma} en MONEY
+//    (editor de la fila o Delete del register), se guarda la marca aquí.
+//  - La reconciliación AUTOMÁTICA nunca regenera un cobro con lápida: el
+//    auto corre para hoy y para días con cobros vivos, pero salta la
+//    plataforma marcada. Un día con TODOS sus cobros borrados ni siquiera
+//    entra en fechasReconciliacionAuto (no hay cobro proyectado vivo).
+//  - Solo el botón explícito "Update receivables → Money" de ese día limpia
+//    la lápida y lo regenera (regla suya, 2026-11-15: "si duplica, la borro
+//    yo"). El CHECK no es borrado: no pone lápida. Tampoco la pone el
+//    macheo con el banco (aplicarPagado marca actual, no borra) ni el
+//    "Remove all projected" (que deja los cobros).
+//  - Viaja en SUBIR/RESTAURAR (clave claris_*, la barre collectAppKeys) y
+//    en el sync explícito de finanzas (FINANCE_BLOB_KEYS, como la marca
+//    de checks) — si no viajara, el otro teléfono lo reviviría.
+// ---------------------------------------------------------------------------
+export const COBRO_DELETED_KEY = "claris_cobro_deleted_v1"
+/** Cobro id → fecha ISO en que se borró. */
+export type CobrosBorrados = Record<string, string>
+
+export function leerCobrosBorrados(): CobrosBorrados {
+  try {
+    const raw = localStorage.getItem(COBRO_DELETED_KEY)
+    if (!raw) return {}
+    const v = JSON.parse(raw)
+    return v && typeof v === "object" && !Array.isArray(v) ? (v as CobrosBorrados) : {}
+  } catch {
+    return {}
+  }
+}
+
+function guardarCobrosBorrados(mapa: CobrosBorrados): void {
+  try {
+    localStorage.setItem(COBRO_DELETED_KEY, JSON.stringify(mapa))
+  } catch {}
+}
+
+/** Marca un cobro como borrado por el usuario (solo ids claris:cobro:*). */
+export function marcarCobroBorrado(cobroId: string): void {
+  const id = String(cobroId || "")
+  if (!id.startsWith("claris:cobro:")) return
+  const mapa = leerCobrosBorrados()
+  mapa[id] = new Date().toISOString()
+  guardarCobrosBorrados(mapa)
+}
+
+export function quitarMarcaCobroBorrado(cobroId: string): void {
+  const mapa = leerCobrosBorrados()
+  if (String(cobroId || "") in mapa) {
+    delete mapa[String(cobroId)]
+    guardarCobrosBorrados(mapa)
+  }
+}
+
+/** Limpia las lápidas de TODAS las plataformas de un día (solo el botón). */
+export function limpiarMarcasCobroBorradoDia(dia: string): void {
+  const pref = `claris:cobro:${String(dia || "").slice(0, 10)}:`
+  const mapa = leerCobrosBorrados()
+  let cambio = false
+  for (const k of Object.keys(mapa)) {
+    if (k.startsWith(pref)) {
+      delete mapa[k]
+      cambio = true
+    }
+  }
+  if (cambio) guardarCobrosBorrados(mapa)
+}
+
+export function esCobroBorrado(cobroId: string): boolean {
+  return String(cobroId || "") in leerCobrosBorrados()
+}
+
+// ---------------------------------------------------------------------------
 // ORIGEN vs TYPE
 //  - ORIGEN: cómo entró (Escaneado / Manual / Bank / Cobros). No cambia.
 //  - TYPE:   Bill (Bill, payable → Projected) o Receipt (already paid → Bank).
@@ -191,8 +264,12 @@ export type ResultadoReconciliacionCobros = {
 export function reconciliarCobrosAlLibro(
   trips: Trip[],
   date: string,
+  opts?: { explicit?: boolean },
 ): ResultadoReconciliacionCobros {
   const dia = String(date || "").slice(0, 10)
+  // Solo el botón explícito limpia las lápidas del día: el auto nunca
+  // regenera un cobro que Miguel borró (2026-11-15).
+  if (opts?.explicit) limpiarMarcasCobroBorradoDia(dia)
   const delDia = (trips || []).filter((t) => tripDateOf(t) === dia)
 
   const porPlataforma = new Map<string, number>()
@@ -201,6 +278,16 @@ export function reconciliarCobrosAlLibro(
     if (net <= 0) continue
     const p = String(t.platform || "Other")
     porPlataforma.set(p, Math.round(((porPlataforma.get(p) || 0) + net) * 100) / 100)
+  }
+
+  // Lápida (2026-11-15): las plataformas borradas por Miguel no se
+  // regeneran en el auto. Sus líneas tampoco quedan en idsCobroNuevos,
+  // así que el filtro de abajo las saca si alguna quedara colgada.
+  const borrados = leerCobrosBorrados()
+  const porPlataformaViva = new Map<string, number>()
+  for (const [p, amount] of porPlataforma) {
+    if (borrados[idDeCobro(dia, p)]) continue
+    porPlataformaViva.set(p, amount)
   }
 
   let lista = leerLibroMayor()
@@ -216,12 +303,12 @@ export function reconciliarCobrosAlLibro(
   // duplicada. Una línea nueva solo nace de otra plataforma o de una entrada
   // manual (ids manual-*, que este filtro no toca).
   const prefCobro = prefijoCobroDia(dia)
-  const idsCobroNuevos = new Set([...porPlataforma.keys()].map((p) => idDeCobro(dia, p)))
+  const idsCobroNuevos = new Set([...porPlataformaViva.keys()].map((p) => idDeCobro(dia, p)))
   lista = lista.filter((e) => !String(e.id).startsWith(prefCobro) || idsCobroNuevos.has(String(e.id)))
 
   const ahora = new Date().toISOString()
   let totalNet = 0
-  for (const [platform, amount] of porPlataforma) {
+  for (const [platform, amount] of porPlataformaViva) {
     totalNet += amount
     const count = delDia.filter((t) => String(t.platform) === platform).length
     const entry: CashFlowEntry = {
@@ -273,7 +360,7 @@ export function reconciliarCobrosAlLibro(
 
   return {
     entries: lista,
-    platforms: porPlataforma.size,
+    platforms: porPlataformaViva.size,
     totalNet: Math.round(totalNet * 100) / 100,
     replacedPlaceholders,
   }
@@ -317,30 +404,6 @@ export function fechasReconciliacionAuto(
     if (conViajes.has(d) && conNeto(d)) fechas.add(d)
   }
   return [...fechas].sort()
-}
-
-/** Borra cobros proyectados de días que YA NO tienen viajes con neto > 0.
- *  Evita fantasmas cuando se borran o se cambian de fecha los viajes.
- *  Miguel 2026-11-15: "no hay un viaje... están apareciendo, no es real". */
-export function limpiarCobrosSinViajes(
-  trips: Trip[],
-  libro: CashFlowEntry[],
-): CashFlowEntry[] {
-  const conNeto = new Set<string>()
-  for (const t of trips || []) {
-    if ((netOf(t) || 0) > 0) conNeto.add(tripDateOf(t))
-  }
-  const fechasConCobro = fechasConCobroProyectado(libro)
-  const aBorrar = fechasConCobro.filter((d) => !conNeto.has(d))
-  if (aBorrar.length === 0) return libro
-  const prefijos = new Set(aBorrar.map((d) => prefijoCobroDia(d)))
-  return libro.filter((e) => {
-    const id = String(e.id || "")
-    for (const pref of prefijos) {
-      if (id.startsWith(pref)) return false
-    }
-    return true
-  })
 }
 
 export function leerLibroMayor(): CashFlowEntry[] {

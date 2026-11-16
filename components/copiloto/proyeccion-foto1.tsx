@@ -557,32 +557,38 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
           columnas que reemplaza; sin línea NET FLOW (no está en la foto).
           El encabezado "CASH FLOW REGISTER & FORECAST" y la fila
           "PROJECTION SUMMARY" tampoco están en la foto: fuera. La tira
-          REAL BANK | PROJECTED MONTH vive arriba (MONEY) y se queda. */}
-      <div style={{ margin: "12px 12px 0", background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, padding: "12px 8px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 6, alignItems: "center" }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 9, color: SUB, letterSpacing: 0.4, fontWeight: 700, whiteSpace: "nowrap" }}>STARTING BAL.</div>
-            <div style={{ fontSize: 13, fontWeight: 800, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{fc.start < 0 ? "-$" : "$"}{money2(fc.start)}</div>
+          REAL BANK | PROJECTED MONTH vive arriba (MONEY) y se queda.
+          MEDIDAS (2026-11-15, foto de las 19:05: a 13px el texto se
+          encimaba en su teléfono): etiquetas 8.5px, valores 11.5px,
+          celdas centradas, columnas de dinero más anchas que la del
+          medidor. Verificado por captura a 390px (sin solapes ni
+          recortes; la fuente de la prueba es más ancha que la del iPhone,
+          así que en su teléfono sobra más). */}
+      <div style={{ margin: "12px 12px 0", background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, padding: "10px 6px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.15fr 1.15fr 1fr 1fr", gap: 2, alignItems: "center" }}>
+          <div style={{ minWidth: 0, textAlign: "center" }}>
+            <div style={{ fontSize: 8.5, color: SUB, letterSpacing: 0, fontWeight: 700, whiteSpace: "nowrap" }}>STARTING BAL.</div>
+            <div style={{ fontSize: 11.5, fontWeight: 800, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{fc.start < 0 ? "-$" : "$"}{money2(fc.start)}</div>
           </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 9, color: SUB, letterSpacing: 0.4, fontWeight: 700, whiteSpace: "nowrap" }}>INCOME (30D):</div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: GREEN, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{signed(fc.incomeTotal)}</div>
+          <div style={{ minWidth: 0, textAlign: "center" }}>
+            <div style={{ fontSize: 8.5, color: SUB, letterSpacing: 0, fontWeight: 700, whiteSpace: "nowrap" }}>INCOME (30D):</div>
+            <div style={{ fontSize: 11.5, fontWeight: 800, color: GREEN, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{signed(fc.incomeTotal)}</div>
           </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 9, color: SUB, letterSpacing: 0.4, fontWeight: 700, whiteSpace: "nowrap" }}>EXPENSES (30D):</div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: RED, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{signed(-fc.expenseTotal)}</div>
+          <div style={{ minWidth: 0, textAlign: "center" }}>
+            <div style={{ fontSize: 8.5, color: SUB, letterSpacing: 0, fontWeight: 700, whiteSpace: "nowrap" }}>EXPENSES (30D):</div>
+            <div style={{ fontSize: 11.5, fontWeight: 800, color: RED, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{signed(-fc.expenseTotal)}</div>
           </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 9, color: SUB, letterSpacing: 0.4, fontWeight: 700, whiteSpace: "nowrap" }}>ENDING BAL.</div>
+          <div style={{ minWidth: 0, textAlign: "center" }}>
+            <div style={{ fontSize: 8.5, color: SUB, letterSpacing: 0, fontWeight: 700, whiteSpace: "nowrap" }}>ENDING BAL.</div>
             {/* El saldo final SÍ puede ser negativo (es proyectado) y
                 debe VERSE negativo: antes se imprimía con money2() que
                 usa Math.abs y botaba el signo — se veía +$8,247.32
                 cuando la cuenta daba −$8,247.32. */}
-            <div style={{ fontSize: 13, fontWeight: 800, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", color: fc.end < 0 ? RED : undefined }}>{fc.end < 0 ? "-$" : "$"}{money2(fc.end)}</div>
+            <div style={{ fontSize: 11.5, fontWeight: 800, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", color: fc.end < 0 ? RED : undefined }}>{fc.end < 0 ? "-$" : "$"}{money2(fc.end)}</div>
           </div>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 0 }}>
-            <Gauge health={health} size={50} />
-            <div style={{ fontSize: 8.5, fontWeight: 800, color: health.color, marginTop: -3, whiteSpace: "nowrap" }}>
+            <Gauge health={health} size={40} />
+            <div style={{ fontSize: 7, fontWeight: 800, color: health.color, marginTop: 0, whiteSpace: "nowrap" }}>
               HEALTH: {health.label}
             </div>
           </div>

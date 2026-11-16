@@ -18,7 +18,7 @@ import {
 import { cn } from "@/lib/utils"
 import { localDateKey } from "@/lib/dates"
 import { type Trip, type TollBill, grossOf, netOf, money, tripDateOf } from "./types"
-import { fechasReconciliacionAuto, limpiarCobrosSinViajes, leerLibroMayor, reconciliarCobrosAlLibro } from "./cash-flow-store"
+import { fechasReconciliacionAuto, leerLibroMayor, reconciliarCobrosAlLibro } from "./cash-flow-store"
 import { HourlyOverlay } from "./hourly-overlay"
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
 import { isVoucherPlatform } from "./platform-meta"
@@ -357,20 +357,15 @@ export function RegisterScreen({
   // si Miguel le da al botón de ese día (fechasReconciliacionAuto).
   useEffect(() => {
     const today = localDateKey(new Date())
-    const libro = leerLibroMayor()
-    // Primero limpia cobros de días que ya no tienen viajes
-    const limpio = limpiarCobrosSinViajes(trips, libro)
-    if (limpio.length !== libro.length) {
-      try { localStorage.setItem("claris_cash_flow_entries", JSON.stringify(limpio)) } catch {}
-      try { window.dispatchEvent(new Event("claris:finance-synced")) } catch {}
-    }
-    for (const fecha of fechasReconciliacionAuto(trips, today, limpio)) {
+    for (const fecha of fechasReconciliacionAuto(trips, today, leerLibroMayor())) {
       reconciliarCobrosAlLibro(trips, fecha)
     }
   }, [trips])
 
   function reconciliarHaciaDinero() {
-    const result = reconciliarCobrosAlLibro(trips, selectedDate)
+    // Explícito: limpia las lápidas del día y regenera sus cobros
+    // (regla de Miguel, 2026-11-15: si duplica, él lo borra).
+    const result = reconciliarCobrosAlLibro(trips, selectedDate, { explicit: true })
     if (result.platforms === 0) {
       alert(`No net income on ${selectedDate} to send to MONEY.`)
       return

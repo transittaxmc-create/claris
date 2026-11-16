@@ -11,6 +11,7 @@ import {
   LEDGER_KEY,
   ETIQUETA_ORIGEN,
   etiquetaCombinada,
+  marcarCobroBorrado,
   normalizarLibro,
   origenDe,
   sinSemillas,
@@ -574,6 +575,9 @@ export function CashFlowRegister({
 
   const handleDelete = (id: string) => {
     if (!window.confirm("Delete this entry?")) return
+    // Lápida (2026-11-15): si era un cobro de Earnings, que el auto no lo
+    // regenere; solo el botón "Update receivables → Money" lo trae de vuelta.
+    if (String(id).startsWith("claris:cobro:")) marcarCobroBorrado(id)
     saveEntries(entries.filter((e) => e.id !== id))
   }
 
