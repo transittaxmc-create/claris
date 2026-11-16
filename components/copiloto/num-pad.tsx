@@ -25,7 +25,7 @@ export function NumPad({
         onClick={onDone}
         className="col-span-3 mt-1 h-10 rounded-xl bg-yellow-400 text-sm font-bold text-black"
       >
-        Listo
+        Done
       </button>
     </div>
   )
