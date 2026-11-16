@@ -610,7 +610,7 @@ export function EntryScreen({
             {platformOpen && (
               <div
                 role="listbox"
-                className="absolute left-0 right-0 top-full z-20 mt-1 max-h-72 overflow-y-auto rounded-xl border border-neutral-800 bg-neutral-900 shadow-xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="fixed inset-x-4 top-32 z-50 max-h-[70vh] overflow-y-auto rounded-2xl border border-neutral-700 bg-neutral-900 shadow-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
                 {PLATFORMS.map((p) => (
                   <button
