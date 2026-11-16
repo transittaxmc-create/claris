@@ -459,6 +459,30 @@ export function EntryScreen({
   const today = new Date()
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
   const todayTrips = trips.filter((trip) => tripDateOf(trip) === todayKey)
+
+  // Top platforms for quick buttons: 2 most used + 2 most used vouchers
+  const quickPlatforms = (() => {
+    const counts = new Map<string, number>()
+    for (const t of trips) {
+      const p = t.platform || "Other"
+      counts.set(p, (counts.get(p) || 0) + 1)
+    }
+    const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1])
+    const top = sorted.slice(0, 2).map(([p]) => p)
+    const vouchers = sorted.filter(([p]) => isVoucherPlatform(p as any)).slice(0, 2).map(([p]) => p)
+    const seen = new Set<string>()
+    const out: string[] = []
+    for (const p of [...top, ...vouchers]) {
+      if (!seen.has(p) && out.length < 4) { seen.add(p); out.push(p) }
+    }
+    // Fallback if few trips
+    if (out.length < 4) {
+      for (const p of ["Uber", "Lyft", "Aventus Ride", "Classic Ryde"]) {
+        if (!seen.has(p) && out.length < 4) { seen.add(p); out.push(p) }
+      }
+    }
+    return out
+  })()
   const grossIncomeToday = todayTrips.reduce((total, trip) => total + grossOf(trip), 0)
 
   // Contador acumulativo de peajes (Miguel, 2026-10-29): TODO lo del día —
@@ -568,21 +592,30 @@ export function EntryScreen({
             logos originales de cada plataforma (orden de Miguel,
             2026-10-31: "en la V7 prefiero dejarla como está esa parte").
             La tarjeta del clon NO se aplicó aquí. */}
-        <div className="flex items-center gap-2 sm:col-span-2">
-          <div className="relative flex-1">
+        <div className="flex items-center gap-1.5 sm:col-span-2">
+          {quickPlatforms.map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => setDraft((d) => ({ ...d, platform: p as any, isVoucher: isVoucherPlatform(p as any) }))}
+              className={cn(
+                "flex h-9 min-w-0 flex-1 items-center justify-center gap-1 rounded-lg border px-1.5 text-[10px] font-bold transition-colors",
+                draft.platform === p
+                  ? "border-yellow-400 bg-yellow-400/15 text-yellow-300"
+                  : "border-neutral-700 bg-neutral-900 text-neutral-300"
+              )}
+            >
+              <PlatformAvatar platform={p as any} size={16} />
+              <span className="truncate">{p.split(" ")[0]}</span>
+            </button>
+          ))}
+          <div className="relative">
             <button
               type="button"
               onClick={() => setPlatformOpen((o) => !o)}
-              aria-haspopup="listbox"
-              aria-expanded={platformOpen}
-              className="flex w-full items-center justify-between rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2"
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-700 bg-neutral-900 text-neutral-400"
             >
-              <span className="flex min-w-0 items-center gap-2">
-                <PlatformAvatar platform={draft.platform} size={30} />
-                <span className="truncate font-semibold text-white">{draft.platform}</span>
-                <PlatformBadge platform={draft.platform} />
-              </span>
-              <ChevronDown className="size-4 shrink-0 text-neutral-500" />
+              <ChevronDown className="size-4" />
             </button>
 
             {platformOpen && (
@@ -616,19 +649,7 @@ export function EntryScreen({
             )}
           </div>
 
-          <button
-            type="button"
-            onClick={() => setOnBreak((b) => !b)}
-            className={cn(
-              "flex shrink-0 items-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-bold transition-colors",
-              onBreak
-                ? "border-orange-400 bg-orange-400/15 text-orange-400"
-                : "border-neutral-700 bg-neutral-900 text-neutral-300"
-            )}
-          >
-            <Coffee className="size-4" />
-            {onBreak ? "ON BREAK" : "BREAK/LUNCH"}
-          </button>
+          </div>
         </div>
 
         {/* ============================================== */}
@@ -826,6 +847,21 @@ export function EntryScreen({
           la pantalla hasta la navegación. El safe-area lo maneja el
           BottomNav, que es el último elemento. */}
       <div className="shrink-0 border-t border-neutral-800 bg-black px-4 pb-2 pt-2 sm:px-8 sm:py-5">
+        <div className="mb-2 flex justify-end">
+          <button
+            type="button"
+            onClick={() => setOnBreak((b) => !b)}
+            className={cn(
+              "flex items-center gap-1 rounded-lg border px-2.5 py-1 text-[10px] font-bold",
+              onBreak
+                ? "border-orange-400 bg-orange-400/15 text-orange-400"
+                : "border-neutral-700 bg-neutral-900 text-neutral-400"
+            )}
+          >
+            <Coffee className="size-3" />
+            {onBreak ? "ON BREAK" : "BREAK"}
+          </button>
+        </div>
         <button
           type="button"
           onClick={handleSave}
