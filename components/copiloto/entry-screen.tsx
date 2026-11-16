@@ -186,12 +186,14 @@ function EarningsCard({
   color,
   value,
   onChange,
+  inputId,
 }: {
   icon: string
   label: string
   color: string
   value: number
   onChange: (n: number) => void
+  inputId?: string
 }) {
   // null = no se está editando -> se muestra el valor numérico real.
   const [text, setText] = useState<string | null>(null)
@@ -211,6 +213,7 @@ function EarningsCard({
       </div>
       <p className="text-[8px] font-bold uppercase tracking-wide text-neutral-500">{label}</p>
       <input
+        id={inputId}
         type="text"
         inputMode="decimal"
         enterKeyHint="done"
@@ -452,6 +455,11 @@ export function EntryScreen({
 
     setDraft(newTrip())
     tollHit.current.clear()
+    // Cursor directo a FARE para el siguiente viaje
+    setTimeout(() => {
+      const el = document.getElementById("fare-input") as HTMLInputElement | null
+      if (el) { el.focus(); el.select() }
+    }, 50)
     // Si el turno no está corriendo, el GPS era solo para peajes: apagarlo.
     if (!shift.shiftActive) shift.stopGpsWatch()
   }
@@ -667,7 +675,7 @@ export function EntryScreen({
             <span className="text-[9px] text-neutral-500">All values in USD</span>
           </div>
           <div className="grid grid-cols-5 gap-1.5">
-            <EarningsCard icon="💼" label="FARE" color="text-green-400" value={draft.earnings} onChange={(n) => set("earnings", n)} />
+            <EarningsCard icon="💼" label="FARE" color="text-green-400" value={draft.earnings} onChange={(n) => set("earnings", n)} inputId="fare-input" />
             <EarningsCard icon="⭐" label="TIPS" color="text-green-400" value={draft.tips} onChange={(n) => set("tips", n)} />
             <EarningsCard icon="🛣️" label="TOLLS" color="text-amber-400" value={draft.toll} onChange={(n) => set("toll", n)} />
             <EarningsCard icon="%" label="FEE" color="text-red-500" value={draft.platformFee} onChange={(n) => set("platformFee", n)} />
