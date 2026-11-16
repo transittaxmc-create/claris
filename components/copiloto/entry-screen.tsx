@@ -226,7 +226,14 @@ function EarningsCard({
         spellCheck={false}
         aria-label={label}
         value={display}
-        onFocus={() => { setText(moneyTextFromNumber(value)); onActivate?.() }}
+        onFocus={(e) => {
+          setText(moneyTextFromNumber(value))
+          onActivate?.()
+          if (inputId === "fare-input") {
+            // Mata el teclado del sistema en iOS
+            setTimeout(() => e.target.blur(), 10)
+          }
+        }}
         onBlur={() => {
           const clean = normalizeMoneyText(display)
           setText(null)
