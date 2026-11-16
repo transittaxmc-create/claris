@@ -559,30 +559,30 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
           "PROJECTION SUMMARY" tampoco están en la foto: fuera. La tira
           REAL BANK | PROJECTED MONTH vive arriba (MONEY) y se queda. */}
       <div style={{ margin: "12px 12px 0", background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, padding: "12px 8px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(0, 1fr))", gap: 6, alignItems: "center" }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 9, color: SUB, letterSpacing: 0.4, fontWeight: 700, whiteSpace: "nowrap" }}>STARTING BAL.</div>
-            <div style={{ fontSize: 13, fontWeight: 800, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{fc.start < 0 ? "-$" : "$"}{money2(fc.start)}</div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr)) minmax(54px, .82fr)", alignItems: "center" }}>
+          <div style={{ minWidth: 0, padding: "0 4px", textAlign: "center" }}>
+            <div style={{ fontSize: "clamp(7px, 2.1vw, 9px)", color: SUB, letterSpacing: 0.2, fontWeight: 700, lineHeight: 1.2, minHeight: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>STARTING BAL.</div>
+            <div style={{ fontSize: "clamp(9px, 3vw, 13px)", fontWeight: 800, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{fc.start < 0 ? "-$" : "$"}{money2(fc.start)}</div>
           </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 9, color: SUB, letterSpacing: 0.4, fontWeight: 700, whiteSpace: "nowrap" }}>INCOME (30D):</div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: GREEN, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{signed(fc.incomeTotal)}</div>
+          <div style={{ minWidth: 0, padding: "0 4px", textAlign: "center", borderLeft: `1px solid ${BORDER}` }}>
+            <div style={{ fontSize: "clamp(7px, 2.1vw, 9px)", color: SUB, letterSpacing: 0.2, fontWeight: 700, lineHeight: 1.2, minHeight: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>INCOME (30D)</div>
+            <div style={{ fontSize: "clamp(9px, 3vw, 13px)", fontWeight: 800, color: GREEN, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{signed(fc.incomeTotal)}</div>
           </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 9, color: SUB, letterSpacing: 0.4, fontWeight: 700, whiteSpace: "nowrap" }}>EXPENSES (30D):</div>
-            <div style={{ fontSize: 13, fontWeight: 800, color: RED, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{signed(-fc.expenseTotal)}</div>
+          <div style={{ minWidth: 0, padding: "0 4px", textAlign: "center", borderLeft: `1px solid ${BORDER}` }}>
+            <div style={{ fontSize: "clamp(7px, 2.1vw, 9px)", color: SUB, letterSpacing: 0.2, fontWeight: 700, lineHeight: 1.2, minHeight: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>EXPENSES (30D)</div>
+            <div style={{ fontSize: "clamp(9px, 3vw, 13px)", fontWeight: 800, color: RED, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{signed(-fc.expenseTotal)}</div>
           </div>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: 9, color: SUB, letterSpacing: 0.4, fontWeight: 700, whiteSpace: "nowrap" }}>ENDING BAL.</div>
+          <div style={{ minWidth: 0, padding: "0 4px", textAlign: "center", borderLeft: `1px solid ${BORDER}` }}>
+            <div style={{ fontSize: "clamp(7px, 2.1vw, 9px)", color: SUB, letterSpacing: 0.2, fontWeight: 700, lineHeight: 1.2, minHeight: 22, display: "flex", alignItems: "center", justifyContent: "center" }}>ENDING BAL.</div>
             {/* El saldo final SÍ puede ser negativo (es proyectado) y
                 debe VERSE negativo: antes se imprimía con money2() que
                 usa Math.abs y botaba el signo — se veía +$8,247.32
                 cuando la cuenta daba −$8,247.32. */}
-            <div style={{ fontSize: 13, fontWeight: 800, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", color: fc.end < 0 ? RED : undefined }}>{fc.end < 0 ? "-$" : "$"}{money2(fc.end)}</div>
+            <div style={{ fontSize: "clamp(9px, 3vw, 13px)", fontWeight: 800, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", color: fc.end < 0 ? RED : undefined }}>{fc.end < 0 ? "-$" : "$"}{money2(fc.end)}</div>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 0 }}>
-            <Gauge health={health} size={50} />
-            <div style={{ fontSize: 8.5, fontWeight: 800, color: health.color, marginTop: -3, whiteSpace: "nowrap" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 0, paddingLeft: 3, borderLeft: `1px solid ${BORDER}` }}>
+            <Gauge health={health} size={42} />
+            <div style={{ fontSize: "clamp(6px, 1.9vw, 8.5px)", fontWeight: 800, color: health.color, marginTop: -3, whiteSpace: "nowrap" }}>
               HEALTH: {health.label}
             </div>
           </div>
