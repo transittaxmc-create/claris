@@ -82,7 +82,7 @@ export function MoneyAccountCard(props: {
         // completa, nombre (truncado con … si hace falta) y balance entero
         // caben en la misma línea sin tocarse. Solo aplica cuando la
         // cuadrícula tiene 2 columnas (≥361px, como en el padre).
-        main ? "money-card-main gap-2.5 px-4 py-2.5 min-[361px]:col-span-2" : "gap-2.5 px-3 py-2",
+        "gap-2.5 px-3 py-2",
       )}
     >
       {props.onToggleFund && (
@@ -107,21 +107,15 @@ export function MoneyAccountCard(props: {
           />
         </span>
       )}
-      <BankLogo brand={brand} name={props.name} size={main ? "lg" : "sm"} />
+      <BankLogo brand={brand} name={props.name} size="sm" />
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="flex min-w-0 items-center gap-1.5">
           {main && <Star className="size-3.5 shrink-0 fill-[#f5b84c] text-[#f5b84c]" />}
-          <span className={cn("min-w-0 truncate font-extrabold text-[#f2f3f7]", main ? "text-base" : "text-sm")}>
+          <span className={cn("min-w-0 truncate font-extrabold text-[#f2f3f7]", "text-sm")}>
             {main ? props.name : brand.id === "generic" ? props.name : brand.short}
           </span>
         </span>
         <span className="flex min-w-0 items-baseline gap-1.5">
-          {main && (
-            <span className="shrink-0 text-[9px] font-extrabold tracking-[.08em] text-[#f5b84c]">PRINCIPAL</span>
-          )}
-          {/* El contador "N mov." cierra esta misma línea (antes flotaba en
-              la esquina, donde ahora va el balance): el truncate corta
-              primero el contador y conserva los dígitos de la cuenta. */}
           <span className={cn("truncate text-[10px] text-[#66687c]", MONEY_FONT_MONO)}>
             {props.subtitle}
             {typeof props.count === "number" ? ` · ${props.count} mov.` : ""}
@@ -132,7 +126,7 @@ export function MoneyAccountCard(props: {
         className={cn(
           "shrink-0 whitespace-nowrap font-extrabold",
           MONEY_FONT_MONO,
-          main ? "text-[26px]" : "text-[17px]",
+          "text-[17px]",
           props.balance === null ? "text-[#66687c]" : props.balance < 0 ? "text-[#ff5d6c]" : "text-[#2fbf71]",
         )}
       >
