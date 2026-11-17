@@ -332,6 +332,7 @@ export function RegistersHome(props: {
                   main={r.isMain}
                   count={movCount[r.id] ?? 0}
                   onClick={() => props.onOpenAccount(r.id)}
+                  onEditBalance={(v) => props.onSaveManualBalance?.(r.id, v)}
                   fundChecked={(props.otherFunds || []).includes(r.id)}
                   onToggleFund={
                     !r.isMain && r.kind === "bank" && (balances[r.id] ?? 0) > 0 && props.onToggleOtherFund
