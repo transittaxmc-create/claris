@@ -140,7 +140,7 @@ export function MoneyAccountCard(props: {
               const n = parseFloat(raw.replace(/[^0-9.-]/g, ""))
               if (Number.isFinite(n)) props.onEditBalance?.(n)
             }}
-            className="cursor-pointer underline decoration-dotted underline-offset-2"
+            className="cursor-pointer"
           >
             {props.balance === null ? "—" : money(props.balance)}
           </span>
