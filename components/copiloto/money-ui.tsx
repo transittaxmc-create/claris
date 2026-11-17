@@ -59,6 +59,7 @@ export function MoneyAccountCard(props: {
   /** Checkmark "otros fondos": suma el balance al opening de proyecciones. */
   fundChecked?: boolean
   onToggleFund?: () => void
+  onEditBalance?: (v: number) => void
 }) {
   const brand = bankBrandOf(props.rawName || props.name, props.institution)
   const main = !!props.main
@@ -135,7 +136,22 @@ export function MoneyAccountCard(props: {
           props.balance === null ? "text-[#66687c]" : props.balance < 0 ? "text-[#ff5d6c]" : "text-[#2fbf71]",
         )}
       >
-        {props.balance === null ? "—" : money(props.balance)}
+        {props.onEditBalance ? (
+          <input
+            type="text"
+            inputMode="decimal"
+            defaultValue={props.balance ?? ""}
+            onClick={(e) => e.stopPropagation()}
+            onBlur={(e) => {
+              const n = parseFloat(e.target.value.replace(/[^0-9.-]/g, ""))
+              if (Number.isFinite(n)) props.onEditBalance?.(n)
+            }}
+            className="w-20 bg-transparent text-right font-mono text-[15px] font-black tabular-nums outline-none"
+            placeholder="—"
+          />
+        ) : (
+          props.balance === null ? "—" : money(props.balance)
+        )}
       </span>
     </button>
   )
