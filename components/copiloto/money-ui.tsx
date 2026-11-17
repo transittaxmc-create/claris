@@ -137,18 +137,19 @@ export function MoneyAccountCard(props: {
         )}
       >
         {props.onEditBalance ? (
-          <input
-            type="text"
-            inputMode="decimal"
-            defaultValue={props.balance ?? ""}
-            onClick={(e) => e.stopPropagation()}
-            onBlur={(e) => {
-              const n = parseFloat(e.target.value.replace(/[^0-9.-]/g, ""))
+          <span
+            onClick={(e) => {
+              e.stopPropagation()
+              const cur = props.balance ?? 0
+              const raw = window.prompt("Balance", String(cur))
+              if (raw == null) return
+              const n = parseFloat(raw.replace(/[^0-9.-]/g, ""))
               if (Number.isFinite(n)) props.onEditBalance?.(n)
             }}
-            className="w-20 bg-transparent text-right font-mono text-[15px] font-black tabular-nums outline-none"
-            placeholder="—"
-          />
+            className="cursor-pointer underline decoration-dotted underline-offset-2"
+          >
+            {props.balance === null ? "—" : money(props.balance)}
+          </span>
         ) : (
           props.balance === null ? "—" : money(props.balance)
         )}
