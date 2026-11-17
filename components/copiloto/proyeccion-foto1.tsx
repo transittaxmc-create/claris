@@ -703,7 +703,7 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
                 </td>
               </tr>
             )}
-            {futuras.map(({ line, before, after }, i) => {
+            {futuras.filter(({ line }) => !/toll|peaje|e-?z-?pass|easy ?pass/i.test(line.label || "")).map(({ line, before, after }, i) => {
               const cat = lineCategory(line, schedules)
               const pb = partialNoteFor(line)
               const pbLeft = pb ? billRemaining(pb) : 0
