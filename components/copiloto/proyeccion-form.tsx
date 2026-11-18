@@ -10,7 +10,7 @@ import { CUSTOM_CATEGORIES_KEY, EXPENSE_CATEGORIES, isDuplicateSchedule, resolve
 import { SplitEditor } from "./split-editor"
 import { FINANCE_LEDGER_KEY, FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT } from "./finance-sync"
 import { etiquetaCombinada, marcarCobroBorrado } from "./cash-flow-store"
-import { SCHEDULE_OVERRIDES_KEY, todayKey, type ForecastLine, type ScheduleOverride } from "./dinero-forecast"
+import { expandSchedule, SCHEDULE_OVERRIDES_KEY, todayKey, type ForecastLine, type ScheduleOverride } from "./dinero-forecast"
 import { fmtFecha, fmtWeekday } from "./proyeccion-shared"
 
 const INK = "#f2f3f7"
@@ -326,15 +326,25 @@ export function ProyeccionForm(props: {
       // R27 (2026-11-15): no guardar un recurrente duplicado (mismo
       // tipo + comercio + monto + frecuencia) — el mismo cobro dos veces
       // proyectaba doble. Los inactivos no cuentan.
-      if (
-        isDuplicateSchedule(readList<ScheduledEntry>(FINANCE_SCHEDULES_KEY), {
-          kind,
-          description: desc,
-          amount: amt,
-          frequency: freq,
-        })
-      ) {
-        setError("That recurrent entry already exists (same name, amount and frequency).")
+      const duplicate = readList<ScheduledEntry>(FINANCE_SCHEDULES_KEY).find((existing) => {
+        if (
+          !isDuplicateSchedule([existing], {
+            kind,
+            description: desc,
+            amount: amt,
+            frequency: freq,
+          })
+        ) {
+          return false
+        }
+        // Old active records can be invisible in the forecast when their end
+        // date passed or their one-time/limited occurrences were exhausted.
+        return expandSchedule(existing, todayKey(), "9999-12-31").length > 0
+      })
+      if (duplicate) {
+        setError(
+          `An active ${duplicate.frequency} entry named “${duplicate.description}” for ${money(duplicate.amount)} is already scheduled. If you can’t see it, its next date may be outside the 90-day projection.`,
+        )
         return
       }
       const next = [...readList<ScheduledEntry>(FINANCE_SCHEDULES_KEY), sched]
