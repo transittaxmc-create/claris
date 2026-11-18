@@ -140,7 +140,7 @@ export function MoneyAccountCard(props: {
           />
         </span>
       )}
-      <span className={cn("shrink-0 rounded-full p-0.5", main && "ring-2 ring-yellow-400")}>
+      <span className={cn("shrink-0 rounded-full p-0.5")}>
         <BankLogo brand={brand} name={props.name} size="sm" />
       </span>
       <span
