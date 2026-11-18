@@ -46,6 +46,39 @@ export function BankLogo(props: { brand: BankBrand; name: string; size?: "sm" | 
 }
 
 /** Tarjeta de cuenta MONEY: degradado + franja con el color del banco. */
+
+function BalanceEdit({ value, onSave }: { value: number | null; onSave: (n: number) => void }) {
+  const [editing, setEditing] = useState(false)
+  const [text, setText] = useState(value == null ? "" : String(value))
+  if (!editing) {
+    return (
+      <span onClick={(e) => { e.stopPropagation(); setEditing(true); setText(value == null ? "" : String(value)) }} className="cursor-pointer">
+        {value === null ? "—" : money(value)}
+      </span>
+    )
+  }
+  return (
+    <input
+      autoFocus
+      type="text"
+      inputMode="decimal"
+      value={text}
+      onClick={(e) => e.stopPropagation()}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => {
+        const n = parseFloat(text.replace(/[^0-9.-]/g, ""))
+        if (Number.isFinite(n)) onSave(n)
+        setEditing(false)
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.target as HTMLInputElement).blur()
+        if (e.key === "Escape") setEditing(false)
+      }}
+      className="w-24 rounded-md border border-yellow-400/60 bg-black/40 px-1.5 py-0.5 text-right text-[15px] font-black tabular-nums text-white outline-none"
+    />
+  )
+}
+
 export function MoneyAccountCard(props: {
   name: string
   /** Nombre completo de la cuenta (para detectar la marca: "Square Checking"). */
@@ -131,19 +164,7 @@ export function MoneyAccountCard(props: {
         )}
       >
         {props.onEditBalance ? (
-          <span
-            onClick={(e) => {
-              e.stopPropagation()
-              const cur = props.balance ?? 0
-              const raw = window.prompt("Balance", String(cur))
-              if (raw == null) return
-              const n = parseFloat(raw.replace(/[^0-9.-]/g, ""))
-              if (Number.isFinite(n)) props.onEditBalance?.(n)
-            }}
-            className="cursor-pointer"
-          >
-            {props.balance === null ? "—" : money(props.balance)}
-          </span>
+          <BalanceEdit value={props.balance} onSave={props.onEditBalance} />
         ) : (
           props.balance === null ? "—" : money(props.balance)
         )}
