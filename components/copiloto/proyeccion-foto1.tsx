@@ -390,7 +390,7 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
       .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
       .map((l: ForecastLine) => {
         const before = bal
-        bal = Math.round((bal + (l.checked ? 0 : l.amount)) * 100) / 100
+        bal = Math.round((bal + (l.checked || l.settled ? 0 : l.amount)) * 100) / 100
         return { line: l, before, after: bal }
       })
   }, [fcLong, today])
@@ -480,8 +480,8 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
   const desglose = useMemo(() => {
     const inc = new Map<string, number>(), exp = new Map<string, number>()
     for (const l of fc.lines) {
-      if (l.checked) continue
-      const c = lineCategory(l, schedules)
+    if (l.checked || l.settled) continue
+    const c = lineCategory(l, schedules)
       if (l.amount > 0) inc.set(c, (inc.get(c) || 0) + l.amount)
       else exp.set(c, (exp.get(c) || 0) + Math.abs(l.amount))
     }
@@ -716,8 +716,8 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
               const weekStartIso = weekStartOf(line.date)
               const isLastLineOfWeek = !nextFuture || weekStartOf(nextFuture.line.date) !== weekStartIso
               const weekLines = isLastLineOfWeek ? futuras.filter((item) => item.line.date >= weekStartIso && item.line.date <= line.date) : []
-              const weekIncome = weekLines.reduce((sum, item) => sum + (!item.line.checked && item.line.amount > 0 ? item.line.amount : 0), 0)
-              const weekExpenses = weekLines.reduce((sum, item) => sum + (!item.line.checked && item.line.amount < 0 ? Math.abs(item.line.amount) : 0), 0)
+              const weekIncome = weekLines.reduce((sum, item) => sum + (!item.line.checked && !item.line.settled && item.line.amount > 0 ? item.line.amount : 0), 0)
+              const weekExpenses = weekLines.reduce((sum, item) => sum + (!item.line.checked && !item.line.settled && item.line.amount < 0 ? Math.abs(item.line.amount) : 0), 0)
               // Peajes de la semana: el registro macheado (GPS + statement,
               // sin repeticiones, con la corrección de Miguel aplicada) —
               // NUNCA la suma de líneas del forecast con etiqueta de peaje.
@@ -764,6 +764,11 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
                         {pb && pbLeft > 0.009 && (
                           <div style={{ fontSize: 9.5, color: SUB, marginTop: 1, whiteSpace: "normal" }}>
                             Original ${money2(Number(pb.amount) || 0)} · Paid ${money2(billPaidTotal(pb))} · Left ${money2(pbLeft)}
+                          </div>
+                        )}
+                        {line.settled && (
+                          <div style={{ fontSize: 9.5, color: GREEN, fontWeight: 700, marginTop: 1, whiteSpace: "normal" }}>
+                            ✓ PAID AT BANK · DOES NOT AFFECT PROJECTION
                           </div>
                         )}
                         {line.checked && (

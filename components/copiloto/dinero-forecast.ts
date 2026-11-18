@@ -60,6 +60,8 @@ export interface ForecastLine {
   /** Marcado por Miguel HOY con el check: se sigue viendo, pero ya no
    *  cuenta en ningún total ni en el balance; mañana desaparece. */
   checked?: boolean
+  /** Ya reflejado en el balance real del banco: permanece visible, pero no vuelve a mover la proyección. */
+  settled?: boolean
   /** División por categorías (Quicken split) de esta ocurrencia, cuando
    *  viene de un override "solo esta fecha" (R28): las líneas suman el
    *  monto de la ocurrencia y la categoría pasa a ser "Split". */
@@ -1070,6 +1072,19 @@ export function buildForecast(input: ForecastInput): Forecast {
         const tiBill = findTx(false, remaining, bDate, bill.vendor, 10, 0.02, true, bDate < today)
         if (tiBill >= 0) {
           usedTx.add(tiBill)
+          recurringPaidSkipped++
+          lines.push({
+            id: `rc:${s.id}:${d}`,
+            key: `rc:${s.id}:${d}`,
+            date: bDate < today ? today : bDate,
+            label: effLabel,
+            amount: -remaining,
+            kind: "rec",
+            scheduleId: s.id,
+            frequency: s.frequency,
+            settled: true,
+            ...ovCategoryField,
+          })
           continue
         }
         recurringCount++
@@ -1095,6 +1110,19 @@ export function buildForecast(input: ForecastInput): Forecast {
         if (ti >= 0) {
           usedTx.add(ti)
           recurringPaidSkipped++
+          lines.push({
+            id: `rc:${s.id}:${d}`,
+            key: `rc:${s.id}:${d}`,
+            date: d,
+            label: effLabel,
+            amount: income ? effAmt : -effAmt,
+            kind: "rec",
+            scheduleId: s.id,
+            frequency: s.frequency,
+            settled: true,
+            ...ovCategoryField,
+            ...(ovSplit?.splits ? { splits: ovSplit.splits } : {}),
+          })
           continue
         }
       }
@@ -1160,7 +1188,7 @@ export function buildForecast(input: ForecastInput): Forecast {
   let overdueExpenseTotal = 0
   let overdueExpenseCount = 0
   for (const ln of lines) {
-    if (ln.checked) continue
+    if (ln.checked || ln.settled) continue
     if (ln.amount >= 0) {
       incomeTotal = r2(incomeTotal + ln.amount)
       incomeCount++
@@ -1183,7 +1211,7 @@ export function buildForecast(input: ForecastInput): Forecast {
   for (let i = 0; i <= horizon; i++) {
     const dayLines: ForecastLine[] = []
     while (li < lines.length && lines[li].date === cursor) dayLines.push(lines[li++])
-    const delta = r2(dayLines.reduce((s, x) => s + (x.checked ? 0 : x.amount), 0))
+    const delta = r2(dayLines.reduce((s, x) => s + (x.checked || x.settled ? 0 : x.amount), 0))
     bal = r2(bal + delta)
     if (bal < lowest.balance) lowest = { date: cursor, balance: bal }
     days.push({ date: cursor, lines: dayLines, delta, balance: bal })

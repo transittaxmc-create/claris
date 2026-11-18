@@ -68,6 +68,12 @@ function signed(n: number): string {
 
 function KindBadge({ line }: { line: ForecastLine }) {
   const base = "inline-flex items-center gap-0.5 whitespace-nowrap rounded border px-1 py-0.5 text-[9px] font-semibold"
+  if (line.settled)
+    return (
+      <span className={cn(base, "border-neutral-600/40 bg-neutral-700/20 text-neutral-400")}>
+        Paid at bank
+      </span>
+    )
   if (line.kind === "rec")
     return (
       <span className={cn(base, "border-violet-500/30 bg-violet-500/10 text-violet-300")}>
@@ -1096,7 +1102,7 @@ function ProjectionRegister(props: {
         // ningún saldo — el monto se sigue viendo en la fila, pero el
         // acumulado y el proyectado lo saltan (igual que el motor y que
         // Foto 1). Sin esto, el cierre final ≠ fc.end del encabezado.
-        const amt = ln.checked ? 0 : ln.amount
+        const amt = ln.checked || ln.settled ? 0 : ln.amount
         proy = r2(proy + amt)
         if (ln.kind === "proj" || ln.kind === "overdue") acum = r2(acum + amt)
         out.push({ line: ln, amount: ln.amount, balAcum: acum, balProy: proy, date: ln.date })
