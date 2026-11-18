@@ -140,20 +140,8 @@ export function MoneyAccountCard(props: {
           />
         </span>
       )}
-      <BankLogo brand={brand} name={props.name} size="sm" />
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className="flex min-w-0 items-center gap-1.5">
-          {main && <Star className="size-3.5 shrink-0 fill-[#f5b84c] text-[#f5b84c]" />}
-          <span className={cn("min-w-0 truncate font-extrabold text-[#f2f3f7]", "text-sm")}>
-            {main ? props.name : brand.id === "generic" ? props.name : brand.short}
-          </span>
-        </span>
-        <span className="flex min-w-0 items-baseline gap-1.5">
-          <span className={cn("truncate text-[10px] text-[#66687c]", MONEY_FONT_MONO)}>
-            {props.subtitle}
-            {typeof props.count === "number" ? ` · ${props.count} mov.` : ""}
-          </span>
-        </span>
+      <span className={cn("shrink-0 rounded-full p-0.5", main && "ring-2 ring-yellow-400")}>
+        <BankLogo brand={brand} name={props.name} size="sm" />
       </span>
       <span
         className={cn(
