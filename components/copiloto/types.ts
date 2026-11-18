@@ -79,14 +79,13 @@ export type ScheduledEntry = {
   splits?: TxSplit[]
 }
 
-/** ¿Ya existe un recurrente ACTIVO igual a este? Mismo tipo (ingreso/
- *  gasto), mismo comercio (descripción normalizada), mismo monto al
- *  centavo y misma frecuencia (R27, 2026-11-15). Dos recurrentes
- *  idénticos se expanden dos veces y duplican la proyección. Los
- *  inactivos no cuentan: un recurrente apagado no duplica nada. */
+/** ¿Ya existe un recurrente ACTIVO para la misma fecha de inicio? Un
+ *  registro con el mismo nombre, monto y frecuencia pero otra fecha puede
+ *  ser una programación distinta (y la anterior puede estar fuera del
+ *  horizonte visible o ya haber terminado). */
 export function isDuplicateSchedule(
   existing: ScheduledEntry[] | null | undefined,
-  cand: { kind: "income" | "expense"; description: string; amount: number; frequency: ScheduleFrequency },
+  cand: { kind: "income" | "expense"; description: string; amount: number; frequency: ScheduleFrequency; startDate?: string },
 ): ScheduledEntry | null {
   const norm = (s: unknown) => String(s || "").trim().toLowerCase().replace(/\s+/g, " ")
   const desc = norm(cand.description)
@@ -96,6 +95,7 @@ export function isDuplicateSchedule(
     if (!s || s.active === false) continue
     if (s.kind !== cand.kind) continue
     if (s.frequency !== cand.frequency) continue
+    if (cand.startDate && String(s.startDate || "").slice(0, 10) !== cand.startDate.slice(0, 10)) continue
     if (Math.round((Number(s.amount) || 0) * 100) / 100 !== amt) continue
     if (norm(s.description) !== desc) continue
     return s

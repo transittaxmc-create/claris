@@ -332,6 +332,7 @@ export function ProyeccionForm(props: {
           description: desc,
           amount: amt,
           frequency: freq,
+          startDate: date,
         })
       ) {
         setError("That recurrent entry already exists (same name, amount and frequency).")
