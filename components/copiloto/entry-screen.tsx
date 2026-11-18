@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { ChevronDown, MapPin, Coffee, Loader2, X, AlertTriangle, RotateCw, Edit2, Play, Pause, Square } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip, grossOf, tripDateOf } from "./types"
+import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip, grossOf, tripDateOf, tripAmountError } from "./types"
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
 import { NumPad } from "./num-pad"
 import { isVoucherPlatform } from "./platform-meta"
@@ -283,6 +283,11 @@ export function EntryScreen({
   const [geoError, setGeoError] = useState<string | null>(null)
   const [lowAccuracy, setLowAccuracy] = useState<{ which: "pickup" | "dropoff"; accuracy: number; errorMsg: string } | null>(null)
   const [storageSaved, setStorageSaved] = useState(false)
+  // 1.1: mensaje cuando el monto no vale ($0, negativo o basura).
+  const [saveError, setSaveError] = useState<string | null>(null)
+  // 1.2: SAVE deshabilitado mientras se guarda + candado contra doble toque.
+  const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
   // Montos ocultos al abrir (privacidad ante el cliente): cada uno se muestra con un toque.
   const [showGross, setShowGross] = useState(false)
   const [showRegister, setShowRegister] = useState(false)
@@ -300,8 +305,11 @@ export function EntryScreen({
     return () => window.removeEventListener(SHIFT_TOLLS_EVENT, refresh)
   }, [])
 
-  const set = <K extends keyof Trip>(key: K, val: Trip[K]) =>
+  const set = <K extends keyof Trip>(key: K, val: Trip[K]) => {
+    // Al tocar cualquier campo, el aviso de monto deja de valer.
+    setSaveError(null)
     setDraft((d) => ({ ...d, [key]: val }))
+  }
 
   async function capture(which: "pickup" | "dropoff") {
     setGeoError(null)
@@ -455,6 +463,16 @@ export function EntryScreen({
 
   function handleSave() {
     if (lowAccuracy) return
+    // 1.1: sin monto válido no se guarda nada — aviso en pantalla.
+    const amountError = tripAmountError(draft)
+    if (amountError) {
+      setSaveError(amountError)
+      return
+    }
+    // 1.2: un segundo toque mientras se guarda no crea otro viaje.
+    if (savingRef.current) return
+    savingRef.current = true
+    setSaving(true)
 
     // 1. Limpiar almacenamiento temporal de GPS (el viaje ya lo lleva dentro)
     clearTempLocations()
@@ -468,6 +486,12 @@ export function EntryScreen({
 
     setDraft(newTrip())
     tollHit.current.clear()
+    // El candado se suelta solo: para entonces el borrador ya es nuevo
+    // (monto $0) y la validación 1.1 frena cualquier toque tardío.
+    window.setTimeout(() => {
+      savingRef.current = false
+      setSaving(false)
+    }, 1000)
     // Cursor directo a FARE para el siguiente viaje
     setTimeout(() => {
       const el = document.getElementById("fare-input") as HTMLInputElement | null
@@ -884,20 +908,25 @@ export function EntryScreen({
           la pantalla hasta la navegación. El safe-area lo maneja el
           BottomNav, que es el último elemento. */}
       <div className="shrink-0 border-t border-neutral-800 bg-black px-4 pb-2 pt-2 sm:px-8 sm:py-5">
+        {saveError && (
+          <p role="alert" className="mb-2 rounded-xl border border-rose-500/50 bg-rose-500/10 px-3 py-2 text-center text-[13px] font-bold text-rose-400">
+            {saveError}
+          </p>
+        )}
         <button
           type="button"
           onClick={handleSave}
-          disabled={!!lowAccuracy}
+          disabled={!!lowAccuracy || saving}
           className={cn(
             "w-full rounded-2xl py-3 text-base font-extrabold tracking-wide transition-all",
             storageSaved
               ? "bg-emerald-500 text-black shadow-lg shadow-emerald-500/20"
-              : lowAccuracy
+              : lowAccuracy || saving
               ? "cursor-not-allowed bg-neutral-800 text-neutral-500 border border-neutral-700"
               : "bg-gradient-to-r from-yellow-500 to-amber-500 text-black active:scale-[0.99]"
           )}
         >
-          {storageSaved ? "STORAGE OK ✓" : lowAccuracy ? "⚠️ FIX GPS FIRST" : "+ SAVE TO DISK"}
+          {storageSaved ? "STORAGE OK ✓" : saving ? "SAVING…" : lowAccuracy ? "⚠️ FIX GPS FIRST" : "+ SAVE TO DISK"}
         </button>
       </div>
     </div>

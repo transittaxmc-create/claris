@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { X, Trash2, Scale, CircleCheck, TrendingDown, TrendingUp, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { PLATFORMS, tripDateInputValue, type Platform, type Reconciliation, type Trip, type TripStatus, money, netOf } from "./types"
+import { PLATFORMS, tripDateInputValue, type Platform, type Reconciliation, type Trip, type TripStatus, money, netOf, tripAmountError } from "./types"
 import { MoneyInput } from "./money-input"
 import { PlatformAvatar } from "./platform-avatar"
 import { isVoucherPlatform } from "./platform-meta"
@@ -34,13 +34,36 @@ export function TripEditSheet({
   onDelete: (id: string) => void
 }) {
   const [draft, setDraft] = useState<Trip | null>(trip)
+  // 1.1: mensaje cuando el monto no vale ($0, negativo o basura).
+  const [saveError, setSaveError] = useState<string | null>(null)
+  // 1.2: candado contra doble toque en SAVE CHANGES.
+  const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false)
 
   useEffect(() => setDraft(trip), [trip])
 
   if (!trip || !draft) return null
 
-  const set = <K extends keyof Trip>(key: K, val: Trip[K]) =>
+  function handleSave() {
+    if (!draft) return
+    // 1.1: sin monto válido no se guarda nada — aviso en pantalla.
+    const amountError = tripAmountError(draft)
+    if (amountError) {
+      setSaveError(amountError)
+      return
+    }
+    // 1.2: un segundo toque no vuelve a guardar.
+    if (savingRef.current) return
+    savingRef.current = true
+    setSaving(true)
+    onSave(draft)
+  }
+
+  const set = <K extends keyof Trip>(key: K, val: Trip[K]) => {
+    // Al tocar cualquier campo, el aviso de monto deja de valer.
+    setSaveError(null)
     setDraft((d) => (d ? { ...d, [key]: val } : d))
+  }
 
   const setDate = (date: string) =>
     setDraft((d) => {
@@ -299,9 +322,15 @@ export function TripEditSheet({
 
         {/* Footer actions */}
         <div
-          className="flex gap-3 border-t border-neutral-800 px-4 py-3"
+          className="flex flex-col gap-2 border-t border-neutral-800 px-4 py-3"
           style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom, 0px))" }}
         >
+          {saveError && (
+            <p role="alert" className="rounded-xl border border-rose-500/50 bg-rose-500/10 px-3 py-2 text-center text-[13px] font-bold text-rose-400">
+              {saveError}
+            </p>
+          )}
+          <div className="flex gap-3">
           <button
             type="button"
             onClick={() => {
@@ -313,11 +342,13 @@ export function TripEditSheet({
           </button>
           <button
             type="button"
-            onClick={() => onSave(draft)}
-            className="flex-1 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 py-3 text-sm font-extrabold text-black active:scale-[0.99]"
+            onClick={handleSave}
+            disabled={saving}
+            className="flex-1 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 py-3 text-sm font-extrabold text-black active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            SAVE CHANGES
+            {saving ? "SAVING…" : "SAVE CHANGES"}
           </button>
+          </div>
         </div>
       </div>
     </div>

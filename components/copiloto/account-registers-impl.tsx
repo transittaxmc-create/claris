@@ -148,6 +148,14 @@ export function RegistersHome(props: {
   const { registers, balances, dues, pairCount, looseCount } = props
   const [vista, setVista] = useState(0)
 
+  // Color del marco cuadrado de la principal (solo copia de prueba):
+  // ?frame=lime muestra el marco verde lima, cualquier otro valor (o sin
+  // parámetro) muestra el amarillo intenso. Miguel elige entre las dos.
+  const primaryFrame: "yellow" | "lime" =
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("frame") === "lime"
+      ? "lime"
+      : "yellow"
+
   // Cuentas VISIBLES en MONEY: solo las activas de los switches. El resto
   // de la pantalla (forecast, conteos) sigue trabajando con la lista
   // completa — una cuenta apagada conserva su register y sus datos.
@@ -330,6 +338,7 @@ export function RegistersHome(props: {
                   subtitle={`${last4Of(r.name) || r.mask ? `•••• ${last4Of(r.name) || r.mask}` : r.institution || r.name} · ${r.kind === "card" ? "Credit Card" : "Checking"}`}
                   balance={balances[r.id] ?? null}
                   main={r.isMain}
+                  frame={primaryFrame}
                   count={movCount[r.id] ?? 0}
                   onClick={() => props.onOpenAccount(r.id)}
                   onEditBalance={(v) => props.onSaveManualBalance?.(r.id, v)}

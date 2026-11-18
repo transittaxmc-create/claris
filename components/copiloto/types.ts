@@ -538,6 +538,18 @@ export function netOf(t: Trip): number {
   return grossOf(t) - t.platformFee
 }
 
+/** 1.1 (plan de fix): un viaje solo se guarda con un monto válido.
+ *  Devuelve el mensaje a mostrar en pantalla, o null si el monto vale. */
+export function tripAmountError(t: Trip): string | null {
+  const amounts = [t.earnings, t.extraCash, t.tips, t.toll, t.platformFee]
+  if (amounts.some((v) => typeof v !== "number" || !Number.isFinite(v)))
+    return "Amount not valid — check the numbers and try again."
+  if (amounts.some((v) => v < 0))
+    return "Amounts can't be negative — check FARE, TIPS, TOLLS, FEE or EXTRA."
+  if (grossOf(t) <= 0) return "Enter an amount over $0 to save this trip."
+  return null
+}
+
 export function money(n: number): string {
   const valor = Number(n) || 0
   const texto = Math.abs(valor).toLocaleString("en-US", {

@@ -30,7 +30,7 @@ import { guardarMovimiento, movimientoDeGasto } from "./cash-flow-store"
 import { startFinanceCloud } from "./finance-cloud"
 import { applyDifferenceToTrip, applyBankMatchesToTrips, normalizeTripStatus } from "./reconciliation"
 import { recordTrip } from "./mileage-log"
-import { SEED_TRIPS, newTrip, stampExpense, applyExpenseUpdatesToExpenses, grossOf, netOf, tripDateOf, money, type Expense, type ExpenseDocType, type Trip, type ScheduledEntry } from "./types"
+import { SEED_TRIPS, newTrip, stampExpense, applyExpenseUpdatesToExpenses, grossOf, netOf, tripDateOf, tripAmountError, money, type Expense, type ExpenseDocType, type Trip, type ScheduledEntry } from "./types"
 import {
   addBillPayment,
   billRemaining,
@@ -399,8 +399,11 @@ export function CopilotoApp() {
   }, [hydrated, persist])
 
   function saveNewFromEntry(t: Trip) {
+    // 1.1: la pantalla ya valida, pero ningún camino guarda un viaje sin monto.
+    if (tripAmountError(t)) return
     const stamped = stampTrip(normalizeTripStatus(t))
-    setTrips((prev) => [stamped, ...prev])
+    // 1.2: mismo id ya guardado = el mismo viaje (doble toque) — no duplicar.
+    setTrips((prev) => (prev.some((p) => p.id === stamped.id) ? prev : [stamped, ...prev]))
     setTab("REGISTER")
     queueDualSync(stamped)
     // Registro de millas IRS: recogida → dejada con su plataforma
@@ -413,6 +416,8 @@ export function CopilotoApp() {
   }
 
   function saveEdit(t: Trip) {
+    // 1.1: la hoja ya valida, pero ningún camino guarda un viaje sin monto.
+    if (tripAmountError(t)) return
     const stamped = stampTrip(normalizeTripStatus(t))
     setTrips((prev) => {
       const exists = prev.some((p) => p.id === stamped.id)

@@ -4,7 +4,6 @@
 // de 3 cifras, cabecera). Solo presentación: los datos vienen de claris.
 
 import { useState, type CSSProperties, type ReactNode } from "react"
-import { Star } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { money } from "./types"
 import { bankBrandOf, brandInitial, type BankBrand } from "./bank-brand"
@@ -93,6 +92,9 @@ export function MoneyAccountCard(props: {
   fundChecked?: boolean
   onToggleFund?: () => void
   onEditBalance?: (v: number) => void
+  /** Color del marco cuadrado de la cuenta principal (solo copia de prueba:
+      ?frame=yellow | ?frame=lime — Miguel elige). */
+  frame?: "yellow" | "lime"
 }) {
   const brand = bankBrandOf(props.rawName || props.name, props.institution)
   const main = !!props.main
@@ -140,7 +142,16 @@ export function MoneyAccountCard(props: {
           />
         </span>
       )}
-      <span className={cn("shrink-0 rounded-full p-0.5", main && "ring-2 ring-yellow-400")}>
+      {/* Marco CUADRADO alrededor de todo el logo (Miguel, 2026-11-18):
+          misma forma cuadrada del logo, esquinas rectas, sin anillo ni
+          círculo. Solo la principal lo lleva; los demás bancos quedan con
+          su logo cuadrado sin marco. */}
+      <span
+        className={cn(
+          "shrink-0 p-[2px]",
+          main && (props.frame === "lime" ? "border-[3px] border-[#A3E635]" : "border-[3px] border-[#FFD400]"),
+        )}
+      >
         <BankLogo brand={brand} name={props.name} size="sm" />
       </span>
       <span
