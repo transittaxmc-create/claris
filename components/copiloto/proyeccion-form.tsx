@@ -326,15 +326,22 @@ export function ProyeccionForm(props: {
       // R27 (2026-11-15): no guardar un recurrente duplicado (mismo
       // tipo + comercio + monto + frecuencia) — el mismo cobro dos veces
       // proyectaba doble. Los inactivos no cuentan.
-      if (
-        isDuplicateSchedule(readList<ScheduledEntry>(FINANCE_SCHEDULES_KEY), {
-          kind,
-          description: desc,
-          amount: amt,
-          frequency: freq,
-        })
-      ) {
-        setError("That recurrent entry already exists (same name, amount and frequency).")
+      const existing = isDuplicateSchedule(readList<ScheduledEntry>(FINANCE_SCHEDULES_KEY), {
+        kind,
+        description: desc,
+        amount: amt,
+        frequency: freq,
+      })
+      if (existing) {
+        // En vez de solo bloquear, abre el que ya existe para editarlo.
+        setError("That recurrent already exists. Opening it so you can edit or delete it.")
+        setTimeout(() => {
+          props.onClose()
+          // El padre puede abrir el editor si lo soporta
+          if (typeof (props as any).onOpenExisting === "function") {
+            (props as any).onOpenExisting(existing)
+          }
+        }, 600)
         return
       }
       const next = [...readList<ScheduledEntry>(FINANCE_SCHEDULES_KEY), sched]
