@@ -148,7 +148,7 @@ export function MoneyAccountCard(props: {
           "shrink-0 whitespace-nowrap font-extrabold",
           MONEY_FONT_MONO,
           "text-[17px]",
-          props.balance === null ? "text-[#66687c]" : props.balance < 0 ? "text-[#ff5d6c]" : "text-[#2fbf71]",
+          props.balance === null ? "text-[#66687c]" : props.balance < 0 ? "text-[#ff5d6c]" : "text-[#f2f3f7]",
         )}
       >
         {props.onEditBalance ? (
