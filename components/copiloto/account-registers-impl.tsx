@@ -148,13 +148,13 @@ export function RegistersHome(props: {
   const { registers, balances, dues, pairCount, looseCount } = props
   const [vista, setVista] = useState(0)
 
-  // Color del marco cuadrado de la principal (solo copia de prueba):
-  // ?frame=lime muestra el marco verde lima, cualquier otro valor (o sin
-  // parámetro) muestra el amarillo intenso. Miguel elige entre las dos.
+  // Color del anillo de la principal (solo copia de prueba):
+  // Miguel eligió LIMA (default, sin parámetro). ?frame=yellow muestra
+  // el anillo amarillo como alternativa.
   const primaryFrame: "yellow" | "lime" =
-    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("frame") === "lime"
-      ? "lime"
-      : "yellow"
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("frame") === "yellow"
+      ? "yellow"
+      : "lime"
 
   // Cuentas VISIBLES en MONEY: solo las activas de los switches. El resto
   // de la pantalla (forecast, conteos) sigue trabajando con la lista

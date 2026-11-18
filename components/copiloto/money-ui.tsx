@@ -15,16 +15,18 @@ export function brandStyle(b: BankBrand): CSSProperties {
   return { ["--brand" as string]: b.c, ["--brand-2" as string]: b.a } as CSSProperties
 }
 
-export function BankLogo(props: { brand: BankBrand; name: string; size?: "sm" | "lg" }) {
+export function BankLogo(props: { brand: BankBrand; name: string; size?: "sm" | "lg"; /** Logo redondo (anillo de la principal): recorta el tile a círculo. */ round?: boolean }) {
   const [broken, setBroken] = useState(false)
   const { brand } = props
   const big = props.size === "lg"
+  const round = !!props.round
   const showImg = !!brand.logo && !broken
   return (
     <span
       className={cn(
         "relative grid shrink-0 place-items-center overflow-hidden shadow-[0_0_0_1px_rgba(255,255,255,.08),0_2px_8px_rgba(0,0,0,.35)]",
-        big ? "size-[42px] rounded-[11px]" : "size-[34px] rounded-[9px]",
+        big ? "size-[42px]" : "size-[34px]",
+        round ? "rounded-full" : big ? "rounded-[11px]" : "rounded-[9px]",
         showImg ? (brand.fullTile ? "bg-transparent" : "bg-white") : "",
       )}
       style={showImg ? undefined : { background: `linear-gradient(135deg, ${brand.c}, ${brand.a})` }}
@@ -34,7 +36,7 @@ export function BankLogo(props: { brand: BankBrand; name: string; size?: "sm" | 
         <img
           src={brand.logo as string}
           alt={brand.short}
-          className={cn("object-contain", brand.fullTile ? "size-full" : "size-[72%]")}
+          className={cn("object-contain", brand.fullTile ? (round ? "absolute inset-[-3px] max-w-none" : "size-full") : "size-[72%]")}
           onError={() => setBroken(true)}
         />
       ) : (
@@ -92,8 +94,9 @@ export function MoneyAccountCard(props: {
   fundChecked?: boolean
   onToggleFund?: () => void
   onEditBalance?: (v: number) => void
-  /** Color del marco cuadrado de la cuenta principal (solo copia de prueba:
-      ?frame=yellow | ?frame=lime — Miguel elige). */
+  /** Color del ANILLO de la cuenta principal (solo copia de prueba:
+      ?frame=yellow | ?frame=lime — Miguel eligió LIMA, es el default;
+      ?frame=yellow muestra el anillo amarillo como alternativa). */
   frame?: "yellow" | "lime"
 }) {
   const brand = bankBrandOf(props.rawName || props.name, props.institution)
@@ -142,17 +145,19 @@ export function MoneyAccountCard(props: {
           />
         </span>
       )}
-      {/* Marco CUADRADO alrededor de todo el logo (Miguel, 2026-11-18):
-          misma forma cuadrada del logo, esquinas rectas, sin anillo ni
-          círculo. Solo la principal lo lleva; los demás bancos quedan con
-          su logo cuadrado sin marco. */}
+      {/* ANILLO alrededor del logo de la principal (Miguel, 2026-11-18
+          15:31 EST): el logo mismo es REDONDO y cubre todo el interior
+          del anillo — nada se sale por fuera. El anillo va pegado al
+          círculo, sin hueco. Solo la principal lo lleva; los demás bancos
+          quedan con su logo cuadrado sin anillo. */}
       <span
         className={cn(
-          "shrink-0 p-[2px]",
-          main && (props.frame === "lime" ? "border-[3px] border-[#A3E635]" : "border-[3px] border-[#FFD400]"),
+          "shrink-0",
+          main ? "rounded-full border-[3px]" : "p-[2px]",
+          main && (props.frame === "yellow" ? "border-[#FFD400]" : "border-[#A3E635]"),
         )}
       >
-        <BankLogo brand={brand} name={props.name} size="sm" />
+        <BankLogo brand={brand} name={props.name} size="sm" round={main} />
       </span>
       <span
         className={cn(
