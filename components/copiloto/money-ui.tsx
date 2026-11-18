@@ -16,7 +16,7 @@ export function brandStyle(b: BankBrand): CSSProperties {
   return { ["--brand" as string]: b.c, ["--brand-2" as string]: b.a } as CSSProperties
 }
 
-export function BankLogo(props: { brand: BankBrand; name: string; size?: "sm" | "lg" }) {
+export function BankLogo(props: { brand: BankBrand; name: string; size?: "sm" | "lg"; framed?: boolean }) {
   const [broken, setBroken] = useState(false)
   const { brand } = props
   const big = props.size === "lg"
@@ -27,6 +27,8 @@ export function BankLogo(props: { brand: BankBrand; name: string; size?: "sm" | 
         "relative grid shrink-0 place-items-center overflow-hidden shadow-[0_0_0_1px_rgba(255,255,255,.08),0_2px_8px_rgba(0,0,0,.35)]",
         big ? "size-[42px] rounded-[11px]" : "size-[34px] rounded-[9px]",
         showImg ? (brand.fullTile ? "bg-transparent" : "bg-white") : "",
+        // Cuenta principal: marco amarillo cuadrado alrededor del logo.
+        props.framed && "ring-2 ring-yellow-400",
       )}
       style={showImg ? undefined : { background: `linear-gradient(135deg, ${brand.c}, ${brand.a})` }}
     >
@@ -116,9 +118,6 @@ export function MoneyAccountCard(props: {
         // caben en la misma línea sin tocarse. Solo aplica cuando la
         // cuadrícula tiene 2 columnas (≥361px, como en el padre).
         "gap-2.5 px-3 py-2",
-        // Marco amarillo en TODA la tarjeta principal (Miguel 2026-11-18):
-        // reemplaza la estrella y el aro que iba sobre el logo.
-        main && "ring-2 ring-yellow-400",
       )}
     >
       {props.onToggleFund && (
@@ -143,7 +142,7 @@ export function MoneyAccountCard(props: {
           />
         </span>
       )}
-      <BankLogo brand={brand} name={props.name} size="sm" />
+      <BankLogo brand={brand} name={props.name} size="sm" framed={main} />
       <span
         className={cn(
           "shrink-0 whitespace-nowrap font-extrabold",
