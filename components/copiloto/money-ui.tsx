@@ -116,6 +116,9 @@ export function MoneyAccountCard(props: {
         // caben en la misma línea sin tocarse. Solo aplica cuando la
         // cuadrícula tiene 2 columnas (≥361px, como en el padre).
         "gap-2.5 px-3 py-2",
+        // Marco amarillo en TODA la tarjeta principal (Miguel 2026-11-18):
+        // reemplaza la estrella y el aro que iba sobre el logo.
+        main && "ring-2 ring-yellow-400",
       )}
     >
       {props.onToggleFund && (
@@ -140,9 +143,7 @@ export function MoneyAccountCard(props: {
           />
         </span>
       )}
-      <span className={cn("shrink-0 rounded-full p-0.5", main && "ring-2 ring-yellow-400")}>
-        <BankLogo brand={brand} name={props.name} size="sm" />
-      </span>
+      <BankLogo brand={brand} name={props.name} size="sm" />
       <span
         className={cn(
           "shrink-0 whitespace-nowrap font-extrabold",
