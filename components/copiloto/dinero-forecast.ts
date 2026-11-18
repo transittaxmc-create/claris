@@ -1076,7 +1076,7 @@ export function buildForecast(input: ForecastInput): Forecast {
           lines.push({
             id: `rc:${s.id}:${d}`,
             key: `rc:${s.id}:${d}`,
-            date: bDate,
+            date: bDate < today ? today : bDate,
             label: effLabel,
             amount: -remaining,
             kind: "rec",
