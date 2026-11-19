@@ -192,15 +192,33 @@ export async function syncDataWithServer<T extends SyncTrip>(
   // cual, para no borrarlo del servidor.
   const finance = localFinance ? mergeFinance(localFinance, remote.finance) : remote.finance
 
-  // Guardia anti-vacío: la nube tenía ítems y la mezcla daría cero —
-  // algo está mal; no se aplica ni se publica nada.
+  // Guardia anti-vacío: la nube tenía ítems y la mezcla daría cero SIN
+  // lápidas que lo expliquen — algo está mal; no se aplica ni se publica
+  // nada. Si las lápidas de la mezcla cubren todos los ítems remotos, es
+  // un borrado legítimo (borrar todo en el otro teléfono) y sí pasa.
   const mergedCount = countLiveParts(merged.trips, mergedExpenses.trips, finance)
   if (remoteCount > 0 && mergedCount === 0) {
-    return {
-      ok: false,
-      status: 200,
-      reason: "empty_guard",
-      message: "La mezcla daría cero ítems y la nube sí tiene datos: no se tocó nada.",
+    const tombs = new Set<string>([
+      ...Object.keys(merged.deleted),
+      ...Object.keys(mergedExpenses.deleted),
+      ...Object.keys(finance?.deletedLedger ?? {}),
+      ...Object.keys(finance?.deletedSchedules ?? {}),
+    ])
+    const remoteIds = [...remote.trips, ...remote.expenses]
+      .map((t) => t?.id)
+      .filter((id): id is string => typeof id === "string" && !!id)
+    const remoteFinanceIds = [...(remote.finance?.ledger ?? []), ...(remote.finance?.schedules ?? [])]
+      .map((t) => t?.id)
+      .filter((id): id is string => typeof id === "string" && !!id)
+    const allCovered =
+      remoteIds.every((id) => tombs.has(id)) && remoteFinanceIds.every((id) => tombs.has(id))
+    if (!allCovered) {
+      return {
+        ok: false,
+        status: 200,
+        reason: "empty_guard",
+        message: "La mezcla daría cero ítems y la nube sí tiene datos: no se tocó nada.",
+      }
     }
   }
 
