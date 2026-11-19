@@ -45,7 +45,7 @@ interface StoredState {
 }
 
 function emptyState(): StoredState {
-  return { manual: [], dueDays: {}, mainId: null, hidden: [] }
+  return { manual: [], balanceOverrides: {}, dueDays: {}, mainId: null, hidden: [] }
 }
 
 function loadState(): StoredState {
@@ -64,6 +64,7 @@ function loadState(): StoredState {
     })
     const st: StoredState = {
       manual: deduped,
+      balanceOverrides: p.balanceOverrides && typeof p.balanceOverrides === "object" ? p.balanceOverrides : {},
       dueDays: p.dueDays && typeof p.dueDays === "object" ? p.dueDays : {},
       mainId: typeof p.mainId === "string" ? p.mainId : null,
       hidden: Array.isArray(p.hidden) ? p.hidden : [],

@@ -49,10 +49,12 @@ export function BankLogo(props: { brand: BankBrand; name: string; size?: "sm" | 
 
 function BalanceEdit({ value, onSave }: { value: number | null; onSave: (n: number) => void }) {
   const [editing, setEditing] = useState(false)
-  const [text, setText] = useState(value == null ? "" : String(value))
+  // La cajita abre SIEMPRE en blanco (Miguel 2026-11-18): ningún valor
+  // adentro, solo un placeholder que indica el cero.
+  const [text, setText] = useState("")
   if (!editing) {
     return (
-      <span onClick={(e) => { e.stopPropagation(); setEditing(true); setText(value == null ? "" : String(value)) }} className="cursor-pointer">
+      <span onClick={(e) => { e.stopPropagation(); setEditing(true); setText("") }} className="cursor-pointer">
         {value === null ? "—" : money(value)}
       </span>
     )
@@ -63,6 +65,7 @@ function BalanceEdit({ value, onSave }: { value: number | null; onSave: (n: numb
       type="text"
       inputMode="decimal"
       value={text}
+      placeholder={money(0)}
       onClick={(e) => e.stopPropagation()}
       onChange={(e) => setText(e.target.value)}
       onBlur={() => {
