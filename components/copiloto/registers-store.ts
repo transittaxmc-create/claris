@@ -36,6 +36,7 @@ const KEY = "claris_registers_v1"
 
 interface StoredState {
   manual: RegisterAccount[]
+  balanceOverrides?: Record<string, number>
   dueDays: Record<string, number>
   mainId: string | null
   hidden: string[]
@@ -293,6 +294,8 @@ export function accountBalance(
   reg: RegisterAccount,
   snapshotAccounts: SnapshotAccount[],
 ): number | null {
+  const st = loadState()
+  if (st.balanceOverrides && st.balanceOverrides[reg.id] != null) return st.balanceOverrides[reg.id]
   if (reg.source === "manual") return reg.manualBalance
   // 1. Match exacto por ID (rápido, para la mayoría de cuentas)
   let found = (snapshotAccounts || []).find((a) => accountIdFor(String(a?.name || "")) === reg.id)
@@ -344,11 +347,15 @@ export function deleteManualAccount(id: string) {
 
 export function setManualBalance(id: string, balance: number) {
   const st = loadState()
+  const rounded = Math.round((Number(balance) || 0) * 100) / 100
   const m = st.manual.find((x) => x.id === id)
   if (m) {
-    m.manualBalance = Math.round((Number(balance) || 0) * 100) / 100
-    saveState(st)
+    m.manualBalance = rounded
   }
+  // Override para cualquier cuenta (Plaid o manual)
+  if (!st.balanceOverrides) st.balanceOverrides = {}
+  st.balanceOverrides[id] = rounded
+  saveState(st)
 }
 
 export function setDueDay(id: string, dueDay: number | null) {
