@@ -778,6 +778,10 @@ export function CashFlowRegister({
             onPatchEntry={handlePatchEntry}
             onAddEntry={(dateIso) => handleOpenAddModal("expense", "projected", dateIso)}
             onOpenAccount={(id) => setView({ kind: "account", id })}
+            onSaveManualBalance={(id, v) => {
+              setManualBalance(id, v)
+              setBankAccounts((prev) => [...prev])
+            }}
             onAddAccount={() => setShowAddAccount(true)}
             onOpenTransfers={() => setView({ kind: "transfers" })}
           />

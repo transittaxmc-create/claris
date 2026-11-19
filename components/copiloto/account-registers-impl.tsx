@@ -137,6 +137,9 @@ export function RegistersHome(props: {
   onSyncBank?: () => void
   otherFunds?: string[]
   onToggleOtherFund?: (id: string) => void
+  /** Saldo manual editable desde la tarjeta (Miguel, 2026-11-18): la
+   *  tarjeta llama a esta prop; sin ella el guardado era un no-op. */
+  onSaveManualBalance?: (...args: any[]) => void
   /** Switches de DATA → ACCOUNTS (2026-11-13): la lista de MONEY muestra
    *  SOLO las cuentas activas. Sin la prop, se muestran todas (como antes). */
   activeIds?: string[]
