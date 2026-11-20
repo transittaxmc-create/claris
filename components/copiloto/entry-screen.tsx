@@ -283,8 +283,8 @@ export function EntryScreen({
   const [geoError, setGeoError] = useState<string | null>(null)
   const [lowAccuracy, setLowAccuracy] = useState<{ which: "pickup" | "dropoff"; accuracy: number; errorMsg: string } | null>(null)
   const [storageSaved, setStorageSaved] = useState(false)
-  // Montos ocultos al abrir (privacidad ante el cliente): cada uno se muestra con un toque.
-  const [showGross, setShowGross] = useState(false)
+  // REGISTER oculto al abrir (privacidad ante el cliente): se muestra con un toque.
+  // TODAY siempre visible, sin puntitos (orden de Miguel, 2026-11-20).
   const [showRegister, setShowRegister] = useState(false)
   // NOTES colapsada por defecto: así todo TODAY cabe sin scroll.
   const [notesOpen, setNotesOpen] = useState(false)
@@ -527,10 +527,6 @@ export function EntryScreen({
     todayTrips.reduce((s, t) => s + countTollStamps(t.notes), 0) + diaryToday.length + countTollStamps(draft.notes)
   const lastDiaryPass = diaryToday.length > 0 ? diaryToday[diaryToday.length - 1] : null
 
-  function toggleGross() {
-    setShowGross((v) => !v)
-  }
-
   function toggleRegister() {
     setShowRegister((v) => !v)
   }
@@ -578,17 +574,12 @@ export function EntryScreen({
 
       {/* TODAY + REGISTER — juntos en una línea, bien cuadrado */}
       <div className="flex shrink-0 items-stretch border-b border-neutral-800/60 bg-black sm:px-8">
-        <button
-          type="button"
-          onClick={toggleGross}
-          title={showGross ? "Tap to hide the amount" : "Tap to show the amount"}
-          className="flex flex-1 items-center justify-between gap-2 px-4 py-1.5"
-        >
+        <div className="flex flex-1 items-center justify-between gap-2 px-4 py-1.5">
           <span className="text-[10px] font-bold tracking-[0.15em] text-emerald-300/70">TODAY</span>
           <span className="font-mono text-base font-black tabular-nums text-emerald-300">
-            {showGross ? `$${grossIncomeToday.toFixed(2)}` : "••••••"}
+            {`$${grossIncomeToday.toFixed(2)}`}
           </span>
-        </button>
+        </div>
         <div className="w-px bg-neutral-800/60" />
         <button
           type="button"
