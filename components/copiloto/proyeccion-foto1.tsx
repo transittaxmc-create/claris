@@ -703,6 +703,35 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
                 </td>
               </tr>
             )}
+            {(() => {
+              const selected = (props.otherFunds || [])
+                .map((id) => {
+                  const r = props.registers.find((x) => x.id === id)
+                  const b = props.balances[id]
+                  if (!r || b == null || !Number.isFinite(Number(b)) || Number(b) <= 0) return null
+                  return { name: r.name, balance: Number(b) }
+                })
+                .filter(Boolean) as { name: string; balance: number }[]
+              if (selected.length === 0) return null
+              const total = selected.reduce((s, x) => s + x.balance, 0)
+              const desc = selected.map((x) => `${x.name} $${x.balance.toFixed(2)}`).join(" · ")
+              return (
+                <tr style={{ background: "rgba(201,162,39,.08)" }}>
+                  <td style={{ ...td, whiteSpace: "nowrap", fontWeight: 600, paddingLeft: 12 }}>
+                    {fmtFecha(today)}
+                    <div style={{ fontSize: 8, color: SUB, fontWeight: 500, marginTop: 1 }}>Opening</div>
+                  </td>
+                  <td style={{ ...td, overflow: "hidden" }}>
+                    <span style={{ fontWeight: 600, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Balance Account</span>
+                    <div style={{ fontSize: 9.5, color: SUB, marginTop: 1, whiteSpace: "normal" }}>{desc}</div>
+                  </td>
+                  <td style={{ ...td, color: SUB }}></td>
+                  <td style={{ ...td, color: SUB }}>$0.00</td>
+                  <td style={{ ...td, textAlign: "right", fontWeight: 700, color: GREEN }}>+${total.toFixed(2)}</td>
+                  <td style={{ ...td, textAlign: "right", fontWeight: 700 }}>${total.toFixed(2)}</td>
+                </tr>
+              )
+            })()}
             {futuras.filter(({ line }) => !/toll|peaje|e-?z-?pass|easy ?pass/i.test(line.label || "")).map(({ line, before, after }, i) => {
               const cat = lineCategory(line, schedules)
               const pb = partialNoteFor(line)
