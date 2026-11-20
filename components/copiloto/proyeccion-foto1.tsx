@@ -23,7 +23,7 @@ import { billPaidTotal, billRemaining } from "./bill-payments"
 import { SCHEDULES_CLEAR_FLAG_KEY } from "./finance-cloud"
 import { accountDisplayName } from "./registers-store"
 import { normalizeVendorName, type Expense } from "./types"
-import { platformMatch, signedAdjustment, vendorMatch, weekStartOf, SCHEDULE_OVERRIDES_KEY, type ForecastLine, type ProbablePaid } from "./dinero-forecast"
+import { platformMatch, signedAdjustment, startingBalance, vendorMatch, weekStartOf, SCHEDULE_OVERRIDES_KEY, type ForecastLine, type ProbablePaid } from "./dinero-forecast"
 import { useForecastInputs } from "./dinero-proyeccion"
 import { FINANCE_LEDGER_KEY, FINANCE_SCHEDULES_KEY, FINANCE_SYNCED_EVENT, RECONCILED_LOG_KEY } from "./finance-sync"
 import type { CashFlowEntry, CashFlowOrigin } from "./types"
@@ -689,6 +689,49 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
             <col style={{ width: "13%" }} /><col style={{ width: "17%" }} /><col style={{ width: "20%" }} />
           </colgroup>
           <tbody>
+            {(() => {
+              // Balance Account (orden de Miguel, 2026-11-20): SIEMPRE la
+              // primera transacción del register. Lista TODOS los bancos que
+              // cuentan en la proyección — la principal incluida — cada uno
+              // con su balance, y el total es el balance inicial completo:
+              // sale del mismo startingBalance que usa la proyección, así la
+              // fila nunca descuadra de la tira de arriba. Los bancos con el
+              // switch apagado no aparecen ni suman (no vienen en otherFunds
+              // ni son la principal).
+              const inicio = startingBalance(props.registers, props.balances, props.otherFunds || [])
+              const items: { name: string; balance: number }[] = []
+              if (!inicio.usedFallback) {
+                const main = props.registers.find((r) => r.id === inicio.mainId)
+                if (main && inicio.mainBalance != null) items.push({ name: main.name, balance: inicio.mainBalance })
+                for (const x of inicio.extras) items.push({ name: x.name, balance: x.balance })
+              } else {
+                const memberIds = new Set<string>([...(inicio.mainId ? [inicio.mainId] : []), ...(props.otherFunds || [])])
+                for (const r of props.registers) {
+                  if (r.kind !== "bank" || !memberIds.has(r.id)) continue
+                  const b = props.balances[r.id]
+                  if (b != null && Number.isFinite(Number(b))) items.push({ name: r.name, balance: Number(b) })
+                }
+              }
+              if (items.length === 0) return null
+              const total = inicio.value
+              const desc = items.map((x) => `${x.name} ${fmtBal(x.balance)}`).join(" · ")
+              return (
+                <tr style={{ background: "rgba(201,162,39,.08)" }}>
+                  <td style={{ ...td, whiteSpace: "nowrap", fontWeight: 600, paddingLeft: 12 }}>
+                    {fmtFecha(today)}
+                    <div style={{ fontSize: 8, color: SUB, fontWeight: 500, marginTop: 1 }}>Opening</div>
+                  </td>
+                  <td style={{ ...td, overflow: "hidden" }}>
+                    <span style={{ fontWeight: 600, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Balance Account</span>
+                    <div style={{ fontSize: 9.5, color: SUB, marginTop: 1, whiteSpace: "normal" }}>{desc}</div>
+                  </td>
+                  <td style={{ ...td, color: SUB }}></td>
+                  <td style={{ ...td, color: SUB }}>$0.00</td>
+                  <td style={{ ...td, textAlign: "right", fontWeight: 700, color: GREEN }}>{total < 0 ? fmtBal(total) : `+${fmtBal(total)}`}</td>
+                  <td style={{ ...td, textAlign: "right", fontWeight: 700 }}>{fmtBal(total)}</td>
+                </tr>
+              )
+            })()}
             {futuras.length === 0 && (
               <tr><td colSpan={6} style={{ ...td, color: SUB }}>No future transactions scheduled.</td></tr>
             )}
@@ -703,35 +746,6 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
                 </td>
               </tr>
             )}
-            {(() => {
-              const selected = (props.otherFunds || [])
-                .map((id) => {
-                  const r = props.registers.find((x) => x.id === id)
-                  const b = props.balances[id]
-                  if (!r || b == null || !Number.isFinite(Number(b)) || Number(b) <= 0) return null
-                  return { name: r.name, balance: Number(b) }
-                })
-                .filter(Boolean) as { name: string; balance: number }[]
-              if (selected.length === 0) return null
-              const total = selected.reduce((s, x) => s + x.balance, 0)
-              const desc = selected.map((x) => `${x.name} $${x.balance.toFixed(2)}`).join(" · ")
-              return (
-                <tr style={{ background: "rgba(201,162,39,.08)" }}>
-                  <td style={{ ...td, whiteSpace: "nowrap", fontWeight: 600, paddingLeft: 12 }}>
-                    {fmtFecha(today)}
-                    <div style={{ fontSize: 8, color: SUB, fontWeight: 500, marginTop: 1 }}>Opening</div>
-                  </td>
-                  <td style={{ ...td, overflow: "hidden" }}>
-                    <span style={{ fontWeight: 600, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Balance Account</span>
-                    <div style={{ fontSize: 9.5, color: SUB, marginTop: 1, whiteSpace: "normal" }}>{desc}</div>
-                  </td>
-                  <td style={{ ...td, color: SUB }}></td>
-                  <td style={{ ...td, color: SUB }}>$0.00</td>
-                  <td style={{ ...td, textAlign: "right", fontWeight: 700, color: GREEN }}>+${total.toFixed(2)}</td>
-                  <td style={{ ...td, textAlign: "right", fontWeight: 700 }}>${total.toFixed(2)}</td>
-                </tr>
-              )
-            })()}
             {futuras.filter(({ line }) => !/toll|peaje|e-?z-?pass|easy ?pass/i.test(line.label || "")).map(({ line, before, after }, i) => {
               const cat = lineCategory(line, schedules)
               const pb = partialNoteFor(line)
