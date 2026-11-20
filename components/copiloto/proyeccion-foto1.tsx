@@ -204,7 +204,7 @@ function MiniChart({ points }: { points: number[] }) {
   )
 }
 
-export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
+export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void; realBank?: number | null; projectedMonth?: number }) {
   const { fc, fcLong, today, schedules } = useForecast30(props)
   const [form, setForm] = useState<null | "income" | "expense">(null)
   const [editing, setEditing] = useState<ForecastLine | null>(null)
@@ -274,6 +274,10 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
   // cobros reconciliados de EARNINGS (claris:cobro:*). El historial de
   // POR PAGAR no se toca.
   const [wipeCounts, setWipeCounts] = useState<{ schedules: number; projected: number } | null>(null)
+  // Balance Account (Miguel, 2026-11-20): la fila va discreta en UNA línea;
+  // el desglose por banco solo se ve al tocarla, en un cuadrito que se cierra.
+  const [showBalDetail, setShowBalDetail] = useState(false)
+  const [showTopDetail, setShowTopDetail] = useState(false)
   const contarProyectado = () => {
     try {
       const sch = JSON.parse(localStorage.getItem(FINANCE_SCHEDULES_KEY) || "[]")
@@ -551,20 +555,63 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
 
   return (
     <div style={{ paddingBottom: 28, color: INK, overflowX: "hidden", maxWidth: "100%" }}>
+      {/* Línea resumen (orden de Miguel, 2026-11-20, "opción 1,
+          organizada y lineal"): arriba queda UNA sola línea en 3
+          columnas alineadas — REAL BANK | STARTING | ENDING — para que
+          el register empiece más arriba y se vea más grande. Al tocarla
+          se abre el detalle completo, en columnas como un statement:
+          la tira REAL BANK | PROJECTED MONTH y debajo la tira de 5
+          columnas de siempre, SIN cambiar sus valores ni su diseño.
+          La tira REAL BANK | PROJECTED MONTH de MONEY (MoneyStrip) se
+          oculta solo en esta vista; en las demás vistas no se tocó. */}
+      <div
+        role="button"
+        aria-expanded={showTopDetail}
+        onClick={() => setShowTopDetail((v) => !v)}
+        style={{ margin: "12px 12px 0", background: BAND, border: "1px solid #3d3a6e", borderRadius: 14, padding: "9px 12px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr 16px", columnGap: 6, alignItems: "center", cursor: "pointer" }}
+      >
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 8.5, color: SUB, fontWeight: 700, whiteSpace: "nowrap" }}>REAL BANK</div>
+          <div style={{ fontSize: 13, fontWeight: 800, marginTop: 2, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{props.realBank != null ? fmtBal(props.realBank) : "—"}</div>
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 8.5, color: SUB, fontWeight: 700, whiteSpace: "nowrap" }}>STARTING</div>
+          <div style={{ fontSize: 13, fontWeight: 800, marginTop: 2, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{fmtBal(fc.start)}</div>
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontSize: 8.5, color: SUB, fontWeight: 700, whiteSpace: "nowrap" }}>ENDING</div>
+          <div style={{ fontSize: 13, fontWeight: 800, marginTop: 2, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", color: fc.end < 0 ? RED : undefined }}>{fmtBal(fc.end)}</div>
+        </div>
+        <div style={{ color: SUB, fontSize: 12, textAlign: "right" }}>{showTopDetail ? "▴" : "▾"}</div>
+      </div>
+
+      {showTopDetail && (
+      <div style={{ margin: "8px 12px 0" }}>
+      <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, padding: "10px 6px", marginBottom: 8 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, alignItems: "center" }}>
+          <div style={{ minWidth: 0, textAlign: "center" }}>
+            <div style={{ fontSize: 8.5, color: SUB, fontWeight: 700, whiteSpace: "nowrap" }}>REAL BANK</div>
+            <div style={{ fontSize: 11.5, fontWeight: 800, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{props.realBank != null ? fmtBal(props.realBank) : "—"}</div>
+          </div>
+          <div style={{ minWidth: 0, textAlign: "center" }}>
+            <div style={{ fontSize: 8.5, color: SUB, fontWeight: 700, whiteSpace: "nowrap" }}>PROJECTED MONTH</div>
+            <div style={{ fontSize: 11.5, fontWeight: 800, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", color: (props.projectedMonth ?? 0) < 0 ? RED : undefined }}>{fmtBal(props.projectedMonth ?? 0)}</div>
+          </div>
+        </div>
+      </div>
       {/* Tira resumen de 5 columnas, clonada de la foto (2026-11-15):
           STARTING BAL. | INCOME (30D) | EXPENSES (30D) | ENDING BAL. |
           medidor pequeño + HEALTH. Mismos valores que la tarjeta de dos
           columnas que reemplaza; sin línea NET FLOW (no está en la foto).
-          El encabezado "CASH FLOW REGISTER & FORECAST" y la fila
-          "PROJECTION SUMMARY" tampoco están en la foto: fuera. La tira
-          REAL BANK | PROJECTED MONTH vive arriba (MONEY) y se queda.
           MEDIDAS (2026-11-15, foto de las 19:05: a 13px el texto se
           encimaba en su teléfono): etiquetas 8.5px, valores 11.5px,
           celdas centradas, columnas de dinero más anchas que la del
           medidor. Verificado por captura a 390px (sin solapes ni
           recortes; la fuente de la prueba es más ancha que la del iPhone,
-          así que en su teléfono sobra más). */}
-      <div style={{ margin: "12px 12px 0", background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, padding: "10px 6px" }}>
+          así que en su teléfono sobra más).
+          (2026-11-20: la tira no cambió; vive dentro del detalle que
+          abre la línea resumen de arriba.) */}
+      <div style={{ margin: 0, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, padding: "10px 6px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1.15fr 1.15fr 1fr 1fr", gap: 2, alignItems: "center" }}>
           <div style={{ minWidth: 0, textAlign: "center" }}>
             <div style={{ fontSize: 8.5, color: SUB, letterSpacing: 0, fontWeight: 700, whiteSpace: "nowrap" }}>STARTING BAL.</div>
@@ -594,6 +641,8 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
           </div>
         </div>
       </div>
+      </div>
+      )}
 
       {/* Botones para entrar proyecciones (abren la página formal) */}
       <div style={{ display: "flex", gap: 10, margin: "12px 12px 0" }}>
@@ -714,22 +763,55 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void }) {
               }
               if (items.length === 0) return null
               const total = inicio.value
-              const desc = items.map((x) => `${x.name} ${fmtBal(x.balance)}`).join(" · ")
+              // La fila se ve SOLO en una línea (nombre + total). El desglose
+              // por banco NO va desplegado: se abre en un cuadrito al tocar
+              // la fila y se cierra al tocar de nuevo o en la ✕ (Miguel,
+              // 2026-11-20: discreta, sin empujar el register hacia abajo).
               return (
-                <tr style={{ background: "rgba(201,162,39,.08)" }}>
+                <Fragment>
+                <tr onClick={() => setShowBalDetail((v) => !v)} style={{ background: "rgba(201,162,39,.08)", cursor: "pointer" }}>
                   <td style={{ ...td, whiteSpace: "nowrap", fontWeight: 600, paddingLeft: 12 }}>
                     {fmtFecha(today)}
                     <div style={{ fontSize: 8, color: SUB, fontWeight: 500, marginTop: 1 }}>Opening</div>
                   </td>
                   <td style={{ ...td, overflow: "hidden" }}>
                     <span style={{ fontWeight: 600, display: "block", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Balance Account</span>
-                    <div style={{ fontSize: 9.5, color: SUB, marginTop: 1, whiteSpace: "normal" }}>{desc}</div>
                   </td>
                   <td style={{ ...td, color: SUB }}></td>
                   <td style={{ ...td, color: SUB }}>$0.00</td>
                   <td style={{ ...td, textAlign: "right", fontWeight: 700, color: GREEN }}>{total < 0 ? fmtBal(total) : `+${fmtBal(total)}`}</td>
                   <td style={{ ...td, textAlign: "right", fontWeight: 700 }}>{fmtBal(total)}</td>
                 </tr>
+                {showBalDetail && (
+                  <tr>
+                    <td colSpan={6} style={{ padding: "8px 12px 10px", background: "rgba(201,162,39,.05)", borderBottom: "1px solid #1a1c24" }}>
+                      <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 10, padding: "9px 11px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                          <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: 1, color: SUB }}>BALANCE ACCOUNT</span>
+                          <button
+                            type="button"
+                            aria-label="Close detail"
+                            onClick={() => setShowBalDetail(false)}
+                            style={{ background: "transparent", border: "none", color: SUB, fontSize: 13, fontWeight: 800, lineHeight: 1, padding: 2, cursor: "pointer" }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        {items.map((x, ix) => (
+                          <div key={ix} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10, padding: "2.5px 0", fontSize: 11.5 }}>
+                            <span style={{ color: INK, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{x.name}</span>
+                            <b style={{ fontVariantNumeric: "tabular-nums", fontWeight: 600 }}>{fmtBal(x.balance)}</b>
+                          </div>
+                        ))}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", borderTop: `1px solid ${BORDER}`, marginTop: 5, paddingTop: 5, fontSize: 11.5 }}>
+                          <span style={{ color: SUB, fontWeight: 700 }}>Total</span>
+                          <b style={{ color: GREEN, fontVariantNumeric: "tabular-nums" }}>{fmtBal(total)}</b>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               )
             })()}
             {futuras.length === 0 && (

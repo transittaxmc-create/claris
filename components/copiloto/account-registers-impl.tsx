@@ -269,6 +269,11 @@ export function RegistersHome(props: {
     <div className="flex flex-col gap-3 overflow-x-hidden">
       <MoneyHeader page={vista as 0 | 1 | 2} onPage={setVista} />
       <MoneyTabs page={vista as 0 | 1 | 2} onPage={setVista} registerLabel={`${mainName} Register`} />
+      {/* En Proyecciones (vista 1) la tira no se pinta aquí: por orden de
+          Miguel (2026-11-20, opción 1) REAL BANK vive en la línea resumen
+          de ProyeccionFoto1 y PROJECTED MONTH en su detalle. En las
+          demás vistas la tira queda exactamente como estaba. */}
+      {vista !== 1 && (
       <MoneyStrip
         cells={[
           {
@@ -290,6 +295,7 @@ export function RegistersHome(props: {
           },
         ]}
       />
+      )}
 
       {vista === 0 && (
         <>
@@ -382,6 +388,12 @@ export function RegistersHome(props: {
 
       {vista === 1 && (
         <ProyeccionFoto1
+          realBank={
+            principal && balances[principal.id] != null
+              ? (balances[principal.id] as number)
+              : available
+          }
+          projectedMonth={proyectadoMes.end}
           onScan={props.onOpenScanner}
           registers={registers}
           balances={balances}
