@@ -10,6 +10,11 @@ export type Platform =
   | "AKI Technology"
   | "Classic Ryde"
   | "Aventus Ride"
+  | "Jurny"
+  | "Curb"
+  | "CO-OP Drive"
+  | "Dasher"
+  | "Spark Driver"
   | "Cash"
   | "Other"
 
@@ -468,6 +473,11 @@ export const PLATFORMS: Platform[] = [
   "AKI Technology",
   "Classic Ryde",
   "Aventus Ride",
+  "Jurny",
+  "Curb",
+  "CO-OP Drive",
+  "Dasher",
+  "Spark Driver",
   "Cash",
   "Other",
 ]
@@ -486,6 +496,16 @@ export const LEGACY_PLATFORM_ALIASES: Record<string, Platform> = {
   classic: "Classic Ryde",
   lyft: "Lyft",
   uber: "Uber",
+  jurny: "Jurny",
+  curb: "Curb",
+  "co-op drive": "CO-OP Drive",
+  "coop drive": "CO-OP Drive",
+  "co-op": "CO-OP Drive",
+  coop: "CO-OP Drive",
+  dasher: "Dasher",
+  doordash: "Dasher",
+  "spark driver": "Spark Driver",
+  spark: "Spark Driver",
   cash: "Cash",
   other: "Other",
   throo: "Throo",

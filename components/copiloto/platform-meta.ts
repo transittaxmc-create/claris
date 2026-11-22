@@ -51,6 +51,21 @@ export const PLATFORM_META: Record<Platform, PlatformMeta> = {
     badgeClass: "border-orange-400/60 text-orange-400",
     voucher: true,
   },
+  Jurny: {
+    logo: "/logos/jurny.svg",
+    fill: true,
+    badge: "ACCESS-A-RIDE",
+    badgeClass: "border-sky-400/60 text-sky-400",
+  },
+  Curb: { logo: "/logos/curb.svg", fill: true },
+  "CO-OP Drive": {
+    logo: "/logos/co-op-drive.svg",
+    fill: true,
+    badge: "ACCESS-A-RIDE",
+    badgeClass: "border-sky-400/60 text-sky-400",
+  },
+  Dasher: { logo: "/logos/dasher.svg", fill: true },
+  "Spark Driver": { logo: "/logos/spark-driver.svg", fill: true },
   "Island City Transit": {
     badge: "SQUARE",
     badgeClass: "border-emerald-400/60 text-emerald-400",
