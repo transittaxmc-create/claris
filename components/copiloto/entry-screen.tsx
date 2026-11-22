@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { ChevronDown, MapPin, Coffee, Loader2, X, AlertTriangle, RotateCw, Edit2, Play, Pause, Square, Gauge } from "lucide-react"
+import { ChevronDown, MapPin, Coffee, Loader2, X, AlertTriangle, RotateCw, Edit2, Gauge } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip, grossOf, tripDateOf } from "./types"
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
@@ -20,17 +20,7 @@ import {
 } from "./geo"
 import { moneyTextFromNumber, moneyTextToNumber, normalizeMoneyText } from "@/lib/money"
 import { detectNewTolls, rateFor, formatTollNote, appendNote } from "./toll-detect"
-import { loadShiftTolls, sumShiftTolls, SHIFT_TOLLS_EVENT, type ShiftToll } from "./shift-tolls"
-import { fridayOfWeek } from "./ezpass-weekly"
-
-/** Cuenta las estampas de peaje en una nota ("[Oct 29 · 14:35] … - $X" o "[14:35] …"). */
-function countTollStamps(notes?: string): number {
-  if (!notes) return 0
-  return notes
-    .split("|")
-    .filter((p) => /\[(?:[A-Z][a-z]{2} \d{1,2} · )?\d{2}:\d{2}\]/.test(p) && (p.includes("- $") || /check E-ZPass/i.test(p)))
-    .length
-}
+import { loadShiftTolls, SHIFT_TOLLS_EVENT } from "./shift-tolls"
 
 function LocationColumn({
   label,
@@ -292,14 +282,32 @@ export function EntryScreen({
   const [notesOpen, setNotesOpen] = useState(false)
   // E-ZPass: peajes ya cobrados en este viaje (no duplicar) + aviso visual
   const tollHit = useRef<Set<string>>(new Set())
-  const [tollFlash, setTollFlash] = useState<string | null>(null)
-  // Diario de peajes del turno (pasadas entre trabajos): alimenta el
-  // contador acumulativo de abajo (día/semana).
-  const [diaryTolls, setDiaryTolls] = useState<ShiftToll[]>(() => loadShiftTolls())
+  // Indicador de MOMENTO de peaje (Miguel, 2026-11-22): los contadores de
+  // peajes viven SOLO en el DASHBOARD; aquí queda una línea fina y fija
+  // abajo que avisa en el momento en que la detección anota una pasada
+  // (del viaje abierto o del diario del turno) y vuelve a quedar quieta.
+  const [tollPing, setTollPing] = useState<{ plaza: string; amount: number | null; n: number } | null>(null)
+  const tollPingTimer = useRef<number | null>(null)
+  const pingToll = (plaza: string, amount: number | null) => {
+    setTollPing({ plaza, amount, n: Date.now() })
+    if (tollPingTimer.current) window.clearTimeout(tollPingTimer.current)
+    tollPingTimer.current = window.setTimeout(() => setTollPing(null), 5000)
+  }
+  // Diario de peajes del turno (pasadas entre trabajos): cuando entra una
+  // pasada NUEVA al diario, el indicador avisa al momento.
+  const seenDiaryIds = useRef<Set<string>>(new Set(loadShiftTolls().map((t) => t.id)))
   useEffect(() => {
-    const refresh = () => setDiaryTolls(loadShiftTolls())
+    const refresh = () => {
+      const fresh = loadShiftTolls().filter((t) => !seenDiaryIds.current.has(t.id))
+      fresh.forEach((t) => seenDiaryIds.current.add(t.id))
+      if (fresh.length > 0) {
+        const last = fresh[fresh.length - 1]
+        pingToll(last.plaza, last.amount)
+      }
+    }
     window.addEventListener(SHIFT_TOLLS_EVENT, refresh)
     return () => window.removeEventListener(SHIFT_TOLLS_EVENT, refresh)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const set = <K extends keyof Trip>(key: K, val: Trip[K]) =>
@@ -395,11 +403,9 @@ export function EntryScreen({
       }
       return { ...d, toll, notes }
     })
-    setTollFlash(`🛣️ ${fresh.map((p) => {
-      const r = rateFor(p, now)
-      return r != null ? `${p.name} +$${r.toFixed(2)}` : p.name
-    }).join(" · ")}`)
-    window.setTimeout(() => setTollFlash(null), 4000)
+    const lastFresh = fresh[fresh.length - 1]
+    pingToll(lastFresh.name, rateFor(lastFresh, now))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gpsFix, tripActive])
 
   // Ubicación actual (CALLE + CIUDAD) para la cabecera. Se muestra al instante
@@ -508,27 +514,6 @@ export function EntryScreen({
   })()
   const grossIncomeToday = todayTrips.reduce((total, trip) => total + grossOf(trip), 0)
 
-  // Contador acumulativo de peajes (Miguel, 2026-10-29): TODO lo del día —
-  // lo de los trabajos guardados + el viaje abierto + el diario del turno
-  // (entre trabajos) — y la semana (la que cierra el viernes, como el bill
-  // de E-ZPass). El total anual NO va aquí: vive en el Financial Statement.
-  const weekFridayKey = fridayOfWeek(todayKey)
-  const weekTrips = trips.filter((trip) => fridayOfWeek(tripDateOf(trip)) === weekFridayKey)
-  const diaryToday = diaryTolls.filter((t) => t.date === todayKey)
-  const diaryWeek = diaryTolls.filter((t) => fridayOfWeek(t.date) === weekFridayKey)
-  const draftTollMoney = Number(draft.toll) || 0
-  const tollsTodayMoney =
-    Math.round(
-      (todayTrips.reduce((s, t) => s + (Number(t.toll) || 0), 0) + sumShiftTolls(diaryToday) + draftTollMoney) * 100
-    ) / 100
-  const tollsWeekMoney =
-    Math.round(
-      (weekTrips.reduce((s, t) => s + (Number(t.toll) || 0), 0) + sumShiftTolls(diaryWeek) + draftTollMoney) * 100
-    ) / 100
-  const tollsTodayPasses =
-    todayTrips.reduce((s, t) => s + countTollStamps(t.notes), 0) + diaryToday.length + countTollStamps(draft.notes)
-  const lastDiaryPass = diaryToday.length > 0 ? diaryToday[diaryToday.length - 1] : null
-
   function toggleRegister() {
     setShowRegister((v) => !v)
   }
@@ -538,7 +523,8 @@ export function EntryScreen({
       {/* Header FIJO (shrink-0, nunca scrollea): modelo del clon V8
           (integrado 2026-10-31) — marca + pastilla GPS, saludo, tagline,
           localización con la fecha corta a la derecha. Los controles del
-          turno YA NO viven aquí: bajaron a la tira fija de abajo. */}
+          turno viven SOLO en el DASHBOARD (la tira de abajo salió de
+          TODAY el 2026-11-22, a pedido de Miguel). */}
       <div className="shrink-0 px-4 pb-2 pt-2 sm:px-8 sm:pt-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -763,8 +749,7 @@ export function EntryScreen({
         </section>
 
         {/* BOX 4: NOTAS — colapsada por defecto para que TODO quepa sin
-            scroll; se abre tocando el encabezado. El aviso de peaje (tollFlash)
-            se ve siempre. */}
+            scroll; se abre tocando el encabezado. */}
         <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-2.5 sm:col-span-2">
           <button
             type="button"
@@ -778,9 +763,6 @@ export function EntryScreen({
             <div className="ml-1 h-px flex-1 bg-neutral-800" />
             <ChevronDown className={cn("size-4 shrink-0 text-neutral-500 transition-transform", notesOpen && "rotate-180")} />
           </button>
-          {tollFlash && (
-            <p className="mt-2 rounded-lg bg-sky-950/60 px-2 py-1 text-[11px] font-semibold text-sky-300">{tollFlash}</p>
-          )}
           {notesOpen && (
             <textarea
               value={draft.notes || ""}
@@ -794,94 +776,26 @@ export function EntryScreen({
 
       </div>
 
-      {/* Tira del turno ABAJO (clock in/out + millas IRS) — modelo del
-          clon, pero FIJA (shrink-0) en la pila de abajo. En el clon esta
-          tira vive en el flujo de una página fija con overflow oculto y
-          en el teléfono queda cortada, fuera de vista, hasta que algo se
-          encoge y "sale hacia afuera"; aquí queda SIEMPRE visible, encima
-          del contador de peajes y del SAVE (nota de Miguel, 2026-10-31). */}
-      <div className="mx-4 my-1.5 flex shrink-0 items-center justify-between rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 sm:mx-8">
-        <div className="flex items-center gap-2">
-          <div className="flex h-7 w-7 items-center justify-center rounded-full border border-neutral-700 bg-neutral-900">
-            <svg className="size-3.5 text-neutral-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-          </div>
-          {shift.shiftActive ? (
-            <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-400">
-              <span className="size-1.5 rounded-full bg-emerald-400" />
-              {shift.isOnBreak ? "ON BREAK" : "ON SHIFT"}
+      {/* Indicador de momento de peaje (Miguel, 2026-11-22): la tira del
+          turno y el contador acumulativo de peajes SALIERON de TODAY — el
+          turno se controla SOLO desde el DASHBOARD y los contadores de
+          peajes viven SOLO allá. Aquí queda una sola línea fina y FIJA
+          (altura constante: la página nunca salta) que está quieta y, en
+          el momento en que la detección anota una pasada, la enseña unos
+          segundos y vuelve a quedar quieta. */}
+      <div className="shrink-0 border-t border-neutral-800 bg-neutral-950 px-4 py-1.5 sm:px-8" aria-live="polite">
+        <div className="flex h-[18px] items-center">
+          {tollPing ? (
+            <span key={tollPing.n} className="truncate text-[11px] font-semibold text-emerald-300">
+              ✓ Peaje detectado · {tollPing.plaza}
+              {tollPing.amount != null ? ` $${tollPing.amount.toFixed(2)}` : ""} · sumando al tablero
             </span>
           ) : (
-            <span className="flex items-center gap-1.5 text-xs font-bold text-neutral-400">
-              <span className="size-1.5 rounded-full bg-neutral-600" />
-              OFF SHIFT
-            </span>
-          )}
-          {/* Contador de millas IRS — corre solo con el turno activo */}
-          {shift.shiftActive && (
-            <span
-              title="Business miles (IRS) — saved when you end the shift"
-              className="flex items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 font-mono text-[11px] font-bold tabular-nums text-sky-300"
-            >
-              {shift.shiftMiles.toFixed(1)} mi
+            <span className="truncate text-[10px] font-semibold tracking-[0.12em] text-neutral-500">
+              🛣️ E-ZPASS · LOS PEAJES SE SUMAN EN EL DASHBOARD
             </span>
           )}
         </div>
-        {!shift.shiftActive ? (
-          <button
-            type="button"
-            onClick={shift.onStart}
-            className="flex items-center gap-1 rounded-lg bg-lime-400 px-3 py-1.5 text-xs font-bold text-black"
-          >
-            <Play className="size-3" /> START
-          </button>
-        ) : (
-          <div className="flex gap-1.5">
-            <button
-              type="button"
-              onClick={shift.onBreak}
-              title={shift.isOnBreak ? "Resume the shift" : "Pause the shift"}
-              className="flex items-center gap-1 rounded-lg border border-neutral-700 px-2.5 py-1.5 text-[10px] font-semibold text-neutral-200"
-            >
-              {shift.isOnBreak ? <Play className="size-3" /> : <Pause className="size-3" />}
-              {shift.isOnBreak ? "RESUME" : "PAUSE"}
-            </button>
-            <button
-              type="button"
-              onClick={shift.onEnd}
-              title="End the shift"
-              className="flex items-center gap-1 rounded-lg border border-rose-500/40 px-2.5 py-1.5 text-[10px] font-semibold text-rose-400"
-            >
-              <Square className="size-3" /> END
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Contador acumulativo de peajes (Miguel, 2026-10-29): fijo abajo,
-          siempre visible sin scroll. Se suma solo con cada pasada — de los
-          trabajos, del viaje abierto y del diario del turno. */}
-      <div className="shrink-0 border-t border-neutral-800 bg-neutral-950 px-4 py-1.5 sm:px-8">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-[10px] font-bold tracking-[0.15em] text-neutral-400">
-            🛣️ TOLLS TODAY
-          </span>
-          <span className="font-mono text-[13px] font-bold tabular-nums text-neutral-100">
-            ${tollsTodayMoney.toFixed(2)}
-            <span className="ml-1.5 text-[10.5px] font-semibold text-neutral-400">
-              · {tollsTodayPasses} {tollsTodayPasses === 1 ? "PASS" : "PASSES"}
-            </span>
-          </span>
-          <span className="text-[10px] font-bold tracking-[0.15em] text-neutral-400">WEEK</span>
-          <span className="font-mono text-[13px] font-bold tabular-nums text-neutral-100">
-            ${tollsWeekMoney.toFixed(2)}
-          </span>
-        </div>
-        {lastDiaryPass && (
-          <p className="mt-0.5 truncate text-right text-[10px] text-sky-300/80">
-            Last between-jobs pass: {lastDiaryPass.time} · {lastDiaryPass.plaza}
-            {lastDiaryPass.amount != null ? ` · $${lastDiaryPass.amount.toFixed(2)}` : ""} — saved to today's diary
-          </p>
-        )}
       </div>
 
       {/* Sticky record button con calidad y feedback */}
