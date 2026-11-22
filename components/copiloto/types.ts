@@ -465,17 +465,19 @@ export type Trip = {
   raw?: Record<string, unknown>
 }
 
+// Orden de la lista fijado por Miguel (2026-11-22): Eco Ride primero
+// y CO-OP Drive segundo, siempre arriba; el resto conserva su orden.
 export const PLATFORMS: Platform[] = [
+  "Eco Ride",
+  "CO-OP Drive",
   "Uber",
   "Lyft",
-  "Eco Ride",
   "Throo",
   "AKI Technology",
   "Classic Ryde",
   "Aventus Ride",
   "Jurny",
   "Curb",
-  "CO-OP Drive",
   "Dasher",
   "Spark Driver",
   "Cash",
