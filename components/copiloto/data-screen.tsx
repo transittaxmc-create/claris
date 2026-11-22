@@ -145,6 +145,11 @@ export function DataScreen({
       localStorage.setItem(V1_DAILY_GOAL_KEY, String(v))
     } catch {}
   }
+  // Texto libre del campo "Goal diaria" (Miguel, 2026-11-22): mientras escribe
+  // manda el texto — vacío o parcial vale, sin que salte de vuelta al número
+  // viejo. La meta guardada solo cambia si el texto es un número válido > 0,
+  // y al salir del campo el texto se normaliza a la última meta guardada.
+  const [dailyGoalText, setDailyGoalText] = useState<string>(() => String(dailyGoal))
 
   useEffect(() => {
     let vivo = true
@@ -438,11 +443,13 @@ export function DataScreen({
               type="number"
               min={1}
               step={1}
-              value={dailyGoal}
+              value={dailyGoalText}
               onChange={(e) => {
+                setDailyGoalText(e.target.value)
                 const v = Math.floor(Number(e.target.value))
                 if (Number.isFinite(v) && v > 0) saveDailyGoal(v)
               }}
+              onBlur={() => setDailyGoalText(String(dailyGoal))}
               className="w-24 rounded-lg border border-neutral-700 bg-black px-2 py-1 text-right text-sm font-bold text-yellow-300 outline-none focus:border-yellow-500"
             />
           </div>
