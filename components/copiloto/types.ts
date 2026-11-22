@@ -572,7 +572,11 @@ export function money(n: number): string {
 export function newTrip(): Trip {
   return {
     id: crypto.randomUUID(),
-    platform: "Uber",
+    // Miguel (2026-11-22): "la lista siempre descansa en el primero" —
+    // un viaje nuevo abre con la PRIMERA plataforma de PLATFORMS (hoy
+    // Eco Ride), no con una fija escrita a mano. Si el orden de la
+    // lista cambia, el descanso cambia con él.
+    platform: PLATFORMS[0],
     isVoucher: false,
     earnings: 0,
     extraCash: 0,
