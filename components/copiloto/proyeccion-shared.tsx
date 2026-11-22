@@ -75,7 +75,7 @@ export function useForecastShots(bankTxs?: ForecastBankTx[]): ForecastBankTx[] {
 /** Bills que mandan sobre el recurrente (regla de Miguel, 2026-10-25):
  * los de ciclo de POR PAGAR (auto) y los reales escaneados en Gastos.
  * Se recargan al montar y con los mismos eventos que los recurrentes. */
-function useForecastBills(): ForecastBill[] {
+export function useForecastBills(): ForecastBill[] {
   const [bills, setBills] = useState<ForecastBill[]>([])
   useEffect(() => {
     const map = (b: Expense, auto: boolean): ForecastBill | null => {

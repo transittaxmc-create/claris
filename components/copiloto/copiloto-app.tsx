@@ -784,7 +784,9 @@ export function CopilotoApp() {
 
       <main className="min-h-0 flex-1 overflow-hidden">
         <div className={tab === "AI" ? "h-full min-h-0 overflow-hidden overflow-x-clip" : "h-full overflow-y-auto overflow-x-clip"}>
-          {tab === "ENTRY" && <EntryScreen onSave={saveNewFromEntry} trips={trips} shift={shift} />}
+          {tab === "ENTRY" && (
+            <EntryScreen onSave={saveNewFromEntry} trips={trips} shift={shift} onGoDashboard={() => setTab("V1DASH")} />
+          )}
           {tab === "REGISTER" && (
             <RegisterScreen
               trips={trips}

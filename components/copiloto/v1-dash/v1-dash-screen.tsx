@@ -12,11 +12,17 @@
 // de hoy (bug de v1); aquí suma los viajes reales del mes, que es lo que la
 // tarjeta promete ("October 2026"). Todo lo demás es idéntico.
 
-import { useMemo, useState, type CSSProperties } from "react"
+import { useEffect, useMemo, useState, type CSSProperties } from "react"
 import { localDateKey } from "@/lib/dates"
-import { grossOf, tripDateOf, type Expense, type Trip } from "../types"
+import { grossOf, money, tripDateOf, type CashFlowEntry, type Expense, type Trip } from "../types"
 import { recommendZones } from "./v1-dash-zones"
 import type { ShiftApi } from "../shift"
+import { buildForecast, todayKey as forecastTodayKey, type ForecastLine } from "../dinero-forecast"
+import { useForecastInputs } from "../dinero-proyeccion"
+import { useForecastBills, useForecastShots } from "../proyeccion-shared"
+import { LEDGER_KEY, sinSemillas } from "../cash-flow-store"
+import { FINANCE_SYNCED_EVENT } from "../finance-sync"
+import { buildHourBuckets, hourRangeLabel } from "../hourly-strip"
 
 // Estilo dorado de v1 (const us del bundle), intacto.
 const GOLD_TEXT: CSSProperties = {
@@ -479,6 +485,114 @@ function loadDailyGoal(): number {
   return V1_DEFAULT_DAILY_GOAL
 }
 
+// Libro mayor (mismo localStorage que lee MONEY) para el forecast de la
+// línea de dinero. Solo lectura: las migraciones/escrituras son de MONEY.
+function useLedgerEntries(): CashFlowEntry[] {
+  const [entries, setEntries] = useState<CashFlowEntry[]>([])
+  useEffect(() => {
+    const load = () => {
+      try {
+        const raw = localStorage.getItem(LEDGER_KEY)
+        const parsed = raw ? JSON.parse(raw) : []
+        setEntries(sinSemillas(Array.isArray(parsed) ? parsed : []))
+      } catch {
+        setEntries([])
+      }
+    }
+    load()
+    window.addEventListener(FINANCE_SYNCED_EVENT, load)
+    window.addEventListener("storage", load)
+    return () => {
+      window.removeEventListener(FINANCE_SYNCED_EVENT, load)
+      window.removeEventListener("storage", load)
+    }
+  }, [])
+  return entries
+}
+
+// Producción hora por hora: vivía como overlay en EARNINGS (botón HOURLY);
+// Miguel la consolidó aquí (2026-11-22) — un solo lugar. Mismos buckets y
+// mismas cuentas que el overlay (buildHourBuckets de hourly-strip).
+function HourlyCard({ trips, clock }: { trips: Trip[]; clock: Date }) {
+  const currentHour = clock.getHours()
+  const minutesElapsed = clock.getMinutes()
+  const buckets = useMemo(() => buildHourBuckets(trips, currentHour), [trips, currentHour])
+  const dayTotal = useMemo(() => buckets.reduce((s, b) => s + b.total, 0), [buckets])
+  const totalTrips = useMemo(() => buckets.reduce((s, b) => s + b.trips, 0), [buckets])
+  const max = Math.max(1, ...buckets.map((b) => b.total))
+  const current = buckets[buckets.length - 1]
+  return (
+    <div className="rounded-[20px] p-4" style={{ background: "#0d0d0d", border: "1px solid #1e1e1e" }}>
+      <div className="flex items-center justify-between">
+        <h3 className="text-[11px] tracking-[0.18em] font-bold" style={GOLD_TEXT}>
+          HOURLY
+        </h3>
+        <span className="font-mono-jet text-[10px] text-neutral-400">
+          {clock.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 mt-3">
+        <div>
+          <p className="text-[8px] text-neutral-400 uppercase tracking-widest">
+            {current ? `NOW · ${hourRangeLabel(current.hour)}` : "TOTAL"}
+          </p>
+          <p className="font-mono-jet text-[20px] font-black mt-0.5" style={GOLD_TEXT}>
+            {money(current ? current.total : dayTotal)}
+          </p>
+        </div>
+        <div>
+          <p className="text-[8px] text-neutral-400 uppercase tracking-widest">DAY TOTAL</p>
+          <p className="font-mono-jet text-[20px] font-black mt-0.5 text-[#4ade80]">{money(dayTotal)}</p>
+        </div>
+        <div>
+          <p className="text-[8px] text-neutral-400 uppercase tracking-widest">ELAPSED</p>
+          <p className="font-mono-jet text-[20px] font-black mt-0.5 text-white">{minutesElapsed} min</p>
+        </div>
+      </div>
+
+      <div className="mt-3 space-y-0.5">
+        {buckets.length === 0 ? (
+          <p className="py-4 text-center text-[12px] text-neutral-500">No trips recorded for this day.</p>
+        ) : (
+          buckets.map((b) => {
+            const active = b.hour === currentHour
+            return (
+              <div key={b.hour} className={`flex items-center gap-3 px-2 py-1.5 rounded-lg ${active ? "bg-[#f6dd8c]/10" : ""}`}>
+                <span className="w-[86px] shrink-0 font-mono-jet text-[12px] font-semibold text-neutral-300">
+                  {hourRangeLabel(b.hour)}
+                </span>
+                <div className="h-2.5 min-w-0 flex-1 overflow-hidden rounded-full bg-neutral-800">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.max(0, Math.round((b.total / max) * 100))}%`,
+                      background: active ? "#f6dd8c" : "#4ade80",
+                    }}
+                  />
+                </div>
+                <span className="w-14 shrink-0 text-right text-[11px] font-semibold text-neutral-500">
+                  {b.trips} trip{b.trips === 1 ? "" : "s"}
+                </span>
+                <span className="w-[78px] shrink-0 text-right font-mono-jet text-[14px] font-extrabold text-white">
+                  {money(b.total)}
+                </span>
+              </div>
+            )
+          })
+        )}
+      </div>
+
+      <div className="flex items-center justify-between border-t border-[#1e1e1e] mt-3 pt-3">
+        <span className="text-[11px] font-bold tracking-wide text-neutral-400">
+          TOTAL · {totalTrips} trip{totalTrips === 1 ? "" : "s"}
+        </span>
+        <span className="font-mono-jet text-[16px] font-black text-[#4ade80]">{money(dayTotal)}</span>
+      </div>
+    </div>
+  )
+}
+
 type CoachType = "gold" | "hot" | "warm" | "good" | "purple" | "cold" | "warn" | "neutral"
 
 const COACH_STYLE: Record<CoachType, string> = {
@@ -537,6 +651,58 @@ export function V1DashScreen({
     () => todayTrips.reduce((s, t) => s + t.earnings + t.tips + t.extraCash + t.toll, 0),
     [todayTrips],
   )
+  const todayRawTrips = useMemo(
+    () => trips.filter((_, i) => tripKeys[i] === todayKey),
+    [trips, tripKeys, todayKey],
+  )
+
+  // Línea de dinero del día (Miguel, 2026-11-22): salidas proyectadas de
+  // HOY según la MISMA matemática de Proyecciones (buildForecast con los
+  // mismos insumos compartidos: recurrentes, overrides, checks, bills y
+  // provisionales). Sin feed del banco aquí: bankTxs va vacío, igual que
+  // Proyecciones cuando el feed no responde (bankOk=false). Los saldos NO
+  // entran: esto es solo salidas proyectadas vs lo ganado hoy.
+  const { schedules, overrides, dismissed, checkedRows } = useForecastInputs()
+  const forecastBills = useForecastBills()
+  const forecastShots = useForecastShots([])
+  const ledgerEntries = useLedgerEntries()
+  const moneyLine = useMemo(() => {
+    const fc = buildForecast({
+      startBalance: 0,
+      entries: ledgerEntries,
+      schedules,
+      dues: [],
+      balances: {},
+      bankTxs: [],
+      shots: forecastShots,
+      today: forecastTodayKey(),
+      horizonDays: 30,
+      dismissedPaid: dismissed,
+      overrides,
+      bills: forecastBills,
+      checkedRows,
+    })
+    const outOf = (lines: ForecastLine[]) =>
+      Math.round(lines.reduce((s, l) => s + (!l.checked && l.amount < 0 ? -l.amount : 0), 0) * 100) / 100
+    const todayDay = fc.days.find((d) => d.date === fc.today)
+    const todayOut = todayDay ? outOf(todayDay.lines) : 0
+    let next: { date: string; amount: number } | null = null
+    for (const d of fc.days) {
+      if (d.date <= fc.today) continue
+      const amt = outOf(d.lines)
+      if (amt > 0) {
+        next = { date: d.date, amount: amt }
+        break
+      }
+    }
+    return { todayOut, next }
+  }, [ledgerEntries, schedules, overrides, dismissed, checkedRows, forecastBills, forecastShots])
+  const nextOutLabel = useMemo(() => {
+    if (!moneyLine.next) return null
+    const d = new Date(`${moneyLine.next.date}T12:00:00`)
+    const wd = d.toLocaleDateString("es", { weekday: "short" }).replace(/\./g, "")
+    return `${wd} ${d.getDate()}`
+  }, [moneyLine.next])
 
   // $/HR (lógica v1 intacta)
   const perHour = useMemo(() => {
@@ -773,6 +939,44 @@ export function V1DashScreen({
             </div>
           </div>
 
+          {/* Línea de dinero del día: lo que sale hoy (Proyecciones) vs lo que llevas */}
+          <div
+            className="flex items-center justify-between gap-2 rounded-[20px] px-4 py-3"
+            style={{ background: "#0d0d0d", border: "1px solid #1e1e1e" }}
+          >
+            {moneyLine.todayOut > 0 ? (
+              <>
+                <p className="font-mono-jet text-[11px] font-bold text-neutral-300 whitespace-nowrap">
+                  Hoy sale <span className="text-[#f87171]">${moneyLine.todayOut.toFixed(2)}</span>
+                </p>
+                <p className="font-mono-jet text-[11px] text-neutral-400 whitespace-nowrap">
+                  Llevas <span className="text-neutral-200">${grossToday.toFixed(2)}</span>
+                  {grossToday < moneyLine.todayOut ? (
+                    <>
+                      {" · Te faltan "}
+                      <span className="font-bold text-[#fbbf24]">${(moneyLine.todayOut - grossToday).toFixed(2)}</span>
+                    </>
+                  ) : (
+                    <>
+                      {" · "}
+                      <span className="font-bold text-[#4ade80]">Ya lo cubriste ✓</span>
+                    </>
+                  )}
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-mono-jet text-[11px] font-bold text-neutral-300 whitespace-nowrap">Hoy no sale nada</p>
+                {moneyLine.next ? (
+                  <p className="font-mono-jet text-[11px] text-neutral-400 whitespace-nowrap">
+                    Próxima salida: {nextOutLabel} ·{" "}
+                    <span className="text-neutral-200">${moneyLine.next.amount.toFixed(2)}</span>
+                  </p>
+                ) : null}
+              </>
+            )}
+          </div>
+
           {/* $/HR NOW */}
           <div className="rounded-[20px] p-4 space-y-4" style={{ background: "#0d0d0d", border: "1px solid #1e1e1e" }}>
             <div className="flex items-center justify-between">
@@ -900,6 +1104,8 @@ export function V1DashScreen({
               shiftActive={shiftActive}
             />
           </div>
+
+          <HourlyCard trips={todayRawTrips} clock={clock} />
 
           <MonthCard
             clock={clock}

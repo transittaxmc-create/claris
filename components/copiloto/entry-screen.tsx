@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useState } from "react"
-import { ChevronDown, MapPin, Coffee, Loader2, X, AlertTriangle, RotateCw, Edit2, Play, Pause, Square } from "lucide-react"
+import { ChevronDown, MapPin, Coffee, Loader2, X, AlertTriangle, RotateCw, Edit2, Play, Pause, Square, Gauge } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip, grossOf, tripDateOf } from "./types"
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
@@ -254,10 +254,12 @@ export function EntryScreen({
   onSave,
   trips = [],
   shift,
+  onGoDashboard,
 }: {
   onSave: (t: Trip) => void
   trips?: Trip[]
   shift: ShiftApi
+  onGoDashboard?: () => void
 }) {
   const [draft, setDraft] = useState<Trip>(() => {
     const initial = newTrip()
@@ -545,6 +547,20 @@ export function EntryScreen({
             </div>
             <h1 className="text-xl font-bold text-white">Copiloto <span className="text-lime-400">V7</span></h1>
           </div>
+          {/* Acceso directo al DASHBOARD (Miguel, 2026-11-22): pastilla
+              gemela a la del GPS, en el espacio vacío del centro de la
+              fila — no mueve ni achica nada del header. */}
+          {onGoDashboard ? (
+            <button
+              type="button"
+              onClick={onGoDashboard}
+              title="Open the DASHBOARD"
+              className="flex items-center gap-1 rounded-full border border-amber-300/50 bg-amber-300/10 px-2 py-1.5 text-[9px] font-bold tracking-[0.08em] text-amber-200"
+            >
+              <Gauge className="size-3" />
+              DASHBOARD
+            </button>
+          ) : null}
           <div className="flex items-center gap-1 rounded-full border border-lime-500/50 bg-lime-500/10 px-2.5 py-1 text-[11px] font-semibold text-lime-400">
             <span className="size-1.5 rounded-full bg-lime-400" />
             {place ? "GPS ready" : "Locating"}

@@ -12,14 +12,12 @@ import {
   X,
   ChevronDown,
   ChevronRight,
-  Clock,
   EllipsisVertical,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { localDateKey } from "@/lib/dates"
 import { type Trip, type TollBill, grossOf, netOf, money, tripDateOf } from "./types"
 import { fechasReconciliacionAuto, limpiarCobrosSinViajes, validarCobros, leerLibroMayor, reconciliarCobrosAlLibro } from "./cash-flow-store"
-import { HourlyOverlay } from "./hourly-overlay"
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
 import { isVoucherPlatform } from "./platform-meta"
 import {
@@ -336,7 +334,6 @@ export function RegisterScreen({
   const [selectedDate, setSelectedDate] = useState(() => localDateKey(new Date()))
   const [showDetail, setShowDetail] = useState(false)
   const [showActions, setShowActions] = useState(false)
-  const [showHourly, setShowHourly] = useState(false)
   const [tollBills, setTollBills] = useState<TollBill[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -499,17 +496,8 @@ export function RegisterScreen({
           <span className="shrink-0 text-[10px] font-bold tracking-wide text-neutral-500">
             NET <strong className="text-sm text-green-400">{money(totals.net)}</strong>
           </span>
-          {/* Producción por hora (Miguel, 2026-11-09): botón que abre el
-              cuadro sobrepuesto con el detalle por hora. Antes vivía como
-              strip fijo en TODAY; Miguel lo movió aquí. */}
-          <button
-            type="button"
-            onClick={() => setShowHourly(true)}
-            title="See the day hour by hour"
-            className="flex shrink-0 items-center gap-1 rounded-lg border border-yellow-400/40 bg-yellow-950/30 px-2 py-1 text-[9px] font-extrabold uppercase tracking-wide text-yellow-300 transition-colors hover:bg-yellow-900/40"
-          >
-            <Clock className="size-3" /> Hourly
-          </button>
+          {/* Producción por hora: vivía aquí como overlay (2026-11-09);
+              Miguel la consolidó en el DASHBOARD (2026-11-22) — un solo lugar. */}
           <button
             type="button"
             onClick={reconciliarHaciaDinero}
@@ -584,10 +572,6 @@ export function RegisterScreen({
           )}
         </div>
       </div>
-
-      {showHourly && (
-        <HourlyOverlay trips={tripsForDay} dateKey={selectedDate} onClose={() => setShowHourly(false)} />
-      )}
 
       {showActions && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center">
