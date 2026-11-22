@@ -52,12 +52,23 @@ function SelectorLogo({
   // (89%) sigue conteniendo el nombre completo (12–91%). Colores
   // originales, sin invertir ni recolorear.
   const isAventus = platform === "Aventus Ride"
+  // CO-OP Drive (Miguel, 2026-11-22): el mismo tratamiento que Aventus.
+  // Su arte es el ícono cuadrado de la app (205×205, violeta con el
+  // símbolo blanco de "co-op") y con contain + padding el símbolo
+  // quedaba chico en la caja ancha (~23px de alto en la caja de 56×30).
+  // El símbolo ocupa el 7–94% del alto del arte; sin padding y con
+  // scale 1.12 la ventana visible es el 89% central del arte
+  // (5.4–94.6%): el símbolo entra COMPLETO, sin cortarse, y crece a
+  // ~29px — solo los bordes superior/inferior del fondo violeta llegan
+  // al borde de la caja, igual que el verde de Aventus. Colores
+  // originales, sin invertir ni recolorear.
+  const isCoop = platform === "CO-OP Drive"
 
   return (
     <span
       className={cn(
         "flex shrink-0 items-center justify-center overflow-hidden rounded-md bg-white/95 ring-1 ring-black/20",
-        isAventus ? "p-0" : "p-[2px]"
+        isAventus || isCoop ? "p-0" : "p-[2px]"
       )}
       style={{ width, height }}
       aria-hidden="true"
@@ -71,7 +82,11 @@ function SelectorLogo({
           onError={() => setFailed(true)}
           className={cn(
             "h-full w-full",
-            isAventus ? "scale-[1.12] object-cover object-[50%_70%]" : "object-contain"
+            isAventus
+              ? "scale-[1.12] object-cover object-[50%_70%]"
+              : isCoop
+                ? "scale-[1.12] object-contain"
+                : "object-contain"
           )}
         />
       ) : (
