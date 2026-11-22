@@ -117,9 +117,24 @@ function loadWorked(): WorkedHours {
   return w && typeof w === "object" ? w : {}
 }
 
+// Último turno cerrado (del historial): su ventana [clockIn, clockOut] es
+// la que los contadores del DASHBOARD siguen enseñando hasta que arranque
+// el próximo turno (regla de Miguel, 2026-11-22: el reset es al START).
+export type LastShift = { clockIn: number; clockOut: number }
+
+function loadLastShift(): LastShift | null {
+  const logs = loadJson<Array<{ clockIn?: unknown; clockOut?: unknown }>>(SHIFT_LOG_KEY) ?? []
+  const last = logs[logs.length - 1]
+  if (last && typeof last.clockIn === "number" && typeof last.clockOut === "number" && last.clockOut >= last.clockIn) {
+    return { clockIn: last.clockIn, clockOut: last.clockOut }
+  }
+  return null
+}
+
 export function useShift() {
   const [now, setNow] = useState(() => new Date())
   const [shift, setShift] = useState<ShiftState>(initShift)
+  const [lastShift, setLastShift] = useState<LastShift | null>(loadLastShift)
   const [worked, setWorked] = useState<WorkedHours>(loadWorked)
   const [hourlyGoal, setHourlyGoalState] = useState<number>(() => {
     try {
@@ -324,6 +339,7 @@ export function useShift() {
       logs.push({ date: cur.date, clockIn: cur.clockIn, clockOut: t, activeHrs: Math.round(activeHrs * 100) / 100, miles: cur.miles })
       localStorage.setItem(SHIFT_LOG_KEY, JSON.stringify(logs.slice(-60)))
     } catch {}
+    if (cur.clockIn != null) setLastShift({ clockIn: cur.clockIn, clockOut: t })
     // Registro de millas para el IRS (Pub 463)
     try {
       recordShiftClose(cur.date, cur.clockIn, t, cur.miles)
@@ -356,6 +372,8 @@ export function useShift() {
   return {
     now,
     shiftActive: shift.active,
+    clockIn: shift.clockIn,
+    lastShift,
     isOnBreak,
     working,
     measureStart: shift.measureStart,
