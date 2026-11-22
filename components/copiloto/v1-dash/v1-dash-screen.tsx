@@ -23,6 +23,21 @@ import { useForecastBills, useForecastShots } from "../proyeccion-shared"
 import { LEDGER_KEY, sinSemillas } from "../cash-flow-store"
 import { FINANCE_SYNCED_EVENT } from "../finance-sync"
 import { buildHourBuckets, hourRangeLabel } from "../hourly-strip"
+import { loadShiftTolls, SHIFT_TOLLS_EVENT, type ShiftToll } from "../shift-tolls"
+import {
+  applyAllCorrections,
+  loadStatementCharges,
+  loadWeekCorrections,
+  mergeTollPasses,
+  mondayOf,
+  addDaysISO,
+  WEEK_TOLLS_EVENT,
+  type WeekCorrection,
+} from "../week-tolls"
+import { currentEzpassBill } from "../ezpass-weekly"
+import { auditTolls, gpsTollsFromShiftDiary, gpsTollsFromTrips } from "../toll-audit"
+import { loadOpenBills, type OpenBill } from "../open-bills-store"
+import type { TollCharge } from "@/app/api/scan-toll-statement/route"
 
 // Estilo dorado de v1 (const us del bundle), intacto.
 const GOLD_TEXT: CSSProperties = {
@@ -283,37 +298,178 @@ function WeekStrip({ todayTripCount, grossToday, weeklyTotal }: { todayTripCount
   )
 }
 
-// ---- y4: E-ZPASS tolls (v1 intacto) ----
-function TollsCard({
-  tollYear,
-  totalTollsToday,
-  tollsWeek,
-  tollsMonth,
-  tollsYear,
-  shiftActive,
+// ---- E-ZPASS · RESUMEN (Miguel, 2026-11-22): reemplaza la tarjeta de v1
+// que solo sumaba el campo toll de los viajes guardados. Ahora lee el
+// REGISTRO MACHADO de peajes (week-tolls.ts: viajes + diario del turno +
+// statement, cada pasada una vez, correcciones de Miguel aplicadas) — la
+// misma fuente de la caja WEEKLY TOLLS de Proyecciones y del bill del
+// viernes — más el bill semanal (ezpass-weekly) y la reconciliación
+// contra el statement escaneado (toll-audit.ts). ----
+type EzpassSnap = {
+  diary: ShiftToll[]
+  charges: TollCharge[]
+  corrections: WeekCorrection[]
+  bills: OpenBill[]
+}
+
+function readEzpassSnap(): EzpassSnap {
+  return {
+    diary: loadShiftTolls(),
+    charges: loadStatementCharges(),
+    corrections: loadWeekCorrections(),
+    bills: loadOpenBills(),
+  }
+}
+
+function useEzpassSnap(): EzpassSnap {
+  const [snap, setSnap] = useState<EzpassSnap>(() => readEzpassSnap())
+  useEffect(() => {
+    const load = () => setSnap(readEzpassSnap())
+    load()
+    window.addEventListener(SHIFT_TOLLS_EVENT, load)
+    window.addEventListener(WEEK_TOLLS_EVENT, load)
+    window.addEventListener(FINANCE_SYNCED_EVENT, load)
+    window.addEventListener("storage", load)
+    return () => {
+      window.removeEventListener(SHIFT_TOLLS_EVENT, load)
+      window.removeEventListener(WEEK_TOLLS_EVENT, load)
+      window.removeEventListener(FINANCE_SYNCED_EVENT, load)
+      window.removeEventListener("storage", load)
+    }
+  }, [])
+  return snap
+}
+
+const EZPASS_CAR_KEY = "claris_ezpass_car_account_v1"
+
+type ShiftWindow = { start: number; end: number | null }
+
+function EzpassSummaryCard({
+  trips,
+  todayKey,
+  shiftWindow,
 }: {
-  tollYear: number
-  totalTollsToday: number
-  tollsWeek: number
-  tollsMonth: number
-  tollsYear: number
-  shiftActive: boolean
+  trips: Trip[]
+  todayKey: string
+  shiftWindow: ShiftWindow | null
 }) {
+  const snap = useEzpassSnap()
+  const [carLabel, setCarLabel] = useState<string>(() => {
+    try {
+      return localStorage.getItem(EZPASS_CAR_KEY) || ""
+    } catch {
+      return ""
+    }
+  })
+  const [carEditing, setCarEditing] = useState(false)
+  const [carDraft, setCarDraft] = useState("")
+
+  const data = useMemo(() => {
+    const passes = applyAllCorrections(mergeTollPasses(trips, snap.diary, snap.charges), snap.corrections)
+    const monday = mondayOf(todayKey)
+    const sunday = addDaysISO(monday, 6)
+    const year = todayKey.slice(0, 4)
+    const sum = (ok: (date: string) => boolean) =>
+      Math.round(passes.filter((p) => ok(p.date)).reduce((s, p) => s + (Number(p.amount) || 0), 0) * 100) / 100
+    const bill = currentEzpassBill()
+    const paid =
+      Math.round(
+        snap.bills
+          .filter((b) => b.id.startsWith("ezpass-weekly-"))
+          .reduce((s, b) => s + Math.max(0, (Number(b.originalAmount) || 0) - (Number(b.remainingAmount) || 0)), 0) *
+          100,
+      ) / 100
+    const audit =
+      snap.charges.length === 0
+        ? null
+        : auditTolls(snap.charges, [...gpsTollsFromTrips(trips), ...gpsTollsFromShiftDiary(snap.diary)])
+    // HOY con ventana de turno (Miguel, 2026-11-22): si hay turno (activo
+    // o el último cerrado), HOY cuenta solo las pasadas selladas desde el
+    // inicio de ese turno — el mismo instante date+hora local con el que
+    // el registro ordena las pasadas (sin hora anotada: mediodía, la
+    // convención que ya usa la app). SEMANA y AÑO NO cambian: son del
+    // registro calendario, para que sigan cuadrando con el bill del
+    // viernes y la reconciliación.
+    const passMs = (date: string, time: string) => new Date(`${date}T${time || "12:00"}:00`).getTime()
+    const hoyTurno = shiftWindow
+      ? Math.round(
+          passes
+            .filter((p) => {
+              const ms = passMs(p.date, p.time)
+              return Number.isFinite(ms) && ms >= shiftWindow.start && (shiftWindow.end == null || ms <= shiftWindow.end)
+            })
+            .reduce((s, p) => s + (Number(p.amount) || 0), 0) * 100,
+        ) / 100
+      : null
+    return {
+      hoy: hoyTurno ?? sum((d) => d === todayKey),
+      shiftScoped: hoyTurno != null,
+      semana: sum((d) => d >= monday && d <= sunday),
+      anio: sum((d) => d.slice(0, 4) === year),
+      bill,
+      paid,
+      audit,
+      hasStatement: snap.charges.length > 0,
+    }
+  }, [trips, snap, todayKey, shiftWindow])
+
+  const fridayLabel = data.bill
+    ? new Date(`${data.bill.friday}T12:00:00`).toLocaleDateString("es", { weekday: "short", day: "numeric", month: "short" })
+    : ""
+
+  const commitCar = () => {
+    const v = carDraft.trim()
+    setCarLabel(v)
+    try {
+      localStorage.setItem(EZPASS_CAR_KEY, v)
+    } catch {}
+    setCarEditing(false)
+  }
+
   return (
     <div className="rounded-xl bg-[#1a1625] border border-[#2a2340] border-l-[3px] border-l-[#8b5cf6] p-3.5">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <div className="w-1.5 h-1.5 rounded-full bg-[#8b5cf6]" />
-          <p className="text-[10px] tracking-[0.18em] font-bold text-[#a78bfa]">E-ZPASS {tollYear} · TOLLS PAID</p>
+          <p className="text-[10px] tracking-[0.18em] font-bold text-[#a78bfa]">E-ZPASS · RESUMEN</p>
         </div>
-        <span className="font-mono-jet text-[11px] font-bold text-[#c4b5fd]">${totalTollsToday.toFixed(2)} today</span>
+        <span className="font-mono-jet text-[11px] font-bold text-[#c4b5fd]">
+          ${data.hoy.toFixed(2)} {data.shiftScoped ? "este turno" : "hoy"}
+        </span>
       </div>
+
+      {/* La cuenta del carro: Miguel la anota una vez y queda guardada. */}
+      {carEditing ? (
+        <input
+          autoFocus
+          value={carDraft}
+          onChange={(e) => setCarDraft(e.target.value)}
+          onBlur={commitCar}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commitCar()
+          }}
+          placeholder="Ej. Tag del carro · cuenta 1234"
+          className="mb-2 w-full rounded-lg border border-[#2a2340] bg-black/40 px-2 py-1.5 text-[11px] text-[#e9e4ff] outline-none placeholder:text-[#6d5a9c]"
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => {
+            setCarDraft(carLabel)
+            setCarEditing(true)
+          }}
+          className="mb-2 block w-full text-left text-[11px] text-[#c4b5fd]/80 active:opacity-60"
+        >
+          🚗 {carLabel || "Toca para anotar la cuenta del carro"}
+        </button>
+      )}
+
       <div className="grid grid-cols-3 gap-2">
         {(
           [
-            ["WEEK", tollsWeek],
-            ["MONTH", tollsMonth],
-            ["YEAR", tollsYear],
+            [data.shiftScoped ? "HOY · TURNO" : "HOY", data.hoy],
+            ["SEMANA", data.semana],
+            ["AÑO", data.anio],
           ] as Array<[string, number]>
         ).map(([c, f]) => (
           <div key={c} className="text-center">
@@ -322,9 +478,46 @@ function TollsCard({
           </div>
         ))}
       </div>
-      <p className="text-[10px] text-[#c4b5fd]/70 mt-2">
-        {shiftActive ? "📡 Geofencing active — auto-detecting tolls" : "Start your shift for auto toll detection"}
-      </p>
+      {data.shiftScoped && (
+        <p className="mt-1 text-center text-[8px] text-[#6d5a9c]">HOY cuenta desde el inicio del turno</p>
+      )}
+
+      <div className="mt-2.5 flex items-center justify-between border-t border-[#2a2340] pt-2">
+        <span className="text-[10px] text-[#c4b5fd]/70">
+          Semana por pagar{data.bill ? ` · vence ${fridayLabel}` : ""}
+        </span>
+        {data.bill ? (
+          <span className="font-mono-jet text-[11px] font-bold text-[#c4b5fd]">
+            ${data.bill.remaining.toFixed(2)}{" "}
+            <span className="font-normal text-[#6d5a9c]">de ${data.bill.total.toFixed(2)}</span>
+          </span>
+        ) : (
+          <span className="font-mono-jet text-[11px] text-[#6d5a9c]">Sin bill esta semana</span>
+        )}
+      </div>
+
+      <div className="mt-2 border-t border-[#2a2340] pt-2">
+        <p className="text-[10px] font-bold tracking-[0.14em] text-[#a78bfa]">RECONCILIACIÓN</p>
+        {!data.hasStatement ? (
+          <p className="mt-1 text-[10px] text-[#c4b5fd]/70">Sin statement escaneado todavía</p>
+        ) : (
+          <div className="mt-1 space-y-0.5 text-[10px] text-[#c4b5fd]/80">
+            <p>
+              Consumido (statement):{" "}
+              <span className="font-mono-jet font-bold text-[#c4b5fd]">${data.audit!.statementTotal.toFixed(2)}</span>
+              {" · "}Macheados: {data.audit!.matched}
+            </p>
+            <p>
+              Problemas: duplicados? {data.audit!.duplicates} · sin match GPS {data.audit!.unmatchedStatement} ·
+              no están en el statement {data.audit!.unmatchedGps}
+            </p>
+            <p>
+              Pagado a E-ZPass:{" "}
+              <span className="font-mono-jet font-bold text-[#c4b5fd]">${data.paid.toFixed(2)}</span>
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -623,6 +816,8 @@ export function V1DashScreen({
   const clock = shift.now
   const {
     shiftActive,
+    clockIn,
+    lastShift,
     isOnBreak,
     activeHoursDecimal,
     shiftMiles,
@@ -647,10 +842,45 @@ export function V1DashScreen({
     () => v1Trips.filter((t) => t.datetime.slice(0, 10) === todayKey),
     [v1Trips, todayKey],
   )
+
+  // Ventana del turno (Miguel, 2026-11-22): arrancar un NEW SHIFT abre un
+  // "día nuevo" para los contadores del turno — el número grande, el
+  // conteo, el desglose fare/tips/tolls, el anillo de meta y el numerador
+  // del $/HR cuentan SOLO los viajes sellados desde el inicio del turno.
+  // Turno activo: [clockIn, ahora). Turno cerrado: se sigue enseñando la
+  // ventana de ESE turno [clockIn, clockOut] hasta que arranque el
+  // próximo — el reset pasa en el START, no en el END. Sin ningún turno
+  // en el historial: el día calendario de siempre. Es solo una ventana de
+  // conteo: los viajes, el registro de peajes y los bills no se tocan,
+  // así que nada se pierde ni se duplica. Un viaje tecleado tarde pero
+  // sellado ANTES del inicio del turno NO cuenta en estos contadores.
+  // Precisión: los sellos de viajes y pasadas tienen granularidad de
+  // MINUTO (HH:MM), así que la ventana se redondea al minuto — el inicio
+  // baja al minuto del clock-in y el fin sube al final del minuto del
+  // clock-out; lo sellado en el mismo minuto en que arrancó (o cerró) el
+  // turno cuenta como del turno, porque con ese sello no se puede
+  // distinguir nada más fino.
+  const shiftWindow = useMemo<ShiftWindow | null>(() => {
+    const floorMin = (ms: number) => Math.floor(ms / 60_000) * 60_000
+    if (shiftActive && clockIn != null) return { start: floorMin(clockIn), end: null }
+    if (lastShift) return { start: floorMin(lastShift.clockIn), end: floorMin(lastShift.clockOut) + 59_999 }
+    return null
+  }, [shiftActive, clockIn, lastShift])
+
+  const shiftTrips = useMemo(() => {
+    if (!shiftWindow) return todayTrips
+    return v1Trips.filter((t) => {
+      const ts = new Date(t.datetime).getTime()
+      return Number.isFinite(ts) && ts >= shiftWindow.start && (shiftWindow.end == null || ts <= shiftWindow.end)
+    })
+  }, [v1Trips, todayTrips, shiftWindow])
+
+  // "Lo ganado" del tablero = lo ganado del turno (ventana de arriba).
   const grossToday = useMemo(
-    () => todayTrips.reduce((s, t) => s + t.earnings + t.tips + t.extraCash + t.toll, 0),
-    [todayTrips],
+    () => shiftTrips.reduce((s, t) => s + t.earnings + t.tips + t.extraCash + t.toll, 0),
+    [shiftTrips],
   )
+  const shiftTolls = useMemo(() => shiftTrips.reduce((s, t) => s + (t.toll || 0), 0), [shiftTrips])
   const todayRawTrips = useMemo(
     () => trips.filter((_, i) => tripKeys[i] === todayKey),
     [trips, tripKeys, todayKey],
@@ -704,17 +934,17 @@ export function V1DashScreen({
     return `${wd} ${d.getDate()}`
   }, [moneyLine.next])
 
-  // $/HR (lógica v1 intacta)
+  // $/HR (lógica v1 intacta; el numerador y el lapso usan los viajes del turno)
   const perHour = useMemo(() => {
     if (grossToday <= 0) return 0
     if (activeHoursDecimal > 0.1) return grossToday / activeHoursDecimal
-    const q = todayTrips
+    const q = shiftTrips
       .map((u) => new Date(u.datetime).getTime())
       .sort((a, b) => a - b)
     if (q.length === 0) return 0
     const span = q.length === 1 ? 0.25 : Math.max((Date.now() - q[0]) / 36e5, 0.25)
     return grossToday / span
-  }, [grossToday, activeHoursDecimal, todayTrips])
+  }, [grossToday, activeHoursDecimal, shiftTrips])
 
   const goalPct = Math.min((grossToday / dailyGoal) * 100, 100)
   const remaining = Math.max(dailyGoal - grossToday, 0)
@@ -767,28 +997,6 @@ export function V1DashScreen({
   const monthPct = monthGoal > 0 ? Math.min((earnMonth / monthGoal) * 100, 100) : 0
   const daysInMonth = new Date(clock.getFullYear(), clock.getMonth() + 1, 0).getDate()
   const onTrack = earnMonth >= monthGoal * (clock.getDate() / daysInMonth) * 0.85
-
-  // Peajes por período
-  const tollSum = useMemo(() => {
-    const inWeek = (k: string) => {
-      const te = new Date(clock)
-      const me = (te.getDay() + 6) % 7
-      te.setDate(te.getDate() - me)
-      const mk = localDateKey(te)
-      return k >= mk && k <= todayKey
-    }
-    let day = 0, week = 0, month = 0, year = 0
-    const yk = `${clock.getFullYear()}`
-    trips.forEach((t, i) => {
-      const k = tripKeys[i]
-      const toll = Number(t.toll) || 0
-      if (k === todayKey) day += toll
-      if (inWeek(k)) week += toll
-      if (k.startsWith(monthKey)) month += toll
-      if (k.startsWith(yk)) year += toll
-    })
-    return { day, week, month, year }
-  }, [trips, tripKeys, clock, todayKey, monthKey])
 
   // Mensaje coach (lógica v1 intacta)
   const coach = useMemo(() => {
@@ -897,7 +1105,7 @@ export function V1DashScreen({
               ${grossToday.toFixed(2)}
             </p>
             <p className="font-mono-jet text-[10px] text-neutral-400 mt-0.5">
-              {todayTrips.length} {todayTrips.length === 1 ? "trip" : "trips"} · fare + tips + tolls
+              {shiftTrips.length} {shiftTrips.length === 1 ? "trip" : "trips"} · fare + tips + tolls
             </p>
             <div className="mt-3 h-px" style={{ background: "linear-gradient(90deg, #1e1400, #1e1e1e)" }} />
             <div className="mt-2.5 flex items-center gap-1.5">
@@ -1094,15 +1302,8 @@ export function V1DashScreen({
             </div>
 
             <ZonesCard zones={zones} clock={clock} hasGps={!!gps} />
-            <WeekStrip todayTripCount={todayTrips.length} grossToday={grossToday} weeklyTotal={weeklyTotal} />
-            <TollsCard
-              tollYear={clock.getFullYear()}
-              totalTollsToday={tollSum.day}
-              tollsWeek={tollSum.week}
-              tollsMonth={tollSum.month}
-              tollsYear={tollSum.year}
-              shiftActive={shiftActive}
-            />
+            <WeekStrip todayTripCount={shiftTrips.length} grossToday={grossToday} weeklyTotal={weeklyTotal} />
+            <EzpassSummaryCard trips={trips} todayKey={todayKey} shiftWindow={shiftWindow} />
           </div>
 
           <HourlyCard trips={todayRawTrips} clock={clock} />
@@ -1117,13 +1318,13 @@ export function V1DashScreen({
           />
 
           <ShiftBreakdown
-            todayTrips={todayTrips}
+            todayTrips={shiftTrips}
             grossToday={grossToday}
             expensesToday={expensesToday}
             expensesTodayCount={expensesTodayCount}
             netToday={netToday}
             weeklyTotal={weeklyTotal}
-            totalTollsToday={tollSum.day}
+            totalTollsToday={shiftTolls}
           />
 
           <button
