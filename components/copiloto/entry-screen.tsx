@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from "react"
 import { ChevronDown, MapPin, Coffee, Loader2, X, AlertTriangle, RotateCw, Edit2, Gauge } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PLATFORMS, type Platform, type Trip, type LocationPoint, newTrip, grossOf, tripDateOf } from "./types"
-import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
+import { PlatformBadge } from "./platform-avatar"
 import { NumPad } from "./num-pad"
-import { isVoucherPlatform } from "./platform-meta"
+import { isVoucherPlatform, platformInitials, platformMeta } from "./platform-meta"
 import type { ShiftApi } from "./shift"
 import {
   captureLocation,
@@ -21,6 +21,70 @@ import {
 import { moneyTextFromNumber, moneyTextToNumber, normalizeMoneyText } from "@/lib/money"
 import { detectNewTolls, rateFor, formatTollNote, appendNote } from "./toll-detect"
 import { loadShiftTolls, SHIFT_TOLLS_EVENT } from "./shift-tolls"
+
+// Logo del SELECTOR de plataformas de TODAY (solo de esta pantalla).
+// Miguel (2026-11-22): el logo grande pero COMPLETO y bien centrado —
+// con el círculo de PlatformAvatar las marcas anchas (Uber, Lyft) se
+// veían cortadas en las esquinas y las cuadradas con fill se recortaban
+// para llenar. Aquí la caja es rectangular y ancha, con fondo blanco y
+// el arte en object-contain: entra entero, centrado horizontal y
+// vertical, sin tocar los bordes. PlatformAvatar NO se toca: sigue
+// igual en las demás pantallas.
+function SelectorLogo({
+  platform,
+  width,
+  height,
+}: {
+  platform: Platform
+  width: number
+  height: number
+}) {
+  const [failed, setFailed] = useState(false)
+  const meta = platformMeta(platform)
+  const initials = platformInitials(platform)
+  // Aventus (Miguel, 2026-11-22): su arte es casi cuadrado (1102×995,
+  // verde con el nombre en blanco abajo) y con object-contain en la
+  // caja ancha quedaba chico — el nombre dentro del logo no se leía.
+  // Solo para Aventus: sin padding, object-cover (el verde llena la
+  // caja a lo ancho, sin márgenes blancos) con la ventana puesta en la
+  // franja del monograma + nombre + tagline (el nombre va al 59–65%
+  // del alto del arte) y un scale leve (1.12) cuya ventana horizontal
+  // (89%) sigue conteniendo el nombre completo (12–91%). Colores
+  // originales, sin invertir ni recolorear.
+  const isAventus = platform === "Aventus Ride"
+
+  return (
+    <span
+      className={cn(
+        "flex shrink-0 items-center justify-center overflow-hidden rounded-md bg-white/95 ring-1 ring-black/20",
+        isAventus ? "p-0" : "p-[2px]"
+      )}
+      style={{ width, height }}
+      aria-hidden="true"
+    >
+      {meta.logo && !failed ? (
+        <img
+          src={meta.logo}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          onError={() => setFailed(true)}
+          className={cn(
+            "h-full w-full",
+            isAventus ? "scale-[1.12] object-cover object-[50%_70%]" : "object-contain"
+          )}
+        />
+      ) : (
+        <span
+          className="font-bold leading-none text-black"
+          style={{ fontSize: Math.max(8, Math.round(height * 0.42)) }}
+        >
+          {initials}
+        </span>
+      )}
+    </span>
+  )
+}
 
 function LocationColumn({
   label,
@@ -51,7 +115,7 @@ function LocationColumn({
   const button = accent === "green" ? "bg-green-500 hover:bg-green-400" : "bg-sky-400 hover:bg-sky-300"
 
   return (
-    <div className="flex min-w-0 flex-col gap-1">
+    <div className="flex min-w-0 flex-col gap-1.5">
       {/* Header con GPS badge */}
       <div className="flex items-center justify-between">
         <span className="text-[11px] font-bold tracking-wide text-neutral-400">{label}</span>
@@ -145,13 +209,13 @@ function LocationColumn({
             value={value}
             onChange={(e) => onManual(e.target.value)}
             placeholder={`Toca ${label.toLowerCase()}`}
-            className={cn("rounded-lg border bg-neutral-950/60 px-2.5 py-1.5 text-[13px] text-white outline-none placeholder:text-neutral-500", border)}
+            className={cn("rounded-lg border bg-neutral-950/60 px-2.5 py-2.5 text-[13px] text-white outline-none placeholder:text-neutral-500", border)}
           />
           <button
             type="button"
             onClick={onCapture}
             disabled={disabled}
-            className={cn("flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-bold text-black active:scale-[0.98] disabled:cursor-wait disabled:opacity-60 transition", button)}
+            className={cn("flex items-center justify-center gap-1.5 rounded-lg py-3 text-sm font-bold text-black active:scale-[0.98] disabled:cursor-wait disabled:opacity-60 transition", button)}
           >
             {busy ? <Loader2 className="size-4 animate-spin" /> : <MapPin className="size-4" />}
             {busy ? "BUSCANDO..." : `${label} NOW`}
@@ -200,11 +264,11 @@ function EarningsCard({
   }
 
   return (
-    <div className="rounded-xl border border-neutral-800 bg-black/50 p-1.5 text-center">
-      <div className="text-sm" aria-hidden>
+    <div className="rounded-xl border border-neutral-800 bg-black/50 px-1.5 py-3 text-center">
+      <div className="text-lg" aria-hidden>
         {icon}
       </div>
-      <p className="text-[8px] font-bold uppercase tracking-wide text-neutral-500">{label}</p>
+      <p className="text-[9px] font-bold uppercase tracking-wide text-neutral-500">{label}</p>
       <input
         id={inputId}
         type="text"
@@ -232,7 +296,11 @@ function EarningsCard({
         onChange={(e) => edit(e.target.value)}
         placeholder="$0"
         className={cn(
-          "mt-0.5 w-full min-w-0 bg-transparent text-center text-sm font-bold outline-none placeholder:text-neutral-600",
+          // text-[18px]! : la regla global anti-zoom fija los inputs a
+          // 16px !important; el !important de la utilidad gana por
+          // especificidad y el número se ve más grande (18px sigue
+          // sobre el mínimo anti-zoom de iOS, la página no salta).
+          "mt-1 w-full min-w-0 bg-transparent text-center text-[18px]! font-bold outline-none placeholder:text-neutral-600",
           negative ? "text-rose-300" : color,
         )}
       />
@@ -524,8 +592,15 @@ export function EntryScreen({
           (integrado 2026-10-31) — marca + pastilla GPS, saludo, tagline,
           localización con la fecha corta a la derecha. Los controles del
           turno viven SOLO en el DASHBOARD (la tira de abajo salió de
-          TODAY el 2026-11-22, a pedido de Miguel). */}
-      <div className="shrink-0 px-4 pb-2 pt-2 sm:px-8 sm:pt-3">
+          TODAY el 2026-11-22, a pedido de Miguel). El pt-[18px] (+10px
+          sobre el pt-2 original) baja el header un poco para que no
+          quede debajo del skin transparente de arriba del teléfono
+          (Miguel, 2026-11-22). Los logos del selector de plataformas
+          también crecieron a pedido suyo ese día (rápidos 16→24,
+          desplegable 20→28); la letra del nombre no cambió. Después
+          pasaron a cajas rectangulares anchas (SelectorLogo) con el
+          logo completo y centrado, sin el recorte del círculo. */}
+      <div className="shrink-0 px-4 pb-2 pt-[18px] sm:px-8 sm:pt-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-lime-500">
@@ -601,7 +676,7 @@ export function EntryScreen({
           div. El scroll existe SOLO para bajar a las NOTES cuando se abren
           (aclaración de Miguel, 2026-10-26: las notas pueden quedar abajo;
           lo que nunca puede requerir scroll es entrar datos ni salvar). */}
-      <div className="flex-1 space-y-1.5 overflow-y-auto px-4 py-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:content-start sm:gap-4 sm:px-8 sm:py-5">
+      <div className="flex flex-1 flex-col justify-evenly gap-2 overflow-y-auto px-4 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:content-start sm:gap-4 sm:px-8 sm:py-5">
         {/* Platform + break — EXACTAMENTE como estaba en V7, con los
             logos originales de cada plataforma (orden de Miguel,
             2026-10-31: "en la V7 prefiero dejarla como está esa parte").
@@ -613,10 +688,10 @@ export function EntryScreen({
               onClick={() => setPlatformOpen((o) => !o)}
               aria-haspopup="listbox"
               aria-expanded={platformOpen}
-              className="flex h-9 w-full items-center justify-between gap-1 rounded-lg border border-neutral-800 bg-neutral-900 px-2"
+              className="flex h-12 w-full items-center justify-between gap-1 rounded-lg border border-neutral-800 bg-neutral-900 px-2"
             >
               <span className="flex min-w-0 items-center gap-1.5">
-                <PlatformAvatar platform={draft.platform} size={18} />
+                <SelectorLogo platform={draft.platform} width={56} height={30} />
                 <span className="truncate text-xs font-semibold text-white">{draft.platform}</span>
               </span>
               <ChevronDown className="size-3.5 shrink-0 text-neutral-500" />
@@ -641,7 +716,7 @@ export function EntryScreen({
                       p === draft.platform ? "text-yellow-400" : "text-neutral-200"
                     )}
                   >
-                    <PlatformAvatar platform={p} size={24} />
+                    <SelectorLogo platform={p} width={56} height={30} />
                     <span className="min-w-0 flex-1 truncate">{p}</span>
                     <PlatformBadge platform={p} />
                   </button>
@@ -653,16 +728,20 @@ export function EntryScreen({
             <button
               key={p}
               type="button"
+              aria-label={p}
               onClick={() => setDraft((d) => ({ ...d, platform: p as any, isVoucher: isVoucherPlatform(p as any) }))}
               className={cn(
-                "flex h-9 min-w-0 flex-1 flex-col items-center justify-center gap-0 rounded-lg border px-0.5 text-[8px] font-bold leading-tight transition-colors",
+                "flex h-12 min-w-0 flex-1 items-center justify-center rounded-lg border px-0.5 transition-colors",
                 draft.platform === p
                   ? "border-yellow-400 bg-yellow-400/15 text-yellow-300"
                   : "border-neutral-700 bg-neutral-900 text-neutral-300"
               )}
             >
-              <PlatformAvatar platform={p as any} size={14} />
-              <span className="max-w-full truncate">{p.split(" ")[0]}</span>
+              {/* Solo el logo, centrado (Miguel, 2026-11-22): el nombre
+                  escrito debajo duplicaba el que ya trae el arte del
+                  logo (Lyft dice "lyft", Uber dice "Uber"). Sin la
+                  letra, la caja del logo crece de alto (26 → 32). */}
+              <SelectorLogo platform={p as Platform} width={52} height={32} />
             </button>
           ))}
         </div>
@@ -675,12 +754,12 @@ export function EntryScreen({
             platformFee, extraCash); LOCATIONS, la captura GPS y el resto
             de TODAY quedan como estaban. */}
         {/* ============================================== */}
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-2 sm:col-span-2">
-          <div className="mb-1.5 flex items-center justify-between">
+        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3 sm:col-span-2">
+          <div className="mb-2 flex items-center justify-between">
             <span className="text-[11px] font-bold tracking-wide text-neutral-400">TODAY'S EARNINGS</span>
             <span className="text-[9px] text-neutral-500">All values in USD</span>
           </div>
-          <div className="grid grid-cols-5 gap-1.5">
+          <div className="grid grid-cols-5 gap-2">
             <EarningsCard icon="💼" label="FARE" color="text-green-400" value={draft.earnings} onChange={(n) => set("earnings", n)} inputId="fare-input" onActivate={() => setActiveField("fare")} />
             <EarningsCard icon="⭐" label="TIPS" color="text-green-400" value={draft.tips} onChange={(n) => set("tips", n)} />
             <EarningsCard icon="🛣️" label="TOLLS" color="text-amber-400" value={draft.toll} onChange={(n) => set("toll", n)} />
@@ -707,7 +786,7 @@ export function EntryScreen({
         {/* ============================================== */}
         {/* BOX 3: UBICACIONES — PICKUP + DROPOFF              */}
         {/* ============================================== */}
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-2.5 sm:col-span-2">
+        <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3 sm:col-span-2">
           {/* Box header */}
           <div className="mb-2 flex items-center gap-2">
             <MapPin className="size-4 text-green-400" />
