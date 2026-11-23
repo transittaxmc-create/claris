@@ -89,6 +89,15 @@ export function addPersonalToday(miles: number) {
   save(days)
 }
 
+
+const HOME_KEY = "claris_home_geo"
+export function setHomeGeo(lat: number, lon: number) {
+  try { localStorage.setItem(HOME_KEY, JSON.stringify({ lat, lon })) } catch {}
+}
+export function getHomeGeo(): { lat: number; lon: number } | null {
+  try { const r = localStorage.getItem(HOME_KEY); return r ? JSON.parse(r) : null } catch { return null }
+}
+
 export function loadMileageLog(): MileageDay[] {
   return load()
 }
