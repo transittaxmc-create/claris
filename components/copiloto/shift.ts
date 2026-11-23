@@ -16,9 +16,7 @@
 
 import { addMilesToday, addCommuteToday, addPersonalToday, getMileMode, getHomeGeo } from "./mileage-log"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { addMilesToday, addCommuteToday, addPersonalToday, getMileMode, getHomeGeo } from "./mileage-log"
 import { haversineKm } from "./v1-dash/v1-dash-zones"
-import { addMilesToday, addCommuteToday, addPersonalToday, getMileMode, getHomeGeo } from "./mileage-log"
 import {
   commitWorkedRange,
   hourKeyOf,
@@ -31,7 +29,6 @@ export const SHIFT_KEY = "claris_v1dash_shift"
 export const SHIFT_LOG_KEY = "claris_v1dash_shift_logs"
 export const SHIFT_START_KEY = "claris_v1dash_shift_start"
 export const HOURLY_GOAL_KEY = "claris_hourly_goal"
-import { addMilesToday, addCommuteToday, addPersonalToday, getMileMode, getHomeGeo } from "./mileage-log"
 import { recordShiftClose } from "./mileage-log"
 
 export const WORKED_KEY = "claris_hours_worked"
