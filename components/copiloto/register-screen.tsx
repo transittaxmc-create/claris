@@ -491,7 +491,7 @@ export function RegisterScreen({
           </label>
           <span className="shrink-0 text-[10px] font-bold tracking-wide text-neutral-500">
             GROSS <strong className="text-base text-yellow-400">{money(totals.gross)}</strong>
-            <span className="ml-1 text-[9px] text-neutral-500">· {visible.length} trips</span>
+            <span className="ml-1 text-[11px] font-semibold text-neutral-400">· {visible.length}</span>
           </span>
           <span className="shrink-0 text-[10px] font-bold tracking-wide text-neutral-500">
             NET <strong className="text-base text-green-400">{money(totals.net)}</strong>
@@ -529,7 +529,6 @@ export function RegisterScreen({
           ))}
         </div>
 
-        <GrossByPlatformCard total={totals.gross} groups={platformGroups} />
         {showDetail && (
           <ReconciliationPanel summary={summary} groups={platformGroups} />
         )}
