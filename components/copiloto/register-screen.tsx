@@ -491,10 +491,10 @@ export function RegisterScreen({
             />
           </label>
           <span className="shrink-0 text-[10px] font-bold tracking-wide text-neutral-500">
-            GROSS <strong className="text-sm text-yellow-400">{money(totals.gross)}</strong>
+            GROSS <strong className="text-base text-yellow-400">{money(totals.gross)}</strong>
           </span>
           <span className="shrink-0 text-[10px] font-bold tracking-wide text-neutral-500">
-            NET <strong className="text-sm text-green-400">{money(totals.net)}</strong>
+            NET <strong className="text-base text-green-400">{money(totals.net)}</strong>
           </span>
           {/* Producción por hora: vivía aquí como overlay (2026-11-09);
               Miguel la consolidó en el DASHBOARD (2026-11-22) — un solo lugar. */}
@@ -534,11 +534,9 @@ export function RegisterScreen({
           ))}
         </div>
 
+        <GrossByPlatformCard total={totals.gross} groups={platformGroups} />
         {showDetail && (
-          <div className="space-y-2.5">
-            <GrossByPlatformCard total={totals.gross} groups={platformGroups} />
-            <ReconciliationPanel summary={summary} groups={platformGroups} />
-          </div>
+          <ReconciliationPanel summary={summary} groups={platformGroups} />
         )}
         <div className="space-y-3 pt-1">
           {visible.length === 0 ? (
