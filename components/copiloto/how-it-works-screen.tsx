@@ -378,7 +378,8 @@ export function HowItWorksScreen() {
       <Section title="9. TAXES 2026 — Schedule C and self-employment">
         <P>All figures come from trips and business-classified expenses. A CPA must review before filing.</P>
         <ul className="list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li><B>Official forms:</B> Schedule C, Schedule SE, Form 1040, Form 8995 (QBI). Links are in REPORTS.</li>
+          <li><B>Official forms:</B> Schedule C, Schedule SE, Form 1040, Form 8995. Open from REPORTS → Tax Worksheet.</li>
+          <li><B>Tax Worksheet:</B> REPORTS shows auto-filled lines you can edit. PDFs open in a new tab.</li>
           <li><B>Mileage 2026:</B> $0.725/mi (Jan–Jun), $0.76/mi (Jul–Dec).</li>
           <li><B>SE tax:</B> 15.3% on net profit. Half is deductible.</li>
           <li><B>QBI:</B> 20% deduction on qualified business income.</li>
