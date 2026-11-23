@@ -21,6 +21,7 @@ import {
 import { moneyTextFromNumber, moneyTextToNumber, normalizeMoneyText } from "@/lib/money"
 import { detectNewTolls, rateFor, formatTollNote, appendNote } from "./toll-detect"
 import { loadShiftTolls, SHIFT_TOLLS_EVENT } from "./shift-tolls"
+import { setHomeGeo } from "./mileage-log"
 
 // Tratamiento por plataforma del SelectorLogo (ver el comentario del
 // estándar dentro del componente): cómo se acomoda cada arte en la
@@ -715,7 +716,13 @@ export function EntryScreen({
       {/* TODAY + REGISTER — juntos en una línea, bien cuadrado */}
       <div className="flex shrink-0 items-stretch border-b border-neutral-800/60 bg-black sm:px-8">
         <div className="flex flex-1 items-center justify-between gap-2 px-4 py-1.5">
-          <span className="text-[10px] font-bold tracking-[0.15em] text-emerald-300/70">TODAY</span>
+          <span className="flex items-center gap-1">
+            <span className="text-[10px] font-bold tracking-[0.15em] text-emerald-300/70">TODAY</span>
+            <button type="button" onClick={() => {
+              if (shift.gps) { setHomeGeo(shift.gps.lat, shift.gps.lng); alert("Home set") }
+              else alert("Waiting for GPS")
+            }} className="rounded border border-neutral-700 px-1.5 py-0.5 text-[8px] text-neutral-400">Set home</button>
+          </span>
           <span className="flex items-baseline gap-1.5">
             <span className="font-mono text-base font-black tabular-nums text-emerald-300">
               {`$${grossIncomeToday.toFixed(2)}`}
