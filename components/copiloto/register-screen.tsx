@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { localDateKey } from "@/lib/dates"
+import { weekStartOf } from "./dinero-forecast"
 import { type Trip, type TollBill, grossOf, netOf, money, tripDateOf } from "./types"
 import { fechasReconciliacionAuto, limpiarCobrosSinViajes, validarCobros, leerLibroMayor, reconciliarCobrosAlLibro } from "./cash-flow-store"
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
@@ -438,6 +439,12 @@ export function RegisterScreen({
     return { gross, fee, net, pending: visible.filter((t) => t.status === "pending").length }
   }, [visible])
 
+  const weekTotal = useMemo(() => {
+    const start = weekStartOf(selectedDate)
+    return trips
+      .filter((t) => weekStartOf(tripDateOf(t)) === start)
+      .reduce((s, t) => s + grossOf(t), 0)
+  }, [trips, selectedDate])
   const platformGroups = useMemo(() => groupByPlatform(visible), [visible])
   const summary = useMemo(() => reconSummary(visible), [visible])
   const grouped = sortKey === "platform"
@@ -495,6 +502,7 @@ export function RegisterScreen({
           </span>
           <span className="shrink-0 text-[10px] font-bold tracking-wide text-neutral-500">
             NET <strong className="text-base text-green-400">{money(totals.net)}</strong>
+            <span className="ml-1 text-[9px] text-neutral-500">wk ${weekTotal.toFixed(0)}</span>
             {summary.problemCount > 0 && (
               <span className="ml-1 inline-block size-2 rounded-full bg-rose-500" title={`${summary.problemCount} with difference`} />
             )}
