@@ -16,7 +16,8 @@ export interface MileageDay {
   date: string // YYYY-MM-DD
   clockIn: number | null
   clockOut: number | null
-  miles: number // millas GPS del turno (negocio)
+  miles: number // business miles
+  commute: number // commute miles
   trips: MileageTrip[]
 }
 
@@ -47,9 +48,23 @@ export function addMilesToday(miles: number) {
   const today = new Date().toISOString().slice(0, 10)
   const i = days.findIndex((d) => d.date === today)
   if (i >= 0) {
-    days[i] = { ...days[i], miles: Math.round((days[i].miles + miles) * 100) / 100 }
+    days[i] = { ...days[i], miles: Math.round((days[i].miles + miles) * 100) / 100, commute: days[i].commute ?? 0 }
   } else {
     days.push({ date: today, clockIn: null, clockOut: null, miles: Math.round(miles * 100) / 100, trips: [] })
+  }
+  save(days)
+}
+
+
+export function addCommuteToday(miles: number) {
+  if (!Number.isFinite(miles) || miles <= 0) return
+  const days = load()
+  const today = new Date().toISOString().slice(0, 10)
+  const i = days.findIndex((d) => d.date === today)
+  if (i >= 0) {
+    days[i] = { ...days[i], commute: Math.round(((days[i].commute ?? 0) + miles) * 100) / 100 }
+  } else {
+    days.push({ date: today, clockIn: null, clockOut: null, miles: 0, commute: Math.round(miles * 100) / 100, trips: [] })
   }
   save(days)
 }
@@ -64,7 +79,7 @@ export function recordShiftClose(date: string, clockIn: number | null, clockOut:
   const i = days.findIndex((d) => d.date === date)
   const entry: MileageDay =
     i >= 0
-      ? { ...days[i], clockIn: clockIn ?? days[i].clockIn, clockOut, miles: Math.round((days[i].miles + miles) * 100) / 100 }
+      ? { ...days[i], clockIn: clockIn ?? days[i].clockIn, clockOut, miles: Math.round((days[i].miles + miles) * 100) / 100, commute: days[i].commute ?? 0 }
       : { date, clockIn, clockOut, miles: Math.round(miles * 100) / 100, trips: [] }
   if (i >= 0) days[i] = entry
   else days.push(entry)
