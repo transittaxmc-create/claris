@@ -107,7 +107,16 @@ export function HowItWorksScreen() {
         </ul>
       </Section>
 
-      <Section title="4. EARNINGS">
+      <Section title="4. EARNINGS — daily jobs and receivables">
+        <ul className="list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>Each completed trip appears here, grouped by platform.</li>
+          <li><B>GROSS</B> / <B>NET</B> for the day, trip count, and weekly total (Mon–Sun).</li>
+          <li>Trip status: <B>PENDING</B>, <B>MATCHED</B>, <B>SHORT</B>, <B>OVER</B>.</li>
+          <li><B>Update receivables → Money</B> (⋯ menu) sends the day's net by platform to MONEY.</li>
+          <li>Hourly rate shows on TODAY next to the daily total (green if on pace).</li>
+          <li>Quick platform buttons on TODAY for faster entry; BREAK is in the ⋯ menu.</li>
+        </ul>
+      </Section>
         <P>
           Income by platform, payout reconciliation (pending / matched / difference), close day to
           send deposits as projections.
@@ -171,7 +180,7 @@ export function HowItWorksScreen() {
       </Section>
 
       {/* ───────────────────────────────────────────────────────────── */}
-      <Section title="8. DATA & BACKUP — dónde viven los datos y cómo cambiar de teléfono">
+      <Section title="8. DATA & BACKUP — where data lives and how to switch phones">
         <P>
           <B>Implementado: 2026-11-13 · Autor: Miguel / Copiloto V7</B>
         </P>
