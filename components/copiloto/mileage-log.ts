@@ -17,7 +17,8 @@ export interface MileageDay {
   clockIn: number | null
   clockOut: number | null
   miles: number // business miles
-  commute: number // commute miles
+  commute: number
+  personal: number
   trips: MileageTrip[]
 }
 
@@ -66,6 +67,25 @@ export function addCommuteToday(miles: number) {
   } else {
     days.push({ date: today, clockIn: null, clockOut: null, miles: 0, commute: Math.round(miles * 100) / 100, trips: [] })
   }
+  save(days)
+}
+
+
+export type MileMode = "business" | "commute" | "personal"
+const MODE_KEY = "claris_mile_mode"
+export function getMileMode(): MileMode {
+  try { return (localStorage.getItem(MODE_KEY) as MileMode) || "business" } catch { return "business" }
+}
+export function setMileMode(m: MileMode) {
+  try { localStorage.setItem(MODE_KEY, m) } catch {}
+}
+export function addPersonalToday(miles: number) {
+  if (!Number.isFinite(miles) || miles <= 0) return
+  const days = load()
+  const today = new Date().toISOString().slice(0, 10)
+  const i = days.findIndex((d) => d.date === today)
+  if (i >= 0) days[i] = { ...days[i], personal: Math.round(((days[i].personal ?? 0) + miles) * 100) / 100 }
+  else days.push({ date: today, clockIn: null, clockOut: null, miles: 0, commute: 0, personal: Math.round(miles * 100) / 100, trips: [] })
   save(days)
 }
 
