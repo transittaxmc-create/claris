@@ -49,6 +49,7 @@ const RED = "#ff5d6c"
 const CARD = "#14161d"
 const BORDER = "#262833"
 const BAND = "#1b1e27"
+const TYPE = { micro: 9, label: 10.5, body: 12.5, section: 14, value: 14 } as const
 
 const btnOk: CSSProperties = { background: "#34d17b26", color: GREEN, border: "none", borderRadius: 8, padding: "5px 10px", fontSize: 10.5, fontWeight: 800, cursor: "pointer" }
 const btnAmber: CSSProperties = { background: "#f5b73f26", color: "#f5b73f", border: "none", borderRadius: 8, padding: "5px 10px", fontSize: 10.5, fontWeight: 800, cursor: "pointer" }
@@ -501,8 +502,8 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void; realBa
     return out
   }, [fc])
 
-  const th: CSSProperties = { textAlign: "left", fontSize: 10, color: SUB, letterSpacing: 0.4, padding: "10px 8px", borderBottom: `1px solid ${BORDER}`, fontWeight: 700, whiteSpace: "nowrap" }
-  const td: CSSProperties = { padding: "11px 8px", borderBottom: "1px solid #1a1c24", verticalAlign: "top", fontSize: 12, lineHeight: 1.35 }
+  const th: CSSProperties = { textAlign: "left", fontSize: TYPE.label, color: SUB, letterSpacing: 0.3, padding: "10px 4px", borderBottom: `1px solid ${BORDER}`, fontWeight: 700, whiteSpace: "nowrap" }
+  const td: CSSProperties = { padding: "11px 8px", borderBottom: "1px solid #1a1c24", verticalAlign: "top", fontSize: TYPE.body, lineHeight: 1.35 }
 
   // Balance real del banco (Plaid) al cierre de cada fecha: desde hoy hacia
   // atrás restando los movimientos reales. Fechas futuras = último real.
@@ -571,16 +572,16 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void; realBa
         style={{ margin: "12px 12px 0", background: BAND, border: "1px solid #3d3a6e", borderRadius: 14, padding: "9px 12px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr 16px", columnGap: 6, alignItems: "center", cursor: "pointer" }}
       >
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 9.5, color: SUB, fontWeight: 700, whiteSpace: "nowrap" }}>REAL BANK</div>
-          <div style={{ fontSize: 13, fontWeight: 800, marginTop: 2, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{props.realBank != null ? fmtBal(props.realBank) : "—"}</div>
+          <div style={{ fontSize: TYPE.label, color: SUB, fontWeight: 700, whiteSpace: "nowrap" }}>REAL BANK</div>
+          <div style={{ fontSize: TYPE.value, fontWeight: 800, marginTop: 2, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{props.realBank != null ? fmtBal(props.realBank) : "—"}</div>
         </div>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 9.5, color: SUB, fontWeight: 700, whiteSpace: "nowrap" }}>STARTING</div>
-          <div style={{ fontSize: 13, fontWeight: 800, marginTop: 2, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{fmtBal(fc.start)}</div>
+          <div style={{ fontSize: TYPE.label, color: SUB, fontWeight: 700, whiteSpace: "nowrap" }}>STARTING</div>
+          <div style={{ fontSize: TYPE.value, fontWeight: 800, marginTop: 2, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{fmtBal(fc.start)}</div>
         </div>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 9.5, color: SUB, fontWeight: 700, whiteSpace: "nowrap" }}>ENDING</div>
-          <div style={{ fontSize: 13, fontWeight: 800, marginTop: 2, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", color: fc.end < 0 ? RED : undefined }}>{fmtBal(fc.end)}</div>
+          <div style={{ fontSize: TYPE.label, color: SUB, fontWeight: 700, whiteSpace: "nowrap" }}>ENDING</div>
+          <div style={{ fontSize: TYPE.value, fontWeight: 800, marginTop: 2, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", color: fc.end < 0 ? RED : undefined }}>{fmtBal(fc.end)}</div>
         </div>
         <div style={{ color: SUB, fontSize: 12, textAlign: "right" }}>{showTopDetail ? "▴" : "▾"}</div>
       </div>
@@ -590,11 +591,11 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void; realBa
       <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, padding: "10px 6px", marginBottom: 8 }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, alignItems: "center" }}>
           <div style={{ minWidth: 0, textAlign: "center" }}>
-            <div style={{ fontSize: 9.5, color: SUB, fontWeight: 700, whiteSpace: "nowrap" }}>REAL BANK</div>
+            <div style={{ fontSize: TYPE.label, color: SUB, fontWeight: 700, whiteSpace: "nowrap" }}>REAL BANK</div>
             <div style={{ fontSize: 11.5, fontWeight: 800, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{props.realBank != null ? fmtBal(props.realBank) : "—"}</div>
           </div>
           <div style={{ minWidth: 0, textAlign: "center" }}>
-            <div style={{ fontSize: 9.5, color: SUB, fontWeight: 700, whiteSpace: "nowrap" }}>PROJECTED MONTH</div>
+            <div style={{ fontSize: TYPE.label, color: SUB, fontWeight: 700, whiteSpace: "nowrap" }}>PROJECTED MONTH</div>
             <div style={{ fontSize: 11.5, fontWeight: 800, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", color: (props.projectedMonth ?? 0) < 0 ? RED : undefined }}>{fmtBal(props.projectedMonth ?? 0)}</div>
           </div>
         </div>
@@ -712,7 +713,7 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void; realBa
       )}
 
       {/* UNIFIED REGISTER — sin caja visible, ancho casi completo */}
-      <div style={{ padding: "18px 14px 8px", fontSize: 12.5, fontWeight: 800, letterSpacing: 1.2, color: SUB }}>
+      <div style={{ padding: "18px 14px 8px", fontSize: TYPE.section, fontWeight: 800, letterSpacing: 1.2, color: SUB }}>
         UNIFIED REGISTER
       </div>
       <div>
@@ -729,7 +730,7 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void; realBa
             </tr>
           </thead>
         </table>
-        <div style={{ background: BAND, padding: "8px 14px", fontSize: 11, fontWeight: 800, letterSpacing: 1, color: SUB }}>
+        <div style={{ background: BAND, padding: "8px 14px", fontSize: TYPE.body, fontWeight: 800, letterSpacing: 1, color: SUB }}>
           FUTURE TRANSACTIONS / FORECAST
         </div>
         <div style={{ maxHeight: "72vh", overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", touchAction: "pan-y" }}>
