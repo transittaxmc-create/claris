@@ -571,15 +571,15 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void; realBa
         style={{ margin: "12px 12px 0", background: BAND, border: "1px solid #3d3a6e", borderRadius: 14, padding: "9px 12px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr 16px", columnGap: 6, alignItems: "center", cursor: "pointer" }}
       >
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 8.5, color: SUB, fontWeight: 700, whiteSpace: "nowrap" }}>REAL BANK</div>
+          <div style={{ fontSize: 9.5, color: SUB, fontWeight: 700, whiteSpace: "nowrap" }}>REAL BANK</div>
           <div style={{ fontSize: 13, fontWeight: 800, marginTop: 2, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{props.realBank != null ? fmtBal(props.realBank) : "—"}</div>
         </div>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 8.5, color: SUB, fontWeight: 700, whiteSpace: "nowrap" }}>STARTING</div>
+          <div style={{ fontSize: 9.5, color: SUB, fontWeight: 700, whiteSpace: "nowrap" }}>STARTING</div>
           <div style={{ fontSize: 13, fontWeight: 800, marginTop: 2, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{fmtBal(fc.start)}</div>
         </div>
         <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 8.5, color: SUB, fontWeight: 700, whiteSpace: "nowrap" }}>ENDING</div>
+          <div style={{ fontSize: 9.5, color: SUB, fontWeight: 700, whiteSpace: "nowrap" }}>ENDING</div>
           <div style={{ fontSize: 13, fontWeight: 800, marginTop: 2, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", color: fc.end < 0 ? RED : undefined }}>{fmtBal(fc.end)}</div>
         </div>
         <div style={{ color: SUB, fontSize: 12, textAlign: "right" }}>{showTopDetail ? "▴" : "▾"}</div>
@@ -590,11 +590,11 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void; realBa
       <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, padding: "10px 6px", marginBottom: 8 }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 2, alignItems: "center" }}>
           <div style={{ minWidth: 0, textAlign: "center" }}>
-            <div style={{ fontSize: 8.5, color: SUB, fontWeight: 700, whiteSpace: "nowrap" }}>REAL BANK</div>
+            <div style={{ fontSize: 9.5, color: SUB, fontWeight: 700, whiteSpace: "nowrap" }}>REAL BANK</div>
             <div style={{ fontSize: 11.5, fontWeight: 800, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{props.realBank != null ? fmtBal(props.realBank) : "—"}</div>
           </div>
           <div style={{ minWidth: 0, textAlign: "center" }}>
-            <div style={{ fontSize: 8.5, color: SUB, fontWeight: 700, whiteSpace: "nowrap" }}>PROJECTED MONTH</div>
+            <div style={{ fontSize: 9.5, color: SUB, fontWeight: 700, whiteSpace: "nowrap" }}>PROJECTED MONTH</div>
             <div style={{ fontSize: 11.5, fontWeight: 800, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", color: (props.projectedMonth ?? 0) < 0 ? RED : undefined }}>{fmtBal(props.projectedMonth ?? 0)}</div>
           </div>
         </div>
@@ -614,20 +614,20 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void; realBa
       <div style={{ margin: 0, background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, padding: "10px 6px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1.15fr 1.15fr 1fr 1fr", gap: 2, alignItems: "center" }}>
           <div style={{ minWidth: 0, textAlign: "center" }}>
-            <div style={{ fontSize: 8.5, color: SUB, letterSpacing: 0, fontWeight: 700, whiteSpace: "nowrap" }}>STARTING BAL.</div>
+            <div style={{ fontSize: 9.5, color: SUB, letterSpacing: 0, fontWeight: 700, whiteSpace: "nowrap" }}>STARTING BAL.</div>
             <div style={{ fontSize: 11.5, fontWeight: 800, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", color: fc.start === 0 ? "#f5b73f" : undefined }}>{fc.start < 0 ? "-$" : "$"}{money2(fc.start)}</div>
-            {fc.start === 0 && <div style={{ fontSize: 7, color: "#f5b73f", marginTop: 1 }}>Set bank balances</div>}
+            {fc.start === 0 && <div style={{ fontSize: 8, color: "#f5b73f", marginTop: 1 }}>Set bank balances</div>}
           </div>
           <div style={{ minWidth: 0, textAlign: "center" }}>
-            <div style={{ fontSize: 8.5, color: SUB, letterSpacing: 0, fontWeight: 700, whiteSpace: "nowrap" }}>INCOME (30D):</div>
+            <div style={{ fontSize: 9.5, color: SUB, letterSpacing: 0, fontWeight: 700, whiteSpace: "nowrap" }}>INCOME (30D):</div>
             <div style={{ fontSize: 11.5, fontWeight: 800, color: GREEN, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{signed(fc.incomeTotal)}</div>
           </div>
           <div style={{ minWidth: 0, textAlign: "center" }}>
-            <div style={{ fontSize: 8.5, color: SUB, letterSpacing: 0, fontWeight: 700, whiteSpace: "nowrap" }}>EXPENSES (30D):</div>
+            <div style={{ fontSize: 9.5, color: SUB, letterSpacing: 0, fontWeight: 700, whiteSpace: "nowrap" }}>EXPENSES (30D):</div>
             <div style={{ fontSize: 11.5, fontWeight: 800, color: RED, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{signed(-fc.expenseTotal)}</div>
           </div>
           <div style={{ minWidth: 0, textAlign: "center" }}>
-            <div style={{ fontSize: 8.5, color: SUB, letterSpacing: 0, fontWeight: 700, whiteSpace: "nowrap" }}>ENDING BAL.</div>
+            <div style={{ fontSize: 9.5, color: SUB, letterSpacing: 0, fontWeight: 700, whiteSpace: "nowrap" }}>ENDING BAL.</div>
             {/* El saldo final SÍ puede ser negativo (es proyectado) y
                 debe VERSE negativo: antes se imprimía con money2() que
                 usa Math.abs y botaba el signo — se veía +$8,247.32
@@ -1039,7 +1039,7 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void; realBa
           <div style={{ display: "flex", gap: 12 }}>
             <div style={{ width: "38%", minWidth: 0 }}>
               <MiniChart points={chartPts} />
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8.5, color: SUB, marginTop: 2 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 9.5, color: SUB, marginTop: 2 }}>
                 <span>{fmtDiaMes(today)}</span><span>{fmtDiaMes(fc.endDate)}</span>
               </div>
             </div>
