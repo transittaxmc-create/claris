@@ -202,12 +202,7 @@ export function MoneyStrip(props: {
 export function MoneyHeader(props: { page: 0 | 1 | 2; onPage: (p: 0 | 1 | 2) => void; right?: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-2 px-1 pt-1">
-      <div className="flex items-center gap-2.5">
-        <span className="grid size-9 place-items-center rounded-[10px] bg-gradient-to-br from-[#2f7bff] to-[#1f5eff] shadow-[0_6px_18px_rgba(47,123,255,.35)]">
-          <span className="text-xl font-black leading-none text-white">$</span>
-        </span>
-        <h1 className="text-xl font-extrabold tracking-[.18em] text-[#f2f3f7]">MONEY</h1>
-      </div>
+      <div />
       <div className="flex items-center gap-2">
         <span className="flex items-center gap-1.5" aria-hidden>
           {[0, 1, 2].map((p) => (
