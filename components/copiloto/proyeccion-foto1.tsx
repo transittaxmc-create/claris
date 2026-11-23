@@ -501,8 +501,8 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void; realBa
     return out
   }, [fc])
 
-  const th: CSSProperties = { textAlign: "left", fontSize: 10, color: SUB, letterSpacing: 0.6, padding: "9px 6px", borderBottom: `1px solid ${BORDER}`, fontWeight: 700, whiteSpace: "nowrap" }
-  const td: CSSProperties = { padding: "9px 6px", borderBottom: "1px solid #1a1c24", verticalAlign: "top", fontSize: 11.5 }
+  const th: CSSProperties = { textAlign: "left", fontSize: 10, color: SUB, letterSpacing: 0.4, padding: "10px 8px", borderBottom: `1px solid ${BORDER}`, fontWeight: 700, whiteSpace: "nowrap" }
+  const td: CSSProperties = { padding: "11px 8px", borderBottom: "1px solid #1a1c24", verticalAlign: "top", fontSize: 12, lineHeight: 1.35 }
 
   // Balance real del banco (Plaid) al cierre de cada fecha: desde hoy hacia
   // atrás restando los movimientos reales. Fechas futuras = último real.
