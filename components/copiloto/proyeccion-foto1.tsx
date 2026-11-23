@@ -615,7 +615,8 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void; realBa
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1.15fr 1.15fr 1fr 1fr", gap: 2, alignItems: "center" }}>
           <div style={{ minWidth: 0, textAlign: "center" }}>
             <div style={{ fontSize: 8.5, color: SUB, letterSpacing: 0, fontWeight: 700, whiteSpace: "nowrap" }}>STARTING BAL.</div>
-            <div style={{ fontSize: 11.5, fontWeight: 800, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums" }}>{fc.start < 0 ? "-$" : "$"}{money2(fc.start)}</div>
+            <div style={{ fontSize: 11.5, fontWeight: 800, marginTop: 3, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", color: fc.start === 0 ? "#f5b73f" : undefined }}>{fc.start < 0 ? "-$" : "$"}{money2(fc.start)}</div>
+            {fc.start === 0 && <div style={{ fontSize: 7, color: "#f5b73f", marginTop: 1 }}>Set bank balances</div>}
           </div>
           <div style={{ minWidth: 0, textAlign: "center" }}>
             <div style={{ fontSize: 8.5, color: SUB, letterSpacing: 0, fontWeight: 700, whiteSpace: "nowrap" }}>INCOME (30D):</div>
