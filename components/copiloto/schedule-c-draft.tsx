@@ -2,7 +2,7 @@
 
 /**
  * Schedule C (DRAFT) — se llena solo desde el Financial Statement.
- * Formulario oficial IRS 2025 (el 2026 sale a fin de año; las casillas son las mismas).
+ * Formulario oficial IRS 2026 (el 2026 sale a fin de año; las casillas son las mismas).
  * Reglas: investigación en ~/workspace/tax-research/schedule-c-rideshare-2026.md
  * NO es asesoría fiscal — un CPA debe revisar antes de declarar.
  */
@@ -205,7 +205,7 @@ export function ScheduleCDraft({
     <section className="rounded-2xl border border-amber-500/40 bg-amber-500/5 p-3">
       <p className="mb-1 text-[11px] font-bold tracking-wide text-amber-300">SCHEDULE C — DRAFT / BORRADOR</p>
       <p className="mb-2 text-[10px] leading-snug text-neutral-400">
-        Profit or Loss From Business (Sole Proprietorship) · IRS 2025 — se llena solo del Financial Statement. Un CPA
+        Profit or Loss From Business (Sole Proprietorship) · <a href="https://www.irs.gov/pub/irs-pdf/f1040sc.pdf" target="_blank" rel="noreferrer" className="underline">IRS Schedule C 2026 (PDF)</a> — auto-filled from this statement. A CPA
         debe revisarlo antes de declarar.
       </p>
 
