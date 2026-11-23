@@ -464,7 +464,6 @@ export function RegisterScreen({
             >
               {dayClosed ? "DAY CLOSED" : "DAY OPEN"}
             </span>
-            <BreakButton />
           </div>
           <button
             type="button"
@@ -498,14 +497,6 @@ export function RegisterScreen({
           </span>
           {/* Producción por hora: vivía aquí como overlay (2026-11-09);
               Miguel la consolidó en el DASHBOARD (2026-11-22) — un solo lugar. */}
-          <button
-            type="button"
-            onClick={reconciliarHaciaDinero}
-            className="shrink-0 rounded-lg border border-emerald-500/40 bg-emerald-950/40 px-2 py-1 text-[9px] font-extrabold uppercase tracking-wide text-emerald-300 transition-colors hover:bg-emerald-900/50"
-            title="Update the day's receivables in MONEY"
-          >
-            Update receivables → Money
-          </button>
           <button
             type="button"
             onClick={() => setShowDetail((v) => !v)}
@@ -581,6 +572,19 @@ export function RegisterScreen({
               </button>
             </div>
             <div className="flex flex-col gap-2">
+              <div className="flex justify-center py-1">
+                <BreakButton />
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  reconciliarHaciaDinero()
+                  setShowActions(false)
+                }}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-500/40 bg-emerald-950/40 py-3 text-xs font-bold text-emerald-300"
+              >
+                Update receivables → Money
+              </button>
               <button
                 type="button"
                 onClick={() => {
