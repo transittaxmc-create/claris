@@ -502,7 +502,7 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void; realBa
     return out
   }, [fc])
 
-  const th: CSSProperties = { textAlign: "left", fontSize: TYPE.label, color: SUB, letterSpacing: 0.3, padding: "10px 4px", borderBottom: `1px solid ${BORDER}`, fontWeight: 700, whiteSpace: "nowrap" }
+  const th: CSSProperties = { textAlign: "left", fontSize: 9, color: SUB, letterSpacing: 0, padding: "10px 2px", borderBottom: `1px solid ${BORDER}`, fontWeight: 700, whiteSpace: "nowrap" }
   const td: CSSProperties = { padding: "11px 8px", borderBottom: "1px solid #1a1c24", verticalAlign: "top", fontSize: TYPE.body, lineHeight: 1.35 }
 
   // Balance real del banco (Plaid) al cierre de cada fecha: desde hoy hacia
@@ -712,10 +712,6 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void; realBa
         </div>
       )}
 
-      {/* UNIFIED REGISTER — sin caja visible, ancho casi completo */}
-      <div style={{ padding: "18px 14px 8px", fontSize: TYPE.section, fontWeight: 800, letterSpacing: 1.2, color: SUB }}>
-        UNIFIED REGISTER
-      </div>
       <div>
         <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
           <colgroup>
