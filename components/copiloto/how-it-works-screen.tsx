@@ -375,6 +375,23 @@ export function HowItWorksScreen() {
         </P>
       </Section>
 
+      <Section title="9. TAXES 2026 — Schedule C and self-employment">
+        <P>All figures come from trips and business-classified expenses. A CPA must review before filing.</P>
+        <ul className="list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li><B>Official forms:</B> Schedule C, Schedule SE, Form 1040, Form 8995 (QBI). Links are in REPORTS.</li>
+          <li><B>Mileage 2026:</B> $0.725/mi (Jan–Jun), $0.76/mi (Jul–Dec).</li>
+          <li><B>SE tax:</B> 15.3% on net profit. Half is deductible.</li>
+          <li><B>QBI:</B> 20% deduction on qualified business income.</li>
+          <li><B>Social Security wage base 2026:</B> $184,500.</li>
+          <li><B>Vehicle:</B> choose standard mileage OR actual expenses — not both.</li>
+          <li><B>Always deductible:</B> tolls, parking, platform fees, transfer fees, business supplies.</li>
+          <li><B>Data flow:</B> trips → line 1; fees → line 10; business expenses → category lines; net → Schedule SE.</li>
+          <li><B>Weekly:</B> REPORTS → This week / Last week. Set aside ~25–30% of net for taxes.</li>
+          <li>Only <B>business</B> expenses count. Personal and unclassified do not.</li>
+          <li>Outstanding receivables are not income until received.</li>
+        </ul>
+      </Section>
+
       <Section title="10. Standing rules">
         <ul className="list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
           <li>
