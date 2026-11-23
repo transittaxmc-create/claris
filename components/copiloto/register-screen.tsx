@@ -97,7 +97,7 @@ function ReconciliationPanel({ summary, groups }: { summary: ReconSummary; group
           <span className="text-sm font-extrabold text-neutral-200">{money(summary.received)}</span>
         </div>
         <div className="flex flex-col gap-0.5">
-          <span className="text-[9px] font-bold text-neutral-500">DIFERENCIA</span>
+          <span className="text-[9px] font-bold text-neutral-500">DIFF</span>
           <span className={cn("text-sm font-extrabold", tone.text)}>{signed(summary.diff)}</span>
         </div>
       </div>
@@ -452,9 +452,9 @@ export function RegisterScreen({
 
   const filterChips: { key: Filter; label: string; count: number }[] = [
     { key: "ALL", label: "ALL", count: counts.all },
-    { key: "PENDING", label: "PENDIENTES", count: counts.pending },
+    { key: "PENDING", label: "PENDING", count: counts.pending },
     { key: "MATCHED", label: "MATCHED", count: counts.matched },
-    { key: "DIFF", label: "DIFERENCIA", count: counts.diff },
+    { key: "DIFF", label: "DIFF", count: counts.diff },
   ]
 
   return (
@@ -577,7 +577,7 @@ export function RegisterScreen({
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center">
           <div className="w-full max-w-md rounded-t-2xl border border-neutral-700 bg-neutral-950 p-4 sm:rounded-2xl">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-extrabold text-white">Acciones</h2>
+              <h2 className="text-sm font-extrabold text-white">Actions</h2>
               <button type="button" onClick={() => setShowActions(false)} className="rounded-lg p-1 text-neutral-400">
                 <X className="size-4" />
               </button>
