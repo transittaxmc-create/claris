@@ -551,6 +551,12 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
         <BankTxReport />
 
         <ScheduleCDraft trips={trips} expenses={expenses} from={from} to={to} opts={scOpts} onOpts={setScOpts} />
+        <TaxWorksheet
+          gross={data?.gross ?? 0}
+          fees={0}
+          expenses={data?.expenseTotal ?? 0}
+          net={(data?.gross ?? 0) - (data?.expenseTotal ?? 0)}
+        />
 
         <MileageReport />
 
