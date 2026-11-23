@@ -641,6 +641,9 @@ export function EntryScreen({
     return out
   })()
   const grossIncomeToday = todayTrips.reduce((total, trip) => total + grossOf(trip), 0)
+  const hoursWorked = Object.values(shift.worked || {}).reduce((s: number, h: any) => s + (Number(h) || 0), 0)
+  const hourlyRate = hoursWorked > 0 ? grossIncomeToday / hoursWorked : null
+  const goal = shift.hourlyGoal || 30
 
   function toggleRegister() {
     setShowRegister((v) => !v)
@@ -713,8 +716,15 @@ export function EntryScreen({
       <div className="flex shrink-0 items-stretch border-b border-neutral-800/60 bg-black sm:px-8">
         <div className="flex flex-1 items-center justify-between gap-2 px-4 py-1.5">
           <span className="text-[10px] font-bold tracking-[0.15em] text-emerald-300/70">TODAY</span>
-          <span className="font-mono text-base font-black tabular-nums text-emerald-300">
-            {`$${grossIncomeToday.toFixed(2)}`}
+          <span className="flex items-baseline gap-1.5">
+            <span className="font-mono text-base font-black tabular-nums text-emerald-300">
+              {`$${grossIncomeToday.toFixed(2)}`}
+            </span>
+            {hourlyRate !== null && (
+              <span className={`font-mono text-[10px] font-bold tabular-nums ${hourlyRate >= goal ? "text-emerald-400" : "text-amber-400"}`}>
+                ${hourlyRate.toFixed(0)}/h
+              </span>
+            )}
           </span>
         </div>
         <div className="w-px bg-neutral-800/60" />
