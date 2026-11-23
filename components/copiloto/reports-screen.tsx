@@ -23,6 +23,7 @@ import {
   type ScheduleCOpts,
 } from "./schedule-c-draft"
 import { computeTransferFees, type FeeBankTx } from "./transfer-fees"
+import { TaxWorksheet } from "./tax-worksheet"
 
 type Preset = "week" | "lastWeek" | "month" | "lastMonth" | "last30" | "custom"
 
