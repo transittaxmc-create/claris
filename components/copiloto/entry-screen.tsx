@@ -618,6 +618,10 @@ export function EntryScreen({
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
   const todayTrips = trips.filter((trip) => tripDateOf(trip) === todayKey)
 
+  // Primer slot fijo = el primero de la lista (Miguel, 2026-11-23):
+  // tocar un botón rápido cambia la plataforma del viaje, pero el
+  // primer cuadro NUNCA cambia ni se duplica la plataforma elegida.
+  const firstPlatform = PLATFORMS[0]
   // Top platforms for quick buttons: 2 most used + 2 most used vouchers
   const quickPlatforms = (() => {
     const counts = new Map<string, number>()
@@ -625,7 +629,9 @@ export function EntryScreen({
       const p = t.platform || "Other"
       counts.set(p, (counts.get(p) || 0) + 1)
     }
-    const sorted = [...counts.entries()].sort((a, b) => b[1] - a[1])
+    const sorted = [...counts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .filter(([p]) => p !== firstPlatform)
     const top = sorted.slice(0, 2).map(([p]) => p)
     const vouchers = sorted.filter(([p]) => isVoucherPlatform(p as any)).slice(0, 2).map(([p]) => p)
     const seen = new Set<string>()
@@ -635,8 +641,8 @@ export function EntryScreen({
     }
     // Fallback if few trips
     if (out.length < 4) {
-      for (const p of ["Uber", "Lyft", "Aventus Ride", "Classic Ryde"]) {
-        if (!seen.has(p) && out.length < 4) { seen.add(p); out.push(p) }
+      for (const p of ["Uber", "Lyft", "Aventus Ride", "Classic Ryde", "Throo", "CO-OP Drive"]) {
+        if (p !== firstPlatform && !seen.has(p) && out.length < 4) { seen.add(p); out.push(p) }
       }
     }
     return out
@@ -760,6 +766,9 @@ export function EntryScreen({
             La tarjeta del clon NO se aplicó aquí. */}
         <div className="flex items-center gap-1.5 sm:col-span-2">
           <div className="relative min-w-0 flex-[1.1]">
+            {/* Primer cuadro fijo en el primero de la lista (Miguel,
+                2026-11-23): abre la lista completa; la plataforma del
+                viaje se marca con el marco amarillo en su botón rápido. */}
             <button
               type="button"
               onClick={() => setPlatformOpen((o) => !o)}
@@ -768,8 +777,8 @@ export function EntryScreen({
               className="flex h-12 w-full items-center justify-between gap-1 rounded-lg border border-neutral-800 bg-neutral-900 px-2"
             >
               <span className="flex min-w-0 items-center gap-1.5">
-                <SelectorLogo platform={draft.platform} width={56} height={30} />
-                <span className="truncate text-xs font-semibold text-white">{draft.platform}</span>
+                <SelectorLogo platform={firstPlatform} width={56} height={30} />
+                <span className="truncate text-xs font-semibold text-white">{firstPlatform}</span>
               </span>
               <ChevronDown className="size-3.5 shrink-0 text-neutral-500" />
             </button>
