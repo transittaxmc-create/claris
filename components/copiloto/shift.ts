@@ -14,8 +14,11 @@
 
 "use client"
 
+import { addMilesToday } from "./mileage-log"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { addMilesToday } from "./mileage-log"
 import { haversineKm } from "./v1-dash/v1-dash-zones"
+import { addMilesToday } from "./mileage-log"
 import {
   commitWorkedRange,
   hourKeyOf,
@@ -28,6 +31,7 @@ export const SHIFT_KEY = "claris_v1dash_shift"
 export const SHIFT_LOG_KEY = "claris_v1dash_shift_logs"
 export const SHIFT_START_KEY = "claris_v1dash_shift_start"
 export const HOURLY_GOAL_KEY = "claris_hourly_goal"
+import { addMilesToday } from "./mileage-log"
 import { recordShiftClose } from "./mileage-log"
 
 export const WORKED_KEY = "claris_hours_worked"
@@ -240,12 +244,16 @@ export function useShift() {
         (pos) => {
           const { latitude, longitude, accuracy, heading } = pos.coords
           setShift((s) => {
-            if (!s.active) return s
             let miles = s.miles
-            if (s.breakStart == null && lastPos.current) {
+            if (lastPos.current) {
               const km = haversineKm(lastPos.current.lat, lastPos.current.lon, latitude, longitude)
-              if (Number.isFinite(km) && km < 5) miles = Math.round((miles + km * 0.621371) * 100) / 100
+              if (Number.isFinite(km) && km > 0.01 && km < 5) {
+                const mi = Math.round(km * 0.621371 * 100) / 100
+                addMilesToday(mi)
+                if (s.active && s.breakStart == null) miles = Math.round((miles + mi) * 100) / 100
+              }
             }
+            if (!s.active) return s
             lastPos.current = { lat: latitude, lon: longitude }
             return { ...s, miles }
           })
