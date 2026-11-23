@@ -491,9 +491,13 @@ export function RegisterScreen({
           </label>
           <span className="shrink-0 text-[10px] font-bold tracking-wide text-neutral-500">
             GROSS <strong className="text-base text-yellow-400">{money(totals.gross)}</strong>
+            <span className="ml-1 text-[9px] text-neutral-500">· {visible.length} trips</span>
           </span>
           <span className="shrink-0 text-[10px] font-bold tracking-wide text-neutral-500">
             NET <strong className="text-base text-green-400">{money(totals.net)}</strong>
+            {summary.problemCount > 0 && (
+              <span className="ml-1 inline-block size-2 rounded-full bg-rose-500" title={`${summary.problemCount} with difference`} />
+            )}
           </span>
           {/* Producción por hora: vivía aquí como overlay (2026-11-09);
               Miguel la consolidó en el DASHBOARD (2026-11-22) — un solo lugar. */}
