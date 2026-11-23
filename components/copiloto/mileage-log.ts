@@ -39,6 +39,21 @@ function save(days: MileageDay[]) {
   } catch {}
 }
 
+
+/** Suma millas al día de hoy (GPS continuo). */
+export function addMilesToday(miles: number) {
+  if (!Number.isFinite(miles) || miles <= 0) return
+  const days = load()
+  const today = new Date().toISOString().slice(0, 10)
+  const i = days.findIndex((d) => d.date === today)
+  if (i >= 0) {
+    days[i] = { ...days[i], miles: Math.round((days[i].miles + miles) * 100) / 100 }
+  } else {
+    days.push({ date: today, clockIn: null, clockOut: null, miles: Math.round(miles * 100) / 100, trips: [] })
+  }
+  save(days)
+}
+
 export function loadMileageLog(): MileageDay[] {
   return load()
 }
