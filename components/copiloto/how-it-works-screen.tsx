@@ -117,11 +117,6 @@ export function HowItWorksScreen() {
           <li>Quick platform buttons on TODAY for faster entry; BREAK is in the ⋯ menu.</li>
         </ul>
       </Section>
-        <P>
-          Income by platform, payout reconciliation (pending / matched / difference), close day to
-          send deposits as projections.
-        </P>
-      </Section>
 
       <Section title="5. MONEY — registers and projections">
         <ul className="list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
