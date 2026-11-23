@@ -732,7 +732,7 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void; realBa
         <div style={{ background: BAND, padding: "8px 14px", fontSize: 11, fontWeight: 800, letterSpacing: 1, color: SUB }}>
           FUTURE TRANSACTIONS / FORECAST
         </div>
-        <div style={{ maxHeight: "62vh", overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", touchAction: "pan-y" }}>
+        <div style={{ maxHeight: "72vh", overflowY: "auto", overflowX: "hidden", WebkitOverflowScrolling: "touch", overscrollBehavior: "contain", touchAction: "pan-y" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
           <colgroup>
             <col style={{ width: "15%" }} /><col style={{ width: "21%" }} /><col style={{ width: "14%" }} />
