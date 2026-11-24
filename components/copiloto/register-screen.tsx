@@ -175,6 +175,16 @@ function TripCard({
               VOUCHER
             </span>
           )}
+          {trip.outcome === "noshow" && (
+            <span className="shrink-0 rounded-full border border-rose-400/60 px-2 py-0.5 text-[9px] font-bold text-rose-400">
+              NO SHOW
+            </span>
+          )}
+          {trip.outcome === "canceled" && (
+            <span className="shrink-0 rounded-full border border-neutral-500/60 px-2 py-0.5 text-[9px] font-bold text-neutral-400">
+              CANCELED
+            </span>
+          )}
         </div>
         <div className="shrink-0 text-right">
           <p className="text-lg font-extrabold text-green-400">{money(netOf(trip))}</p>

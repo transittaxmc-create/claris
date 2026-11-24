@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { X, Trash2, Scale, CircleCheck, TrendingDown, TrendingUp, Clock, ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { PLATFORMS, tripDateInputValue, type Platform, type Reconciliation, type Trip, type TripStatus, money, netOf } from "./types"
+import { PLATFORMS, tripDateInputValue, type Platform, type Reconciliation, type Trip, type TripOutcome, type TripStatus, money, netOf } from "./types"
 import { MoneyInput } from "./money-input"
 import { SelectorLogo } from "./selector-logo"
 import { PlatformBadge } from "./platform-avatar"
@@ -53,6 +53,28 @@ export function TripEditSheet({
 
   const setRecon = (patch: Partial<Reconciliation>) =>
     setDraft((d) => (d ? { ...d, reconciliation: { ...(d.reconciliation ?? {}), ...patch } } : d))
+
+  // Trabajo que no se hizo (Miguel, 2026-11-24): NO SHOW cierra el
+  // trabajo en $5 (reemplaza la tarifa; los $5 cuentan como ganado y
+  // siguen editables después) y CANCELED lo cierra en $0 sin borrarlo
+  // — queda de récord. Tocar la marca activa la quita y el viaje
+  // vuelve a normal (el monto se vuelve a escribir a mano, como
+  // siempre). Nada más cambia: el guardado es el de siempre y el
+  // cobro del día se actualiza solo con el monto nuevo.
+  const toggleOutcome = (o: TripOutcome) =>
+    setDraft((d) => {
+      if (!d) return d
+      if (d.outcome === o) return { ...d, outcome: undefined }
+      if (o === "noshow") return { ...d, outcome: o, earnings: 5, extraCash: 0, tips: 0, toll: 0, platformFee: 0 }
+      return { ...d, outcome: o, earnings: 0, extraCash: 0, tips: 0, toll: 0, platformFee: 0 }
+    })
+
+  const receivedLabel = (() => {
+    if (!draft.createdAt) return null
+    const dt = new Date(draft.createdAt)
+    if (Number.isNaN(dt.getTime())) return null
+    return dt.toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" })
+  })()
 
   // Se calcula sobre el borrador para que la diferencia reaccione mientras se
   // escriben los montos, antes de guardar.
@@ -170,6 +192,49 @@ export function TripEditSheet({
                 {s === "pending" ? "Pendiente" : "Matched"}
               </button>
             ))}
+          </div>
+
+          {/* Trabajo no realizado: NO SHOW ($5) / CANCELED ($0, récord) */}
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10px] font-bold tracking-wide text-neutral-400">TRIP DIDN'T HAPPEN?</span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => toggleOutcome("noshow")}
+                aria-pressed={draft.outcome === "noshow"}
+                className={cn(
+                  "flex-1 rounded-lg border px-3 py-2 text-xs font-bold",
+                  draft.outcome === "noshow"
+                    ? "border-rose-400 bg-rose-400/15 text-rose-400"
+                    : "border-neutral-700 text-neutral-400",
+                )}
+              >
+                {draft.outcome === "noshow" ? "NO SHOW ✓" : "NO SHOW"}
+              </button>
+              <button
+                type="button"
+                onClick={() => toggleOutcome("canceled")}
+                aria-pressed={draft.outcome === "canceled"}
+                className={cn(
+                  "flex-1 rounded-lg border px-3 py-2 text-xs font-bold",
+                  draft.outcome === "canceled"
+                    ? "border-neutral-300 bg-neutral-300/15 text-neutral-200"
+                    : "border-neutral-700 text-neutral-400",
+                )}
+              >
+                {draft.outcome === "canceled" ? "CANCELED ✓" : "CANCELED"}
+              </button>
+            </div>
+            {draft.outcome === "noshow" && (
+              <p className="text-[10px] leading-tight text-neutral-500">
+                Closed at $5. The amount stays editable if the no-show fee is ever different.
+              </p>
+            )}
+            {draft.outcome === "canceled" && (
+              <p className="text-[10px] leading-tight text-neutral-500">
+                Closed at $0. The trip stays on the record — it is not deleted.
+              </p>
+            )}
           </div>
 
           {/* Amounts */}
@@ -326,6 +391,14 @@ export function TripEditSheet({
               className="rounded-lg border border-neutral-700 bg-neutral-950 px-2.5 py-2 text-sm text-white outline-none placeholder:text-neutral-600"
             />
           </label>
+
+          {/* Estampe: cuándo subió/recibió este trabajo (solo si el
+              viaje lo trae; a los viejos no se les inventa). */}
+          {receivedLabel && (
+            <p className="text-[10px] text-neutral-500">
+              Received: <span className="font-semibold text-neutral-400">{receivedLabel}</span>
+            </p>
+          )}
         </div>
 
         {/* Footer actions */}

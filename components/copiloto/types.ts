@@ -20,6 +20,13 @@ export type Platform =
 
 export type TripStatus = "pending" | "matched"
 
+// Resultado de un trabajo que no se hizo (Miguel, 2026-11-24):
+// "noshow" = el cliente no apareció, el trabajo se cierra en $5;
+// "canceled" = se cierra en $0 y queda de récord, nunca se borra.
+// undefined = viaje normal. Es un campo APARTE de `status`
+// (pending/matched), que es el estado de cobro de siempre.
+export type TripOutcome = "noshow" | "canceled"
+
 export type { LocationPoint }
 
 export const EXPENSE_CATEGORIES = [
@@ -461,6 +468,13 @@ export type Trip = {
   time: string
   ref: string
   status: TripStatus
+  // Marca de trabajo no realizado (ver TripOutcome). Los viajes
+  // guardados antes de esta marca no la traen: undefined = normal.
+  outcome?: TripOutcome
+  // Estampe de cuándo Miguel subió/recibió el trabajo (al crearlo en
+  // TODAY, también vía la foto de despacho). Los viajes viejos no lo
+  // traen y no se les inventa: queda undefined.
+  createdAt?: string
   reconciliation?: Reconciliation
   raw?: Record<string, unknown>
 }
@@ -589,6 +603,7 @@ export function newTrip(): Trip {
     ref: "",
     notes: "",
     status: "pending",
+    createdAt: new Date().toISOString(),
   }
 }
 

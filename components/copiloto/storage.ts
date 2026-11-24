@@ -130,6 +130,11 @@ export function entryToTrip(e: RawEntry): Trip {
     time: e.datetime ? toTime(e.datetime) : "",
     ref: e.notes ?? "",
     status: e.reconciliation?.status === "matched" ? "matched" : "pending",
+    // Marca de trabajo no realizado y estampe de recibido (2026-11-24):
+    // solo se leen si vienen con un valor válido; los viajes viejos no
+    // los traen y quedan undefined, como si nada.
+    outcome: e.outcome === "noshow" || e.outcome === "canceled" ? e.outcome : undefined,
+    createdAt: typeof e.createdAt === "string" && e.createdAt ? e.createdAt : undefined,
     reconciliation,
     raw: e,
   }
@@ -178,6 +183,11 @@ export function tripToEntry(t: Trip): RawEntry {
     dropoff: locationEntry(base.dropoff, t.dropoffLoc, t.dropoff),
     notes: t.ref,
     status: base.status ?? "open",
+    // La marca y el estampe viajan en la entrada guardada; si el viaje
+    // no los trae, quedan undefined y el JSON ni los escribe (y una
+    // marca quitada no resucita desde el raw viejo).
+    outcome: t.outcome,
+    createdAt: t.createdAt,
     reconciliation,
   }
 }
