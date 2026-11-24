@@ -400,6 +400,16 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void; realBa
       })
   }, [fcLong, today])
 
+  // Lista VISIBLE del register: las líneas de peaje del forecast no se
+  // renderizan como filas (los peajes se presentan solo en la línea
+  // WEEKLY TOLLS de cada banda, desde el registro macheado). La tabla y
+  // TODOS sus cálculos de posición/sumas (banda semanal, subtotal de 30
+  // días) trabajan sobre ESTA lista — una sola fuente (2026-11-24).
+  const visibles = useMemo(
+    () => futuras.filter(({ line }) => !/toll|peaje|e-?z-?pass|easy ?pass/i.test(line.label || "")),
+    [futuras],
+  )
+
   // ——— Pagados y parciales (Miguel, 2026-10-29) ———
   // Lo pagado NO se borra ni se desaparece sin rastro: baja al final de la
   // lista con ✓ PAID y NO afecta ningún saldo. Lo pagado a medias sigue en
@@ -826,7 +836,7 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void; realBa
                 </td>
               </tr>
             )}
-            {futuras.filter(({ line }) => !/toll|peaje|e-?z-?pass|easy ?pass/i.test(line.label || "")).map(({ line, before, after }, i) => {
+            {visibles.map(({ line, before, after }, i) => {
               const cat = lineCategory(line, schedules)
               const pb = partialNoteFor(line)
               const pbLeft = pb ? billRemaining(pb) : 0
@@ -835,10 +845,18 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void; realBa
               // línea de CADA semana (lunes–domingo), tenga o no línea en
               // domingo. Antes solo existía si la semana tenía línea en
               // domingo — semanas de lunes a sábado quedaban sin banda.
-              const nextFuture = futuras[i + 1]
+              // Corrección 2026-11-24: el índice y las sumas de la banda
+              // salen de la MISMA lista visible que se renderiza. Antes
+              // nextFuture/weekLines se calculaban sobre `futuras` (sin
+              // filtrar) con el índice de la lista filtrada: con líneas
+              // de peaje en el forecast la banda caía a mitad de semana,
+              // se repetía con sumas parciales y los montos ocultos de
+              // peaje se colaban en el OUT. Los peajes viven SOLO en la
+              // línea WEEKLY TOLLS (registro macheado), nunca en IN/OUT/NET.
+              const nextFuture = visibles[i + 1]
               const weekStartIso = weekStartOf(line.date)
               const isLastLineOfWeek = !nextFuture || weekStartOf(nextFuture.line.date) !== weekStartIso
-              const weekLines = isLastLineOfWeek ? futuras.filter((item) => item.line.date >= weekStartIso && item.line.date <= line.date) : []
+              const weekLines = isLastLineOfWeek ? visibles.filter((item) => item.line.date >= weekStartIso && item.line.date <= line.date) : []
               const weekIncome = weekLines.reduce((sum, item) => sum + (!item.line.checked && item.line.amount > 0 ? item.line.amount : 0), 0)
               const weekExpenses = weekLines.reduce((sum, item) => sum + (!item.line.checked && item.line.amount < 0 ? Math.abs(item.line.amount) : 0), 0)
               // Peajes de la semana: el registro macheado (GPS + statement,

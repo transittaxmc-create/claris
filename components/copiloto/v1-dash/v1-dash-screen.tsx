@@ -23,6 +23,7 @@ import { useForecastBills, useForecastShots } from "../proyeccion-shared"
 import { LEDGER_KEY, sinSemillas } from "../cash-flow-store"
 import { FINANCE_SYNCED_EVENT } from "../finance-sync"
 import { buildHourBuckets, hourRangeLabel } from "../hourly-strip"
+import { perHourOf } from "../per-hour"
 import { loadShiftTolls, SHIFT_TOLLS_EVENT, type ShiftToll } from "../shift-tolls"
 import {
   applyAllCorrections,
@@ -934,17 +935,14 @@ export function V1DashScreen({
     return `${wd} ${d.getDate()}`
   }, [moneyLine.next])
 
-  // $/HR (lógica v1 intacta; el numerador y el lapso usan los viajes del turno)
-  const perHour = useMemo(() => {
-    if (grossToday <= 0) return 0
-    if (activeHoursDecimal > 0.1) return grossToday / activeHoursDecimal
-    const q = shiftTrips
-      .map((u) => new Date(u.datetime).getTime())
-      .sort((a, b) => a - b)
-    if (q.length === 0) return 0
-    const span = q.length === 1 ? 0.25 : Math.max((Date.now() - q[0]) / 36e5, 0.25)
-    return grossToday / span
-  }, [grossToday, activeHoursDecimal, shiftTrips])
+  // $/HR — la cuenta vive en components/copiloto/per-hour.ts (fuente
+  // única compartida con el chip de TODAY, 2026-11-24). Mismos insumos
+  // y misma fórmula de siempre: gross del turno ÷ horas activas, con
+  // fallback por lapso de viajes del turno.
+  const perHour = useMemo(
+    () => perHourOf(grossToday, activeHoursDecimal, shiftTrips, Date.now()),
+    [grossToday, activeHoursDecimal, shiftTrips],
+  )
 
   const goalPct = Math.min((grossToday / dailyGoal) * 100, 100)
   const remaining = Math.max(dailyGoal - grossToday, 0)

@@ -23,6 +23,7 @@ import { moneyTextFromNumber, moneyTextToNumber, normalizeMoneyText } from "@/li
 import { detectNewTolls, rateFor, formatTollNote, appendNote } from "./toll-detect"
 import { applyDispatchToTrip, findDispatchDuplicate, type DispatchScan } from "./dispatch-scan"
 import { loadShiftTolls, SHIFT_TOLLS_EVENT } from "./shift-tolls"
+import { perHourOf, shiftGrossOf, shiftWindowOf, shiftWindowTrips } from "./per-hour"
 import { setHomeGeo } from "./mileage-log"
 
 function LocationColumn({
@@ -560,8 +561,16 @@ export function EntryScreen({
     return out
   })()
   const grossIncomeToday = todayTrips.reduce((total, trip) => total + grossOf(trip), 0)
-  const hoursWorked = Object.values(shift.worked || {}).reduce((s: number, h: any) => s + (Number(h) || 0), 0)
-  const hourlyRate = hoursWorked > 0 ? grossIncomeToday / hoursWorked : null
+  // $/h del chip = LA MISMA cuenta del DASHBOARD (fuente única:
+  // components/copiloto/per-hour.ts): gross de la ventana del turno ÷
+  // horas activas desde el START, con su fallback por lapso de viajes
+  // cuando no hay turno activo (Miguel, 2026-11-24: el por hora cuenta
+  // desde que prende el turno). La fórmula anterior dividía el gross
+  // de hoy entre los SEGUNDOS trabajados guardados de 30 días tratados
+  // como horas — el chip vivía en $0/h aunque entraran viajes.
+  const winTrips = shiftWindowTrips(trips, shiftWindowOf(shift.shiftActive, shift.clockIn, shift.lastShift), todayKey)
+  const perHourToday = perHourOf(shiftGrossOf(winTrips), shift.activeHoursDecimal, winTrips, Date.now())
+  const hourlyRate = perHourToday > 0 ? perHourToday : null
   const goal = shift.hourlyGoal || 30
 
   function toggleRegister() {
