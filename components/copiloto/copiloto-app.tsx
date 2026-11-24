@@ -1,5 +1,4 @@
 "use client"
-
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { AlertTriangle, Check } from "lucide-react"
 import { BottomNav, TABS_EN_MAS, type Tab } from "./bottom-nav"
@@ -13,23 +12,13 @@ import { ExpensesScreen } from "./expenses-screen"
 import { FinanceScreen } from "./finance-screen"
 import { RegisterScreen } from "./register-screen"
 import { ReportsScreen } from "./reports-screen"
-import { SobresScreen } from "./sobres-screen"
-import { TollAuditScreen } from "./toll-audit-screen"
-import { CreditScreen } from "./credit-screen"
-import { Tax2026Screen } from "./tax-2026-screen"
-import { syncEzpassWeekly } from "./ezpass-weekly"
-import { detectNewTolls, rateFor } from "./toll-detect"
-import { addShiftTolls, loadShiftTolls, SHIFT_TOLLS_EVENT } from "./shift-tolls"
-import { CURRENT_PICKUP_KEY } from "./geo"
+import { FinancialLedger } from "./financial-ledger"
+import { ErrorBoundary } from "./error-boundary"
 import { TripEditSheet } from "./trip-edit-sheet"
 import { ReceiptScanner } from "./receipt-scanner"
-import { checkScanInbox, pickupScanInboxFile } from "./scan-inbox"
-import { requestOpenAccount } from "./account-flags"
 import { useShift } from "./shift"
 import { guardarMovimiento, movimientoDeGasto } from "./cash-flow-store"
-import { startFinanceCloud } from "./finance-cloud"
 import { applyDifferenceToTrip, applyBankMatchesToTrips, normalizeTripStatus } from "./reconciliation"
-import { recordTrip } from "./mileage-log"
 import { SEED_TRIPS, newTrip, stampExpense, applyExpenseUpdatesToExpenses, grossOf, netOf, tripDateOf, money, type Expense, type ExpenseDocType, type Trip, type ScheduledEntry } from "./types"
 import {
   addBillPayment,
@@ -74,7 +63,7 @@ import {
 } from "@/lib/sync"
 import { localDateKey } from "@/lib/dates"
 import { compareVersion } from "@/lib/version-check"
-import { applyMergedFinance, collectLocalFinance, financeCounts, FINANCE_SYNCED_EVENT } from "./finance-sync"
+import { applyMergedFinance, collectLocalFinance, financeCounts } from "./finance-sync"
 import { queueDualSync, flushDualSyncQueue } from "./dual-sync"
 
 const PRODUCCION_URL = "https://claris-lime.vercel.app"
@@ -83,7 +72,7 @@ function Placeholder({ label }: { label: string }) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-2 px-6 text-center">
       <p className="text-lg font-bold text-white">{label}</p>
-      <p className="text-sm text-neutral-500">This section isn't in the redesign yet.</p>
+      <p className="text-sm text-neutral-500">Esta sección aún no está en el rediseño.</p>
     </div>
   )
 }
@@ -104,30 +93,8 @@ export function CopilotoApp() {
   const [syncTone, setSyncTone] = useState<"ok" | "error" | "info">("info")
   const [syncing, setSyncing] = useState(false)
   const [scannerOpen, setScannerOpen] = useState(false)
-  /** Document type preseleccionado al abrir el escáner desde un register. */
+  /** Tipo de documento preseleccionado al abrir el escáner desde un register. */
   const [scannerHint, setScannerHint] = useState<ExpenseDocType | "">("")
-  // Buzón de fotos del escáner (atajo de iOS): ids esperando en el buzón,
-  // la foto ya recogida lista para el escáner, y si Miguel descartó el aviso.
-  const [inboxIds, setInboxIds] = useState<string[]>([])
-  const [inboxFile, setInboxFile] = useState<File | null>(null)
-  const [inboxDismissed, setInboxDismissed] = useState(false)
-
-  const refreshScanInbox = useCallback(() => {
-    checkScanInbox()
-      .then((list) => setInboxIds(list.map((x) => x.id)))
-      .catch(() => {})
-  }, [])
-
-  // Revisa el buzón al abrir la app y cada vez que vuelve a primer plano.
-  useEffect(() => {
-    refreshScanInbox()
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") refreshScanInbox()
-    }
-    document.addEventListener("visibilitychange", onVisibility)
-    return () => document.removeEventListener("visibilitychange", onVisibility)
-  }, [refreshScanInbox])
-
   const [mas, setMas] = useState(false)
   const [copiaVieja, setCopiaVieja] = useState<string | null>(null)
   // Sha de producción cuando ESTA copia es una versión de prueba más nueva.
@@ -140,18 +107,10 @@ export function CopilotoApp() {
   const expenseTombstonesRef = useRef<Tombstones>({})
   const savedTimer = useRef<number | null>(null)
   const autoSynced = useRef(false)
-  const syncInFlight = useRef(false)
 
   useEffect(() => {
     tripsRef.current = trips
   }, [trips])
-
-  // Proyecciones ↔ Supabase (Miguel, 2026-10-26): libro, recurrentes y
-  // demás datos de DINERO viven en la nube (app_state 'finance') para
-  // que se abran en cualquier teléfono; el localStorage es solo caché.
-  useEffect(() => {
-    startFinanceCloud()
-  }, [])
 
   useEffect(() => {
     const propio = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA
@@ -202,7 +161,7 @@ export function CopilotoApp() {
     const error = !res.ok ? res.error : !resExp.ok ? resExp.error : undefined
     if (error) {
       setSaveState("error")
-      setSaveError(error ?? "Couldn't save")
+      setSaveError(error ?? "No se pudo guardar")
       return
     }
     setSaveState("saved")
@@ -236,7 +195,7 @@ export function CopilotoApp() {
       tombstonesRef.current = merged.deleted
       saveTombstones(merged.deleted)
       expenseTombstonesRef.current = mergedExp.deleted
-      saveExpenseTombstones(mergedExp.deleted)
+      saveExpenseTombstones(expenseTombstonesRef.current)
       setTrips(merged.trips)
       tripsRef.current = merged.trips
       setExpenses(mergedExp.trips as Expense[])
@@ -250,77 +209,6 @@ export function CopilotoApp() {
     }
   }, [])
 
-  // E-ZPass semanal: los peajes del día se totalizan y se acumulan en el bill
-  // del viernes (idempotente: solo aplica deltas). Corre al hidratar y con cada
-  // cambio de trips.
-  useEffect(() => {
-    if (!hydrated) return
-    try {
-      syncEzpassWeekly(tripsRef.current || [])
-    } catch {}
-  }, [hydrated, trips])
-
-  // Diario de peajes del turno (Miguel, 2026-10-29): con el turno prendido,
-  // la detección corre TODO el turno — también entre trabajos, sin viaje
-  // activo — y esas pasadas van al diario del turno (shift-tolls), no se
-  // pierden. Si hay un viaje activo (pickup capturado), el viaje mismo
-  // registra sus peajes en su nota: aquí se salta para no duplicar.
-  // La misma plaza no se anota dos veces en 20 min a nivel turno (tráfico
-  // detenido junto a la plaza no cobra doble); pasada esa ventana, si la
-  // cruza otra vez, cuenta otra vez.
-  const shiftTollCooldown = useRef<Map<string, number>>(new Map())
-  useEffect(() => {
-    if (shift.shiftActive) shift.ensureGpsWatch()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shift.shiftActive])
-  useEffect(() => {
-    const fix = shift.gps
-    if (!fix || !shift.shiftActive) return
-    try {
-      if (localStorage.getItem(CURRENT_PICKUP_KEY)) return // viaje activo: lo anota el viaje
-    } catch {}
-    const now = new Date()
-    const nowMs = now.getTime()
-    const COOLDOWN_MS = 20 * 60_000
-    const hit = new Set<string>()
-    for (const [plaza, at] of shiftTollCooldown.current) {
-      if (nowMs - at < COOLDOWN_MS) hit.add(plaza)
-    }
-    // Semilla desde el diario de hoy (por si la app se reabrió a mitad de turno).
-    const pad = (n: number) => String(n).padStart(2, "0")
-    const todayKey = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`
-    const nowMin = now.getHours() * 60 + now.getMinutes()
-    for (const t of loadShiftTolls()) {
-      if (t.date !== todayKey) continue
-      const m = /^(\d{2}):(\d{2})$/.exec(t.time || "")
-      if (!m) continue
-      if (nowMin - (Number(m[1]) * 60 + Number(m[2])) < 20) hit.add(t.plaza)
-    }
-    const fresh = detectNewTolls(fix.lat, fix.lng, fix.heading ?? null, hit, now)
-    if (fresh.length === 0) return
-    fresh.forEach((p) => shiftTollCooldown.current.set(p.name, nowMs))
-    addShiftTolls(
-      fresh.map((p) => ({
-        id: `st-${nowMs}-${p.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}`,
-        date: todayKey,
-        time: `${pad(now.getHours())}:${pad(now.getMinutes())}`,
-        plaza: p.name,
-        amount: rateFor(p, now),
-      }))
-    )
-  }, [shift.gps, shift.shiftActive])
-  // El bill del viernes también se actualiza cuando entra una pasada al diario.
-  useEffect(() => {
-    if (!hydrated) return
-    const onDiary = () => {
-      try {
-        syncEzpassWeekly(tripsRef.current || [])
-      } catch {}
-    }
-    window.addEventListener(SHIFT_TOLLS_EVENT, onDiary)
-    return () => window.removeEventListener(SHIFT_TOLLS_EVENT, onDiary)
-  }, [hydrated])
-
   useEffect(() => {
     if (!hydrated) return
     flushDualSyncQueue((id) => tripsRef.current.find((t) => t.id === id))
@@ -331,56 +219,6 @@ export function CopilotoApp() {
     const timer = window.setTimeout(() => persist(trips, expenses), 250)
     return () => window.clearTimeout(timer)
   }, [trips, expenses, hydrated, persist])
-
-  // ADOPCIÓN DE GASTOS DESDE LA NUBE (arreglo de raíz, Miguel 2026-11-03):
-  // finance-cloud fusiona la nube en el localStorage y avisa con
-  // FINANCE_SYNCED_EVENT, pero esta raíz seguía mostrando — y volviendo a
-  // guardar — su estado en memoria, que podía ser la copia vieja: el pago
-  // del carro aparecía al abrir (llegaba la nube) y desaparecía al minuto
-  // (esta raíz republicaba su lista vieja y la fusión la ratificaba).
-  // Ahora, con cada aviso, el estado adopta lo guardado SOLO donde lo
-  // guardado es igual o más nuevo (updatedAt manda; más pagos con la
-  // misma fecha también): un editado local recién hecho nunca se pisa
-  // (su updatedAt es el más nuevo), y lo que la nube corrigió entra.
-  // Los borrados en sesión no se fuerzan aquí: siguen el curso normal
-  // de la fusión entre aperturas.
-  useEffect(() => {
-    if (!hydrated) return
-    const adopt = () => {
-      const stored = loadExpenses() ?? []
-      const cur = expensesRef.current
-      if (!stored.length) return
-      const curById = new Map(cur.map((e) => [e.id, e]))
-      let changed = false
-      const seen = new Set<string>()
-      const next: Expense[] = []
-      for (const s of stored) {
-        seen.add(s.id)
-        const c = curById.get(s.id)
-        if (!c) {
-          next.push(s)
-          changed = true
-          continue
-        }
-        const sAt = String(s.updatedAt || "")
-        const cAt = String(c.updatedAt || "")
-        const sMorePays = (s.payments?.length || 0) > (c.payments?.length || 0)
-        if ((sAt > cAt || (sMorePays && sAt >= cAt)) && JSON.stringify(s) !== JSON.stringify(c)) {
-          next.push(s)
-          changed = true
-        } else {
-          next.push(c)
-        }
-      }
-      for (const c of cur) if (!seen.has(c.id)) next.push(c)
-      if (changed) {
-        expensesRef.current = next
-        setExpenses(next)
-      }
-    }
-    window.addEventListener(FINANCE_SYNCED_EVENT, adopt)
-    return () => window.removeEventListener(FINANCE_SYNCED_EVENT, adopt)
-  }, [hydrated])
 
   useEffect(() => {
     if (!hydrated) return
@@ -403,13 +241,6 @@ export function CopilotoApp() {
     setTrips((prev) => [stamped, ...prev])
     setTab("REGISTER")
     queueDualSync(stamped)
-    // Registro de millas IRS: recogida → dejada con su plataforma
-    try {
-      recordTrip(
-        { pickup: stamped.pickup, dropoff: stamped.dropoff, platform: String(stamped.platform ?? ""), time: stamped.time },
-        tripDateOf(stamped),
-      )
-    } catch {}
   }
 
   function saveEdit(t: Trip) {
@@ -494,7 +325,7 @@ export function CopilotoApp() {
     const entry: ScheduledEntry = {
       id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `sch-${Date.now()}`,
       kind: "income",
-      description: e.description || "Income",
+      description: e.description || "Ingreso",
       category: e.category,
       amount: Number(e.amount) || 0,
       startDate: e.date,
@@ -542,18 +373,7 @@ export function CopilotoApp() {
   }, [])
 
   const runSync = useCallback(
-    // R12 (2026-11-15): includeFinance=false en la sincronización
-    // AUTOMÁTICA (al cargar y al volver a primer plano). Las finanzas
-    // viven en el teléfono (local-first, 2026-11-13): el sync automático
-    // NO manda el DINERO local ni aplica el resultado localmente — el
-    // servidor conserva su copia tal cual. Fusionar el blob entero por
-    // "último que escribe gana" desde una copia vieja es lo que borró las
-    // proyecciones el 2026-11-01 y el 2026-11-09. Solo el sync EXPLÍCITO
-    // (botón Sync Now / conectar código) incluye finanzas. Los viajes y
-    // los gastos sí siguen sincronizándose en ambas rutas.
-    async (code: string, silent = false, includeFinance = true) => {
-      if (syncInFlight.current) return
-      syncInFlight.current = true
+    async (code: string, silent = false) => {
       setSyncing(true)
       if (!silent) setSyncMessage(null)
       const result = await syncWithCloud<Trip>(
@@ -563,10 +383,10 @@ export function CopilotoApp() {
         expensesRef.current,
         expenseTombstonesRef.current,
         // DINERO (libro, recurrentes, cuentas) en el mismo documento cifrado.
-        includeFinance ? collectLocalFinance() : undefined,
+        collectLocalFinance(),
       )
       if (result.ok && Array.isArray(result.trips)) {
-        if (includeFinance) applyMergedFinance(result.finance)
+        applyMergedFinance(result.finance)
         const fin = financeCounts(result.finance)
         const next = result.trips as Trip[]
         const nextExp = (result.expenses ?? []) as Expense[]
@@ -582,22 +402,19 @@ export function CopilotoApp() {
         setSyncTone("ok")
         setSyncMessage(
           result.financeSkipped
-            ? `Synced · ${next.length} trips and ${nextExp.length} expenses. MONEY was not uploaded: the document exceeds the server limit.`
-            : includeFinance
-              ? `Synced · ${next.length} trips, ${nextExp.length} expenses, ${fin.ledger} movements and ${fin.schedules} recurring`
-              : `Synced · ${next.length} trips and ${nextExp.length} expenses.`,
+            ? `Sincronizado · ${next.length} viajes y ${nextExp.length} gastos. DINERO no se subió: el documento supera el límite del servidor.`
+            : `Sincronizado · ${next.length} viajes, ${nextExp.length} gastos, ${fin.ledger} movimientos y ${fin.schedules} recurrentes`,
         )
       } else if (result.reason === "not_configured") {
         setSyncTone("info")
         setSyncMessage(
-          "The sync database still needs activating in Vercel (Storage → KV). Meanwhile you can use EXPORT/IMPORT JSON.",
+          "Falta activar la base de datos de sync en Vercel (Storage → KV). Mientras tanto puedes usar EXPORTAR/IMPORTAR JSON.",
         )
       } else {
         setSyncTone("error")
         setSyncMessage(`No se pudo sincronizar: ${result.message}`)
       }
       setSyncing(false)
-      syncInFlight.current = false
       refreshInfo()
     },
     [persist, refreshInfo],
@@ -606,25 +423,7 @@ export function CopilotoApp() {
   useEffect(() => {
     if (!hydrated || !syncCode || autoSynced.current) return
     autoSynced.current = true
-    runSync(syncCode, true, false)
-  }, [hydrated, syncCode, runSync])
-
-  // Una pestaña instalada y el navegador pueden tener almacenes separados.
-  // Al volver al primer plano se sincronizan solo viajes y gastos; las
-  // finanzas NO se fusionan automáticamente (R12) — el sync explícito
-  // (botón Sync Now / conectar código) es el único que las incluye.
-  // El mutex evita dos pushes en paralelo que se pisen entre sí.
-  useEffect(() => {
-    if (!hydrated || !syncCode) return
-    const reconcile = () => {
-      if (document.visibilityState === "visible") runSync(syncCode, true, false)
-    }
-    window.addEventListener("focus", reconcile)
-    document.addEventListener("visibilitychange", reconcile)
-    return () => {
-      window.removeEventListener("focus", reconcile)
-      document.removeEventListener("visibilitychange", reconcile)
-    }
+    runSync(syncCode, true)
   }, [hydrated, syncCode, runSync])
 
   function exportJson() {
@@ -641,9 +440,20 @@ export function CopilotoApp() {
   }
 
   function importJson(file: File) {
+    // Límite de 50 MB: archivos más grandes pueden congelar el hilo principal.
+    const MAX_BYTES = 50 * 1024 * 1024
+    if (file.size > MAX_BYTES) {
+      alert("El archivo es demasiado grande. Limite de 50 MB.")
+      return
+    }
     const reader = new FileReader()
     reader.onload = () => {
-      const result = importExport(String(reader.result))
+      let result: Trip[] | null = null
+      try {
+        result = importExport(String(reader.result))
+      } catch {
+        result = null
+      }
       if (result) {
         const next = result.map((t) => (t.raw?.savedAt ? t : stampTrip(t)))
         tripsRef.current = next
@@ -653,8 +463,11 @@ export function CopilotoApp() {
         setExpenses(exp)
         setTab("REGISTER")
       } else {
-        alert("Couldn't read the file. Make sure it's a valid export.")
+        alert("No se pudo leer el archivo. Verifica que sea un export válido.")
       }
+    }
+    reader.onerror = () => {
+      alert("Error al leer el archivo. Intenta de nuevo.")
     }
     reader.readAsText(file)
   }
@@ -676,7 +489,7 @@ export function CopilotoApp() {
   function loadDemo() {
     const demo = SEED_TRIPS.length ? SEED_TRIPS : []
     if (demo.length === 0) {
-      alert("No demo data in this build.")
+      alert("No hay datos de demo en esta build.")
       return
     }
     const stamped = demo.map((t) => stampTrip(t))
@@ -717,7 +530,7 @@ export function CopilotoApp() {
   function connectSync(code: string) {
     if (!isValidSyncCode(code)) {
       setSyncTone("error")
-      setSyncMessage(`Invalid code (min. ${MIN_SYNC_CODE_LENGTH} characters).`)
+      setSyncMessage(`Código inválido (mín. ${MIN_SYNC_CODE_LENGTH} caracteres).`)
       return
     }
     saveSyncCode(code)
@@ -742,7 +555,7 @@ export function CopilotoApp() {
 
   return (
     <div
-      className="flex h-[100dvh] flex-col overflow-x-clip bg-black text-white"
+      className="flex h-[100dvh] flex-col bg-black text-white"
       style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
     >
       {copiaVieja && !avisoCerrado && (
@@ -763,8 +576,8 @@ export function CopilotoApp() {
       {versionPrueba && !avisoCerrado && (
         <div className="flex items-center gap-2 border-b border-cyan-500/40 bg-cyan-950/70 px-3 py-1.5 text-[11px] text-cyan-200">
           <span className="flex-1">
-            Test build {(process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 7)} · newer than
-            production ({versionPrueba}).
+            Versión de prueba {(process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA ?? "").slice(0, 7)} · más nueva que
+            producción ({versionPrueba}).
           </span>
           <button type="button" onClick={() => setAvisoCerrado(true)} className="text-cyan-400">
             ✕
@@ -778,16 +591,19 @@ export function CopilotoApp() {
       )}
       {saveState === "error" && (
         <div className="border-b border-rose-800/50 bg-rose-950/40 px-3 py-1 text-[10px] text-rose-300">
-          Error saving: {saveError}
+          Error al guardar: {saveError}
         </div>
       )}
 
       <main className="min-h-0 flex-1 overflow-hidden">
-        <div className={tab === "AI" ? "h-full min-h-0 overflow-hidden overflow-x-clip" : "h-full overflow-y-auto overflow-x-clip"}>
+        <div className={tab === "AI" ? "h-full min-h-0 overflow-hidden" : "h-full overflow-y-auto"}>
           {tab === "ENTRY" && (
-            <EntryScreen onSave={saveNewFromEntry} trips={trips} shift={shift} onGoDashboard={() => setTab("V1DASH")} />
+            <ErrorBoundary section="Entrada">
+              <EntryScreen onSave={saveNewFromEntry} trips={trips} shift={shift} />
+            </ErrorBoundary>
           )}
           {tab === "REGISTER" && (
+            <ErrorBoundary section="Registro">
             <RegisterScreen
               trips={trips}
               onEdit={setEditing}
@@ -799,8 +615,10 @@ export function CopilotoApp() {
               onResetStorage={resetAll}
               onApplyReconciliation={applyReconciliation}
             />
+            </ErrorBoundary>
           )}
           {tab === "EXPENSES" && (
+            <ErrorBoundary section="Gastos">
             <ExpensesScreen
               expenses={expenses}
               onSave={saveExpense}
@@ -810,8 +628,10 @@ export function CopilotoApp() {
               setScannerOpen(true)
             }}
             />
+            </ErrorBoundary>
           )}
           {tab === "FINANCE" && (
+            <ErrorBoundary section="Finanzas">
             <FinanceScreen
               trips={trips}
               expenses={expenses}
@@ -821,8 +641,10 @@ export function CopilotoApp() {
                 setScannerOpen(true)
               }}
             />
+            </ErrorBoundary>
           )}
           {tab === "AI" && (
+            <ErrorBoundary section="IA">
             <AIScreen
               trips={trips}
               expenses={expenses}
@@ -830,8 +652,10 @@ export function CopilotoApp() {
               onApplyExpenseUpdates={applyExpenseUpdates}
               onApplySchedules={applySchedules}
             />
+            </ErrorBoundary>
           )}
           {tab === "DATA" && (
+            <ErrorBoundary section="Datos">
             <DataScreen
               trips={trips}
               info={info}
@@ -850,22 +674,40 @@ export function CopilotoApp() {
               onConnectSync={connectSync}
               onSyncNow={() => syncCode && runSync(syncCode)}
               onDisconnectSync={disconnectSync}
-              onOpenAccountRegister={(id) => {
-                requestOpenAccount(id)
-                setTab("FINANCE")
-              }}
             />
+            </ErrorBoundary>
           )}
-          {tab === "DASH" && <DashScreen trips={trips} expenses={expenses} shift={shift} />}
+          {tab === "DASH" && (
+            <ErrorBoundary section="Dashboard">
+              <DashScreen trips={trips} expenses={expenses} shift={shift} />
+            </ErrorBoundary>
+          )}
           {tab === "V1DASH" && (
-            <V1DashScreen trips={trips} expenses={expenses} shift={shift} onGoData={() => setTab("DATA")} />
+            <ErrorBoundary section="Dashboard V1">
+              <V1DashScreen trips={trips} expenses={expenses} shift={shift} onGoData={() => setTab("DATA")} />
+            </ErrorBoundary>
           )}
-          {tab === "REPORTS" && <ReportsScreen trips={trips} expenses={expenses} />}
-          {tab === "SOBRES" && <SobresScreen />}
-          {tab === "TOLLAUDIT" && <TollAuditScreen trips={trips} />}
-          {tab === "CREDIT" && <CreditScreen />}
-          {tab === "TAX2026" && <Tax2026Screen trips={trips} expenses={expenses} />}
-          {tab === "HELP" && <HowItWorksScreen />}
+          {tab === "REPORTS" && (
+            <ErrorBoundary section="Reportes">
+              <ReportsScreen trips={trips} expenses={expenses} />
+            </ErrorBoundary>
+          )}
+          {tab === "HELP" && (
+            <ErrorBoundary section="Ayuda">
+              <HowItWorksScreen />
+            </ErrorBoundary>
+          )}
+          {tab === "LEDGER" && (
+            <ErrorBoundary section="Libro Mayor">
+            <div className="flex-1 overflow-y-auto">
+              <FinancialLedger
+                onNavigateTab={(t) => {
+                  if (t === "Dashboard") setTab("DASH")
+                }}
+              />
+            </div>
+            </ErrorBoundary>
+          )}
           {tab !== "ENTRY" &&
             tab !== "REGISTER" &&
             tab !== "EXPENSES" &&
@@ -875,8 +717,8 @@ export function CopilotoApp() {
             tab !== "DATA" &&
             tab !== "DASH" &&
             tab !== "V1DASH" &&
-            tab !== "CREDIT" &&
-            tab !== "HELP" && <Placeholder label={tab} />}
+            tab !== "HELP" &&
+            tab !== "LEDGER" && <Placeholder label={tab} />}
         </div>
       </main>
 
@@ -887,12 +729,7 @@ export function CopilotoApp() {
       {scannerOpen && (
         <ReceiptScanner
           initialDocTipo={scannerHint}
-          initialFile={inboxFile}
-          onClose={() => {
-            setScannerOpen(false)
-            setInboxFile(null)
-            refreshScanInbox()
-          }}
+          onClose={() => setScannerOpen(false)}
           onSaveExpense={(e) => {
             saveExpense(e)
             // ¿Este recibo escaneado es pago de una factura abierta? Se ofrece
@@ -904,7 +741,6 @@ export function CopilotoApp() {
                 date: e.date,
                 accountId: e.accountId,
                 id: e.id,
-                invoiceRefs: e.invoiceRefs,
               })
               if (hit) {
                 const withPay = addBillPayment(hit.bill, hit.payment)
@@ -927,8 +763,8 @@ export function CopilotoApp() {
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-neutral-700" />
             <div className="px-4 pb-1">
-              <p className="text-[15px] font-extrabold text-white">More</p>
-              <p className="text-[11px] text-neutral-500">Tools, data and system guide</p>
+              <p className="text-[15px] font-extrabold text-white">Más</p>
+              <p className="text-[11px] text-neutral-500">Herramientas, datos y guía del sistema</p>
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2 px-4">
               <button
@@ -951,17 +787,17 @@ export function CopilotoApp() {
                 }}
                 className="flex flex-col items-start gap-1 rounded-2xl border border-sky-500/30 bg-sky-500/10 px-3 py-3 text-left active:scale-[0.98]"
               >
-                <span className="text-[10px] font-bold uppercase tracking-wide text-sky-400">Guide</span>
-                <span className="text-[13px] font-extrabold text-white">How it works</span>
+                <span className="text-[10px] font-bold uppercase tracking-wide text-sky-400">Guía</span>
+                <span className="text-[13px] font-extrabold text-white">Cómo funciona</span>
                 <span className="text-[10px] leading-snug text-neutral-400">Dual register · Reconcile · Bill/Receipt</span>
               </button>
             </div>
             <div className="mt-4 space-y-4 px-4">
               {(
                 [
-                  { title: "Operations", keys: ["EXPENSES", "CREDIT", "DASH", "V1DASH", "SOBRES", "TOLLAUDIT"] as const },
-                  { title: "Intelligence & data", keys: ["AI", "DATA"] as const },
-                  { title: "Help", keys: ["HELP"] as const },
+                  { title: "Operación", keys: ["EXPENSES", "DASH", "V1DASH"] as const },
+                  { title: "Inteligencia y datos", keys: ["AI", "DATA"] as const },
+                  { title: "Ayuda", keys: ["HELP"] as const },
                 ] as const
               ).map((group) => {
                 const items = TABS_EN_MAS.filter((t) => (group.keys as readonly string[]).includes(t.key))
@@ -998,7 +834,7 @@ export function CopilotoApp() {
                               <span className="block text-[11px] leading-snug text-neutral-500">{hint}</span>
                             </span>
                             {isActive && (
-                              <span className="shrink-0 rounded-full bg-yellow-400/20 px-2 py-0.5 text-[9px] font-bold text-yellow-400">HERE</span>
+                              <span className="shrink-0 rounded-full bg-yellow-400/20 px-2 py-0.5 text-[9px] font-bold text-yellow-400">AQUÍ</span>
                             )}
                           </button>
                         )
@@ -1010,38 +846,10 @@ export function CopilotoApp() {
             </div>
             <div className="mt-4 px-4">
               <button type="button" onClick={() => setMas(false)} className="w-full rounded-2xl border border-neutral-700 py-3 text-xs font-bold text-neutral-300">
-                Close
+                Cerrar
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {inboxIds.length > 0 && !scannerOpen && !inboxDismissed && (
-        <div className="fixed inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-40 flex items-center gap-2">
-          <button
-            type="button"
-            onClick={async () => {
-              try {
-                const file = await pickupScanInboxFile(inboxIds[0])
-                setInboxFile(file)
-                setScannerOpen(true)
-              } catch {
-                refreshScanInbox()
-              }
-            }}
-            className="flex-1 rounded-2xl bg-yellow-400 px-4 py-3 text-left text-[14px] font-extrabold text-black shadow-lg active:scale-[0.98]"
-          >
-            📥 Foto recibida — Escanear{inboxIds.length > 1 ? ` (${inboxIds.length})` : ""}
-          </button>
-          <button
-            type="button"
-            aria-label="Descartar aviso de foto recibida"
-            onClick={() => setInboxDismissed(true)}
-            className="rounded-2xl bg-neutral-800 px-3 py-3 text-[14px] font-bold text-neutral-300 shadow-lg active:scale-[0.98]"
-          >
-            ✕
-          </button>
         </div>
       )}
 
