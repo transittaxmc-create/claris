@@ -7,39 +7,49 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react"
 import { RefreshCw } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { localDateKey } from "@/lib/dates"
 import {
   LEDGER_KEY,
   ETIQUETA_ORIGEN,
   etiquetaCombinada,
+  marcarCobroBorrado,
   normalizarLibro,
   origenDe,
   sinSemillas,
 } from "./cash-flow-store"
 import {
   money,
-  tripDateOf,
+  migrateCategory,
+  resolveSplitsForSave,
   type CashFlowEntry,
   type CashFlowOrigin,
   type CashFlowSource,
   type CashFlowStatus,
   type CashFlowType,
-  type Trip,
 } from "./types"
+import { SplitEditor } from "./split-editor"
 import {
   buildRegisters,
   accountBalance,
   accountIdFor,
   last4Of,
+  esFondoPermitido,
   addManualAccount,
   deleteManualAccount,
   setManualBalance,
-  setMainAccount,
   setDueDay,
   upcomingDues,
   type RegisterAccount,
 } from "./registers-store"
+import {
+  ACCOUNT_FLAGS_EVENT,
+  clearOpenAccount,
+  peekOpenAccount,
+  resolveAccountFlags,
+  setPrimaryAccount,
+} from "./account-flags"
 import { matchTransfers, looksLikeTransfer, type TransferReport } from "./transfer-matcher"
+import { LiabilitiesEntryCard, LiabilitiesScreen } from "./liabilities-screen"
+import { SHOTS_CHANGED_EVENT, loadShotTxs, pendingShotsSum } from "./screenshot-txs"
 import { AI_CLASS_LAST_KEY, aiApuntesForFindings } from "./ai-daily-classification"
 import {
   runReconciliationCheck,
@@ -52,17 +62,16 @@ import {
 import {
   RegistersHome,
   RegisterDetail,
+  BankTxEdit,
   AddAccountModal,
   TransfersReport,
   type BankTx,
 } from "./account-registers"
 import { FINANCE_SYNCED_EVENT } from "./finance-sync"
-import { diffOf, inferDifferenceReason, reconStateOf } from "./reconciliation"
 
 interface CashFlowRegisterProps {
   startingActualBalance: number
   onUpdateStartingBalance?: (newBal: number) => void
-  trips?: Trip[]
   /** Escanear factura/recibo desde un register: abre el escáner AI de la app. */
   onOpenScanner?: (docTipo?: string) => void
 }
@@ -73,17 +82,6 @@ interface SnapshotAccount {
   institution?: string | null
 }
 
-type BankSyncStatus = "live" | "degraded" | "sync_in_progress"
-
-interface BankSyncResponse {
-  total_balance?: number | null
-  accounts?: SnapshotAccount[]
-  transactions?: BankTx[]
-  as_of?: string
-  sync_status?: BankSyncStatus
-  message?: string
-}
-
 interface AutoRecon {
   billId: string
   detail: string
@@ -92,7 +90,6 @@ interface AutoRecon {
 }
 
 const RECON_KEY = "claris_autorecon_v1"
-const OTHER_FUNDS_KEY = "claris_other_funds_v1"
 
 function loadJson<T>(key: string, fallback: T): T {
   try {
@@ -107,21 +104,18 @@ export function CashFlowRegister({
   startingActualBalance,
   onUpdateStartingBalance,
   onOpenScanner,
-  trips = [],
 }: CashFlowRegisterProps) {
   const [entries, setEntries] = useState<CashFlowEntry[]>([])
   const [isLoaded, setIsLoaded] = useState(false)
   const [editingEntry, setEditingEntry] = useState<CashFlowEntry | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [viewingReceipt, setViewingReceipt] = useState<string | null>(null)
+  const [bankTxEdit, setBankTxEdit] = useState<BankTx | null>(null)
 
   const [view, setView] = useState<
-    { kind: "home" } | { kind: "account"; id: string } | { kind: "transfers" }
+    { kind: "home" } | { kind: "account"; id: string } | { kind: "transfers" } | { kind: "liabilities" }
   >({ kind: "home" })
   const [showAddAccount, setShowAddAccount] = useState(false)
-  const [otherFunds, setOtherFunds] = useState<string[]>(() =>
-    typeof window === "undefined" ? [] : loadJson<string[]>(OTHER_FUNDS_KEY, []),
-  )
   const [autoRecon, setAutoRecon] = useState<AutoRecon[]>(() =>
     typeof window === "undefined" ? [] : loadJson<AutoRecon[]>(RECON_KEY, []),
   )
@@ -131,8 +125,6 @@ export function CashFlowRegister({
   const [bankTotal, setBankTotal] = useState<number | null>(null)
   const [bankLoading, setBankLoading] = useState(false)
   const [bankError, setBankError] = useState(false)
-  const [bankDegraded, setBankDegraded] = useState(false)
-  const [bankMessage, setBankMessage] = useState<string | null>(null)
   const [bankUpdatedAt, setBankUpdatedAt] = useState<string | null>(null)
 
   // Reconciliación diaria: reporte + aprobación de Miguel. Nada se aplica solo.
@@ -144,49 +136,74 @@ export function CashFlowRegister({
     setBankLoading(true)
     setBankError(false)
     try {
-      const r = await fetch("/api/bank/sync-request", { cache: "no-store" })
+      const r = await fetch(`/api/bank/snapshot?refresh=${Date.now()}`, {
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      })
       if (!r.ok) throw new Error("bank feed failed")
-      const j = (await r.json()) as BankSyncResponse
-
-      const syncStatus: BankSyncStatus = j.sync_status ?? "live"
-      const incomingAccounts = Array.isArray(j.accounts) ? j.accounts : []
-      const incomingTxs = Array.isArray(j.transactions) ? j.transactions : []
-      const incomingTotal = typeof j.total_balance === "number" ? j.total_balance : null
-      const incomingAsOf = typeof j.as_of === "string" ? j.as_of : null
-
-      if (syncStatus === "live") {
-        setBankTotal(incomingTotal)
-        setBankAccounts(incomingAccounts)
-        setBankTxs(incomingTxs)
-        setBankUpdatedAt(incomingAsOf ?? new Date().toISOString())
-        setBankDegraded(false)
-        setBankMessage(null)
-      } else {
-        // En modo degradado/in_progress, conservamos datos previos si ya existen.
-        setBankTotal((prev) => (prev !== null ? prev : incomingTotal))
-        setBankAccounts((prev) => (prev.length > 0 ? prev : incomingAccounts))
-        setBankTxs((prev) => (prev.length > 0 ? prev : incomingTxs))
-        setBankUpdatedAt((prev) => prev ?? incomingAsOf ?? new Date().toISOString())
-        setBankDegraded(true)
-        setBankMessage(
-          j.message ??
-            (syncStatus === "sync_in_progress"
-              ? "Hay otra sincronización en proceso."
-              : "Sincronización temporalmente degradada. Mostrando último snapshot."),
-        )
-      }
+      const j = await r.json()
+      setBankTotal(typeof j.total_balance === "number" ? j.total_balance : null)
+      setBankAccounts(Array.isArray(j.accounts) ? j.accounts : [])
+      setBankTxs(Array.isArray(j.transactions) ? j.transactions : [])
+      setBankUpdatedAt(typeof j.as_of === "string" ? j.as_of : new Date().toISOString())
     } catch {
       setBankError(true)
-      setBankDegraded(false)
-      setBankMessage("No se pudo sincronizar con el banco ahora mismo.")
     } finally {
       setBankLoading(false)
     }
   }, [])
 
+  // Solicita una descarga REAL de Plaid, no solo una lectura de Supabase.
+  // Evita duplicar solicitudes si iOS dispara varios eventos al volver al frente.
+  const lastPlaidRequestAt = useRef(0)
+  const requestPlaidSync = useCallback(async (force = false) => {
+    const now = Date.now()
+    if (!force && now - lastPlaidRequestAt.current < 90_000) return false
+    lastPlaidRequestAt.current = now
+    try {
+      const r = await fetch("/api/bank/sync-request", {
+        method: "POST",
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache" },
+      })
+      if (!r.ok) throw new Error("Plaid sync request failed")
+      return true
+    } catch {
+      lastPlaidRequestAt.current = 0
+      return false
+    }
+  }, [])
+
+  // SYNC manual: solicita Plaid, consulta enseguida y vuelve a consultar
+  // cuando el worker normalmente ya habrá procesado la solicitud.
+  const syncNow = useCallback(async () => {
+    await requestPlaidSync(true)
+    await fetchBank()
+    window.setTimeout(() => void fetchBank(), 25000)
+    window.setTimeout(() => void fetchBank(), 60000)
+  }, [fetchBank, requestPlaidSync])
+
   useEffect(() => {
-    fetchBank()
-  }, [fetchBank])
+    // Cada apertura/recarga y cada regreso a primer plano solicita una bajada
+    // fresca. Si iOS suspende la app, al volver se dispara visibilitychange.
+    void requestPlaidSync()
+    void fetchBank()
+    const refresh = window.setInterval(fetchBank, 5 * 60 * 1000)
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        void requestPlaidSync()
+        void fetchBank()
+        window.setTimeout(() => void fetchBank(), 25000)
+      }
+    }
+    document.addEventListener("visibilitychange", onVisible)
+    window.addEventListener("pageshow", onVisible)
+    return () => {
+      window.clearInterval(refresh)
+      document.removeEventListener("visibilitychange", onVisible)
+      window.removeEventListener("pageshow", onVisible)
+    }
+  }, [fetchBank, requestPlaidSync])
 
   const loadLedger = useCallback(() => {
     try {
@@ -196,8 +213,20 @@ export function CashFlowRegister({
       const sinSem = sinSemillas(lista)
       // Etiquetas viejas ("Recibo escaneado") → origen + tipo por separado.
       const { lista: limpio, cambio } = normalizarLibro(sinSem)
+      // Migración a inglés (2026-10-18): normalizar categorías viejas.
+      let migro = false
+      for (const e of limpio) {
+        const c = (e as any)?.category
+        if (typeof c === "string") {
+          const m = migrateCategory(c)
+          if (m !== c) {
+            ;(e as any).category = m
+            migro = true
+          }
+        }
+      }
       setEntries(limpio)
-      if (cambio || sinSem.length !== lista.length) {
+      if (cambio || migro || sinSem.length !== lista.length) {
         try {
           localStorage.setItem(LEDGER_KEY, JSON.stringify(limpio))
         } catch {}
@@ -217,7 +246,6 @@ export function CashFlowRegister({
   useEffect(() => {
     const onSynced = () => {
       loadLedger()
-      setOtherFunds(loadJson<string[]>(OTHER_FUNDS_KEY, []))
     }
     window.addEventListener(FINANCE_SYNCED_EVENT, onSynced)
     return () => window.removeEventListener(FINANCE_SYNCED_EVENT, onSynced)
@@ -235,15 +263,90 @@ export function CashFlowRegister({
     [bankAccounts, showAddAccount, entries],
   )
 
+  // Switches de cuentas (Miguel, 2026-11-13): cuáles cuentas están ACTIVAS
+  // (aparecen en MONEY y cuentan en Proyecciones) y cuál es la PRIMARIA
+  // viven en las banderas de account-flags.ts, que él mueve en
+  // DATA → ACCOUNTS. Aquí solo se leen.
+  const [flagsTick, setFlagsTick] = useState(0)
+  useEffect(() => {
+    const onFlags = () => setFlagsTick((t) => t + 1)
+    window.addEventListener(ACCOUNT_FLAGS_EVENT, onFlags)
+    window.addEventListener("storage", onFlags)
+    return () => {
+      window.removeEventListener(ACCOUNT_FLAGS_EVENT, onFlags)
+      window.removeEventListener("storage", onFlags)
+    }
+  }, [])
+  const accountFlags = useMemo(
+    () => resolveAccountFlags(registers),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [registers, flagsTick],
+  )
+  /** Fondos que suman a la proyección además de la primaria: las cuentas
+   *  activas. Es lo que antes era "otros fondos", ahora mandado por los
+   *  switches — la matemática de startingBalance no cambia. */
+  const forecastFunds = useMemo(
+    () => accountFlags.activeIds.filter((id) => id !== accountFlags.primaryId),
+    [accountFlags],
+  )
+
+  // Pedido de abrir un register desde DATA → ACCOUNTS: se consume cuando
+  // la cuenta ya existe en la lista (el snapshot pudo tardar más).
+  useEffect(() => {
+    const openId = peekOpenAccount()
+    if (openId && registers.some((r) => r.id === openId)) {
+      clearOpenAccount()
+      setView({ kind: "account", id: openId })
+    }
+  }, [registers])
+
+  // Plan B (Miguel, 2026-10-25): el balance de cada cuenta del banco se
+  // CALCULA — Plaid + los provisionales de screenshot que Plaid aún no
+  // trae. Nada se teclea: el número sale de sumar los movimientos, y es
+  // el mismo balance que alimenta MONEY, el register y el SALDO INICIAL
+  // de Proyecciones. Cuando Plaid baja el real, el provisional sale y el
+  // total no se mueve (continuidad al centavo).
+  const [shotsTick, setShotsTick] = useState(0)
+  useEffect(() => {
+    const onShots = () => setShotsTick((t) => t + 1)
+    window.addEventListener(SHOTS_CHANGED_EVENT, onShots)
+    return () => window.removeEventListener(SHOTS_CHANGED_EVENT, onShots)
+  }, [])
+
   const balances = useMemo(() => {
     const out: Record<string, number | null> = {}
+    const allShots = loadShotTxs()
     for (const r of registers) {
-      out[r.id] = accountBalance(r, bankAccounts as any)
+      let b = accountBalance(r, bankAccounts as any)
+      if (b != null && allShots.length > 0) {
+        if (r.source !== "manual") {
+          const exact = bankTxs.filter((t) => accountIdFor(String(t.bank_account || "")) === r.id)
+          const txs =
+            exact.length > 0
+              ? exact
+              : bankTxs.filter((t) => last4Of(String(t.bank_account || "")) === last4Of(r.name))
+          const adj = pendingShotsSum(allShots, r.id, txs)
+          if (adj) b = Math.round((b + adj) * 100) / 100
+        } else {
+          // Cuentas manuales con escáner (Lyft): el balance se CALCULA
+          // igual — base manual + movimientos escaneados. Sin feed, ningún
+          // escaneado se reemplaza: todos siguen vigentes.
+          const adj = pendingShotsSum(allShots, r.id, [])
+          if (adj) b = Math.round((b + adj) * 100) / 100
+        }
+      }
+      out[r.id] = b
     }
     return out
-  }, [registers, bankAccounts])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [registers, bankAccounts, bankTxs, shotsTick])
 
-  const dues = useMemo(() => upcomingDues(registers), [registers])
+  // Vencimientos que entran a la proyección: SOLO de cuentas activas —
+  // una cuenta apagada no aporta ni su balance ni sus pagos proyectados.
+  const dues = useMemo(
+    () => upcomingDues(registers).filter((d) => accountFlags.activeIds.includes(d.accountId)),
+    [registers, accountFlags],
+  )
 
   const transferReport: TransferReport = useMemo(() => {
     const txs = bankTxs.map((t) => ({
@@ -254,41 +357,6 @@ export function CashFlowRegister({
     }))
     return matchTransfers(txs)
   }, [bankTxs])
-
-  const differenceSummary = useMemo(() => {
-    const day = localDateKey(new Date())
-    const reasons = new Map<string, { label: string; count: number; amount: number }>()
-    let total = 0
-
-    for (const trip of trips) {
-      if (tripDateOf(trip) !== day) continue
-      const state = reconStateOf(trip)
-      if (state !== "short" && state !== "over") continue
-
-      const reason = inferDifferenceReason(trip) || "Otro"
-      const amount = Math.abs(diffOf(trip))
-      total += amount
-
-      const prev = reasons.get(reason)
-      if (prev) {
-        prev.count += 1
-        prev.amount = Math.round((prev.amount + amount) * 100) / 100
-      } else {
-        reasons.set(reason, { label: reason, count: 1, amount: Math.round(amount * 100) / 100 })
-      }
-    }
-
-    const ordered = [...reasons.values()].sort((a, b) => {
-      if (b.count !== a.count) return b.count - a.count
-      return b.amount - a.amount
-    })
-
-    return {
-      day,
-      total,
-      reasons: ordered,
-    }
-  }, [trips])
 
   // Chequeo de reconciliación: por cuenta, en orden. Solo genera el reporte;
   // cada hallazgo se aplica únicamente cuando Miguel lo aprueba.
@@ -404,7 +472,7 @@ export function CashFlowRegister({
         const amt = Number(f.bankTx.amount) || 0
         // Regla de transfers JAMAS inflan ingresos: si el movimiento tiene
         // pinta de transferencia interna (Zelle, transfer, wire...) se crea
-        // con origen "transfer" y etiqueta "Transfer interna", no como un
+        // con origen "transfer" y etiqueta "Internal transfer", no como un
         // ingreso bancario mas. El mismo dolar movido no es ingreso nuevo.
         const esTransfer = looksLikeTransfer(String(f.bankTx.detail || ""))
         const nuevo = {
@@ -416,7 +484,7 @@ export function CashFlowRegister({
           status: "actual",
           source: "bank",
           origin: esTransfer ? "transfer" : "bank",
-          sourceLabel: esTransfer ? "Transfer interna" : "Banco",
+          sourceLabel: esTransfer ? "Internal transfer" : "Bank",
           category: "",
           notes: "",
           accountId: f.accountId,
@@ -463,7 +531,7 @@ export function CashFlowRegister({
           status: "actual",
           source: "bank",
           origin: "bank",
-          sourceLabel: "Banco",
+          sourceLabel: "Bank",
           category: "",
           notes: "",
           accountId: f.accountId,
@@ -507,6 +575,9 @@ export function CashFlowRegister({
 
   const handleDelete = (id: string) => {
     if (!window.confirm("Delete this entry?")) return
+    // Lápida (2026-11-15): si era un cobro de Earnings, que el auto no lo
+    // regenere; solo el botón "Update receivables → Money" lo trae de vuelta.
+    if (String(id).startsWith("claris:cobro:")) marcarCobroBorrado(id)
     saveEntries(entries.filter((e) => e.id !== id))
   }
 
@@ -525,6 +596,47 @@ export function CashFlowRegister({
       return next
     })
   }, [])
+
+  // Match confirmado con ajuste: marca el original como pagado y crea un
+  // asiento de ajuste por la diferencia (ej. fee de plataforma). El día
+  // queda cuadrado: proyectado = banco + ajuste.
+  const handleConfirmWithAdjustment = useCallback(
+    (entry: CashFlowEntry, paidDate: string, adjustmentAmount: number, reason: string) => {
+      const diff = Math.round(Number(adjustmentAmount || 0) * 100) / 100
+      if (Math.abs(diff) < 0.011) {
+        handleMarkPaid(entry, paidDate)
+        return
+      }
+      const now = new Date().toISOString()
+      const adj: CashFlowEntry = {
+        id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `adj-${Date.now()}`,
+        date: paidDate || entry.date,
+        description: `Adjustment: ${reason}`,
+        source: "manual",
+        sourceLabel: "Match adjustment",
+        type: diff < 0 ? "expense" : "income",
+        status: "actual",
+        amount: Math.abs(diff),
+        category: /fee/i.test(reason) ? "Bank fees" : "Adjustment",
+        notes: `Balances "${entry.description || "entry"}": bank vs projected diff ${diff < 0 ? "-" : "+"}$${Math.abs(diff).toFixed(2)}`,
+        createdAt: now,
+        isManuallyEdited: true,
+      }
+      setEntries((prev) => {
+        const next = prev.map((e) =>
+          e.id === entry.id
+            ? { ...e, status: "actual" as CashFlowStatus, date: paidDate || e.date, isManuallyEdited: true }
+            : e,
+        )
+        next.unshift(adj)
+        try {
+          localStorage.setItem(LEDGER_KEY, JSON.stringify(next))
+        } catch {}
+        return next
+      })
+    },
+    [handleMarkPaid],
+  )
 
   const handleSaveEntry = (finalEntry: CashFlowEntry) => {
     const exists = entries.some((e) => e.id === finalEntry.id)
@@ -604,46 +716,35 @@ export function CashFlowRegister({
             <span
               className={cn(
                 "inline-block size-2 rounded-full",
-                bankError
-                  ? "bg-[#ff5d6c]"
-                  : bankLoading
-                    ? "animate-pulse bg-[#f5b84c]"
-                    : bankDegraded
-                      ? "bg-amber-400"
-                      : "bg-[#2fbf71]",
+                bankError ? "bg-[#ff5d6c]" : bankLoading ? "animate-pulse bg-[#f5b84c]" : "bg-[#2fbf71]",
               )}
             />
             <span className="tracking-wider text-[#0a7cff]">PLAID</span>
-            <span className="text-[#f2f3f7]">Feed del banco</span>
+            <span className="text-[#f2f3f7]">Bank feed</span>
           </span>
           <span
             className={cn(
               "rounded border px-2 py-0.5 text-[9px]",
               bankError
                 ? "border-rose-800 bg-rose-950 text-rose-300"
-                : bankDegraded
-                  ? "border-amber-700 bg-amber-950 text-amber-300"
-                  : "border-emerald-800 bg-emerald-950 text-emerald-300",
+                : "border-emerald-800 bg-emerald-950 text-emerald-300",
             )}
           >
-            {bankError ? "SIN CONEXIÓN" : bankDegraded ? "MODO SEGURO" : "EN VIVO"}
+            {bankError ? "OFFLINE" : "LIVE"}
           </span>
           <button
             type="button"
-            onClick={fetchBank}
+            onClick={syncNow}
             disabled={bankLoading}
-            title={bankUpdatedAt ? `Banco sincronizado ${bankUpdatedAt}` : "Sincronizar banco"}
+            title={bankUpdatedAt ? `Bank synced ${bankUpdatedAt}` : "Sync bank"}
             className="rounded border border-[#262633] bg-[#16161f] px-2 py-0.5 text-[9px] font-bold text-[#f2f3f7] active:scale-95 disabled:opacity-50"
           >
             <span className="inline-flex items-center gap-1">
               <RefreshCw className={cn("size-2.5", bankLoading && "animate-spin")} />
-              {bankLoading ? "SYNCING" : bankError || bankDegraded ? "RETRY" : "SYNC"}
+              {bankLoading ? "SYNCING" : bankError ? "RETRY" : "SYNC"}
             </span>
           </button>
         </div>
-        {bankMessage && (
-          <div className="mt-1 px-1 text-center text-[9px] font-semibold text-[#f5b84c]">{bankMessage}</div>
-        )}
       </div>
 
       <div className="mt-2">
@@ -651,16 +752,18 @@ export function CashFlowRegister({
           <RegistersHome
             registers={registers}
             balances={balances}
+            onOpenScanner={onOpenScanner}
             bankTxs={bankTxs}
-            bankOk={!bankError && (bankAccounts.length > 0 || bankTxs.length > 0 || bankTotal !== null)}
+            bankOk={!bankError && bankAccounts.length > 0}
             onSyncBank={fetchBank}
-            otherFunds={otherFunds}
+            otherFunds={forecastFunds}
+            activeIds={accountFlags.activeIds}
             onMarkPaid={handleMarkPaid}
+            onConfirmWithAdjustment={handleConfirmWithAdjustment}
             dues={dues}
             pairCount={transferReport.pairs.length}
             looseCount={transferReport.unmatchedOut.length + transferReport.unmatchedIn.length}
             entries={entries}
-            differenceSummary={differenceSummary}
             reconReport={reconReport}
             reconLoading={reconLoading}
             onRunRecon={runRecon}
@@ -675,37 +778,84 @@ export function CashFlowRegister({
             onPatchEntry={handlePatchEntry}
             onAddEntry={(dateIso) => handleOpenAddModal("expense", "projected", dateIso)}
             onOpenAccount={(id) => setView({ kind: "account", id })}
+            onSaveManualBalance={(id, v) => {
+              setManualBalance(id, v)
+              setBankAccounts((prev) => [...prev])
+            }}
             onAddAccount={() => setShowAddAccount(true)}
             onOpenTransfers={() => setView({ kind: "transfers" })}
           />
         )}
 
-        {view.kind === "account" && activeAccount && (
+        {view.kind === "home" && (
+          <div className="mt-3 px-2">
+            <LiabilitiesEntryCard onOpen={() => setView({ kind: "liabilities" })} />
+          </div>
+        )}
+
+        {view.kind === "liabilities" && (
+          <LiabilitiesScreen bankTxs={bankTxs} onBack={() => setView({ kind: "home" })} />
+        )}
+
+        {view.kind === "account" && activeAccount && bankTxEdit && (
+          <BankTxEdit
+            tx={bankTxEdit}
+            onBack={() => setBankTxEdit(null)}
+            onSaved={() => {
+              setBankTxEdit(null)
+              fetchBank()
+            }}
+          />
+        )}
+
+        {view.kind === "account" && activeAccount && !bankTxEdit && (
           <RegisterDetail
             account={activeAccount}
             balance={balances[activeAccount.id] ?? null}
             bankTxs={txsForAccount(activeAccount)}
+            allBankTxs={bankTxs}
+            accountNames={Object.fromEntries(registers.map((r) => [r.id, r.name]))}
             entries={entriesForAccount(activeAccount)}
             otherFunds={
               activeAccount.isMain
-                ? registers
-                    .filter((r) => r.id !== activeAccount.id && r.kind === "bank")
-                    .map((r) => ({
+                ? (() => {
+                    // Candidatas históricas a fondos de proyección. Si hay
+                    // duplicados por nombre, se muestra el vivo (mayor
+                    // |balance|). "checked" = la cuenta está ACTIVA en los
+                    // switches de DATA → ACCOUNTS (ahí se manda ahora).
+                    const cands = registers.filter(
+                      (r) => r.id !== activeAccount.id && r.kind === "bank" && esFondoPermitido(r),
+                    )
+                    const byBase = new Map<string, typeof cands>()
+                    for (const r of cands) {
+                      const nm = r.name || ""
+                      const base = /lyft/i.test(nm)
+                        ? "lyft"
+                        : /uber/i.test(nm)
+                          ? "uber"
+                          : /branch/i.test(nm)
+                            ? "branch"
+                            : /paypal/i.test(nm)
+                              ? "paypal"
+                              : r.id
+                      byBase.set(base, [...(byBase.get(base) ?? []), r])
+                    }
+                    const picked: typeof cands = []
+                    for (const arr of byBase.values()) {
+                      const sorted = [...arr].sort(
+                        (a, b) => Math.abs(balances[b.id] ?? 0) - Math.abs(balances[a.id] ?? 0),
+                      )
+                      if (sorted[0]) picked.push(sorted[0])
+                    }
+                    return picked.map((r) => ({
                       reg: r,
                       balance: balances[r.id] ?? null,
-                      checked: otherFunds.includes(r.id),
+                      checked: forecastFunds.includes(r.id),
                     }))
+                  })()
                 : []
             }
-            onToggleOtherFund={(id) => {
-              setOtherFunds((prev) => {
-                const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-                try {
-                  localStorage.setItem(OTHER_FUNDS_KEY, JSON.stringify(next))
-                } catch {}
-                return next
-              })
-            }}
+            onOpenScanner={onOpenScanner ? () => onOpenScanner() : undefined}
             onBack={() => setView({ kind: "home" })}
             onAddBill={() => handleOpenAddModal("expense", "projected")}
             onAddPost={() => handleOpenAddModal("expense", "actual")}
@@ -717,7 +867,7 @@ export function CashFlowRegister({
               setEditingEntry({
                 id: `tmp-adj-${Date.now()}`,
                 date: iso,
-                description: "Ajuste de balance",
+                description: "Balance adjustment",
                 amount: 0,
                 type: "income",
                 status: "actual",
@@ -725,12 +875,12 @@ export function CashFlowRegister({
                 origin: "manual",
                 sourceLabel: "Ajuste",
                 category: "Ajuste",
-                notes: "Entrada con propósito de balancear el register",
+                notes: "Entry to balance the register",
                 accountId: activeAccount.id,
               } as CashFlowEntry)
               setIsModalOpen(true)
             }}
-            onScanDoc={(t) => onOpenScanner?.(t)}
+            onEditBankTx={(t) => setBankTxEdit(t)}
             onEditEntry={(e) => {
               setEditingEntry(e)
               setIsModalOpen(true)
@@ -768,7 +918,9 @@ export function CashFlowRegister({
               saveEntries(entries.map((e) => (e.id === id ? { ...e, amount: n } : e)))
             }}
             onSetMain={(id) => {
-              setMainAccount(id)
+              // La ★ vive en las banderas (DATA → ACCOUNTS): moverla aquí
+              // es el mismo ajuste, y buildRegisters la lee de ahí.
+              setPrimaryAccount(id, registers)
               setBankAccounts((prev) => [...prev])
             }}
             onSaveDueDay={(id, day) => {
@@ -829,6 +981,7 @@ export function EntryModal(props: {
   onClose: () => void
 }) {
   const { editingEntry, setEditingEntry, entries, onSave, onClose } = props
+  const [splitError, setSplitError] = useState("")
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 sm:items-center" onClick={onClose}>
       <div
@@ -887,7 +1040,7 @@ export function EntryModal(props: {
               </select>
             </div>
             <div>
-              <label className="text-[10px] font-bold uppercase text-neutral-400">Factura o Recibo</label>
+              <label className="text-[10px] font-bold uppercase text-neutral-400">Bill o Receipt</label>
               <select
                 value={editingEntry.status}
                 onChange={(e) => {
@@ -908,14 +1061,14 @@ export function EntryModal(props: {
                 }}
                 className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none"
               >
-                <option value="projected">Factura (Bill) — por pagar</option>
-                <option value="actual">Recibo (Receipt) — ya pagado</option>
+                <option value="projected">Bill — payable</option>
+                <option value="actual">Receipt (Receipt) — already paid</option>
               </select>
             </div>
           </div>
           {editingEntry.type === "income" && (
             <div>
-              <label className="text-[10px] font-bold uppercase text-neutral-400">Origen del ingreso</label>
+              <label className="text-[10px] font-bold uppercase text-neutral-400">Income source</label>
               <select
                 value={origenDe(editingEntry)}
                 onChange={(e) => {
@@ -936,16 +1089,29 @@ export function EntryModal(props: {
               </select>
             </div>
           )}
-          <div>
-            <label className="text-[10px] font-bold uppercase text-neutral-400">Category</label>
-            <input
-              type="text"
-              value={editingEntry.category || ""}
-              onChange={(e) => setEditingEntry({ ...editingEntry, category: e.target.value })}
-              placeholder="e.g. Fuel, EZPass, Insurance"
-              className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400"
-            />
-          </div>
+          {!editingEntry.splits && (
+            <div>
+              <label className="text-[10px] font-bold uppercase text-neutral-400">Category</label>
+              <input
+                type="text"
+                value={editingEntry.category || ""}
+                onChange={(e) => setEditingEntry({ ...editingEntry, category: e.target.value })}
+                placeholder="e.g. Fuel, EZPass, Insurance"
+                className="mt-1 w-full rounded-xl border border-neutral-800 bg-neutral-900 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400"
+              />
+            </div>
+          )}
+          {/* División por categorías estilo Quicken (Miguel, 2026-11-09):
+              la misma entrada repartida en varias categorías. */}
+          <SplitEditor
+            key={editingEntry.id}
+            kind={editingEntry.type}
+            total={Math.abs(editingEntry.amount || 0)}
+            initialCategory={editingEntry.category || ""}
+            splits={editingEntry.splits ?? null}
+            onChange={(s) => setEditingEntry({ ...editingEntry, splits: s ?? undefined })}
+          />
+          {splitError && <p className="text-[12px] font-semibold text-[#ff5d6c]">{splitError}</p>}
           <div className="flex gap-2 pt-2">
             <button
               type="button"
@@ -956,7 +1122,47 @@ export function EntryModal(props: {
             </button>
             <button
               type="button"
-              onClick={() => onSave(editingEntry)}
+              onClick={() => {
+                // División por categorías (Quicken split): debe cuadrar
+                // a $0.00 de diferencia para guardar.
+                const resolved = resolveSplitsForSave(
+                  editingEntry.splits ?? null,
+                  Math.abs(editingEntry.amount || 0),
+                  (editingEntry.category || "").trim() || "Other",
+                )
+                if (!resolved.ok) {
+                  setSplitError(resolved.error)
+                  return
+                }
+                setSplitError("")
+                const finalEntry: CashFlowEntry = {
+                  ...editingEntry,
+                  category: resolved.category,
+                  splits: resolved.splits,
+                }
+                // Una categoría escrita a mano entra a la lista compartida
+                // (claris_custom_categories): queda disponible en TODOS
+                // los formularios de entrada, no solo en este.
+                const catsToRegister = [
+                  ...(resolved.category !== "Split" ? [resolved.category] : []),
+                  ...((resolved.splits ?? []).map((s) => s.category) as string[]),
+                ]
+                try {
+                  const rawCats = JSON.parse(localStorage.getItem("claris_custom_categories") || "[]")
+                  const list: string[] = Array.isArray(rawCats) ? rawCats : []
+                  const nextCats = [...list]
+                  for (const cat of catsToRegister) {
+                    if (cat && !nextCats.some((c) => String(c).toLowerCase() === cat.toLowerCase())) {
+                      nextCats.push(cat)
+                    }
+                  }
+                  if (nextCats.length !== list.length) {
+                    localStorage.setItem("claris_custom_categories", JSON.stringify(nextCats))
+                    window.dispatchEvent(new Event(FINANCE_SYNCED_EVENT))
+                  }
+                } catch {}
+                onSave(finalEntry)
+              }}
               className="flex-1 rounded-xl bg-yellow-400 py-2.5 text-xs font-black text-black"
             >
               Save

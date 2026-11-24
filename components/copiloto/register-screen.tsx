@@ -16,15 +16,15 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { localDateKey } from "@/lib/dates"
+import { weekStartOf } from "./dinero-forecast"
 import { type Trip, type TollBill, grossOf, netOf, money, tripDateOf } from "./types"
-import { reconciliarCobrosAlLibro } from "./cash-flow-store"
+import { fechasReconciliacionAuto, limpiarCobrosSinViajes, validarCobros, leerLibroMayor, reconciliarCobrosAlLibro } from "./cash-flow-store"
 import { PlatformAvatar, PlatformBadge } from "./platform-avatar"
 import { isVoucherPlatform } from "./platform-meta"
 import {
   diffOf,
   expectedOf,
   groupByPlatform,
-  inferDifferenceReason,
   reconStateOf,
   reconSummary,
   receivedOf,
@@ -38,10 +38,10 @@ import {
 type Filter = "ALL" | "PENDING" | "MATCHED" | "DIFF"
 
 const RECON_TONE: Record<ReconState, { text: string; border: string; label: string }> = {
-  pending: { text: "text-neutral-400", border: "border-neutral-700", label: "Sin pago" },
+  pending: { text: "text-neutral-400", border: "border-neutral-700", label: "Unpaid" },
   ok: { text: "text-green-400", border: "border-green-500/40", label: "Cuadra" },
-  short: { text: "text-rose-400", border: "border-rose-500/40", label: "Pagaron de menos" },
-  over: { text: "text-sky-400", border: "border-sky-500/40", label: "Pagaron de más" },
+  short: { text: "text-rose-400", border: "border-rose-500/40", label: "Pagaron short" },
+  over: { text: "text-sky-400", border: "border-sky-500/40", label: "Pagaron over" },
 }
 
 function signed(n: number): string {
@@ -55,7 +55,7 @@ function GrossByPlatformCard({ total, groups }: { total: number; groups: Platfor
       <span className="text-[10px] font-bold tracking-wide text-neutral-500">TOTAL GROSS</span>
       <span className="text-lg font-extrabold text-yellow-400">{money(total)}</span>
       {groups.length === 0 ? (
-        <span className="text-[10px] text-neutral-600">Sin viajes</span>
+        <span className="text-[10px] text-neutral-600">No trips</span>
       ) : (
         <div className="flex flex-col gap-1">
           {groups.map((g) => (
@@ -81,15 +81,11 @@ function ReconciliationPanel({ summary, groups }: { summary: ReconSummary; group
     <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
       <div className="mb-2 flex items-center justify-between">
         <p className="flex items-center gap-2 text-[11px] font-bold tracking-wide text-neutral-300">
-          <Scale className="size-3.5 text-neutral-400" /> RECONCILIACIÓN
+          <Scale className="size-3.5 text-neutral-400" /> RECONCILIATION
         </p>
         <span className={cn("rounded-full border px-2 py-0.5 text-[9px] font-bold", tone.border, tone.text)}>
-          {summary.problemCount === 0 ? "TODO CUADRA" : `${summary.problemCount} CON DIFERENCIA`}
+          {summary.problemCount === 0 ? "ALL MATCHED" : `${summary.problemCount} WITH DIFFERENCE`}
         </span>
-      </div>
-      <div className="mb-2 rounded-xl border border-neutral-800 bg-neutral-900/60 px-2.5 py-2">
-        <p className="text-[9px] font-bold tracking-wide text-neutral-500">ASISTENTE RAPIDO (3 PASOS)</p>
-        <p className="mt-0.5 text-[10px] text-neutral-300">1) Recibido real · 2) Motivo · 3) Reconciliar → Dinero</p>
       </div>
       <div className="grid grid-cols-3 gap-2">
         <div className="flex flex-col gap-0.5">
@@ -101,22 +97,22 @@ function ReconciliationPanel({ summary, groups }: { summary: ReconSummary; group
           <span className="text-sm font-extrabold text-neutral-200">{money(summary.received)}</span>
         </div>
         <div className="flex flex-col gap-0.5">
-          <span className="text-[9px] font-bold text-neutral-500">DIFERENCIA</span>
+          <span className="text-[9px] font-bold text-neutral-500">DIFF</span>
           <span className={cn("text-sm font-extrabold", tone.text)}>{signed(summary.diff)}</span>
         </div>
       </div>
       <div className="mt-2 flex flex-wrap gap-1.5">
         <span className="rounded-full border border-neutral-700 px-2 py-0.5 text-[9px] font-bold text-neutral-400">
-          {summary.pendingCount} sin pago
+          {summary.pendingCount} unpaid
         </span>
         {summary.shortCount > 0 && (
           <span className={cn("rounded-full border px-2 py-0.5 text-[9px] font-bold", RECON_TONE.short.border, RECON_TONE.short.text)}>
-            {summary.shortCount} de menos
+            {summary.shortCount} short
           </span>
         )}
         {summary.overCount > 0 && (
           <span className={cn("rounded-full border px-2 py-0.5 text-[9px] font-bold", RECON_TONE.over.border, RECON_TONE.over.text)}>
-            {summary.overCount} de más
+            {summary.overCount} over
           </span>
         )}
         {summary.okCount > 0 && (
@@ -155,7 +151,6 @@ function TripCard({
     expected: expectedOf(trip),
     received: receivedOf(trip),
     diff: diffOf(trip),
-    reason: inferDifferenceReason(trip),
   }
   const route =
     trip.pickup && trip.dropoff
@@ -211,7 +206,7 @@ function TripCard({
                   RECON_TONE[recon.state].border,
                   RECON_TONE[recon.state].text,
                 )}
-                title={`Esperado ${money(recon.expected)} · recibido ${money(recon.received ?? 0)}`}
+                title={`Esperado ${money(recon.expected)} · received ${money(recon.received ?? 0)}`}
               >
                 {recon.state === "ok" ? "Cuadra" : signed(recon.diff)}
               </span>
@@ -219,7 +214,7 @@ function TripCard({
                 <span
                   role="button"
                   tabIndex={0}
-                  title={`Ajustar earnings en ${signed(recon.diff)} para que cuadre`}
+                  title={`Adjust earnings by ${signed(recon.diff)} to balance`}
                   onClick={(e) => {
                     e.stopPropagation()
                     onApplyReconciliation(trip)
@@ -240,9 +235,6 @@ function TripCard({
           )}
         </span>
       </div>
-      {recon.state !== "ok" && recon.state !== "pending" && (
-        <p className="mt-2 text-[10px] text-amber-300">Motivo sugerido: {recon.reason}</p>
-      )}
     </button>
   )
 }
@@ -282,7 +274,7 @@ function PlatformGroupBlock({
             </span>
           )}
           {group.pendingCount > 0 && (
-            <span className="text-[9px] text-neutral-500">{group.pendingCount} sin pago</span>
+            <span className="text-[9px] text-neutral-500">{group.pendingCount} unpaid</span>
           )}
         </div>
       </header>
@@ -299,6 +291,22 @@ function addDays(date: string, days: number): string {
   const next = new Date(`${date}T12:00:00`)
   next.setDate(next.getDate() + days)
   return localDateKey(next)
+}
+
+
+function BreakButton() {
+  const [on, setOn] = useState(false)
+  return (
+    <button
+      type="button"
+      onClick={() => setOn((b) => !b)}
+      className={on
+        ? "ml-1 rounded-full border border-orange-400 bg-orange-400/15 px-2 py-0.5 text-[9px] font-bold text-orange-400"
+        : "ml-1 rounded-full border border-neutral-700 px-2 py-0.5 text-[9px] font-bold text-neutral-500"}
+    >
+      {on ? "ON BREAK" : "BREAK"}
+    </button>
+  )
 }
 
 export function RegisterScreen({
@@ -349,20 +357,54 @@ export function RegisterScreen({
     onCloseDay()
   }
 
+  // Reconciliación automática (restaurada 2026-10-24, pedido de Miguel):
+  // lo que se va ganando en EARNINGS entra solo a MONEY y REEMPLAZA el
+  // ingreso proyectado del día, sin esperar al botón. La función es
+  // idempotente (upsert por id + override de salto al recurrente diario),
+  // así que correrla con cada cambio de viajes solo actualiza los montos.
+  // El botón queda para reenviar un día a mano.
+  // Ampliada 2026-11-15 (regla de Miguel): ya no corre SOLO para hoy —
+  // también refresca cualquier día anterior cuya cuenta por cobrar
+  // todavía esté en MONEY, porque antes de que la semana cierre pueden
+  // cambiar montos de días pasados (un tip, una entrada corregida). Un
+  // día cuyo cobro ya salió de MONEY no revive solo; revive únicamente
+  // si Miguel le da al botón de ese día (fechasReconciliacionAuto).
+  useEffect(() => {
+    const today = localDateKey(new Date())
+    let libro = leerLibroMayor()
+    // Limpia cobros de días sin viajes
+    const limpio = limpiarCobrosSinViajes(trips, libro)
+    if (limpio.length !== libro.length) {
+      try { localStorage.setItem("claris_cash_flow_entries", JSON.stringify(limpio)) } catch {}
+      try { window.dispatchEvent(new Event("claris:finance-synced")) } catch {}
+      libro = limpio
+    }
+    // Valida y loguea warnings
+    const val = validarCobros(trips, libro)
+    if (!val.ok && typeof console !== "undefined") {
+      console.warn("[Cobros]", val.warnings.join(" | "))
+    }
+    for (const fecha of fechasReconciliacionAuto(trips, today, libro)) {
+      reconciliarCobrosAlLibro(trips, fecha)
+    }
+  }, [trips])
+
   function reconciliarHaciaDinero() {
-    const result = reconciliarCobrosAlLibro(trips, selectedDate)
+    // Explícito: limpia las lápidas del día y regenera sus cobros
+    // (regla de Miguel, 2026-11-15: si duplica, él lo borra).
+    const result = reconciliarCobrosAlLibro(trips, selectedDate, { explicit: true })
     if (result.platforms === 0) {
-      alert(`No hay ingresos netos el ${selectedDate} para enviar a DINERO.`)
+      alert(`No net income on ${selectedDate} to send to MONEY.`)
       return
     }
     const msg =
-      `Enviado a DINERO como proyección:\n` +
+      `Sent to MONEY as a projection:\n` +
       `• ${result.platforms} plataforma(s)\n` +
-      `• Total neto: $${result.totalNet.toLocaleString("en-US", { minimumFractionDigits: 2 })}\n` +
+      `• Net total: $${result.totalNet.toLocaleString("en-US", { minimumFractionDigits: 2 })}\n` +
       (result.replacedPlaceholders > 0
-        ? `• Se reemplazaron ${result.replacedPlaceholders} registro(s) previo(s) del día\n`
+        ? `• Replaced ${result.replacedPlaceholders} scheduled projection(s) for the day\n`
         : "") +
-      `\nEl saldo real del banco no se modificó.`
+      `\nThe real bank balance wasn't modified.`
     alert(msg)
   }
 
@@ -397,16 +439,22 @@ export function RegisterScreen({
     return { gross, fee, net, pending: visible.filter((t) => t.status === "pending").length }
   }, [visible])
 
+  const weekTotal = useMemo(() => {
+    const start = weekStartOf(selectedDate)
+    return trips
+      .filter((t) => weekStartOf(tripDateOf(t)) === start)
+      .reduce((s, t) => s + grossOf(t), 0)
+  }, [trips, selectedDate])
   const platformGroups = useMemo(() => groupByPlatform(visible), [visible])
   const summary = useMemo(() => reconSummary(visible), [visible])
   const grouped = sortKey === "platform"
   const flat = useMemo(() => (grouped ? [] : sortTrips(visible, sortKey)), [grouped, visible, sortKey])
 
   const filterChips: { key: Filter; label: string; count: number }[] = [
-    { key: "ALL", label: "TODOS", count: counts.all },
-    { key: "PENDING", label: "PENDIENTES", count: counts.pending },
+    { key: "ALL", label: "ALL", count: counts.all },
+    { key: "PENDING", label: "PENDING", count: counts.pending },
     { key: "MATCHED", label: "MATCHED", count: counts.matched },
-    { key: "DIFF", label: "DIFERENCIA", count: counts.diff },
+    { key: "DIFF", label: "DIFF", count: counts.diff },
   ]
 
   return (
@@ -421,13 +469,13 @@ export function RegisterScreen({
                 dayClosed ? "border-neutral-700 text-neutral-500" : "border-orange-400/50 text-orange-400",
               )}
             >
-              {dayClosed ? "DÍA CERRADO" : "DÍA ABIERTO"}
+              {dayClosed ? "DAY CLOSED" : "DAY OPEN"}
             </span>
           </div>
           <button
             type="button"
             onClick={() => setShowActions(true)}
-            aria-label="Acciones del registro"
+            aria-label="Register actions"
             className="flex size-9 shrink-0 items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900/60 text-neutral-300 transition-colors hover:border-neutral-600"
           >
             <EllipsisVertical className="size-4" />
@@ -436,10 +484,10 @@ export function RegisterScreen({
 
         <div className="mt-2 flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <label className="flex shrink-0 items-center gap-1.5 rounded-lg border border-neutral-800 bg-neutral-900/60 px-2 py-1">
-            <span className="text-[9px] font-bold tracking-wide text-neutral-500">DÍA</span>
+            <span className="text-[9px] font-bold tracking-wide text-neutral-500">DAY</span>
             <input
               type="date"
-              aria-label="Día del registro"
+              aria-label="Log day"
               value={selectedDate}
               onChange={(e) => {
                 setSelectedDate(e.target.value)
@@ -449,23 +497,22 @@ export function RegisterScreen({
             />
           </label>
           <span className="shrink-0 text-[10px] font-bold tracking-wide text-neutral-500">
-            GROSS <strong className="text-sm text-yellow-400">{money(totals.gross)}</strong>
+            GROSS <strong className="text-base text-yellow-400">{money(totals.gross)}</strong>
+            <span className="ml-1 text-[11px] font-semibold text-neutral-400">· {visible.length}</span>
           </span>
           <span className="shrink-0 text-[10px] font-bold tracking-wide text-neutral-500">
-            NET <strong className="text-sm text-green-400">{money(totals.net)}</strong>
+            NET <strong className="text-base text-green-400">{money(totals.net)}</strong>
+            <span className="ml-1 text-[9px] text-neutral-500">wk ${weekTotal.toFixed(0)}</span>
+            {summary.problemCount > 0 && (
+              <span className="ml-1 inline-block size-2 rounded-full bg-rose-500" title={`${summary.problemCount} with difference`} />
+            )}
           </span>
-          <button
-            type="button"
-            onClick={reconciliarHaciaDinero}
-            className="shrink-0 rounded-lg border border-emerald-500/40 bg-emerald-950/40 px-2 py-1 text-[9px] font-extrabold uppercase tracking-wide text-emerald-300 transition-colors hover:bg-emerald-900/50"
-            title="Enviar neto del día a DINERO como proyección (reemplaza programados)"
-          >
-            Reconciliar → Dinero
-          </button>
+          {/* Producción por hora: vivía aquí como overlay (2026-11-09);
+              Miguel la consolidó en el DASHBOARD (2026-11-22) — un solo lugar. */}
           <button
             type="button"
             onClick={() => setShowDetail((v) => !v)}
-            aria-label={showDetail ? "Ocultar desglose y reconciliación" : "Ver desglose y reconciliación"}
+            aria-label={showDetail ? "Hide breakdown and reconciliation" : "See breakdown and reconciliation"}
             className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-neutral-800 text-neutral-400 transition-colors hover:border-neutral-600"
           >
             {showDetail ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
@@ -491,17 +538,13 @@ export function RegisterScreen({
         </div>
 
         {showDetail && (
-          <div className="space-y-2.5">
-            <GrossByPlatformCard total={totals.gross} groups={platformGroups} />
-            <ReconciliationPanel summary={summary} groups={platformGroups} />
-          </div>
+          <ReconciliationPanel summary={summary} groups={platformGroups} />
         )}
-
         <div className="space-y-3 pt-1">
           {visible.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-10">
               <p className="text-center text-sm text-neutral-600">
-                {filter === "ALL" ? "Todavía no hay viajes registrados." : "No hay viajes en esta vista."}
+                {filter === "ALL" ? "No trips recorded yet." : "No trips in this view."}
               </p>
               {filter !== "ALL" && (
                 <button
@@ -509,7 +552,7 @@ export function RegisterScreen({
                   onClick={() => setFilter("ALL")}
                   className="rounded-xl border border-neutral-700 px-4 py-2 text-xs font-bold text-neutral-300"
                 >
-                  Ver todos
+                  See all
                 </button>
               )}
             </div>
@@ -534,12 +577,25 @@ export function RegisterScreen({
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center">
           <div className="w-full max-w-md rounded-t-2xl border border-neutral-700 bg-neutral-950 p-4 sm:rounded-2xl">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-extrabold text-white">Acciones</h2>
+              <h2 className="text-sm font-extrabold text-white">Actions</h2>
               <button type="button" onClick={() => setShowActions(false)} className="rounded-lg p-1 text-neutral-400">
                 <X className="size-4" />
               </button>
             </div>
             <div className="flex flex-col gap-2">
+              <div className="flex justify-center py-1">
+                <BreakButton />
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  reconciliarHaciaDinero()
+                  setShowActions(false)
+                }}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-emerald-500/40 bg-emerald-950/40 py-3 text-xs font-bold text-emerald-300"
+              >
+                Update receivables → Money
+              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -549,7 +605,7 @@ export function RegisterScreen({
                 className="flex w-full items-center justify-center gap-2 rounded-2xl border border-neutral-700 py-3 text-xs font-bold text-neutral-200"
               >
                 <Lock className="size-4" />
-                {dayClosed ? "DÍA CERRADO" : "CERRAR DÍA (bloquea el registro de hoy)"}
+                {dayClosed ? "DAY CLOSED" : "CLOSE DAY (locks today's log)"}
               </button>
               <div className="flex gap-2">
                 <button
@@ -578,7 +634,7 @@ export function RegisterScreen({
                 }}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl border border-rose-900/60 bg-rose-950/20 py-2.5 text-xs font-bold text-rose-300"
               >
-                RESET DEL REGISTRO
+                REGISTER RESET
               </button>
             </div>
             <input
@@ -602,7 +658,7 @@ export function RegisterScreen({
           onClick={onAdd}
           className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-yellow-500 to-amber-500 py-3.5 text-base font-extrabold text-black active:scale-[0.99]"
         >
-          <Plus className="size-5" /> AGREGAR VIAJE
+          <Plus className="size-5" /> ADD TRIP
         </button>
       </div>
     </div>
