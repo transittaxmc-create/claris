@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react"
 import { cn } from "@/lib/utils"
-import { moneyTextFromNumber, moneyTextToNumber, normalizeMoneyText } from "@/lib/money"
+import { moneyTextFromNumber, moneyTextToNumber, normalizeMoneyText, rollingMoneyFromText, rollingMoneyText } from "@/lib/money"
 
 // Campo de dinero reutilizable con soporte de signo negativo (ver lib/money.ts).
 //
@@ -34,10 +34,12 @@ export function MoneyInput({
   const negative = display.trim().startsWith("-")
   const lg = size === "lg"
 
+  // Punto rodando (Miguel, 2026-11-24): los dígitos que se teclean SON
+  // los centavos — 4-0-2-5 -> $40.25, sin presionar la tecla del punto.
   function edit(next: string) {
-    const clean = normalizeMoneyText(next)
-    setText(clean)
-    onChange(moneyTextToNumber(clean))
+    const shown = rollingMoneyText(next)
+    setText(shown)
+    onChange(rollingMoneyFromText(next))
   }
 
   return (
@@ -47,7 +49,9 @@ export function MoneyInput({
       </span>
       <div
         className={cn(
-          "flex items-center gap-1 rounded-xl border bg-neutral-950 focus-within:border-neutral-500",
+          // flex-1: la caja estira a lo alto de su fila (en Edit trip el
+          // cuadro PLATFORM FEE quedaba corto junto al HOUR con su fecha).
+          "flex flex-1 items-center gap-1 rounded-xl border bg-neutral-950 focus-within:border-neutral-500",
           negative ? "border-rose-800/70" : "border-neutral-800",
           lg ? "min-h-[4.5rem] px-4 py-3.5" : "min-h-[3.5rem] px-2.5 py-2",
         )}

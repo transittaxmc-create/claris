@@ -1,11 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { X, Trash2, Scale, CircleCheck, TrendingDown, TrendingUp, Clock } from "lucide-react"
+import { X, Trash2, Scale, CircleCheck, TrendingDown, TrendingUp, Clock, ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PLATFORMS, tripDateInputValue, type Platform, type Reconciliation, type Trip, type TripStatus, money, netOf } from "./types"
 import { MoneyInput } from "./money-input"
-import { PlatformAvatar } from "./platform-avatar"
+import { SelectorLogo } from "./selector-logo"
+import { PlatformBadge } from "./platform-avatar"
 import { isVoucherPlatform } from "./platform-meta"
 import { diffOf, expectedOf, receivedOf, reconStateOf, applyDifferenceToTrip, round2, type ReconState } from "./reconciliation"
 
@@ -34,6 +35,7 @@ export function TripEditSheet({
   onDelete: (id: string) => void
 }) {
   const [draft, setDraft] = useState<Trip | null>(trip)
+  const [platformOpen, setPlatformOpen] = useState(false)
 
   useEffect(() => setDraft(trip), [trip])
 
@@ -82,29 +84,58 @@ export function TripEditSheet({
         </div>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
-          {/* Platform */}
+          {/* Platform — IGUAL que en TODAY (Miguel, 2026-11-24): la
+              misma caja con el logo 56×30 + nombre que abre la misma
+              lista de filas (logo 56×30 + nombre + badge). La caja
+              muestra la plataforma del viaje que se edita; al elegir
+              una se marca amarilla en la lista y se cierra. Solo cambia
+              lo visual: la lógica (platform + isVoucher) es la misma
+              de antes. La lista se abre dentro de la hoja, no flotando,
+              para que no se salga de Edit trip. */}
           <div className="flex flex-col gap-1.5">
             <span className="text-[10px] font-bold tracking-wide text-neutral-400">PLATAFORMA</span>
-            <div className="flex flex-wrap gap-1.5">
-              {PLATFORMS.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() =>
-                    // Mantiene isVoucher en sintonía con la plataforma elegida.
-                    setDraft((d) => (d ? { ...d, platform: p as Platform, isVoucher: isVoucherPlatform(p as Platform) } : d))
-                  }
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-full border py-1.5 pl-1.5 pr-3 text-xs font-semibold transition-colors",
-                    p === draft.platform
-                      ? "border-yellow-400 bg-yellow-400/15 text-yellow-400"
-                      : "border-neutral-700 text-neutral-300",
-                  )}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setPlatformOpen((o) => !o)}
+                aria-haspopup="listbox"
+                aria-expanded={platformOpen}
+                className="flex h-12 w-full items-center justify-between gap-1 rounded-lg border border-neutral-800 bg-neutral-900 px-2"
+              >
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <SelectorLogo platform={draft.platform} width={56} height={30} />
+                  <span className="truncate text-xs font-semibold text-white">{draft.platform}</span>
+                </span>
+                <ChevronDown className="size-3.5 shrink-0 text-neutral-500" />
+              </button>
+              {platformOpen && (
+                <div
+                  role="listbox"
+                  className="mt-1.5 max-h-[280px] overflow-y-auto rounded-2xl border border-neutral-700 bg-neutral-900 shadow-2xl [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 >
-                  <PlatformAvatar platform={p as Platform} size={18} />
-                  {p}
-                </button>
-              ))}
+                  {PLATFORMS.map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      role="option"
+                      aria-selected={p === draft.platform}
+                      onClick={() => {
+                        // Mantiene isVoucher en sintonía con la plataforma elegida.
+                        setDraft((d) => (d ? { ...d, platform: p as Platform, isVoucher: isVoucherPlatform(p as Platform) } : d))
+                        setPlatformOpen(false)
+                      }}
+                      className={cn(
+                        "flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-neutral-800",
+                        p === draft.platform ? "text-yellow-400" : "text-neutral-200",
+                      )}
+                    >
+                      <SelectorLogo platform={p as Platform} width={56} height={30} />
+                      <span className="min-w-0 flex-1 truncate">{p}</span>
+                      <PlatformBadge platform={p as Platform} />
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 

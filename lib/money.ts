@@ -29,3 +29,23 @@ export function toggleMoneySign(text: string): string {
   if (text.startsWith("-")) return text.slice(1)
   return text === "" ? "-" : `-${text}`
 }
+
+// Punto rodando (Miguel, 2026-11-24): la secuencia de dígitos ES el
+// valor en centavos — 4-0-2-5 -> $40.25, sin presionar la tecla del
+// punto. "." se ignora; "40.25" pegado -> $40.25; "-" solo se conserva.
+export function rollingMoneyFromText(text: string): number {
+  const negative = text.trim().startsWith("-")
+  const digits = text.replace(/[^0-9]/g, "").slice(-12)
+  if (digits === "") return 0
+  const cents = Number(digits)
+  return (negative ? -1 : 1) * cents / 100
+}
+
+export function rollingMoneyText(text: string): string {
+  const negative = text.trim().startsWith("-")
+  const digits = text.replace(/[^0-9]/g, "").slice(-12)
+  if (digits === "") return negative ? "-" : ""
+  const cents = Number(digits)
+  const s = String(cents).padStart(3, "0")
+  return `${negative ? "-" : ""}${s.slice(0, -2)}.${s.slice(-2)}`
+}
