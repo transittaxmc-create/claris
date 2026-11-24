@@ -21,6 +21,7 @@ import {
 } from "./geo"
 import { moneyTextFromNumber, moneyTextToNumber, normalizeMoneyText } from "@/lib/money"
 import { detectNewTolls, rateFor, formatTollNote, appendNote } from "./toll-detect"
+import { applyDispatchToTrip, findDispatchDuplicate, type DispatchScan } from "./dispatch-scan"
 import { loadShiftTolls, SHIFT_TOLLS_EVENT } from "./shift-tolls"
 import { setHomeGeo } from "./mileage-log"
 
@@ -251,11 +252,16 @@ export function EntryScreen({
   trips = [],
   shift,
   onGoDashboard,
+  dispatchFill,
+  onDispatchConsumed,
 }: {
   onSave: (t: Trip) => void
   trips?: Trip[]
   shift: ShiftApi
   onGoDashboard?: () => void
+  /** Lectura de una foto de despacho (botón flotante) lista para llenar el borrador. */
+  dispatchFill?: { scan: DispatchScan; n: number } | null
+  onDispatchConsumed?: () => void
 }) {
   const [draft, setDraft] = useState<Trip>(() => {
     const initial = newTrip()
@@ -318,6 +324,35 @@ export function EntryScreen({
 
   const set = <K extends keyof Trip>(key: K, val: Trip[K]) =>
     setDraft((d) => ({ ...d, [key]: val }))
+
+  // Foto → TODAY (botón flotante): cuando llega una lectura de despacho,
+  // el borrador se llena solo. Miguel solo revisa y toca el SAVE de
+  // siempre — nada se guarda automáticamente. El aviso es una línea
+  // pasajera bajo la fila de plataformas; no cambia la geometría.
+  const [scanMsg, setScanMsg] = useState<{ tipo: "ok" | "error"; texto: string } | null>(null)
+  const scanMsgTimer = useRef<number | null>(null)
+  const showScanMsg = (tipo: "ok" | "error", texto: string) => {
+    setScanMsg({ tipo, texto })
+    if (scanMsgTimer.current) window.clearTimeout(scanMsgTimer.current)
+    scanMsgTimer.current = window.setTimeout(() => setScanMsg(null), 6000)
+  }
+  const lastDispatchN = useRef(0)
+  useEffect(() => {
+    if (!dispatchFill || dispatchFill.n === lastDispatchN.current) return
+    lastDispatchN.current = dispatchFill.n
+    const scan = dispatchFill.scan
+    // Anti-duplicado (segunda red, con los viajes ya en pantalla).
+    const dup = findDispatchDuplicate(trips, scan)
+    if (dup) {
+      showScanMsg("error", `This job is already entered (${scan.voucherNo ? `Voucher ${scan.voucherNo}` : `Conf# ${scan.confNo}`}). Nothing was filled.`)
+    } else {
+      setDraft((d) => applyDispatchToTrip(scan, d))
+      setNotesOpen(true)
+      showScanMsg("ok", "Trip filled from the photo — review it and tap SAVE")
+    }
+    onDispatchConsumed?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatchFill])
 
   async function capture(which: "pickup" | "dropoff") {
     setGeoError(null)
@@ -708,6 +743,20 @@ export function EntryScreen({
             </button>
           ))}
         </div>
+
+        {/* Aviso pasajero del llenado por foto (solo mientras dura el
+            mensaje; no es una fila permanente). */}
+        {scanMsg && (
+          <p
+            role="status"
+            className={cn(
+              "shrink-0 rounded-lg px-2.5 py-1.5 text-center text-[11px] font-semibold sm:col-span-2",
+              scanMsg.tipo === "ok" ? "bg-emerald-950/60 text-emerald-300" : "bg-rose-950/60 text-rose-300",
+            )}
+          >
+            {scanMsg.texto}
+          </p>
+        )}
 
         {/* ============================================== */}
         {/* BOX 1: TODAY'S EARNINGS — 5 tarjetas compactas en una sola fila

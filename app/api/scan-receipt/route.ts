@@ -25,6 +25,23 @@ interface AnalysisResult {
   // Números de invoice que un RECIBO/CONFIRMACION DE PAGO dice estar pagando
   // (ej. el portal lista CBL-1267227, CBL-1267226). Vacío si no lista ninguno.
   invoiceRefs?: string[]
+  // Campos extra cuando la foto es una PANTALLA DE DESPACHO de un trabajo
+  // (kind:"trip", flujo foto → TODAY, Miguel 2026-11-24): la pantalla de la
+  // base (Classic Ryde / Limosys y similares) con el viaje ya asignado.
+  isTrip?: boolean
+  company?: string
+  time?: string
+  passenger?: string
+  pickup?: string
+  dropoff?: string
+  voucherNo?: string
+  confNo?: string
+  refId?: string
+  fop?: string
+  pax?: number
+  lug?: number
+  classType?: string
+  dispatchPhone?: string
 }
 
 export async function POST(req: Request) {
@@ -52,8 +69,32 @@ export async function POST(req: Request) {
     // Un PDF (o kind:"bill") es un STATEMENT de bill, no un recibo: se extrae
     // el monto que vence y su fecha, separados de lo atrasado.
     const esBill = resolvedMime === "application/pdf" || kind === "bill"
+    // kind:"trip" = foto de la pantalla de despacho de un trabajo (flujo
+    // foto → TODAY): no es un recibo ni un bill, es el viaje ya asignado.
+    const esTrip = kind === "trip"
 
-    const prompt = esBill
+    const prompt = esTrip
+      ? `You are an expert dispatcher assistant. The attached image is a screenshot or photo of a TRIP DISPATCH screen from a car-service base app (for example Classic Ryde / Limosys-style driver screens). It shows ONE trip already assigned to the driver. Extract the following fields with maximum precision in strict JSON format:
+
+1. company: The company / base name shown on the screen (e.g.: "Classic Ryde"). Copy it exactly as printed.
+2. date: The trip date in exactly YYYY-MM-DD format. The screen shows it like "Tue 11/24/26 - 9:00 AM": convert to the full date (2026-11-24). Two-digit years are 20xx.
+3. time: The trip pickup time in 24-hour "HH:MM" format (e.g.: "09:00"). Use the scheduled trip Time, NOT the ETA.
+4. amount: The trip charge — the value on the "Charges" line — as a float (e.g.: 62.00). No currency symbols or commas. If there is no charge visible, return 0.
+5. passenger: The passenger name exactly as printed (e.g.: "Benjamin, Reign").
+6. pickup: The FULL pickup address exactly as printed, on ONE line, keeping street, cross streets in parentheses and city (e.g.: "88-55 199th St (State Hwy 25 / 89th Ave) Hollis, QU").
+7. dropoff: The FULL drop-off address exactly as printed, on ONE line, same rule.
+8. voucherNo: The Voucher number exactly as printed (e.g.: "1919809030-A"). If there is no voucher line, return null.
+9. confNo: The confirmation number (the "Conf#" value, digits only as printed, e.g.: "2460096"). If none, return null.
+10. refId: The "RefId" value exactly as printed (e.g.: "1919809030-414812132"). If none, return null.
+11. fop: The "FOP" text exactly as printed (e.g.: "CH 1 MEDICAL ANSWERING SERVICES"). If none, return null.
+12. pax: Number of passengers from "Pax/Lug" (the number BEFORE the slash) as an integer. If not shown, return null.
+13. lug: Number of luggage pieces from "Pax/Lug" (the number AFTER the slash) as an integer. If not shown, return null.
+14. classType: The "Class" value exactly as printed (e.g.: "SD"). If none, return null.
+15. dispatchPhone: The dispatch phone number exactly as printed. If none, return null.
+16. confidence: Decimal number from 0.0 to 1.0 indicating your certainty.
+
+Respond with ONLY a valid JSON object with these exact keys: company, date, time, amount, passenger, pickup, dropoff, voucherNo, confNo, refId, fop, pax, lug, classType, dispatchPhone, confidence.`
+      : esBill
       ? `You are an expert accountant. The attached document is a BILL STATEMENT (for example a phone, utility, insurance or service bill) for a small transportation business. Extract the following fields with maximum precision in strict JSON format:
 
 1. vendor: The company issuing the bill (e.g.: "AT&T", "Verizon", "E-ZPass", "Geico"). Use the commercial brand name.
@@ -190,6 +231,43 @@ Respond with ONLY a valid JSON object with those exact keys: vendor, date, amoun
     const data = await response.json()
     const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "{}"
     const parsed: AnalysisResult = JSON.parse(rawText)
+
+    // Pantalla de despacho (kind:"trip"): se sanean los campos del viaje y
+    // se devuelve tal cual; no hay categoría de gasto que validar.
+    if (esTrip) {
+      const cleanText = (v: unknown, max = 300): string | undefined => {
+        if (typeof v !== "string") return undefined
+        const s = v.replace(/\s+/g, " ").trim().slice(0, max)
+        return s && s.toLowerCase() !== "null" ? s : undefined
+      }
+      const cleanInt = (v: unknown): number | undefined => {
+        const n = Math.floor(Number(v))
+        return Number.isFinite(n) && n >= 0 && n <= 99 ? n : undefined
+      }
+      const tripResult: AnalysisResult = {
+        vendor: "",
+        date: /^\d{4}-\d{2}-\d{2}$/.test(String(parsed.date || "")) ? String(parsed.date) : "",
+        amount: Number.isFinite(Number(parsed.amount)) && Number(parsed.amount) > 0 ? Number(parsed.amount) : 0,
+        category: "Other",
+        isTrip: true,
+        company: cleanText(parsed.company, 80),
+        time: /^\d{1,2}:\d{2}$/.test(String(parsed.time || "")) ? String(parsed.time) : undefined,
+        passenger: cleanText(parsed.passenger, 120),
+        pickup: cleanText(parsed.pickup),
+        dropoff: cleanText(parsed.dropoff),
+        voucherNo: cleanText(parsed.voucherNo, 40),
+        confNo: cleanText(parsed.confNo, 40),
+        refId: cleanText(parsed.refId, 60),
+        fop: cleanText(parsed.fop, 160),
+        pax: cleanInt(parsed.pax),
+        lug: cleanInt(parsed.lug),
+        classType: cleanText(parsed.classType, 20),
+        dispatchPhone: cleanText(parsed.dispatchPhone, 30),
+        confidence: typeof parsed.confidence === "number" ? parsed.confidence : undefined,
+      }
+      console.log(`[scan-receipt] Despacho leído en ${Date.now() - start}ms:`, tripResult.company, tripResult.amount, tripResult.voucherNo)
+      return NextResponse.json({ success: true, result: tripResult })
+    }
 
     // Validar y asegurar coincidencia exacta de categoría
     const rawCat = (parsed.category || "").toLowerCase()

@@ -1,7 +1,7 @@
 "use client"
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { AlertTriangle, Check } from "lucide-react"
+import { AlertTriangle, Camera, Check } from "lucide-react"
 import { BottomNav, TABS_EN_MAS, type Tab } from "./bottom-nav"
 import { AIScreen } from "./ai-screen"
 import { DataScreen } from "./data-screen"
@@ -24,6 +24,8 @@ import { CURRENT_PICKUP_KEY } from "./geo"
 import { TripEditSheet } from "./trip-edit-sheet"
 import { ReceiptScanner } from "./receipt-scanner"
 import { checkScanInbox, pickupScanInboxFile } from "./scan-inbox"
+import { DispatchFab } from "./dispatch-fab"
+import { findDispatchDuplicate, type DispatchScan } from "./dispatch-scan"
 import { requestOpenAccount } from "./account-flags"
 import { useShift } from "./shift"
 import { guardarMovimiento, movimientoDeGasto } from "./cash-flow-store"
@@ -111,6 +113,35 @@ export function CopilotoApp() {
   const [inboxIds, setInboxIds] = useState<string[]>([])
   const [inboxFile, setInboxFile] = useState<File | null>(null)
   const [inboxDismissed, setInboxDismissed] = useState(false)
+
+  // Botón flotante de cámara (foto → TODAY, Miguel 2026-11-24): encendido
+  // manual desde la hoja "Más", se cierra desde el propio botón y el
+  // estado (encendido/apagado) se recuerda. NO se ata al turno.
+  const [fabOn, setFabOn] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("claris_dispatch_fab_on") !== "0"
+    } catch {
+      return true
+    }
+  })
+  useEffect(() => {
+    try {
+      localStorage.setItem("claris_dispatch_fab_on", fabOn ? "1" : "0")
+    } catch {}
+  }, [fabOn])
+  // Lectura de una foto de despacho lista para llenar TODAY.
+  const [dispatchFill, setDispatchFill] = useState<{ scan: DispatchScan; n: number } | null>(null)
+
+  function handleDispatchFill(scan: DispatchScan): string | null {
+    // Anti-duplicado: el mismo trabajo (voucher / Conf#) no entra dos veces.
+    const dup = findDispatchDuplicate(tripsRef.current, scan)
+    if (dup) {
+      return `This job is already entered (${scan.voucherNo ? `Voucher ${scan.voucherNo}` : `Conf# ${scan.confNo}`}). Nothing was filled.`
+    }
+    setDispatchFill({ scan, n: Date.now() })
+    setTab("ENTRY")
+    return null
+  }
 
   const refreshScanInbox = useCallback(() => {
     checkScanInbox()
@@ -785,7 +816,7 @@ export function CopilotoApp() {
       <main className="min-h-0 flex-1 overflow-hidden">
         <div className={tab === "AI" ? "h-full min-h-0 overflow-hidden overflow-x-clip" : "h-full overflow-y-auto overflow-x-clip"}>
           {tab === "ENTRY" && (
-            <EntryScreen onSave={saveNewFromEntry} trips={trips} shift={shift} onGoDashboard={() => setTab("V1DASH")} />
+            <EntryScreen onSave={saveNewFromEntry} trips={trips} shift={shift} onGoDashboard={() => setTab("V1DASH")} dispatchFill={dispatchFill} onDispatchConsumed={() => setDispatchFill(null)} />
           )}
           {tab === "REGISTER" && (
             <RegisterScreen
@@ -956,6 +987,33 @@ export function CopilotoApp() {
                 <span className="text-[10px] leading-snug text-neutral-400">Dual register · Reconcile · Bill/Receipt</span>
               </button>
             </div>
+            {/* Interruptor del botón flotante de cámara (foto → TODAY):
+                encendido manual de Miguel; el botón se cierra también
+                desde su propia ✕ y el estado se recuerda. */}
+            <div className="mt-2 px-4">
+              <button
+                type="button"
+                onClick={() => setFabOn((v) => !v)}
+                aria-pressed={fabOn}
+                className="flex w-full items-center gap-3 rounded-2xl border border-neutral-800 bg-neutral-900/60 px-3 py-3 text-left active:scale-[0.99]"
+              >
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-yellow-400/20 text-yellow-400">
+                  <Camera className="size-5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-bold text-white">Photo button</span>
+                  <span className="block text-[11px] leading-snug text-neutral-500">Floating camera that fills TODAY from a dispatch photo. Drag it to any corner; close it from its ✕.</span>
+                </span>
+                <span
+                  className={
+                    "shrink-0 rounded-full px-2.5 py-1 text-[10px] font-extrabold " +
+                    (fabOn ? "bg-yellow-400 text-black" : "bg-neutral-800 text-neutral-400")
+                  }
+                >
+                  {fabOn ? "ON" : "OFF"}
+                </span>
+              </button>
+            </div>
             <div className="mt-4 space-y-4 px-4">
               {(
                 [
@@ -1044,6 +1102,8 @@ export function CopilotoApp() {
           </button>
         </div>
       )}
+
+      {fabOn && <DispatchFab onDispatch={handleDispatchFill} onClose={() => setFabOn(false)} />}
 
       <BottomNav active={tab} onChange={setTab} onOpenMore={() => setMas(true)} />
     </div>
