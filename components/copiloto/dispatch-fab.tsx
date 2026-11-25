@@ -14,16 +14,22 @@ import { scanDispatchPhoto, type DispatchScan } from "./dispatch-scan"
 
 const POS_KEY = "claris_dispatch_fab_pos"
 const SIZE = 56
+// Zona muerta de arriba (Miguel, 2026-11-25): barra de estado + la isla del
+// iPhone (Dynamic Island). La isla es física y tapa lo que quede detrás —
+// su botón amarillo quedó atrapado ahí, visible pero inutilizable. El botón
+// NUNCA puede quedar en esa franja: toda posición (guardada, arrastrada o
+// por defecto) se baja hasta quedar debajo de la isla, entera y tocable.
+const MIN_Y = 68
 
 type Pos = { x: number; y: number }
 
 function clampPos(p: Pos): Pos {
   if (typeof window === "undefined") return p
   const maxX = Math.max(8, window.innerWidth - SIZE - 8)
-  const maxY = Math.max(8, window.innerHeight - SIZE - 8)
+  const maxY = Math.max(MIN_Y, window.innerHeight - SIZE - 8)
   return {
     x: Math.min(Math.max(8, p.x), maxX),
-    y: Math.min(Math.max(8, p.y), maxY),
+    y: Math.min(Math.max(MIN_Y, p.y), maxY),
   }
 }
 
