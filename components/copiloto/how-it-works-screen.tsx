@@ -427,6 +427,75 @@ export function HowItWorksScreen() {
           <li>Este registro oficial está en <B>More → Help → How it works</B>, en el archivo <B>components/copiloto/how-it-works-screen.tsx</B>.</li>
         </ul>
 
+        <P><B>Expediente maestro — conversación inicial, visión y alcance acordado:</B></P>
+        <P>
+          El punto de partida del 2026-11-25 fue añadir una función CRM a la aplicación Claris
+          que ya existe y guardar allí la información de clientes. La decisión del propietario
+          fue continuar dentro de esa misma aplicación y repositorio: NO crear otra aplicación,
+          otro repositorio ni un sistema paralelo. El nombre correcto es <B>Copiloto V7 CRM</B>.
+          Este CRM debe desarrollarse como módulo propio, sin interferir con el producto financiero
+          que ya funciona en Claris.
+        </P>
+        <P>
+          La visión inicial recuperada contempla una gestión centralizada de clientes y contactos,
+          expedientes/casos, servicios, documentos, citas, tareas, actividades e historial. Las
+          entidades de negocio que se propusieron para estructurar esa base fueron perfiles,
+          organizaciones, membresías, clientes, contactos, servicios, trabajos de transporte,
+          casos de impuestos, documentos, citas, tareas y registros de actividad. <B>Importante:</B>
+          esa lista fue una propuesta de estructura; no significa que esas tablas ya estén creadas
+          en Supabase. Verificar el esquema real antes de afirmar que existe.
+        </P>
+        <P>
+          La experiencia prevista debe permitir conocer quién es cada cliente, cómo contactarlo,
+          qué servicio o asunto tiene, qué se habló, qué documentos faltan, cuál es la próxima
+          acción y cuándo hay que volver a contactarlo. El historial debe dar continuidad a cada
+          relación y evitar perder conversaciones o seguimientos. Las funciones de expedientes,
+          documentos, citas, tareas y actividad forman parte del alcance a desarrollar; la primera
+          pantalla CRM actual todavía no implementa todo ese alcance.
+        </P>
+
+        <P><B>Canales de comunicación e integraciones — registrar como alcance pendiente:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li><B>Llamadas y email:</B> la versión actual ya permite abrir el marcador del teléfono mediante tel: y el correo mediante mailto: desde la ficha del cliente. No confundir estas acciones con una central telefónica o un sistema de email integrado.</li>
+          <li><B>SMS / mensajes de texto:</B> debe contemplarse como canal de comunicación del CRM para conversaciones y seguimiento con clientes. No hay proveedor, número remitente, credenciales, API ni flujo de envío/recepción verificados en el proyecto al 2026-11-25. No afirmar que SMS está conectado.</li>
+          <li><B>WhatsApp Business:</B> debe contemplarse como integración de mensajería empresarial, separada del WhatsApp personal. Deben investigarse y definirse la cuenta/Business Portfolio de Meta, número empresarial, verificación, proveedor/API oficial, plantillas cuando correspondan, consentimiento del cliente, recepción de respuestas y registro de la conversación en el historial. No hay proveedor, cuenta, número, credenciales ni conexión confirmados todavía.</li>
+          <li><B>Historial unificado:</B> objetivo de diseño: que llamadas registradas, emails, SMS y mensajes de WhatsApp que se integren queden asociados al contacto/cliente y a su actividad, con fecha, canal, dirección (entrante/saliente) y resultado. Esta es una especificación de producto pendiente de implementación, no una capacidad actual.</li>
+          <li><B>Automatizaciones:</B> planificar recordatorios y tareas de seguimiento relacionados con fechas de contacto, citas, documentos pendientes y tareas vencidas. Definir reglas, horarios, zona horaria, preferencias y consentimiento antes de activar envíos automáticos.</li>
+          <li><B>Push:</B> además de SMS/WhatsApp, se mantiene el requisito conversado de notificaciones push incluso con la app cerrada, cuando el sistema operativo/navegador lo permita y el usuario haya concedido permiso. Servicio, worker, suscripciones y entrega no están verificados.</li>
+          <li><B>Proveedores:</B> no seleccionar ni inventar Twilio, Meta Cloud API u otro proveedor como decisión tomada. Investigar opciones y costos cuando llegue el momento; documentar la decisión y sus credenciales como variables secretas de servidor, nunca en el cliente.</li>
+        </ul>
+
+        <P><B>Mapa de ubicaciones, proyectos y enlaces de referencia:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li><B>Aplicación existente:</B> <a className="text-yellow-300 underline" href="https://claris-lime.vercel.app/" target="_blank" rel="noreferrer">https://claris-lime.vercel.app/</a> — URL de Claris compartida previamente por el propietario. No asumir que este dominio recibe automáticamente cada despliegue del proyecto Vercel llamado claris.</li>
+          <li><B>GitHub — repositorio:</B> <a className="text-yellow-300 underline" href="https://github.com/transittaxmc-create/claris" target="_blank" rel="noreferrer">https://github.com/transittaxmc-create/claris</a> — propietario/organización <B>transittaxmc-create</B>, repositorio <B>claris</B>, rama de producción observada <B>main</B>.</li>
+          <li><B>CRM UI:</B> <a className="text-yellow-300 underline" href="https://github.com/transittaxmc-create/claris/blob/main/components/copiloto/crm-screen.tsx" target="_blank" rel="noreferrer">components/copiloto/crm-screen.tsx</a>.</li>
+          <li><B>Este manual / continuidad:</B> <a className="text-yellow-300 underline" href="https://github.com/transittaxmc-create/claris/blob/main/components/copiloto/how-it-works-screen.tsx" target="_blank" rel="noreferrer">components/copiloto/how-it-works-screen.tsx</a>.</li>
+          <li><B>Componente contenedor:</B> <B>CopilotoApp</B> dentro de la aplicación Next.js 16. La entrada del CRM debe seguir la navegación ya acordada <B>More → Client management → CRM</B>.</li>
+          <li><B>Vercel — proyecto desplegado en esta sesión:</B> <a className="text-yellow-300 underline" href="https://vercel.com/island-city/claris" target="_blank" rel="noreferrer">https://vercel.com/island-city/claris</a> — nombre <B>claris</B>, ID <B>prj_EaOp8GqqgF0i4BBEp3CJSY8phcKW</B>, conectado al repositorio GitHub anterior.</li>
+          <li><B>Despliegue que contiene este informe:</B> <a className="text-yellow-300 underline" href="https://claris-og1od35q6-island-city.vercel.app" target="_blank" rel="noreferrer">https://claris-og1od35q6-island-city.vercel.app</a> — producción READY verificada; deployment <B>dpl_CRKKT7EMyCcRFBF1NuR8xetFsBxB</B>; commit <B>34bc18e642911c84ff5c0341afec2532e240dbe8</B>.</li>
+          <li><B>Otro proyecto Vercel:</B> <B>claris-lime</B> es un proyecto separado en Vercel conectado al mismo repositorio. No se debe decir que este último despliegue actualizó claris-lime; verificar el proyecto y su último deployment antes de publicar allí o cambiar dominios.</li>
+          <li><B>Supabase exclusivo CRM:</B> Project ID <B>mimgwleghecseoymgdug</B>; URL de proyecto <a className="text-yellow-300 underline" href="https://mimgwleghecseoymgdug.supabase.co" target="_blank" rel="noreferrer">https://mimgwleghecseoymgdug.supabase.co</a>. Acceso directo al dashboard: <a className="text-yellow-300 underline" href="https://supabase.com/dashboard/project/mimgwleghecseoymgdug" target="_blank" rel="noreferrer">abrir proyecto CRM</a>. Este dashboard URL se deriva del Project ID confirmado; autorización aún pendiente.</li>
+          <li><B>Supabase financiero (NO usar para CRM):</B> Project ID <B>zrcnpmipdhpjdjkfrrgt</B>. Pertenece a Claris / Island City Transit y debe permanecer aislado.</li>
+        </ul>
+
+        <P><B>Stack y configuración que deben verificarse antes de continuar:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>Aplicación: Next.js 16, React y componente principal <B>CopilotoApp</B>, en el repositorio <B>transittaxmc-create/claris</B>.</li>
+          <li>En la conversación de configuración se compartieron instrucciones para instalar <B>@supabase/supabase-js</B> y <B>@supabase/ssr</B> y configurar clientes/middleware de sesión. Antes de reinstalar o duplicar archivos, inspeccionar package.json, lockfile, helpers de Supabase y middleware para saber qué quedó realmente aplicado.</li>
+          <li>Variables CRM esperadas en Vercel deben apuntar únicamente al proyecto <B>mimgwleghecseoymgdug</B>. Confirmar los nombres y valores existentes sin imprimir secretos. Nunca copiar las credenciales del proyecto financiero ni exponer service-role/secret keys al navegador.</li>
+          <li>El usuario indicó que intentó autorizar Supabase y que no le aparecía el flujo como en una conexión anterior. La revisión de herramientas del 2026-11-25 no pudo acceder al proyecto CRM: autorización/permisos siguen siendo el bloqueo principal. No crear tablas ni cambiar variables hasta confirmar el proyecto correcto.</li>
+        </ul>
+
+        <P><B>Estado de decisiones — confirmado, propuesto y pendiente:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li><B>Confirmado por el propietario:</B> CRM dentro de Claris existente; nombre V7; Supabase separado para CRM; finanzas y Plaid intactos; acceso por More → Client management → CRM; no añadir opción al menú inferior.</li>
+          <li><B>Implementado y verificado en código:</B> pantalla inicial de clientes con alta/edición/eliminación, búsqueda, filtros, estados, notas, fecha de seguimiento, botones tel: y mailto:, y almacenamiento local en <B>claris_crm_clients_v1</B>.</li>
+          <li><B>Propuesto, no confirmado como creado:</B> esquema relacional con perfiles, organizaciones, membresías, clientes, contactos, servicios, trabajos de transporte, casos de impuestos, documentos, citas, tareas y actividad; roles, Auth y RLS.</li>
+          <li><B>Pendiente:</B> acceso efectivo a Supabase CRM, inspección del esquema real, persistencia cloud, migración segura de datos locales, documentos/expedientes/citas/tareas completas, SMS, WhatsApp Business, automatizaciones y push probado en segundo plano.</li>
+          <li><B>No decidido / no recuperado:</B> proveedor de SMS, proveedor/API de WhatsApp, número empresarial, cuentas/credenciales de Meta, costos, plantillas, reglas de campañas y consentimiento detallado. No solicitar de nuevo al propietario información que ya aparezca en chats o enlaces; primero revisar el historial y las cuentas conectadas disponibles.</li>
+        </ul>
+
         <P><B>Objetivo y alcance:</B></P>
         <P>
           Construir un CRM profesional para organizar clientes y prospectos, contactos,
