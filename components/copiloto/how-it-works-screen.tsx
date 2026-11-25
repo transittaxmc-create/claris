@@ -533,6 +533,26 @@ export function HowItWorksScreen() {
           <li>La aplicación debe bloquear el envío si falta consentimiento requerido, el canal está dado de baja o el destinatario no es elegible. Un broadcast siempre requiere revisión de destinatarios y aprobación final de Miguel.</li>
         </ul>
 
+
+        <P><B>Registro de implementación local — PWA y avisos del propietario (2026-11-25):</B></P>
+        <P>
+          Esta actualización supersede el estado anterior que indicaba que todavía no existían
+          manifest ni service worker. Se está construyendo primero la base local, sin esperar la
+          autorización del Supabase CRM. La información de clientes sigue guardándose en la clave
+          existente <B>claris_crm_clients_v1</B>; esta actualización no migra, borra ni reemplaza
+          esos datos y no modifica el módulo financiero.
+        </P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li><B>Manifest:</B> se añade <B>app/manifest.ts</B>, publicado por Next.js como <B>/manifest.webmanifest</B>, con nombre Copiloto V7, modo standalone, color de tema y punto de inicio raíz. app/layout.tsx declara el manifest y conserva la configuración Apple existente.</li>
+          <li><B>Service worker:</B> se añade <B>public/sw.js</B> con instalación/activación, recepción de eventos push, presentación de notificaciones y acción al pulsar para abrir la ruta indicada. El worker es infraestructura de cliente; por sí solo no envía notificaciones ni programa citas.</li>
+          <li><B>Panel en CRM:</B> <B>components/copiloto/crm-notifications.tsx</B> registra el worker, muestra el estado del soporte/permiso, solicita permiso únicamente después de pulsar el botón del usuario y permite enviar una notificación de prueba local. Se integra en <B>components/copiloto/crm-screen.tsx</B>.</li>
+          <li><B>Alcance real de esta fase:</B> registro del service worker y notificación de prueba requieren navegador compatible y permiso concedido. En iPhone, Web Push requiere instalar Copiloto en la pantalla de inicio y conceder permiso desde la web app instalada. No se ha probado todavía en el iPhone físico.</li>
+          <li><B>Push remoto aún pendiente:</B> no hay todavía suscripción Push persistida en servidor, claves VAPID, endpoint de envío, cron/job de citas ni proveedor de entrega. Por eso no se promete aviso con la aplicación cerrada para eventos reales hasta completar esa fase backend. Los eventos de cita/seguimiento tampoco se crean en esta etapa.</li>
+          <li><B>Seguridad y límites:</B> el navegador no contiene secretos; no se instala SDK ni se accede a Supabase; no se envían SMS, WhatsApp ni email. La IA no envía mensajes externos. Los datos CRM existentes permanecen en el almacenamiento local.</li>
+          <li><B>Archivos cambiados en este avance:</B> <B>app/manifest.ts</B> (nuevo), <B>public/sw.js</B> (nuevo), <B>components/copiloto/crm-notifications.tsx</B> (nuevo), <B>app/layout.tsx</B>, <B>components/copiloto/crm-screen.tsx</B> y este manual.</li>
+          <li><B>Verificación pendiente después del commit:</B> comprobar build/deployment READY, comprobar que <B>/manifest.webmanifest</B> y <B>/sw.js</B> responden en producción y hacer prueba real de permiso/notificación en iPhone instalado. No registrar estas pruebas como completadas antes de observarlas.</li>
+        </ul>
+
         <P><B>Stack y configuración que deben verificarse antes de continuar:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
           <li>Aplicación: Next.js 16, React y componente principal <B>CopilotoApp</B>, en el repositorio <B>transittaxmc-create/claris</B>.</li>

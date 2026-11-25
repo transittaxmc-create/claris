@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { CRMNotifications } from "./crm-notifications"
 import { Search, Plus, Users, Phone, Mail, CalendarDays, MessageSquare, MoreHorizontal, X, Save, Trash2, UserRound, Clock3, Filter } from "lucide-react"
 
 type ClientStatus = "Lead" | "Active" | "Follow-up" | "Inactive"
@@ -109,6 +110,7 @@ export function CRMScreen() {
           <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-yellow-400">Client relationship management</p>
           <h1 className="mt-1 text-2xl font-black tracking-tight text-white">CRM</h1>
           <p className="mt-1 text-sm text-neutral-400">Keep every client, conversation and next step organized.</p>
+          <CRMNotifications />
         </div>
         <button onClick={startNew} className="flex shrink-0 items-center gap-2 rounded-xl bg-yellow-400 px-3 py-3 text-sm font-extrabold text-black active:scale-[0.98]">
           <Plus className="size-4" /> Add client
