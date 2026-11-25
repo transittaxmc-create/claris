@@ -52,7 +52,7 @@ export function CRMNotifications() {
         icon: "/icon.svg",
         badge: "/icon.svg",
         tag: "copiloto-crm-local-test",
-        data: { url: "/?tab=CRM" },
+        data: { url: "/" },
       })
       setMessage("Test notification sent to this device.")
     } catch {
