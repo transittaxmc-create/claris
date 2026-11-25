@@ -410,6 +410,90 @@ export function HowItWorksScreen() {
         </ul>
       </Section>
 
+
+      <Section title="11. CRM COPILOTO V7 — CONTINUIDAD OFICIAL DEL PROYECTO">
+        <P>
+          <B>Actualizado: 2026-11-25 · Documento de referencia para Miguel y todos los agentes.</B>
+          Esta sección es la fuente de continuidad del CRM. Leerla completa antes de investigar,
+          modificar código, bases de datos, permisos o despliegues. No asumir ni inventar estados.
+        </P>
+
+        <P><B>Identidad y ubicación del módulo:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>Nombre canónico: <B>CRM Copiloto V7</B>. “B7” fue una confusión al dictar/escribir; usar V7.</li>
+          <li>El CRM es un módulo dentro de Copiloto V7 / aplicación Claris; no crear una aplicación separada.</li>
+          <li>Repositorio identificado: <B>transittaxmc-create/claris</B>. Archivo principal de interfaz: <B>components/copiloto/crm-screen.tsx</B>.</li>
+          <li>Acceso del usuario: abrir <B>More → Client management → CRM</B>. CRM permanece dentro de More; NO agregarlo como icono nuevo al menú inferior ni alterar las opciones existentes.</li>
+          <li>Este registro oficial está en <B>More → Help → How it works</B>, en el archivo <B>components/copiloto/how-it-works-screen.tsx</B>.</li>
+        </ul>
+
+        <P><B>Objetivo y alcance:</B></P>
+        <P>
+          Construir un CRM profesional para organizar clientes y prospectos, contactos,
+          conversaciones, notas, seguimiento, citas, documentos y tareas. El CRM debe ser un
+          módulo independiente en sus datos y permisos, aunque comparta la aplicación y su
+          navegación. Mantener la experiencia ligera: no leer ni cargar registros del CRM hasta
+          que el usuario abra el módulo. La pantalla se monta cuando tab === CRM; no afirmar que
+          existe división de bundle/code-splitting sin verificarla.
+        </P>
+
+        <P><B>Lo que existe actualmente — verificado en el código:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li><B>components/copiloto/crm-screen.tsx</B> implementa alta, edición y eliminación de clientes; búsqueda por nombre, empresa, teléfono y correo; filtros y contadores.</li>
+          <li>Campos actuales: nombre, empresa, teléfono, email, estado, origen, notas/historial de interacción, próxima fecha de contacto y fecha de creación.</li>
+          <li>Estados actuales: Lead, Active, Follow-up e Inactive. Orígenes: Referral, Website, Social media, Returning client, Walk-in y Other.</li>
+          <li>Acciones disponibles: llamar por teléfono, enviar email, abrir detalle, editar y eliminar cliente.</li>
+          <li>La clave de almacenamiento actual es <B>claris_crm_clients_v1</B> en localStorage. Por tanto, los registros actuales quedan guardados en ese dispositivo/navegador; todavía no hay persistencia CRM en la nube confirmada.</li>
+          <li>El componente muestra expresamente que Cloud sync se habilitará después de autorizar el acceso a la base de datos CRM.</li>
+        </ul>
+
+        <P><B>Supabase — separación obligatoria:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>Proyecto Supabase destinado exclusivamente al CRM V7, según la información del propietario: <B>mimgwleghecseoymgdug</B>. Debe verificarse el acceso y la identidad del proyecto antes de ejecutar cambios.</li>
+          <li>Proyecto financiero Claris / Island City Transit: <B>zrcnpmipdhpjdjkfrrgt</B>. Es distinto y NO debe utilizarse para guardar datos CRM.</li>
+          <li>En la revisión del 2026-11-25, el listado de proyectos accesibles no mostró el proyecto CRM y la consulta directa devolvió falta de permisos. Estado: <B>acceso al proyecto CRM no verificado / pendiente de autorización</B>. No decir que la conexión está lista.</li>
+          <li>Después de recuperar autorización: inspeccionar el proyecto correcto; diseñar tablas CRM independientes, relaciones, índices, Auth y políticas RLS; probar permisos por usuario/rol antes de habilitar datos reales.</li>
+          <li>Planificar una migración segura desde localStorage, si existen registros, con respaldo, conteo y verificación antes/después. No borrar ni sobrescribir registros locales.</li>
+        </ul>
+
+        <P><B>Notificaciones push — requisito acordado, no implementación confirmada:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>El propietario requiere que las notificaciones puedan llegar incluso cuando la aplicación esté cerrada, sujeto al soporte del dispositivo/navegador y a que el usuario otorgue permiso.</li>
+          <li>Casos de uso previstos: nuevos clientes/prospectos, seguimientos pendientes, citas próximas, documentos recibidos, tareas y vencimientos.</li>
+          <li>Estado al 2026-11-25: requisito conversado; no se ha verificado servicio push, registro de dispositivos/tokens, permisos, worker ni entrega en segundo plano. No afirmar que push ya funciona ni que existe autorización del teléfono.</li>
+          <li>Antes de implementarlo, revisar la arquitectura y decisiones previas; definir consentimiento por usuario, almacenamiento seguro de suscripciones/tokens, envío desde servidor y apertura del CRM en el registro relacionado.</li>
+        </ul>
+
+        <P><B>Protección del módulo financiero — regla crítica para todos los agentes:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>El CRM no debe modificar pantallas, lógica, tablas, credenciales, variables de entorno ni datos del módulo financiero.</li>
+          <li>No tocar Plaid, balances, transacciones bancarias, proyecciones, ledger, gastos, ingresos, sincronización bancaria ni reglas de conciliación para desarrollar CRM.</li>
+          <li>No cambiar el esquema ni las credenciales de <B>zrcnpmipdhpjdjkfrrgt</B> como parte del trabajo CRM. Usar exclusivamente el proyecto CRM autorizado.</li>
+          <li>No ejecutar reset, truncate, borrados masivos, migraciones generales ni cambios de configuración compartida sin autorización explícita y respaldo verificado.</li>
+          <li>Preferir cambios pequeños y aislados en archivos CRM. Revisar el diff para confirmar que no se modificaron módulos financieros o navegación no relacionada.</li>
+        </ul>
+
+        <P><B>Próximos pasos, en este orden:</B></P>
+        <ol className="mb-3 list-decimal space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>Recuperar y verificar autorización del Supabase CRM <B>mimgwleghecseoymgdug</B>; confirmar que no se está trabajando en el Supabase financiero.</li>
+          <li>Inspeccionar el código y el estado real del proyecto; documentar lo que ya existe antes de cambiarlo.</li>
+          <li>Diseñar y crear el esquema CRM con Auth/RLS, relaciones e índices, exclusivamente en el proyecto CRM autorizado.</li>
+          <li>Conectar el módulo actual a la nube, preservar los datos locales y probar altas, ediciones, búsquedas, permisos y persistencia entre dispositivos.</li>
+          <li>Diseñar e implementar push notifications para los eventos acordados, y probar entrega con la aplicación cerrada en dispositivos compatibles y con permiso concedido.</li>
+          <li>Verificar el resultado en la aplicación real y actualizar esta sección con fecha, archivos cambiados, pruebas, resultados y siguiente tarea.</li>
+        </ol>
+
+        <P><B>Protocolo obligatorio para el siguiente agente:</B></P>
+        <P>
+          Antes de actuar, leer esta sección y revisar el código actual. Continuar desde el estado
+          verificado, no desde suposiciones ni desde mensajes aislados. No reconstruir el CRM,
+          no duplicar funciones existentes, no mover CRM fuera de More, no cambiar el menú inferior
+          y no tocar el módulo financiero. Si un acceso o estado no puede verificarse, detener ese
+          cambio y documentar el bloqueo. Después de cada sesión, actualizar esta sección con
+          trabajo completado, pruebas reales, pendientes y el punto exacto para continuar.
+        </P>
+      </Section>
+
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
