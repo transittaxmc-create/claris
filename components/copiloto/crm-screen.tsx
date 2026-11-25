@@ -50,6 +50,30 @@ export function CRMScreen() {
     try { localStorage.setItem(STORE, JSON.stringify(clients)) } catch {}
   }, [clients, ready])
 
+  // Local reminder: existing client follow-up dates only. It runs when CRM is opened
+  // and permission has already been granted; it is not a background scheduler.
+  useEffect(() => {
+    if (!ready || !clients.length || !("Notification" in window) || Notification.permission !== "granted" || !("serviceWorker" in navigator)) return
+    const now = new Date()
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`
+    const due = clients.filter((client) => client.nextContact && client.nextContact <= today && client.status !== "Inactive")
+    if (!due.length) return
+    const key = "claris_crm_followup_notice_v1"
+    try {
+      if (localStorage.getItem(key) === today) return
+    } catch {}
+    navigator.serviceWorker.ready.then(async (registration) => {
+      await registration.showNotification("CRM follow-ups due", {
+        body: due.length === 1 ? "You have 1 client follow-up due today or overdue." : `You have ${due.length} client follow-ups due today or overdue.`,
+        icon: "/icon.svg",
+        badge: "/icon.svg",
+        tag: `crm-followups-${today}`,
+        data: { url: "/" },
+      })
+      try { localStorage.setItem(key, today) } catch {}
+    }).catch(() => {})
+  }, [clients, ready])
+
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
     return clients.filter((c) => {
