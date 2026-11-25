@@ -17,7 +17,8 @@ export type Tab =
   | "TOLLAUDIT"
   | "CREDIT"
   | "HELP"
-  | "TAX2026"\n  | "CRM"
+  | "TAX2026"
+  | "CRM"
 
 const ITEMS: { key: Tab; label: string; icon: typeof Home }[] = [
   { key: "ENTRY", label: "TODAY", icon: Home },
@@ -27,7 +28,8 @@ const ITEMS: { key: Tab; label: string; icon: typeof Home }[] = [
 ]
 
 export const TABS_EN_MAS: { key: Tab; label: string; hint: string; icon: typeof Home }[] = [
-  { key: "CRM", label: "CRM", hint: "Clients, contact history and follow-ups", icon: Users },\n  { key: "TAX2026", label: "TAX 2026", hint: "Checklist, 1099s and Schedule C prep for year-end", icon: Calculator },
+  { key: "CRM", label: "CRM", hint: "Clients, contact history and follow-ups", icon: Users },
+  { key: "TAX2026", label: "TAX 2026", hint: "Checklist, 1099s and Schedule C prep for year-end", icon: Calculator },
   { key: "EXPENSES", label: "EXPENSES", hint: "Bills, receipts and categories", icon: Receipt },
   { key: "CREDIT", label: "CREDIT", hint: "Cards & builders — due dates, payoff plans, scores", icon: CreditCard },
   { key: "DASH", label: "SUMMARY", hint: "Day summary", icon: Gauge },
