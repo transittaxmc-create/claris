@@ -618,10 +618,18 @@ export function HowItWorksScreen() {
           <li><B>Variables Vercel creadas para el proyecto correcto:</B> <B>CRM_PUSH_VAPID_PUBLIC_KEY</B>, <B>CRM_PUSH_VAPID_PRIVATE_KEY</B>, <B>CRM_PUSH_STORE_SECRET</B>, <B>CRM_PUSH_SUBJECT</B> y <B>CRM_PUSH_SEND_SECRET</B>. Se configuraron en Production, Preview y Development. Los valores privados no se copian a este manual ni a GitHub. <B>BLOB_READ_WRITE_TOKEN</B> ya existía y se reutiliza. No se cambió Supabase ni se utilizó el Supabase financiero.</li>
           <li><B>Interfaz CRM:</B> <B>components/copiloto/crm-notifications.tsx</B> registra el service worker, solicita permiso solo tras pulsar el botón, crea/recupera la suscripción PushManager, la registra en el servidor y ofrece botones separados para prueba remota y prueba local. Si ya existe una suscripción en el teléfono, intenta sincronizarla con el servidor al abrir el CRM.</li>
           <li><B>Protección de rutas:</B> los endpoints de suscripción y prueba verifican que el origen de la petición sea el mismo sitio. La prueba remota envía solo a la suscripción que la solicita, no a todos los dispositivos. El envío general exige el secreto de backend. Las suscripciones se cifran en reposo.</li>
-          <li><B>Estado de verificación:</B> el código está implementado y se desplegará junto con estas notas; todavía no se ha probado desde el iPhone físico. No afirmar que el iPhone ya recibe push hasta que Miguel instale/abra la PWA, conceda permiso, active el registro y confirme que recibió la prueba remota.</li>
+          <li><B>Estado de verificación — actualizado 2026-11-25:</B> Miguel confirmó prueba física LOCAL exitosa en su iPhone: activó <B>Enable Testing</B>, pulsó <B>Local Test</B> y recibió la notificación del dispositivo. Esto verifica que el service worker / showNotification puede mostrar una notificación local en ese iPhone. <B>No confundir con prueba remota:</B> la entrega remota servidor → Push Service → iPhone todavía requiere confirmación explícita independiente; tampoco demuestra aún notificaciones automáticas de citas, mensajes o tareas.</li>
           <li><B>iPhone y banner persistente:</B> iOS controla la presentación y duración de las notificaciones. Una PWA no puede dibujar un banner/burbuja flotante permanente encima de otra aplicación ni mantener una luz propia fuera de Claris. <B>requireInteraction</B> se solicita donde el sistema lo admita, pero iOS puede ignorarlo. Cerrar/descartar una notificación del sistema no debe significar que el futuro mensaje CRM quede resuelto; la bandeja persistente y su contador deben vivir dentro del CRM.</li>
           <li><B>Seguimientos existentes:</B> <B>components/copiloto/crm-screen.tsx</B> revisa <B>claris_crm_clients_v1</B> al abrir/montar el CRM y avisa de clientes no inactivos cuya fecha <B>nextContact</B> sea hoy o anterior, como máximo una vez al día con <B>claris_crm_followup_notice_v1</B>. Esta revisión no corre en segundo plano mientras CRM está cerrado.</li>
           <li><B>Citas y viajes:</B> todavía no existe un modelo de citas/eventos conectado a push, un calendario CRM terminado, un job/cron programado ni recordatorio automático 30 minutos antes de una recogida. El endpoint de envío ya sirve como base segura, pero no hay programación ni reglas de cita implementadas.</li>
+        </ul>
+
+        <P><B>Registro de prueba en dispositivo — 2026-11-25:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li><B>Acción realizada por Miguel:</B> activó el control <B>Enable Testing</B> y ejecutó <B>Local Test</B> desde la pantalla de notificaciones del CRM.</li>
+          <li><B>Resultado reportado:</B> la notificación apareció y fue recibida en el iPhone físico. Resultado: <B>LOCAL TEST = PASS (confirmado por el propietario)</B>.</li>
+          <li><B>Alcance:</B> prueba local del dispositivo; no es evidencia de entrega remota ni de disparadores automáticos por citas. No registrar como prueba remota aprobada.</li>
+          <li><B>Próxima validación:</B> ejecutar y confirmar por separado <B>Remote Push Test</B>; después probar un evento real de cita con la app cerrada y verificar hora, destinatario, enlace al registro y ausencia de duplicados.</li>
         </ul>
 
         <P><B>Flujo de trabajo de mensajes — requisitos confirmados por el propietario:</B></P>
@@ -643,7 +651,8 @@ export function HowItWorksScreen() {
         <P><B>Próximos pasos, en este orden:</B></P>
         <ol className="mb-3 list-decimal space-y-1.5 pl-4 text-[12px] text-neutral-300">
           <li>Publicar el código push y este manual juntos; revisar que Vercel termine el build de producción en estado READY.</li>
-          <li>En el iPhone: añadir Copiloto a Home Screen si todavía no está instalado; abrir desde el icono; entrar a More → Client management → CRM; activar push y confirmar el permiso; comprobar la prueba remota y la prueba local.</li>
+          <li><B>LOCAL TEST completado el 2026-11-25:</B> Enable Testing → Local Test; Miguel confirmó que recibió la notificación en su iPhone. No repetir esta prueba como pendiente.</li>
+          <li><B>Pendiente:</B> confirmar Remote Push Test en el iPhone físico y registrar el resultado por separado.</li>
           <li>Si la prueba remota falla, revisar respuesta HTTP, runtime logs, suscripción, permiso y claves VAPID sin exponer secretos; no marcar push como terminado hasta recibir confirmación visual en el iPhone.</li>
           <li>Después, crear el modelo de eventos/citas, recordatorios configurables (por ejemplo 30 minutos antes), cola y programación del servidor con zona horaria, deduplicación e idempotencia; conectar clic de push al registro relacionado.</li>
           <li>Elegir y configurar proveedor SMS y WhatsApp Business oficial; implementar webhooks entrantes y salida con consentimiento, STOP/HELP, reglas de plantillas y registro de estados.</li>
@@ -674,8 +683,7 @@ export function HowItWorksScreen() {
           verificado, no desde suposiciones ni desde mensajes aislados. No reconstruir el CRM,
           no duplicar funciones existentes, no mover CRM fuera de More, no cambiar el menú inferior
           y no tocar el módulo financiero. Si un acceso o estado no puede verificarse, detener ese
-          cambio y documentar el bloqueo. Después de cada sesión, actualizar esta sección con
-          trabajo completado, pruebas reales, pendientes y el punto exacto para continuar.
+          cambio y documentar el bloqueo. Después de cada sesión, actualizar esta sección con trabajo completado, pruebas reales, pendientes y el punto exacto para continuar. Al cerrar cada tarea o deployment, confirmar expresamente al propietario si la documentación quedó actualizada, si el resultado de notificaciones quedó registrado y cuál es el estado real del deployment. No afirmar que algo fue documentado o desplegado sin verificarlo.
         </P>
       </Section>
 
