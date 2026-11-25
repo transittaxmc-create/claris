@@ -15,7 +15,7 @@ import { RegisterScreen } from "./register-screen"
 import { ReportsScreen } from "./reports-screen"
 import { SobresScreen } from "./sobres-screen"
 import { TollAuditScreen } from "./toll-audit-screen"
-import { CreditScreen } from "./credit-screen"
+import { CreditScreen } from "./credit-screen"\nimport { CRMScreen } from "./crm-screen"
 import { Tax2026Screen } from "./tax-2026-screen"
 import { syncEzpassWeekly } from "./ezpass-weekly"
 import { detectNewTolls, rateFor } from "./toll-detect"
@@ -894,7 +894,7 @@ export function CopilotoApp() {
           {tab === "REPORTS" && <ReportsScreen trips={trips} expenses={expenses} />}
           {tab === "SOBRES" && <SobresScreen />}
           {tab === "TOLLAUDIT" && <TollAuditScreen trips={trips} />}
-          {tab === "CREDIT" && <CreditScreen />}
+          {tab === "CREDIT" && <CreditScreen />}\n          {tab === "CRM" && <CRMScreen />}
           {tab === "TAX2026" && <Tax2026Screen trips={trips} expenses={expenses} />}
           {tab === "HELP" && <HowItWorksScreen />}
           {tab !== "ENTRY" &&
@@ -1017,7 +1017,7 @@ export function CopilotoApp() {
             <div className="mt-4 space-y-4 px-4">
               {(
                 [
-                  { title: "Operations", keys: ["EXPENSES", "CREDIT", "DASH", "V1DASH", "SOBRES", "TOLLAUDIT"] as const },
+                  { title: "Client management", keys: ["CRM"] as const },\n                  { title: "Operations", keys: ["EXPENSES", "CREDIT", "DASH", "V1DASH", "SOBRES", "TOLLAUDIT"] as const },
                   { title: "Intelligence & data", keys: ["AI", "DATA"] as const },
                   { title: "Help", keys: ["HELP"] as const },
                 ] as const
