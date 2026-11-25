@@ -907,6 +907,7 @@ export function CopilotoApp() {
             tab !== "DASH" &&
             tab !== "V1DASH" &&
             tab !== "CREDIT" &&
+            tab !== "CRM" &&
             tab !== "HELP" && <Placeholder label={tab} />}
         </div>
       </main>
