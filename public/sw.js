@@ -1,4 +1,4 @@
-const SW_VERSION = "copiloto-pwa-v1"
+const SW_VERSION = "copiloto-pwa-v2"
 
 self.addEventListener("install", (event) => {
   self.skipWaiting()
@@ -21,6 +21,8 @@ self.addEventListener("push", (event) => {
     icon: payload.icon || "/icon.svg",
     badge: payload.badge || "/icon.svg",
     tag: payload.tag || undefined,
+    renotify: false,
+    requireInteraction: true,
     data: { url: payload.url || "/", ...(payload.data || {}) }
   }
   event.waitUntil(self.registration.showNotification(title, options))
@@ -28,7 +30,8 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close()
-  const target = new URL(event.notification.data?.url || "/", self.location.origin).href
+  const requested = new URL(event.notification.data?.url || "/", self.location.origin)
+  const target = requested.origin === self.location.origin ? requested.href : new URL("/", self.location.origin).href
   event.waitUntil((async () => {
     const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true })
     for (const client of windows) {
