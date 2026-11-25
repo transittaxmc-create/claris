@@ -479,6 +479,60 @@ export function HowItWorksScreen() {
           <li><B>Supabase financiero (NO usar para CRM):</B> Project ID <B>zrcnpmipdhpjdjkfrrgt</B>. Pertenece a Claris / Island City Transit y debe permanecer aislado.</li>
         </ul>
 
+        <P><B>Modelo operativo personal — propietario único y aprobación humana:</B></P>
+        <P>
+          Este CRM está pensado principalmente para Miguel como operador individual de su cartera
+          de clientes, no para una empresa grande con cientos de empleados. La primera versión debe
+          priorizar sencillez, rapidez en el teléfono, bajo costo operativo, privacidad y control
+          directo. Preparar roles y permisos para crecer más adelante, pero no introducir complejidad
+          empresarial innecesaria en la experiencia inicial.
+        </P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li><B>Bandeja unificada:</B> objetivo de recibir en una sola ficha los mensajes entrantes por SMS y WhatsApp Business y, cuando se integre, email. Mostrar cliente, canal, fecha, conversación e historial.</li>
+          <li><B>Asistente de respuesta:</B> al entrar un mensaje, la IA puede resumirlo y preparar un borrador de respuesta usando el historial y los datos permitidos del cliente. Miguel revisa, edita y pulsa <B>APROBAR Y ENVIAR</B>. Por defecto, la IA NO envía respuestas externas automáticamente. La aprobación humana es obligatoria salvo que Miguel autorice más adelante automatizaciones específicas y limitadas.</li>
+          <li><B>Notificación al propietario:</B> avisar a Miguel de nueva conversación, cita próxima, nuevo pedido/solicitud, documento recibido y seguimiento vencido. La notificación debe abrir directamente la ficha o conversación correspondiente.</li>
+          <li><B>Notificación al cliente:</B> confirmaciones y recordatorios por el canal que el cliente haya elegido y autorizado. Mantener separados los avisos internos al propietario y los mensajes externos al cliente.</li>
+          <li><B>Citas:</B> al crear o cambiar una cita, guardar fecha, hora, zona horaria, cliente, servicio, ubicación y estado. Programar recordatorio interno a Miguel; ofrecer confirmación/recordatorio al cliente solo si existe consentimiento y canal habilitado. Manejar cancelación y reprogramación.</li>
+          <li><B>Seguimientos:</B> cada cliente puede tener próxima acción, fecha/hora, responsable (inicialmente Miguel), prioridad y estado. El CRM debe crear avisos antes del vencimiento y mostrar una lista de tareas de hoy/atrasadas.</li>
+          <li><B>Registro de consentimiento:</B> guardar por contacto y por canal si autorizó SMS, WhatsApp y email; fecha/hora, método y alcance (transaccional/servicio o marketing), además de bajas y preferencias. No asumir que tener el teléfono o haber escrito una vez equivale a aceptar campañas promocionales.</li>
+          <li><B>Broadcast/campañas:</B> permitir seleccionar un grupo de clientes y preparar una campaña, pero validar consentimiento por canal, exclusiones, bajas, límites y contenido antes de enviar. Incluir vista previa, destinatarios, conteo, prueba a Miguel y confirmación final. Nunca enviar a toda la libreta por defecto.</li>
+        </ul>
+
+        <P><B>Tarjeta digital y QR — requisito funcional:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>Crear una tarjeta digital profesional de Miguel/negocio con nombre, marca/logo, servicios, teléfono, email, sitio web y botones de contacto. Debe verse bien en móvil y poder compartirse por SMS, WhatsApp o email.</li>
+          <li>Generar un enlace público seguro y un QR que abra esa tarjeta. Ofrecer acciones para compartir el enlace/QR y para que el cliente guarde el contacto como vCard (.vcf).</li>
+          <li>Permitir escanear un QR o tarjeta de otra persona para iniciar la creación de un contacto, mostrar los datos detectados y pedir confirmación antes de guardarlos. Evitar duplicados y no importar datos silenciosamente.</li>
+          <li>Definir qué datos de la tarjeta son públicos y permitir actualizarla sin cambiar el QR/enlace. No exponer notas privadas ni datos del CRM en la tarjeta pública.</li>
+        </ul>
+
+        <P><B>Pedidos, servicios, pagos y rutas — flujo conectado a revisar:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>El propietario indicó que existe otro trabajo/proyecto iniciado, aún incompleto, relacionado con recibir solicitudes/órdenes, pagos y cálculo de rutas. Antes de crear una segunda función, localizar y auditar ese trabajo existente en el repositorio y en el historial.</li>
+          <li>Flujo objetivo: cliente envía solicitud/orden → CRM crea registro pendiente → confirmación de recepción al cliente (si el canal está autorizado) → aviso a Miguel → Miguel revisa y llama/prepara cotización → calcula ruta/precio según reglas existentes → envía propuesta → registra aceptación/pago → actualiza el estado del trabajo → seguimiento y cierre.</li>
+          <li>La confirmación inicial debe decir que la solicitud fue recibida, no que el servicio está confirmado ni pagado. Estados separados: recibido, en revisión, cotizado, esperando aprobación, aprobado, pago pendiente, pagado, programado, en progreso, completado y cancelado, ajustados al proyecto existente.</li>
+          <li>Integrar pagos solo después de identificar el proveedor y el módulo ya comenzado. No guardar números completos de tarjetas ni datos sensibles de pago en tablas CRM; usar checkout/tokenización del proveedor. No tocar funciones financieras personales de Claris.</li>
+          <li>El cálculo de ruta, distancia, tiempo y precio debe reutilizar el proyecto existente si corresponde. No inventar tarifas ni duplicar un motor de rutas sin auditar primero los archivos y reglas existentes.</li>
+        </ul>
+
+        <P><B>Arquitectura de notificaciones — definición de producto:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li><B>Push al propietario:</B> web push desde servidor mediante suscripción del dispositivo, permiso explícito, service worker y claves/credenciales guardadas solo en servidor. Cada notificación debe incluir tipo de evento, registro relacionado, fecha y enlace interno. Guardar varias suscripciones si Miguel usa más de un dispositivo.</li>
+          <li><B>iPhone:</B> para recibir Web Push de esta aplicación web en iOS/iPadOS, el usuario debe añadir la web app a la pantalla de inicio y aceptar las notificaciones; Apple documenta Web Push para web apps añadidas a Home Screen desde iOS 16.4. Probar en el iPhone real. No prometer entrega si el usuario no instala/autoriza o el sistema bloquea avisos.</li>
+          <li><B>Programación:</B> citas y seguimientos requieren trabajos programados del lado servidor y zona horaria correcta; no depender de que la página esté abierta o de timers del navegador. Evitar avisos duplicados con claves idempotentes y permitir posponer/completar.</li>
+          <li><B>Canales independientes:</B> push es para el propietario/app; SMS, WhatsApp y email son canales externos para el cliente. Un fallo de un canal no debe borrar el evento ni impedir que aparezca en la bandeja CRM.</li>
+          <li><B>Auditoría:</B> registrar evento creado, destinatario, canal, consentimiento comprobado, mensaje aprobado, proveedor, ID de envío, estado/entrega/fallo y baja. Proteger datos personales y no guardar tokens en el frontend.</li>
+        </ul>
+
+        <P><B>Reglas prácticas de mensajería en EE. UU. — validar antes de activar campañas:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>Para SMS de aplicación a personas en números estadounidenses mediante número local de 10 dígitos, los proveedores/carreadores exigen registro A2P 10DLC. La marca y campaña, propósito, muestras y proceso verificable de consentimiento deben configurarse antes de enviar tráfico productivo. Ver guía oficial: https://www.twilio.com/docs/messaging/compliance/a2p-10dlc.</li>
+          <li>Guardar y respetar STOP/UNSUBSCRIBE y otras bajas; no volver a enviar campañas a quien se dio de baja. Mantener identificación del remitente y mecanismo HELP/STOP según el canal/proveedor. La mensajería de servicio y marketing debe etiquetarse por separado y revisarse según las reglas aplicables.</li>
+          <li>WhatsApp Business Platform requiere configurar la cuenta empresarial, número, permisos y plantillas aprobadas cuando corresponda; revisar las reglas actuales de Meta antes de programar envíos fuera de la ventana permitida. No confundir WhatsApp Business App con acceso API para integrarlo al CRM.</li>
+          <li>Email también debe registrar preferencias, bajas y rebotes; separar mensajes de servicio de promociones y mantener identificación/remitente y enlaces de baja para comunicaciones comerciales según la normativa aplicable.</li>
+          <li>La aplicación debe bloquear el envío si falta consentimiento requerido, el canal está dado de baja o el destinatario no es elegible. Un broadcast siempre requiere revisión de destinatarios y aprobación final de Miguel.</li>
+        </ul>
+
         <P><B>Stack y configuración que deben verificarse antes de continuar:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
           <li>Aplicación: Next.js 16, React y componente principal <B>CopilotoApp</B>, en el repositorio <B>transittaxmc-create/claris</B>.</li>
