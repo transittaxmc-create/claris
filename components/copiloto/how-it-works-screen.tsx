@@ -1333,14 +1333,16 @@ export function HowItWorksScreen() {
           local. No hay migración de clientes ni reservaciones ejecutada.
         </P>
         <P>
-          <B>Deployment y notificaciones:</B> Preview de Vercel para el commit
-          <B>cda6a204d8c6611141e1e4bf5d6efe6fb1d537a3</B>, deployment
-          <B>dpl_54sfSvYoaJ2D1LLAYzkNK1CGsh24</B>, URL
-          <B>https://claris-ge8ocnwx9-island-city.vercel.app</B>, verificado como
-          <B>BUILDING</B> a las 03:53 UTC del 26-nov-2026. No se ha afirmado READY ni se ha
-          desplegado a producción. El commit de documentación posterior genera un Preview nuevo
-          cuyo estado debe revisarse por separado. No se registraron dispositivos push ni se
-          ejecutaron pruebas push en esta etapa. Remote Push Test y recordatorios programados siguen pendientes.
+          <B>Deployment y notificaciones:</B> Preview más reciente para el commit
+          <B>1e645dbdeee1701790e22a2594273bbd127ad32a</B>, deployment
+          <B>dpl_J6JLC5NZB4od4VniB1xahDBYwdVb</B>, estado final confirmado
+          <B>READY</B>; alias
+          <B>https://claris-git-feat-crm-supabase-auth-island-city.vercel.app</B>. Smoke tests
+          HTTP: <B>/login</B> devuelve 200 y presenta formulario de acceso; <B>/</B> sin sesión
+          termina en pantalla de login; <B>/auth/callback</B> sin código vuelve a login. Esto no
+          sustituye una prueba de login real. Producción permanece sin cambios en el deployment
+          READY anterior. No se registraron dispositivos push ni se ejecutaron pruebas push en
+          esta etapa. Remote Push Test y recordatorios programados siguen pendientes.
         </P>
         <P>
           <B>Siguiente etapa:</B> completar URL Configuration y pruebas de Auth reales; luego
