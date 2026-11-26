@@ -47,6 +47,7 @@ export type CrmReservationRow = {
   status: string
   pickup_kind: string
   pickup_address: string
+  stop_address?: string
   dropoff_address: string
   airport: string
   airline: string
@@ -87,6 +88,7 @@ export type CrmReservationLike = {
   status: string
   pickupKind: string
   pickupAddress: string
+  stopAddress: string
   dropoffAddress: string
   airport: string
   airline: string
@@ -199,6 +201,10 @@ export function reservationToRow(r: CrmReservationLike): CrmReservationRow {
     status: r.status,
     pickup_kind: r.pickupKind,
     pickup_address: r.pickupAddress || "",
+    // Parada intermedia opcional (migración 20261126190000, preparada):
+    // sin la columna, la ruta de estado reintenta sin ella y la parada
+    // queda en el dispositivo, como pasó con needs_follow_up.
+    stop_address: r.stopAddress || "",
     dropoff_address: r.dropoffAddress || "",
     airport: r.airport || "",
     airline: r.airline || "",
@@ -226,6 +232,8 @@ export function rowToReservation(r: CrmReservationRow): CrmReservationLike {
     status: r.status || "Requested",
     pickupKind: r.pickup_kind || "standard",
     pickupAddress: r.pickup_address || "",
+    // Filas anteriores a la migración 20261126190000 no traen la clave:
+    stopAddress: r.stop_address || "",
     dropoffAddress: r.dropoff_address || "",
     airport: r.airport || "",
     airline: r.airline || "",

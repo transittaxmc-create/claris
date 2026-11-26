@@ -106,7 +106,9 @@ export async function POST(req: Request) {
       const rows = body.upsertReservations.map((r) => ({ ...reservationToRow(r), user_id: userId }))
       const { error } = await supabase.from("crm_reservations").upsert(rows, { onConflict: "id" })
       if (error) {
-        const legacyRows = rows.map(({ photos: _p, ...rest }) => rest)
+        // Sin photos y sin stop_address (pre-migración 20261126190000):
+        // la parada queda en el dispositivo hasta que la columna exista.
+        const legacyRows = rows.map(({ photos: _p, stop_address: _s, ...rest }) => rest)
         const retry = await supabase.from("crm_reservations").upsert(legacyRows, { onConflict: "id" })
         if (retry.error) throw retry.error
       }

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { CRMNotifications } from "./crm-notifications"
 import { crmSupabaseBrowser, crmCloudConfigured } from "@/lib/crm/supabase-browser"
 import { ensureAccountNumbers, nextAccountNumber, type CrmPhoto } from "@/lib/crm/crm-cloud"
+import { parseMessageForReservation } from "@/lib/crm/parse-message"
+import { verifyAddress } from "@/lib/crm/geocode"
 import { getLocalPhotoDataUrl, saveLocalPhotoDataUrl, deleteLocalPhoto, fileToDownscaledDataUrl, uploadPhotoToCloud, signedPhotoUrl, deleteCloudPhoto } from "@/lib/crm/crm-photos"
 import type { Session, SupabaseClient } from "@supabase/supabase-js"
 import { Search, Plus, Users, Phone, Mail, CalendarDays, MessageSquare, MoreHorizontal, X, Save, Trash2, UserRound, Clock3, Filter, MapPin, Plane, ExternalLink, Pencil, ArrowUpRight, Camera, BellRing, Inbox, CheckCheck, Hash, History, Undo2, Flag } from "lucide-react"
@@ -852,10 +854,15 @@ export function CRMScreen({ openMessagesNonce = 0 }: { openMessagesNonce?: numbe
           findOrCreateClient={findOrCreateClient}
           onCreateReservation={(message: CRMMessage) => {
             pendingMessageLink.current = message.id
+            // Auto-llenado (Miguel, 2026-11-26): el formulario se puebla
+            // con lo que el mensaje trae — recogida, destino, fecha,
+            // hora, pasajeros y vuelo si aplica. Él verifica y corrige.
+            const parsed = parseMessageForReservation(message.body || "")
             setReservationPrefill({
               clientId: message.clientId || "",
               passengerName: message.fromName || "",
               passengerPhone: message.fromPhone || "",
+              ...(parsed as Partial<CRMReservation>),
               notes: message.body || "",
             })
             setReservationPrefillNonce((n) => n + 1)
@@ -906,6 +913,7 @@ type CRMReservation = {
   status: ReservationStatus
   pickupKind: PickupKind
   pickupAddress: string
+  stopAddress: string
   dropoffAddress: string
   airport: string
   airline: string
@@ -932,12 +940,19 @@ const newReservation = (): CRMReservation => ({
   clientId: "", passengerName: "", passengerPhone: "",
   serviceDate: new Date().toLocaleDateString("en-CA"), pickupTime: "",
   passengers: 1, status: "Requested", pickupKind: "standard",
-  pickupAddress: "", dropoffAddress: "", airport: "", airline: "",
+  pickupAddress: "", stopAddress: "", dropoffAddress: "", airport: "", airline: "",
   flightNumber: "", flightDate: "", scheduledArrival: "", terminal: "",
   gate: "", notes: "", photos: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
 })
 const appleMapsLink = (address: string) => `https://maps.apple.com/?daddr=${encodeURIComponent(address)}`
 const googleMapsLink = (address: string) => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`
+/** Ruta completa de la reserva: recogida → destino, y con parada
+ *  registrada, recogida → parada → destino (Google Maps acepta el
+ *  punto intermedio como waypoint; sin parada es A → B directo). */
+const googleRouteLink = (r: CRMReservation) => {
+  const base = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(r.pickupAddress)}&destination=${encodeURIComponent(r.dropoffAddress)}`
+  return r.stopAddress?.trim() ? `${base}&waypoints=${encodeURIComponent(r.stopAddress)}` : base
+}
 const flightAwareLink = (flightNumber: string) => `https://www.flightaware.com/live/flight/${encodeURIComponent(flightNumber.trim().replace(/\s+/g, ""))}`
 
 function AddressNavigation({ label, address }: { label: string; address: string }) {
@@ -1058,7 +1073,7 @@ function CRMReservations({ clients, cloudSeed, cloudSeedNonce, onCloudSync, onRe
     setShowForm(true)
   }
   function saveReservation() {
-    if (!editing || !editing.passengerName.trim() || !editing.serviceDate || !editing.pickupAddress.trim() || !editing.dropoffAddress.trim()) return
+    if (!editing || !editing.passengerName.trim() || !editing.serviceDate || !editing.pickupTime || !editing.pickupAddress.trim() || !editing.dropoffAddress.trim()) return
     if (editing.pickupKind === "airport" && (!editing.flightNumber.trim() || !editing.airport.trim() || !editing.flightDate)) return
     const stamp = new Date().toISOString()
     const saved = { ...editing, updatedAt: stamp, passengers: Math.max(1, Number(editing.passengers) || 1) }
@@ -1100,6 +1115,90 @@ function CRMReservations({ clients, cloudSeed, cloudSeedNonce, onCloudSync, onRe
     setEditing((prev) => prev ? { ...prev, [key]: value } : prev)
   }
 
+  // ---- Paquete del formulario (Miguel, 2026-11-26): indicadores de
+  // requeridos, verificación de direcciones y parada opcional ----
+  type AddrField = "pickupAddress" | "dropoffAddress" | "stopAddress"
+  type AddrCheck = { state: "idle" | "checking" | "ok" | "warn"; message: string }
+  const [addrChecks, setAddrChecks] = useState<Partial<Record<AddrField, AddrCheck>>>({})
+  const addrCheckedFor = useRef<Partial<Record<AddrField, string>>>({})
+
+  const checkAddress = useCallback(async (field: AddrField, value: string) => {
+    const v = (value || "").trim()
+    if (v.length < 6) {
+      addrCheckedFor.current[field] = ""
+      setAddrChecks((p) => ({ ...p, [field]: { state: "idle", message: "" } }))
+      return
+    }
+    if (addrCheckedFor.current[field] === v) return
+    addrCheckedFor.current[field] = v
+    setAddrChecks((p) => ({ ...p, [field]: { state: "checking", message: "" } }))
+    const res = await verifyAddress(v)
+    if (addrCheckedFor.current[field] !== v) return // el texto cambió mientras se comprobaba
+    if (!res) {
+      // No se pudo comprobar (red/servicio): no se marca nada.
+      setAddrChecks((p) => ({ ...p, [field]: { state: "idle", message: "" } }))
+      return
+    }
+    if (res.state === "ok") {
+      setAddrChecks((p) => ({ ...p, [field]: { state: "ok", message: res.foundCity ? `Address verified — ${res.foundCity}` : "Address verified" } }))
+    } else {
+      setAddrChecks((p) => ({ ...p, [field]: { state: "warn", message: res.reason } }))
+    }
+  }, [])
+
+  // Al abrir el formulario (también auto-llenado desde un mensaje) y al
+  // escribir, las direcciones se verifican solas, con una pausa breve
+  // para no llamar al mapa por cada tecla. La verificación marca; NO
+  // bloquea guardar si Miguel decide seguir.
+  const editingPickup = editing?.pickupAddress
+  const editingDropoff = editing?.dropoffAddress
+  const editingStop = editing?.stopAddress
+  useEffect(() => {
+    if (!showForm) return
+    const t = setTimeout(() => {
+      void checkAddress("pickupAddress", editingPickup || "")
+      void checkAddress("dropoffAddress", editingDropoff || "")
+      void checkAddress("stopAddress", editingStop || "")
+    }, 900)
+    return () => clearTimeout(t)
+  }, [showForm, editingPickup, editingDropoff, editingStop, checkAddress])
+
+  /** Lenguaje visual de los campos: requerido vacío = borde ámbar
+   *  discreto; requerido lleno = verde suave; dirección verificada =
+   *  verde; dirección que no combina = rojo suave. Sin tocar el resto
+   *  del diseño negro mate. */
+  const fieldClass = (opts: { required?: boolean; filled: boolean; check?: AddrCheck }) => {
+    let border = "border-neutral-700"
+    if (opts.check?.state === "warn") border = "border-rose-500/80"
+    else if (opts.check?.state === "ok") border = "border-emerald-500/70"
+    else if (opts.required && !opts.filled) border = "border-amber-500/70"
+    else if (opts.required && opts.filled) border = "border-emerald-600/60"
+    return reservationInput.replace("border-neutral-700", border)
+  }
+  const addrStatusLine = (check?: AddrCheck) => {
+    if (!check || check.state === "idle") return null
+    if (check.state === "checking") return <p className="mt-1.5 text-[11px] font-semibold text-neutral-500">Checking the address on the map…</p>
+    if (check.state === "ok") return <p className="mt-1.5 text-[11px] font-semibold text-emerald-400">{check.message}</p>
+    return <p className="mt-1.5 text-[11px] font-semibold leading-relaxed text-rose-300">{check.message} You can still save if you decide to go with it.</p>
+  }
+
+  // Todos los requeridos, de una vez: el botón de guardar solo se
+  // activa cuando la lista queda vacía — nada de descubrir un campo
+  // faltante por intento (la hora fue el caso real de Miguel).
+  const missingFields: string[] = []
+  if (editing) {
+    if (!editing.passengerName.trim()) missingFields.push("Passenger name")
+    if (!editing.serviceDate) missingFields.push("Service date")
+    if (!editing.pickupTime) missingFields.push("Pickup time")
+    if (!editing.pickupAddress.trim()) missingFields.push("Pickup address")
+    if (!editing.dropoffAddress.trim()) missingFields.push("Drop-off address")
+    if (editing.pickupKind === "airport") {
+      if (!editing.airport.trim()) missingFields.push("Airport")
+      if (!editing.flightNumber.trim()) missingFields.push("Flight number")
+      if (!editing.flightDate) missingFields.push("Flight date")
+    }
+  }
+
   if (!ready) return <div className="py-8 text-center text-sm text-neutral-500">Loading reservations…</div>
 
   return (
@@ -1119,20 +1218,21 @@ function CRMReservations({ clients, cloudSeed, cloudSeedNonce, onCloudSync, onRe
           <div className="space-y-3">
             <div><label className={reservationLabel}>Existing client (optional)</label><select value={editing.clientId} onChange={(e) => { const client = clients.find((c) => c.id === e.target.value); setEditing((prev) => prev ? { ...prev, clientId: e.target.value, passengerName: client?.name ?? prev.passengerName, passengerPhone: client?.phone ?? prev.passengerPhone } : prev) }} className={reservationInput}><option value="">Choose a CRM client or enter passenger below</option>{clients.map((client) => <option key={client.id} value={client.id}>{client.name}{client.accountNumber ? ` · ${client.accountNumber}` : ""}</option>)}</select></div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div><label className={reservationLabel}>Passenger name *</label><input value={editing.passengerName} onChange={(e) => patch("passengerName", e.target.value)} className={reservationInput} placeholder="Passenger full name" /></div>
+              <div><label className={reservationLabel}>Passenger name *</label><input value={editing.passengerName} onChange={(e) => patch("passengerName", e.target.value)} className={fieldClass({ required: true, filled: !!editing.passengerName.trim() })} placeholder="Passenger full name" /></div>
               <div><label className={reservationLabel}>Passenger phone</label><input type="tel" value={editing.passengerPhone} onChange={(e) => patch("passengerPhone", e.target.value)} className={reservationInput} placeholder="Phone number" /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div><label className={reservationLabel}>Service date *</label><input type="date" value={editing.serviceDate} onChange={(e) => patch("serviceDate", e.target.value)} className={reservationInput} /></div>
-              <div><label className={reservationLabel}>Pickup time</label><input type="time" value={editing.pickupTime} onChange={(e) => patch("pickupTime", e.target.value)} className={reservationInput} /></div>
+              <div><label className={reservationLabel}>Service date *</label><input type="date" value={editing.serviceDate} onChange={(e) => patch("serviceDate", e.target.value)} className={fieldClass({ required: true, filled: !!editing.serviceDate })} /></div>
+              <div><label className={reservationLabel}>Pickup time *</label><input type="time" value={editing.pickupTime} onChange={(e) => patch("pickupTime", e.target.value)} className={fieldClass({ required: true, filled: !!editing.pickupTime })} /></div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div><label className={reservationLabel}>Passengers</label><input type="number" min="1" max="20" value={editing.passengers} onChange={(e) => patch("passengers", Number(e.target.value))} className={reservationInput} /></div>
               <div><label className={reservationLabel}>Reservation status</label><select value={editing.status} onChange={(e) => patch("status", e.target.value as ReservationStatus)} className={reservationInput}>{(["Requested", "Confirmed", "Completed", "Cancelled"] as const).map((s) => <option key={s}>{s}</option>)}</select></div>
             </div>
             <div><label className={reservationLabel}>Pickup type</label><select value={editing.pickupKind} onChange={(e) => patch("pickupKind", e.target.value as PickupKind)} className={reservationInput}><option value="standard">Regular pickup</option><option value="airport">Airport pickup (flight required)</option></select></div>
-            <div><label className={reservationLabel}>Pickup address *</label><input value={editing.pickupAddress} onChange={(e) => patch("pickupAddress", e.target.value)} className={reservationInput} placeholder="Original pickup address" /></div>
-            <div><label className={reservationLabel}>Drop-off address *</label><input value={editing.dropoffAddress} onChange={(e) => patch("dropoffAddress", e.target.value)} className={reservationInput} placeholder="Destination address" /></div>
+            <div><label className={reservationLabel}>Pickup address *</label><input value={editing.pickupAddress} onChange={(e) => patch("pickupAddress", e.target.value)} className={fieldClass({ required: true, filled: !!editing.pickupAddress.trim(), check: addrChecks.pickupAddress })} placeholder="Original pickup address" />{addrStatusLine(addrChecks.pickupAddress)}</div>
+            <div><label className={reservationLabel}>Stop on the way (optional)</label><input value={editing.stopAddress} onChange={(e) => patch("stopAddress", e.target.value)} className={fieldClass({ filled: !!editing.stopAddress.trim(), check: addrChecks.stopAddress })} placeholder="Only if the client asked for a stop — it joins the GPS route" />{addrStatusLine(addrChecks.stopAddress)}</div>
+            <div><label className={reservationLabel}>Drop-off address *</label><input value={editing.dropoffAddress} onChange={(e) => patch("dropoffAddress", e.target.value)} className={fieldClass({ required: true, filled: !!editing.dropoffAddress.trim(), check: addrChecks.dropoffAddress })} placeholder="Destination address" />{addrStatusLine(addrChecks.dropoffAddress)}</div>
 
             {editing.pickupKind === "airport" && (
               <div className="space-y-3 rounded-xl border border-sky-900/70 bg-sky-950/20 p-3">
@@ -1140,18 +1240,18 @@ function CRMReservations({ clients, cloudSeed, cloudSeedNonce, onCloudSync, onRe
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <label className={reservationLabel}>Airport *</label>
-                    <select value={CRM_AIRPORTS.some((a) => a.code === editing.airport) ? editing.airport : editing.airport ? "__other__" : ""} onChange={(e) => patch("airport", e.target.value === "__other__" ? "" : e.target.value)} className={reservationInput}>
+                    <select value={CRM_AIRPORTS.some((a) => a.code === editing.airport) ? editing.airport : editing.airport ? "__other__" : ""} onChange={(e) => patch("airport", e.target.value === "__other__" ? "" : e.target.value)} className={fieldClass({ required: true, filled: !!editing.airport.trim() })}>
                       <option value="">Select airport</option>
                       {CRM_AIRPORTS.map((airport) => <option key={airport.code} value={airport.code}>{airport.label}</option>)}
                       <option value="__other__">Other airport / enter manually</option>
                     </select>
-                    {!CRM_AIRPORTS.some((a) => a.code === editing.airport) && <input value={editing.airport} onChange={(e) => patch("airport", e.target.value.toUpperCase())} className={reservationInput + " mt-2"} placeholder="Enter airport name or code" />}
+                    {!CRM_AIRPORTS.some((a) => a.code === editing.airport) && <input value={editing.airport} onChange={(e) => patch("airport", e.target.value.toUpperCase())} className={fieldClass({ required: true, filled: !!editing.airport.trim() }) + " mt-2"} placeholder="Enter airport name or code" />}
                   </div>
                   <div><label className={reservationLabel}>Airline</label><input value={editing.airline} onChange={(e) => patch("airline", e.target.value)} className={reservationInput} placeholder="Airline name" /></div>
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div><label className={reservationLabel}>Flight number *</label><input value={editing.flightNumber} onChange={(e) => patch("flightNumber", e.target.value.toUpperCase())} className={reservationInput} placeholder="AA 123" autoCapitalize="characters" /></div>
-                  <div><label className={reservationLabel}>Flight date *</label><input type="date" value={editing.flightDate} onChange={(e) => patch("flightDate", e.target.value)} className={reservationInput} /></div>
+                  <div><label className={reservationLabel}>Flight number *</label><input value={editing.flightNumber} onChange={(e) => patch("flightNumber", e.target.value.toUpperCase())} className={fieldClass({ required: true, filled: !!editing.flightNumber.trim() })} placeholder="AA 123" autoCapitalize="characters" /></div>
+                  <div><label className={reservationLabel}>Flight date *</label><input type="date" value={editing.flightDate} onChange={(e) => patch("flightDate", e.target.value)} className={fieldClass({ required: true, filled: !!editing.flightDate })} /></div>
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div><label className={reservationLabel}>Scheduled arrival time</label><input type="time" value={editing.scheduledArrival} onChange={(e) => patch("scheduledArrival", e.target.value)} className={reservationInput} /></div>
@@ -1163,7 +1263,8 @@ function CRMReservations({ clients, cloudSeed, cloudSeedNonce, onCloudSync, onRe
             )}
             <div><label className={reservationLabel}>Reservation notes</label><textarea rows={3} value={editing.notes} onChange={(e) => patch("notes", e.target.value)} className={reservationInput + " resize-y"} placeholder="Special instructions, luggage, meeting point…" /></div>
           </div>
-          <button disabled={!editing.passengerName.trim() || !editing.serviceDate || !editing.pickupAddress.trim() || !editing.dropoffAddress.trim() || (editing.pickupKind === "airport" && (!editing.flightNumber.trim() || !editing.airport.trim() || !editing.flightDate))} onClick={saveReservation} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-yellow-400 py-3.5 text-sm font-extrabold text-black disabled:opacity-40"><Save className="size-4" /> Save reservation</button>
+          {missingFields.length > 0 && <p className="mt-4 text-[11px] font-semibold leading-relaxed text-amber-300">Still missing: {missingFields.join(" · ")} — Save activates when every required field is filled.</p>}
+          <button disabled={missingFields.length > 0} onClick={saveReservation} className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-yellow-400 py-3.5 text-sm font-extrabold text-black disabled:opacity-40"><Save className="size-4" /> Save reservation</button>
         </div>
       )}
 
@@ -1174,7 +1275,20 @@ function CRMReservations({ clients, cloudSeed, cloudSeedNonce, onCloudSync, onRe
             <button onClick={() => setSelectedId(null)} aria-label="Close reservation details" className="rounded-lg p-2 text-neutral-400"><X className="size-4" /></button>
           </div>
           <AddressNavigation label="Pickup" address={current.pickupAddress} />
+          {current.stopAddress?.trim() && <AddressNavigation label="Stop" address={current.stopAddress} />}
           <AddressNavigation label="Drop-off" address={current.dropoffAddress} />
+          {current.pickupAddress.trim() && current.dropoffAddress.trim() && (
+            <div className="rounded-xl border border-neutral-800 bg-neutral-950/70 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Full route</p>
+                <MapPin className="size-4 shrink-0 text-yellow-400" />
+              </div>
+              <p className="mt-1 break-words text-sm leading-relaxed text-white">{current.pickupAddress}{current.stopAddress?.trim() ? ` → ${current.stopAddress}` : ""} → {current.dropoffAddress}</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <a href={googleRouteLink(current)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-700 px-2.5 py-2 text-[11px] font-bold text-neutral-200"><ArrowUpRight className="size-3.5" /> {current.stopAddress?.trim() ? "Route · pickup → stop → drop-off" : "Route · pickup → drop-off"}</a>
+              </div>
+            </div>
+          )}
           {current.pickupKind === "airport" && (
             <div className="rounded-xl border border-sky-900/70 bg-sky-950/20 p-3">
               <div className="flex items-center gap-2 text-sm font-extrabold text-sky-200"><Plane className="size-4" /> Airport pickup</div>
@@ -1226,7 +1340,7 @@ function CRMReservations({ clients, cloudSeed, cloudSeedNonce, onCloudSync, onRe
           ) : visible.map((r) => (
             <button key={r.id} onClick={() => setSelectedId(r.id)} className={"flex w-full items-center gap-3 rounded-2xl border p-3 text-left " + (selectedId === r.id ? "border-yellow-500/50 bg-yellow-400/5" : "border-neutral-800 bg-neutral-900/70")}>
               <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-neutral-800 text-yellow-400">{r.pickupKind === "airport" ? <Plane className="size-5" /> : <MapPin className="size-5" />}</span>
-              <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-white">{r.passengerName}</span><span className="block truncate text-xs text-neutral-400">{r.serviceDate}{r.pickupTime ? " · " + r.pickupTime : ""} · {r.pickupKind === "airport" ? "Airport · " + r.flightNumber : "Regular pickup"}</span><span className="mt-1 block truncate text-[11px] text-neutral-500">{r.pickupAddress} → {r.dropoffAddress}</span></span>
+              <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-white">{r.passengerName}</span><span className="block truncate text-xs text-neutral-400">{r.serviceDate}{r.pickupTime ? " · " + r.pickupTime : ""} · {r.pickupKind === "airport" ? "Airport · " + r.flightNumber : "Regular pickup"}</span><span className="mt-1 block truncate text-[11px] text-neutral-500">{r.pickupAddress}{r.stopAddress?.trim() ? ` → ${r.stopAddress}` : ""} → {r.dropoffAddress}</span></span>
               <span className="shrink-0 rounded-full border border-neutral-700 px-2 py-1 text-[9px] font-bold text-neutral-300">{r.status}</span>
             </button>
           ))}
