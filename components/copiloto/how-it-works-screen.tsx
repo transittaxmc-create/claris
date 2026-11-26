@@ -687,6 +687,57 @@ export function HowItWorksScreen() {
         </P>
       </Section>
 
+
+      <Section title="10. TWILIO SMS — continuidad y seguridad (2026-11-25)">
+        <P>
+          <B>Objetivo confirmado por Miguel:</B> conectar primero SMS con Twilio al CRM Copiloto V7;
+          después evaluar e integrar WhatsApp Business. El CRM es para una operación pequeña y personal,
+          por lo que la primera versión debe ser sencilla, segura y fácil de operar desde el iPhone.
+        </P>
+        <P><B>Estado real al cierre de esta sesión:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>La cuenta Twilio ya fue creada por el propietario y se identificó su Account SID. No guardar el SID completo ni secretos en esta documentación.</li>
+          <li>El propietario compartió accidentalmente un Auth Token en el chat. Tratar ese token como expuesto y no volver a copiarlo, mostrarlo, incluirlo en código, GitHub, documentación ni mensajes.</li>
+          <li>La revisión previa de variables de entorno de Vercel no encontró variables TWILIO_* ni una integración SMS de Twilio en el código. Por tanto, <B>Twilio todavía NO está conectado al CRM</B>; no se ha confirmado envío ni recepción de SMS desde Copiloto.</li>
+          <li>Se aclaró que los comandos de terminal <B>export</B> no son necesarios para que Miguel los ejecute desde el iPhone. La integración se configurará por el backend y variables secretas de Vercel.</li>
+          <li>Se indicó abrir <B>https://console.twilio.com/</B> y navegar a <B>Account → API keys &amp; tokens → Auth Tokens</B>. El siguiente paso de seguridad es solicitar <B>Request a secondary token</B>. Miguel no debe pegar ni enviar ese token en el chat.</li>
+          <li>Después de crear el token secundario, no promoverlo todavía hasta confirmar si existe otra aplicación o servicio que utilice la credencial Twilio actual. Al promover el nuevo token, el anterior deja de funcionar; primero hay que actualizar y probar todas las integraciones que dependan de él.</li>
+          <li>La rotación del Auth Token no cancela ni cierra la cuenta Twilio. Es un cambio de credencial API. Activar MFA/2FA y revisar Usage, Messaging Logs y Billing para detectar actividad o cargos desconocidos.</li>
+          <li>Guardar credenciales únicamente en Vercel Environment Variables del proyecto correcto, nunca en el frontend, repositorio, capturas ni chat. Variables previstas: <B>TWILIO_ACCOUNT_SID</B> y <B>TWILIO_AUTH_TOKEN</B>; los valores no deben aparecer en documentación. Evaluar API Key restringida para producción cuando corresponda.</li>
+        </ul>
+        <P><B>Prueba acordada — primero Twilio, después CRM:</B></P>
+        <ol className="mb-3 list-decimal space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>Desde Safari en el iPhone, entrar a Twilio Console y localizar <B>Messaging → Try out SMS</B> (la etiqueta puede variar según la consola).</li>
+          <li>Realizar una prueba controlada desde la herramienta de prueba de Twilio al teléfono propio, siguiendo las restricciones de verificación que muestre Twilio. No considerar esto todavía una integración CRM.</li>
+          <li>Una vez que la prueba de Twilio funcione, implementar en el backend de Copiloto V7 el envío y recepción mediante endpoints/webhooks seguros; persistir conversaciones, mensajes y estados del proveedor.</li>
+          <li>Configurar un número de negocio y comprobar requisitos de registro de mensajería comercial en EE. UU., incluido A2P 10DLC si se usa un número local de 10 dígitos para tráfico sujeto a ese requisito.</li>
+          <li>Probar SMS saliente, SMS entrante, estados de entrega/error, asociación con el cliente correcto, consentimiento, STOP/HELP y prevención de duplicados. No enviar campañas reales antes de verificar cumplimiento y consentimiento.</li>
+          <li>Crear una bandeja de mensajes persistente en el CRM. Las notificaciones push son avisos privados para Miguel; SMS/WhatsApp son canales externos con clientes. Cerrar un banner no debe borrar ni resolver un mensaje.</li>
+          <li>Los borradores generados por el CRM siempre requieren revisión y aprobación explícita de Miguel antes de enviar. No confirmar una reserva si faltan datos esenciales.</li>
+        </ol>
+        <P><B>WhatsApp — decisión y límite de seguridad:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>Miguel utiliza actualmente WhatsApp Business App en su iPhone y quiere conservar ese número y su uso normal. <B>No migrar, desconectar ni registrar ese número en la API</B> sin explicar primero las consecuencias y recibir autorización expresa.</li>
+          <li>Para una primera prueba futura, evaluar Twilio WhatsApp Sandbox con un número de prueba. Investigar coexistencia entre WhatsApp Business App y WhatsApp Business Platform antes de proponer una migración del número real.</li>
+          <li>WhatsApp se aborda después de que SMS esté integrado y probado. Respetar consentimiento, plantillas aprobadas y reglas de la plataforma.</li>
+        </ul>
+        <P><B>Estado de pruebas y próximo punto exacto de continuación:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li><B>Twilio Console:</B> cuenta creada; todavía no se ha completado en esta sesión la solicitud del token secundario ni una prueba SMS.</li>
+          <li><B>Rotación de credencial:</B> pendiente; no declarar resuelta hasta crear el token nuevo, actualizar cualquier integración que lo use y promoverlo de forma segura. No solicitar el secreto al propietario.</li>
+          <li><B>Prueba SMS de Twilio:</B> pendiente; todavía no hay resultado PASS reportado.</li>
+          <li><B>Integración SMS en CRM:</B> pendiente de implementación y pruebas; no hay evidencia de conexión activa.</li>
+          <li><B>WhatsApp:</B> pendiente, sin migración del número personal de WhatsApp Business App.</li>
+          <li><B>Push:</B> conservar el estado de la sección anterior: prueba LOCAL en iPhone confirmada; prueba REMOTE y disparadores automáticos de citas siguen pendientes y deben informarse por separado.</li>
+          <li><B>Próxima acción al retomar:</B> guiar a Miguel desde Safari, paso a paso, a la pantalla de Auth Tokens para solicitar el secondary token sin compartirlo; después comprobar si usa Twilio en otra aplicación. Luego volver a Twilio Console para la prueba SMS. No pedirle comandos de terminal.</li>
+        </ul>
+        <P>
+          <B>Regla de cierre:</B> solo marcar Twilio como conectado cuando existan credenciales seguras en
+          Vercel, endpoints/webhooks implementados, un deployment correcto y pruebas reales de SMS
+          entrante y saliente registradas. Actualizar esta sección junto con cada cambio de código.
+        </P>
+      </Section>
+
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
