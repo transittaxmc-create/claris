@@ -1,7 +1,9 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { CRMNotifications } from "./crm-notifications"
+import { crmSupabaseBrowser, crmCloudConfigured } from "@/lib/crm/supabase-browser"
+import type { Session } from "@supabase/supabase-js"
 import { Search, Plus, Users, Phone, Mail, CalendarDays, MessageSquare, MoreHorizontal, X, Save, Trash2, UserRound, Clock3, Filter, MapPin, Plane, ExternalLink, Pencil, ArrowUpRight } from "lucide-react"
 
 type ClientStatus = "Lead" | "Active" | "Follow-up" | "Inactive"
@@ -27,6 +29,95 @@ const emptyClient = (): Client => ({
 const inputClass = "w-full rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-3 text-[16px] text-white placeholder:text-neutral-500 outline-none focus:border-yellow-400"
 const labelClass = "mb-1.5 block text-xs font-semibold text-neutral-400"
 
+/**
+ * Panel de cuenta del CRM cloud (Paso 2 — Auth del manual). La sesión es
+ * SOLO del CRM (su Supabase exclusivo); no cambia nada del resto de la
+ * app ni del módulo financiero. Sin sesión, el CRM sigue funcionando en
+ * local como siempre.
+ */
+function CrmCloudPanel({ session, status }: { session: Session | null; status: "off" | "loading" | "synced" | "error" }) {
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState("")
+
+  if (!crmCloudConfigured()) {
+    return (
+      <div className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-3">
+        <p className="text-xs font-bold text-neutral-300">CRM CLOUD</p>
+        <p className="mt-1 text-xs text-neutral-500">Cloud sync is not configured in this build. Records stay on this device.</p>
+      </div>
+    )
+  }
+
+  const sb = () => crmSupabaseBrowser()
+
+  const signIn = async () => {
+    const client = sb()
+    if (!client || busy) return
+    setBusy(true); setMessage("")
+    const { error } = await client.auth.signInWithPassword({ email: email.trim(), password })
+    setBusy(false)
+    setMessage(error ? "Could not sign in. Check the email and password." : "")
+  }
+  const signUp = async () => {
+    const client = sb()
+    if (!client || busy) return
+    setBusy(true); setMessage("")
+    const { data, error } = await client.auth.signUp({ email: email.trim(), password })
+    setBusy(false)
+    if (error) setMessage("Could not create the account. Try a stronger password or sign in if it already exists.")
+    else if (!data.session) setMessage("Account created. Confirm it from the email we sent you, then sign in.")
+    else setMessage("")
+  }
+  const reset = async () => {
+    const client = sb()
+    if (!client || busy || !email.trim()) { setMessage("Type your email first, then tap Forgot password."); return }
+    setBusy(true); setMessage("")
+    const { error } = await client.auth.resetPasswordForEmail(email.trim())
+    setBusy(false)
+    setMessage(error ? "Could not send the reset email." : "Password reset email sent. Follow its link, then sign in here.")
+  }
+  const signOut = async () => {
+    const client = sb()
+    if (!client || busy) return
+    setBusy(true)
+    await client.auth.signOut()
+    setBusy(false)
+  }
+
+  if (session) {
+    return (
+      <div className="flex items-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900/70 p-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-bold text-neutral-300">CRM CLOUD · {session.user.email || "Signed in"}</p>
+          <p className="mt-0.5 text-[11px] text-neutral-500">
+            {status === "synced" ? "Synced. Clients and reservations also live in the CRM cloud, separate from finance." : status === "loading" ? "Syncing…" : status === "error" ? "Sync problem — your records are safe on this device." : "Connected."}
+          </p>
+        </div>
+        <button onClick={signOut} disabled={busy} className="shrink-0 rounded-xl border border-neutral-700 px-3 py-2.5 text-xs font-bold text-white disabled:opacity-40">Sign out</button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-2xl border border-neutral-800 bg-neutral-900/70 p-3">
+      <p className="text-xs font-bold text-neutral-300">CRM CLOUD</p>
+      <p className="mt-1 text-[11px] text-neutral-500">Sign in to sync clients and reservations across your phones. They live in the CRM's own cloud, separate from finance.</p>
+      <div className="mt-2 space-y-2">
+        <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" autoComplete="email" className={inputClass} />
+        <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" autoComplete="current-password" className={inputClass} />
+      </div>
+      {message && <p className="mt-2 text-[11px] font-bold text-yellow-300">{message}</p>}
+      <div className="mt-2 flex gap-2">
+        <button onClick={signIn} disabled={busy || !email.trim() || !password} className="flex-1 rounded-xl bg-yellow-400 py-3 text-sm font-extrabold text-black disabled:opacity-40">Sign in</button>
+        <button onClick={signUp} disabled={busy || !email.trim() || !password} className="flex-1 rounded-xl border border-neutral-700 py-3 text-sm font-bold text-white disabled:opacity-40">Create account</button>
+      </div>
+      <button onClick={reset} disabled={busy} className="mt-2 text-[11px] font-bold text-neutral-400 underline disabled:opacity-40">Forgot password</button>
+    </div>
+  )
+}
+
 export function CRMScreen() {
   const [clients, setClients] = useState<Client[]>([])
   const [ready, setReady] = useState(false)
@@ -50,6 +141,101 @@ export function CRMScreen() {
     if (!ready) return
     try { localStorage.setItem(STORE, JSON.stringify(clients)) } catch {}
   }, [clients, ready])
+
+  // ---- CRM cloud: sesión y sincronización con el Supabase exclusivo del CRM ----
+  const [session, setSession] = useState<Session | null>(null)
+  const [cloudStatus, setCloudStatus] = useState<"off" | "loading" | "synced" | "error">("off")
+  const [cloudSeedReservations, setCloudSeedReservations] = useState<CRMReservation[] | null>(null)
+  const [cloudSeedNonce, setCloudSeedNonce] = useState(0)
+  const cloudClientIds = useRef<Set<string>>(new Set())
+  const cloudSynced = useRef(false)
+  const applyingCloud = useRef(false)
+
+  useEffect(() => {
+    const sb = crmSupabaseBrowser()
+    if (!sb) return
+    sb.auth.getSession().then(({ data }) => setSession(data.session))
+    const { data: sub } = sb.auth.onAuthStateChange((_e, s) => {
+      setSession(s)
+      if (!s) {
+        cloudSynced.current = false
+        cloudClientIds.current = new Set()
+        setCloudSeedReservations(null)
+        setCloudStatus("off")
+      }
+    })
+    return () => sub.subscription.unsubscribe()
+  }, [])
+
+  const cloudPost = useCallback(async (payload: Record<string, unknown>) => {
+    const r = await fetch("/api/crm/state", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+    if (!r.ok) throw new Error("crm_sync_failed")
+    return r.json()
+  }, [])
+
+  // Carga inicial con sesión: la nube manda en los ids que tenga; lo local
+  // que la nube no tenga se SUBE (migración idempotente con los mismos ids)
+  // y localStorage NUNCA se borra: queda como caché del dispositivo.
+  useEffect(() => {
+    if (!session || !ready || cloudSynced.current) return
+    cloudSynced.current = true
+    setCloudStatus("loading")
+    ;(async () => {
+      try {
+        const r = await fetch("/api/crm/state", { cache: "no-store" })
+        if (!r.ok) throw new Error("crm_read_failed")
+        const data = await r.json()
+        const cloudClients = (data.clients || []) as unknown as Client[]
+        const cloudIds = new Set(cloudClients.map((c) => c.id))
+        const localOnly = clients.filter((c) => !cloudIds.has(c.id))
+        const merged = [...cloudClients, ...localOnly].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+        applyingCloud.current = true
+        setClients(merged)
+        if (localOnly.length) {
+          const res = await cloudPost({ upsertClients: localOnly })
+          if (typeof res?.counts?.clients === "number" && res.counts.clients < merged.length) throw new Error("crm_count_mismatch")
+        }
+        cloudClientIds.current = new Set(merged.map((c) => c.id))
+        setCloudSeedReservations((data.reservations || []) as unknown as CRMReservation[])
+        setCloudSeedNonce((n) => n + 1)
+        setCloudStatus("synced")
+      } catch {
+        setCloudStatus("error")
+      } finally {
+        applyingCloud.current = false
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, ready])
+
+  // Escritura continua de clientes: cada cambio local se refleja en la nube
+  // (upsert del conjunto + borrados desde la última sync confirmada).
+  useEffect(() => {
+    if (!ready || !session || cloudStatus !== "synced" || applyingCloud.current) return
+    const t = setTimeout(async () => {
+      const currentIds = new Set(clients.map((c) => c.id))
+      const deleted = [...cloudClientIds.current].filter((id) => !currentIds.has(id))
+      try {
+        await cloudPost({ upsertClients: clients, deleteClientIds: deleted })
+        cloudClientIds.current = currentIds
+      } catch {
+        setCloudStatus("error")
+      }
+    }, 800)
+    return () => clearTimeout(t)
+  }, [clients, ready, session, cloudStatus, cloudPost])
+
+  const pushReservationsToCloud = useCallback(
+    async (items: CRMReservation[], deletedIds: string[]) => {
+      if (!session) return
+      try {
+        await cloudPost({ upsertReservations: items, deleteReservationIds: deletedIds })
+      } catch {
+        setCloudStatus("error")
+      }
+    },
+    [session, cloudPost],
+  )
 
   // Local reminder: existing client follow-up dates only. It runs when CRM is opened
   // and permission has already been granted; it is not a background scheduler.
@@ -146,6 +332,8 @@ export function CRMScreen() {
         <button onClick={() => { setActiveTab("clients"); setSelected(null); setShowForm(false); setEditing(null) }} className={"rounded-lg px-3 py-2.5 text-sm font-bold " + (activeTab === "clients" ? "bg-yellow-400 text-black" : "text-neutral-400")}>Clients</button>
         <button onClick={() => { setActiveTab("reservations"); setSelected(null); setShowForm(false); setEditing(null) }} className={"rounded-lg px-3 py-2.5 text-sm font-bold " + (activeTab === "reservations" ? "bg-yellow-400 text-black" : "text-neutral-400")}>Reservations</button>
       </div>
+
+      <CrmCloudPanel session={session} status={cloudStatus} />
 
       {activeTab === "clients" ? (
       <>
@@ -255,10 +443,10 @@ export function CRMScreen() {
           ))}
         </div>
       )}
-      <p className="text-center text-[10px] text-neutral-600">Client records are currently saved on this device. CRM cloud sync is not connected.</p>
+      <p className="text-center text-[10px] text-neutral-600">{session ? (cloudStatus === "synced" ? "Client records are synced with the CRM cloud and also kept on this device." : cloudStatus === "error" ? "CRM cloud sync hit a problem — records are safe on this device." : "Connecting to the CRM cloud…") : "Client records are currently saved on this device. Sign in above to sync them with the CRM cloud."}</p>
       </>
       ) : (
-        <CRMReservations clients={clients.map(({ id, name, phone, email }) => ({ id, name, phone, email }))} />
+        <CRMReservations clients={clients.map(({ id, name, phone, email }) => ({ id, name, phone, email }))} cloudSeed={cloudSeedReservations} cloudSeedNonce={cloudSeedNonce} onCloudSync={session ? pushReservationsToCloud : null} />
       )}
     </section>
   )
@@ -349,7 +537,7 @@ function AddressNavigation({ label, address }: { label: string; address: string 
   )
 }
 
-function CRMReservations({ clients }: { clients: CRMClientOption[] }) {
+function CRMReservations({ clients, cloudSeed, cloudSeedNonce, onCloudSync }: { clients: CRMClientOption[]; cloudSeed: CRMReservation[] | null; cloudSeedNonce: number; onCloudSync: ((items: CRMReservation[], deletedIds: string[]) => void) | null }) {
   const [reservations, setReservations] = useState<CRMReservation[]>([])
   const [ready, setReady] = useState(false)
   const [editing, setEditing] = useState<CRMReservation | null>(null)
@@ -373,6 +561,38 @@ function CRMReservations({ clients }: { clients: CRMClientOption[] }) {
     if (!ready) return
     try { localStorage.setItem(RESERVATIONS_STORE, JSON.stringify(reservations)) } catch {}
   }, [reservations, ready])
+
+  // ---- CRM cloud (reservas): merge de la semilla y escritura continua ----
+  const seedAppliedNonce = useRef(0)
+  const lastSyncedIds = useRef<Set<string>>(new Set())
+  const [seedMerged, setSeedMerged] = useState(false)
+
+  useEffect(() => {
+    if (!cloudSeed || !ready || seedAppliedNonce.current === cloudSeedNonce) return
+    seedAppliedNonce.current = cloudSeedNonce
+    const cloudIds = new Set(cloudSeed.map((r) => r.id))
+    const localOnly = reservations.filter((r) => !cloudIds.has(r.id))
+    const merged = [...cloudSeed, ...localOnly]
+    setReservations(merged)
+    lastSyncedIds.current = new Set(cloudSeed.map((r) => r.id))
+    setSeedMerged(true)
+    if (localOnly.length && onCloudSync) {
+      onCloudSync(merged, [])
+      lastSyncedIds.current = new Set(merged.map((r) => r.id))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cloudSeed, cloudSeedNonce, ready])
+
+  useEffect(() => {
+    if (!ready || !seedMerged || !onCloudSync) return
+    const t = setTimeout(() => {
+      const currentIds = new Set(reservations.map((r) => r.id))
+      const deleted = [...lastSyncedIds.current].filter((id) => !currentIds.has(id))
+      onCloudSync(reservations, deleted)
+      lastSyncedIds.current = currentIds
+    }, 800)
+    return () => clearTimeout(t)
+  }, [reservations, ready, seedMerged, onCloudSync])
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
@@ -563,7 +783,7 @@ function CRMReservations({ clients }: { clients: CRMClientOption[] }) {
           ))}
         </div>
       )}
-      <p className="text-center text-[10px] text-neutral-600">Reservations are saved on this device only. Cloud backup/sync is not connected yet.</p>
+      <p className="text-center text-[10px] text-neutral-600">{cloudSeed ? "Reservations are synced with the CRM cloud and also kept on this device." : "Reservations are saved on this device only. Sign in above to sync them with the CRM cloud."}</p>
     </div>
   )
 }
