@@ -1142,6 +1142,66 @@ export function HowItWorksScreen() {
         </P>
       </Section>
 
+
+      <Section title="18. CRM AUTH + TABLAS — resultado del paso 3 (2026-11-25)">
+        <P>
+          <B>Base de datos aplicada:</B> migración Supabase
+          <B>20261126024701_crm_auth_clients_reservations_rls</B>, nombre
+          <B>crm_auth_clients_reservations_rls</B>, aplicada con resultado SUCCESS en el proyecto
+          <B>mimgwleghecseoymgdug</B>. El archivo SQL correspondiente quedó guardado en el
+          repositorio: <B>supabase/migrations/20261126024701_crm_auth_clients_reservations_rls.sql</B>.
+        </P>
+        <P>
+          <B>Tablas creadas y verificadas:</B> public.crm_clients y public.crm_reservations.
+          Ambas tienen RLS habilitado, referencia a auth.users mediante user_id, índices para
+          búsquedas/fechas y políticas explícitas SELECT, INSERT, UPDATE y DELETE para el usuario
+          propietario. Las reservaciones validan además que el cliente relacionado pertenezca al
+          mismo usuario. Al borrar un cliente, client_id de sus reservaciones se establece en NULL;
+          las reservaciones no se borran por cascada.
+        </P>
+        <P>
+          <B>Verificación posterior:</B> list_tables confirmó las dos tablas y RLS enabled=true;
+          pg_policies confirmó las ocho políticas (cuatro por tabla); advisor de seguridad devolvió
+          <B>0 hallazgos</B> después de revocar EXECUTE público/anon/authenticated sobre
+          public.rls_auto_enable(). Se conservó el event trigger ensure_rls habilitado. Las tablas
+          están vacías (0 filas) y auth.users continúa con 0 usuarios. No se cargaron datos de
+          localStorage ni se crearon usuarios de prueba.
+        </P>
+        <P>
+          <B>Paso 3 — COMPLETADO:</B> estructura inicial de clientes y reservaciones y controles RLS
+          creados y verificados. Esto no significa que la interfaz CRM ya esté conectada a las
+          tablas; esa integración y la migración segura de los datos del teléfono son tareas
+          posteriores.
+        </P>
+        <P>
+          <B>Paso 2 — Auth de la aplicación — PENDIENTE:</B> la infraestructura Auth de Supabase
+          existe, pero todavía no se implementaron registro, login, logout, recuperación de
+          contraseña, clientes SSR/browser, proxy.ts ni protección server-side con getClaims().
+          package.json y pnpm-lock.yaml siguen sin los paquetes Supabase. No afirmar que el usuario
+          puede iniciar sesión ni que las rutas ya están protegidas.
+        </P>
+        <P>
+          <B>Bloqueo de herramientas:</B> la integración Vercel devolvió 403 Forbidden tanto al
+          consultar deployments como al intentar crear un sandbox de trabajo; no se pudo usar el
+          CLI fallback desde las herramientas disponibles. Por eso no se ejecutó build ni se pudo
+          verificar el deployment disparado por los commits. Para completar Auth con instalación
+          reproducible y validar build/deployment, se necesita recuperar acceso autorizado al
+          proyecto Vercel <B>claris</B>. No cambiar de proyecto ni usar el proyecto Vercel separado
+          <B>claris-lime</B> por error.
+        </P>
+        <P>
+          <B>Commits de documentación y migración:</B> manual actualizado en el commit
+          <B>84b026c28bcd52cf69080d082a20ef6ebcff141d</B>; archivo de migración SQL añadido en
+          <B>0a29323b3371594b7534bad828fea71adeae3cc9</B>. Estos commits registran la documentación
+          y el SQL, no equivalen a un deployment READY.
+        </P>
+        <P>
+          <B>Notificaciones:</B> no se realizó prueba push en esta etapa. La prueba local en iPhone
+          confirmada anteriormente sigue siendo LOCAL TEST = PASS; Remote Push Test y
+          automatizaciones siguen pendientes.
+        </P>
+      </Section>
+
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
