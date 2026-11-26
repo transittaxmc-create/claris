@@ -265,6 +265,31 @@ export function CRMScreen() {
 }
 
 type CRMClientOption = { id: string; name: string; phone: string; email: string }
+type FlightLookup = {
+  reservationId: string
+  status: "not_found" | "stale" | "on_ground" | "in_air"
+  callsign?: string
+  flight?: string
+  registration?: string | null
+  aircraftType?: string | null
+  latitude?: number | null
+  longitude?: number | null
+  altitudeFeet?: number | null
+  groundSpeedKnots?: number | null
+  heading?: number | null
+  lastPositionSeconds?: number | null
+  lastSignalSeconds?: number | null
+  checkedAt?: string
+}
+const CRM_AIRPORTS = [
+  { code: "JFK", label: "JFK — John F. Kennedy International, NY" },
+  { code: "LGA", label: "LGA — LaGuardia, NY" },
+  { code: "EWR", label: "EWR — Newark Liberty, NJ" },
+  { code: "ISP", label: "ISP — Long Island MacArthur, NY" },
+  { code: "BDL", label: "BDL — Bradley International, CT" },
+  { code: "HVN", label: "HVN — Tweed New Haven, CT" },
+  { code: "HPN", label: "HPN — Westchester County, NY (nearby)" },
+]
 type ReservationStatus = "Requested" | "Confirmed" | "Completed" | "Cancelled"
 type PickupKind = "standard" | "airport"
 type CRMReservation = {
@@ -331,6 +356,9 @@ function CRMReservations({ clients }: { clients: CRMClientOption[] }) {
   const [showForm, setShowForm] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [query, setQuery] = useState("")
+  const [flightLookup, setFlightLookup] = useState<FlightLookup | null>(null)
+  const [flightLoading, setFlightLoading] = useState(false)
+  const [flightError, setFlightError] = useState<string | null>(null)
 
   useEffect(() => {
     try {
@@ -377,6 +405,29 @@ function CRMReservations({ clients }: { clients: CRMClientOption[] }) {
     setReservations((prev) => prev.filter((r) => r.id !== id))
     setSelectedId(null)
   }
+  async function trackFlight(reservation: CRMReservation) {
+    setFlightLoading(true)
+    setFlightError(null)
+    setFlightLookup(null)
+    try {
+      const response = await fetch("/api/crm/flights/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ airline: reservation.airline, flightNumber: reservation.flightNumber }),
+      })
+      const data = await response.json()
+      if (!response.ok) {
+        setFlightError(typeof data.message === "string" ? data.message : "Could not check this flight. Verify the airline and flight number.")
+        return
+      }
+      setFlightLookup({ ...data, reservationId: reservation.id } as FlightLookup)
+    } catch {
+      setFlightError("Could not reach the live flight service. Try again later.")
+    } finally {
+      setFlightLoading(false)
+    }
+  }
+
   function patch<K extends keyof CRMReservation>(key: K, value: CRMReservation[K]) {
     setEditing((prev) => prev ? { ...prev, [key]: value } : prev)
   }
@@ -419,7 +470,15 @@ function CRMReservations({ clients }: { clients: CRMClientOption[] }) {
               <div className="space-y-3 rounded-xl border border-sky-900/70 bg-sky-950/20 p-3">
                 <div className="flex items-center gap-2 text-sm font-extrabold text-sky-200"><Plane className="size-4" /> Airport flight information</div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div><label className={reservationLabel}>Airport name / code *</label><input value={editing.airport} onChange={(e) => patch("airport", e.target.value)} className={reservationInput} placeholder="JFK, LGA, EWR…" /></div>
+                  <div>
+                    <label className={reservationLabel}>Airport *</label>
+                    <select value={CRM_AIRPORTS.some((a) => a.code === editing.airport) ? editing.airport : editing.airport ? "__other__" : ""} onChange={(e) => patch("airport", e.target.value === "__other__" ? "" : e.target.value)} className={reservationInput}>
+                      <option value="">Select airport</option>
+                      {CRM_AIRPORTS.map((airport) => <option key={airport.code} value={airport.code}>{airport.label}</option>)}
+                      <option value="__other__">Other airport / enter manually</option>
+                    </select>
+                    {!CRM_AIRPORTS.some((a) => a.code === editing.airport) && <input value={editing.airport} onChange={(e) => patch("airport", e.target.value.toUpperCase())} className={reservationInput + " mt-2"} placeholder="Enter airport name or code" />}
+                  </div>
                   <div><label className={reservationLabel}>Airline</label><input value={editing.airline} onChange={(e) => patch("airline", e.target.value)} className={reservationInput} placeholder="Airline name" /></div>
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -431,7 +490,7 @@ function CRMReservations({ clients }: { clients: CRMClientOption[] }) {
                   <div><label className={reservationLabel}>Terminal (optional)</label><input value={editing.terminal} onChange={(e) => patch("terminal", e.target.value)} className={reservationInput} placeholder="Terminal" /></div>
                 </div>
                 <div><label className={reservationLabel}>Gate (optional)</label><input value={editing.gate} onChange={(e) => patch("gate", e.target.value)} className={reservationInput} placeholder="Gate" /></div>
-                <p className="text-[11px] leading-relaxed text-sky-100/70">Regular pickups do not ask for flight details. Flight status is not yet synced into Copiloto; Track Flight opens the external tracker.</p>
+                <p className="text-[11px] leading-relaxed text-sky-100/70">Regular pickups do not ask for flight details. Live tracking is checked only when you tap the button; no automatic polling or paid API is enabled.</p>
               </div>
             )}
             <div><label className={reservationLabel}>Reservation notes</label><textarea rows={3} value={editing.notes} onChange={(e) => patch("notes", e.target.value)} className={reservationInput + " resize-y"} placeholder="Special instructions, luggage, meeting point…" /></div>
@@ -454,8 +513,34 @@ function CRMReservations({ clients }: { clients: CRMClientOption[] }) {
               <p className="mt-2 text-sm text-white">{current.airline ? current.airline + " · " : ""}{current.flightNumber}</p>
               <p className="mt-1 text-xs text-neutral-300">{current.airport} · {current.flightDate}{current.scheduledArrival ? " · Arrival " + current.scheduledArrival : ""}</p>
               {(current.terminal || current.gate) && <p className="mt-1 text-xs text-neutral-400">{[current.terminal && "Terminal " + current.terminal, current.gate && "Gate " + current.gate].filter(Boolean).join(" · ")}</p>}
-              <a href={flightAwareLink(current.flightNumber)} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-2 rounded-xl bg-sky-200 px-3 py-2.5 text-xs font-extrabold text-sky-950"><Plane className="size-4" /> Track Flight <ExternalLink className="size-3.5" /></a>
-              <p className="mt-2 text-[10px] leading-relaxed text-sky-100/70">FlightAware opens in a separate page. Copiloto does not yet receive automatic flight-status updates.</p>
+              <button disabled={flightLoading} onClick={() => trackFlight(current)} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-sky-200 px-3 py-2.5 text-xs font-extrabold text-sky-950 disabled:opacity-50"><Plane className="size-4" /> {flightLoading ? "Checking live aircraft…" : "Track Flight — Live ADS-B"}</button>
+              {flightError && <p role="alert" className="mt-2 rounded-lg border border-rose-900/70 bg-rose-950/30 p-2 text-xs text-rose-200">{flightError}</p>}
+              {flightLookup?.reservationId === current.id && (
+                <div className="mt-3 rounded-xl border border-sky-800/70 bg-neutral-950/80 p-3">
+                  {flightLookup.status === "in_air" && <p className="text-sm font-extrabold text-emerald-300">Aircraft detected in flight</p>}
+                  {flightLookup.status === "on_ground" && <p className="text-sm font-extrabold text-amber-300">Aircraft signal detected on the ground</p>}
+                  {flightLookup.status === "stale" && <p className="text-sm font-extrabold text-amber-300">Last aircraft position is not recent</p>}
+                  {flightLookup.status === "not_found" && <p className="text-sm font-extrabold text-neutral-200">No live ADS-B signal found for this callsign</p>}
+                  {flightLookup.callsign && <p className="mt-1 text-xs text-neutral-300">ICAO callsign: {flightLookup.callsign}</p>}
+                  {flightLookup.status !== "not_found" && (
+                    <>
+                      <p className="mt-1 text-xs text-neutral-300">{[flightLookup.registration, flightLookup.aircraftType].filter(Boolean).join(" · ") || "Aircraft identity not provided"}</p>
+                      {flightLookup.latitude != null && flightLookup.longitude != null && <a href={`https://www.google.com/maps?q=${flightLookup.latitude},${flightLookup.longitude}`} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-sky-300"><MapPin className="size-3.5" /> View last aircraft position</a>}
+                      <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-neutral-300">
+                        {flightLookup.altitudeFeet != null && <span>Altitude: {flightLookup.altitudeFeet.toLocaleString()} ft</span>}
+                        {flightLookup.groundSpeedKnots != null && <span>Speed: {flightLookup.groundSpeedKnots} kt</span>}
+                        {flightLookup.heading != null && <span>Heading: {flightLookup.heading}°</span>}
+                        {flightLookup.lastPositionSeconds != null && <span>Position age: {Math.round(flightLookup.lastPositionSeconds)} sec</span>}
+                      </div>
+                    </>
+                  )}
+                  {flightLookup.status === "not_found" && <p className="mt-1 text-[11px] leading-relaxed text-neutral-400">This does not mean the flight is cancelled. It may not have departed, may be outside receiver coverage, or the airline/callsign may differ.</p>}
+                  {flightLookup.status === "on_ground" && <p className="mt-1 text-[11px] leading-relaxed text-neutral-400">Ground signal is not proof that the aircraft has landed or that passengers can be collected.</p>}
+                  <p className="mt-2 text-[10px] text-neutral-500">Source: <a href="https://www.adsb.lol/" target="_blank" rel="noreferrer" className="underline">ADSB.lol</a> · ODbL 1.0 · checked {flightLookup.checkedAt ? new Date(flightLookup.checkedAt).toLocaleTimeString() : "just now"}</p>
+                </div>
+              )}
+              <a href={flightAwareLink(current.flightNumber)} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-bold text-sky-300"><ExternalLink className="size-3.5" /> Open FlightAware as backup</a>
+              <p className="mt-2 text-[10px] leading-relaxed text-sky-100/70">ADSB.lol provides live aircraft transponder positions, not airline schedule confirmation. It cannot confirm delays, cancellations, gate changes or a passenger's readiness. Check the airline/airport for operational decisions.</p>
             </div>
           )}
           {current.notes && <div className="rounded-xl bg-neutral-950 p-3"><p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-neutral-500">Notes</p><p className="whitespace-pre-wrap text-sm text-neutral-200">{current.notes}</p></div>}
