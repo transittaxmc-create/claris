@@ -1259,6 +1259,99 @@ export function HowItWorksScreen() {
         </P>
       </Section>
 
+
+      <Section title="19. AUTH SSR IMPLEMENTADO — validación pendiente de cuenta real (2026-11-26)">
+        <P><B>Proyecto Supabase CRM:</B> mimgwleghecseoymgdug (ACTIVE_HEALTHY). Auth respondió HTTP 200 (GoTrue v2.199.0). No se crearon usuarios de prueba ni se enviaron correos.</P>
+        <P><B>Separación de Finanzas:</B> NEXT_PUBLIC_SUPABASE_URL y SUPABASE_URL no se modificaron. Se crearon NEXT_PUBLIC_CRM_SUPABASE_URL y NEXT_PUBLIC_CRM_SUPABASE_PUBLISHABLE_KEY en Vercel Production, Preview y Development, apuntando exclusivamente al proyecto CRM. Nunca se usa service_role en el cliente.</P>
+        <P><B>Implementación:</B> @supabase/ssr 0.12.7 y @supabase/supabase-js 2.119.2; clientes browser/server, proxy.ts de Next.js 16 con getClaims(), protección server-side en app/page.tsx, login/registro/recuperación, callback PKCE, cambio de contraseña y logout. Los datos locales no se migraron ni modificaron.</P>
+        <P><B>Pruebas:</B> pnpm build = PASS; no hay errores TypeScript en los archivos nuevos de Auth. tsc --noEmit completo aún detecta errores previos en componentes legacy; next.config mantiene ignoreBuildErrors. Smoke test: /login HTTP 200, / HTTP 307 a /login sin sesión y callback sin código vuelve a login. Auth health HTTP 200. Migración 20261126033314_crm_reservations_owner_fk_index aplicada; desapareció el aviso unindexed_foreign_keys. Los avisos INFO de índices no usados corresponden a tablas vacías y se conservan.</P>
+        <P><B>Pendiente:</B> añadir a Supabase Auth → URL Configuration Site URL https://claris-lime.vercel.app y redirects https://claris-lime.vercel.app/auth/callback, https://claris-git-feat-crm-supabase-auth-island-city.vercel.app/auth/callback, https://claris-8lrcudhta-island-city.vercel.app/auth/callback y http://localhost:3000/auth/callback; confirmar y probar signup/email confirmation, login, sesión persistente, logout y reset con una cuenta real. No se creó usuario ni se envió correo.</P>
+        <P><B>CRM cloud:</B> crm-screen.tsx sigue usando localStorage; las tablas siguen vacías. Migración idempotente y pruebas RLS con dos usuarios pendientes.</P>
+        <P><B>Deployment:</B> Preview Vercel READY — dpl_HTEzSUwJMLnL4uC89YcXdUq5Zkyv, https://claris-1r6d9gkfl-island-city.vercel.app. Smoke test: /login HTTP 200, / HTTP 307 hacia /login y callback sin código vuelve a login. Esta rama no se desplegó a producción; el último deployment de producción sigue READY en 63accec. Push notifications: sin cambios; no se registraron dispositivos nuevos ni se ejecutaron pruebas push. Remote Push Test y automatizaciones pendientes.</P>
+      </Section>
+
+      <Section title="20. CRM COPILOTO V7 — base de datos nueva y seguridad verificada (2026-11-26)">
+        <P>
+          <B>Aclaración de arquitectura:</B> este es un CRM nuevo y separado; no se importa ni se
+          reutiliza la base financiera antigua <B>zrcnpmipdhpjdjkfrrgt</B>. El proyecto dedicado
+          <B>mimgwleghecseoymgdug</B> es la base CRM nueva. En esta fecha ya existe su esquema
+          inicial, pero no contiene clientes, reservaciones ni usuarios reales.
+        </P>
+        <P>
+          <B>Esquema inicial confirmado:</B> <B>public.crm_clients</B> (datos de contacto,
+          empresa, estado, origen, notas y próxima gestión) y <B>public.crm_reservations</B>
+          (pasajero, teléfono, fecha/hora, pasajeros, estado, direcciones, aeropuerto, aerolínea,
+          vuelo, fecha de vuelo, llegada, terminal, puerta y notas). Ambas tablas tienen
+          <B>0 filas</B>; <B>auth.users tiene 0 usuarios</B>. No se ha importado ni borrado
+          información del almacenamiento local.
+        </P>
+        <P>
+          <B>Relaciones y controles:</B> UUID por registro; user_id vinculado a auth.users;
+          client_id vinculado al cliente del mismo propietario; índices por propietario/fecha y
+          por relación cliente; RLS habilitado en las dos tablas; ocho políticas (SELECT, INSERT,
+          UPDATE y DELETE por tabla) con propiedad comprobada por auth.uid(). Al borrar un cliente,
+          la reservación conserva su registro y client_id pasa a NULL.
+        </P>
+        <P>
+          <B>Endurecimiento aplicado:</B> migración
+          <B>20261126035245_crm_database_hardening_airport_validation</B>. Se revocaron todos los
+          privilegios de tabla de anon; authenticated conserva solamente SELECT/INSERT/UPDATE/DELETE.
+          También se ajustaron los privilegios por defecto de futuras tablas/secuencias públicas
+          para evitar exposición anónima accidental. La función automática de RLS permanece
+          restringida; no se habilitó acceso público.
+        </P>
+        <P>
+          <B>Regla de aeropuerto:</B> la base de datos exige flight_number no vacío cuando
+          pickup_kind = airport. La prueba negativa intentó insertar una recogida de aeropuerto
+          sin vuelo y la base la rechazó (PASS).
+        </P>
+        <P>
+          <B>Prueba de aislamiento RLS:</B> se crearon dos identidades temporales dentro de una
+          transacción que terminó en ROLLBACK. Usuario A pudo insertar su cliente; al cambiar el
+          JWT simulado a usuario B, la consulta devolvió 0 filas. El rol anon no tiene SELECT y
+          authenticated conserva CRUD. Resultado: PASS para aislamiento de lectura y permisos.
+          Los usuarios y el registro de prueba fueron revertidos; no quedaron cuentas de prueba.
+          Falta completar E2E con dos cuentas reales de Auth.
+        </P>
+        <P>
+          <B>Verificación:</B> advisor de seguridad Supabase = <B>0 hallazgos</B> (lints vacíos);
+          list_tables confirmó las dos tablas con RLS; pg_policies confirmó cuatro políticas por
+          tabla; la migración figura aplicada. Supabase project status = ACTIVE_HEALTHY.
+        </P>
+        <P>
+          <B>Auth de aplicación:</B> implementación SSR descrita en la sección 19 está en la rama
+          <B>feat/crm-supabase-auth</B> y PR draft <B>#81</B>; no se ha fusionado a main. Sigue
+          pendiente verificar/guardar Site URL y Redirect URLs en Supabase Auth → URL Configuration
+          y probar registro, confirmación de email, login, sesión, logout y reset con una cuenta real.
+          El conector disponible no expone una acción para editar esa configuración de Auth; no se
+          afirma que haya sido cambiada.
+        </P>
+        <P>
+          <B>Integración de datos:</B> <B>crm-screen.tsx</B> todavía usa localStorage. No conectar
+          todavía la UI ni migrar automáticamente: primero completar Auth real; después implementar
+          sincronización idempotente y comparar conteos antes de conservar/eliminar cualquier dato
+          local. No hay migración de clientes ni reservaciones ejecutada.
+        </P>
+        <P>
+          <B>Deployment y notificaciones:</B> Preview más reciente para el commit
+          <B>1e645dbdeee1701790e22a2594273bbd127ad32a</B>, deployment
+          <B>dpl_J6JLC5NZB4od4VniB1xahDBYwdVb</B>, estado final confirmado
+          <B>READY</B>; alias
+          <B>https://claris-git-feat-crm-supabase-auth-island-city.vercel.app</B>. Smoke tests
+          HTTP: <B>/login</B> devuelve 200 y presenta formulario de acceso; <B>/</B> sin sesión
+          termina en pantalla de login; <B>/auth/callback</B> sin código vuelve a login. Esto no
+          sustituye una prueba de login real. Producción permanece sin cambios en el deployment
+          READY anterior. No se registraron dispositivos push ni se ejecutaron pruebas push en
+          esta etapa. Remote Push Test y recordatorios programados siguen pendientes.
+        </P>
+        <P>
+          <B>Siguiente etapa:</B> completar URL Configuration y pruebas de Auth reales; luego
+          conectar Clientes/Reservaciones a Supabase, verificar CRUD desde la aplicación y repetir
+          pruebas de aislamiento con dos cuentas reales. Mantener completamente separado el
+          proyecto financiero.
+        </P>
+      </Section>
+
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
