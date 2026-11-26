@@ -1259,6 +1259,17 @@ export function HowItWorksScreen() {
         </P>
       </Section>
 
+
+      <Section title="19. AUTH SSR IMPLEMENTADO — validación pendiente de cuenta real (2026-11-26)">
+        <P><B>Proyecto Supabase CRM:</B> mimgwleghecseoymgdug (ACTIVE_HEALTHY). Auth respondió HTTP 200 (GoTrue v2.199.0). No se crearon usuarios de prueba ni se enviaron correos.</P>
+        <P><B>Separación de Finanzas:</B> NEXT_PUBLIC_SUPABASE_URL y SUPABASE_URL no se modificaron. Se crearon NEXT_PUBLIC_CRM_SUPABASE_URL y NEXT_PUBLIC_CRM_SUPABASE_PUBLISHABLE_KEY en Vercel Production, Preview y Development, apuntando exclusivamente al proyecto CRM. Nunca se usa service_role en el cliente.</P>
+        <P><B>Implementación:</B> @supabase/ssr 0.12.7 y @supabase/supabase-js 2.119.2; clientes browser/server, proxy.ts de Next.js 16 con getClaims(), protección server-side en app/page.tsx, login/registro/recuperación, callback PKCE, cambio de contraseña y logout. Los datos locales no se migraron ni modificaron.</P>
+        <P><B>Pruebas:</B> pnpm build = PASS; no hay errores TypeScript en los archivos nuevos de Auth. tsc --noEmit completo aún detecta errores previos en componentes legacy; next.config mantiene ignoreBuildErrors. Smoke test: /login HTTP 200, / HTTP 307 a /login sin sesión y callback sin código vuelve a login. Auth health HTTP 200. Migración 20261126033314_crm_reservations_owner_fk_index aplicada; desapareció el aviso unindexed_foreign_keys. Los avisos INFO de índices no usados corresponden a tablas vacías y se conservan.</P>
+        <P><B>Pendiente:</B> añadir a Supabase Auth → URL Configuration los redirects https://claris-lime.vercel.app/auth/callback y https://claris-8lrcudhta-island-city.vercel.app/auth/callback (más localhost), confirmar Site URL y probar signup/email confirmation, login, sesión persistente, logout y reset con una cuenta real. No se creó usuario ni se envió correo.</P>
+        <P><B>CRM cloud:</B> crm-screen.tsx sigue usando localStorage; las tablas siguen vacías. Migración idempotente y pruebas RLS con dos usuarios pendientes.</P>
+        <P><B>Deployment:</B> esta rama no se desplegó a producción. El último deployment de producción sigue READY en 63accec. Push notifications: sin cambios; no se registraron dispositivos nuevos ni se ejecutaron pruebas push. Remote Push Test y automatizaciones pendientes.</P>
+      </Section>
+
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
