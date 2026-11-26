@@ -72,15 +72,46 @@ import {
   isValidSyncCode,
   mergeTrips,
   MIN_SYNC_CODE_LENGTH,
+  savedAtOf,
   syncWithCloud,
   type Tombstones,
 } from "@/lib/sync"
+import { DATA_SYNC_KEY_STORAGE, resolveDataSyncKey, syncDataWithServer } from "@/lib/data-sync"
 import { localDateKey } from "@/lib/dates"
 import { compareVersion } from "@/lib/version-check"
-import { applyMergedFinance, collectLocalFinance, financeCounts, FINANCE_SYNCED_EVENT } from "./finance-sync"
+import {
+  applyMergedFinance,
+  collectLocalFinance,
+  financeCounts,
+  FINANCE_BLOB_KEYS,
+  FINANCE_LEDGER_KEY,
+  FINANCE_SCHEDULES_KEY,
+  FINANCE_SYNCED_EVENT,
+  hashText,
+} from "./finance-sync"
 import { queueDualSync, flushDualSyncQueue } from "./dual-sync"
 
 const PRODUCCION_URL = "https://claris-lime.vercel.app"
+
+// Sync automático entre teléfonos (2026-11-19): firmas baratas para
+// detectar cambios sin tocar la red. Cada guardado/edición de viaje o
+// gasto re-sella su savedAt, así que id@savedAt cambia con CUALQUIER
+// cambio; las finanzas se escriben directo a localStorage desde muchas
+// pantallas, así que su firma es el hash del contenido crudo de sus
+// claves (el mismo truco de detección que usa finance-sync.ts).
+function dataSigOf(trips: Trip[], expenses: Expense[]): string {
+  const part = (list: { id: string }[]) => list.map((x) => `${x.id}@${savedAtOf(x as any)}`).join(",")
+  return `${part(trips)}|${part(expenses)}`
+}
+
+function financeRawSig(): string {
+  try {
+    const keys: string[] = [FINANCE_LEDGER_KEY, FINANCE_SCHEDULES_KEY, ...FINANCE_BLOB_KEYS]
+    return keys.map((k) => `${k}=${hashText(localStorage.getItem(k) || "")}`).join("|")
+  } catch {
+    return ""
+  }
+}
 
 function Placeholder({ label }: { label: string }) {
   return (
@@ -176,6 +207,14 @@ export function CopilotoApp() {
   const savedTimer = useRef<number | null>(null)
   const autoSynced = useRef(false)
   const syncInFlight = useRef(false)
+  // Sync automático entre teléfonos (/api/data/*, sin código): activo
+  // solo si hay llave guardada en este teléfono. Silencioso siempre.
+  const [dataSyncKey, setDataSyncKey] = useState<string | null>(null)
+  const dataSyncInFlight = useRef(false)
+  const dataAutoSynced = useRef(false)
+  const dataDebounce = useRef<number | null>(null)
+  const lastDataSig = useRef<string | null>(null)
+  const lastFinanceSig = useRef<string | null>(null)
 
   useEffect(() => {
     tripsRef.current = trips
@@ -277,6 +316,9 @@ export function CopilotoApp() {
       setExpenses(mergedExp.trips as Expense[])
       expensesRef.current = mergedExp.trips as Expense[]
       setSyncCode(loadSyncCode())
+      const dkey = resolveDataSyncKey()
+      if (dkey) setDataSyncKey(dkey)
+      lastFinanceSig.current = financeRawSig()
       setHydrated(true)
     }
     hydrate()
@@ -662,6 +704,99 @@ export function CopilotoApp() {
     }
   }, [hydrated, syncCode, runSync])
 
+  // Sync AUTOMÁTICO entre teléfonos (2026-11-19): mismo ciclo que
+  // runSync (baja → mezcla por ítem → sube) pero por /api/data/* con la
+  // llave de publicación, sin código, e incluyendo DINERO siempre — la
+  // mezcla de finanzas es por ítem con lápidas (mergeFinance), nunca el
+  // documento entero. Totalmente silencioso: si no hay llave o el
+  // servidor no está configurado, la app se comporta como hoy.
+  const runDataSync = useCallback(
+    async (key: string) => {
+      if (dataSyncInFlight.current || syncInFlight.current) return
+      dataSyncInFlight.current = true
+      try {
+        const result = await syncDataWithServer<Trip>(
+          key,
+          tripsRef.current,
+          tombstonesRef.current,
+          expensesRef.current,
+          expenseTombstonesRef.current,
+          collectLocalFinance(),
+        )
+        if (result.ok && Array.isArray(result.trips)) {
+          applyMergedFinance(result.finance)
+          const next = result.trips as Trip[]
+          const nextExp = (result.expenses ?? []) as Expense[]
+          tombstonesRef.current = (result.deleted as Tombstones) ?? {}
+          saveTombstones(tombstonesRef.current)
+          expenseTombstonesRef.current = (result.deletedExpenses as Tombstones) ?? {}
+          saveExpenseTombstones(expenseTombstonesRef.current)
+          tripsRef.current = next
+          setTrips(next)
+          expensesRef.current = nextExp
+          setExpenses(nextExp)
+          persist(next, nextExp)
+          lastDataSig.current = dataSigOf(next, nextExp)
+          lastFinanceSig.current = financeRawSig()
+        }
+      } catch {}
+      dataSyncInFlight.current = false
+    },
+    [persist],
+  )
+
+  // Al abrir la app: un ciclo completo (trae lo del otro teléfono y
+  // publica lo de este, ya mezclado).
+  useEffect(() => {
+    if (!hydrated || !dataSyncKey || dataAutoSynced.current) return
+    dataAutoSynced.current = true
+    runDataSync(dataSyncKey)
+  }, [hydrated, dataSyncKey, runDataSync])
+
+  // Al volver a primer plano: otro ciclo, igual que el sync con código.
+  useEffect(() => {
+    if (!hydrated || !dataSyncKey) return
+    const reconcile = () => {
+      if (document.visibilityState === "visible") runDataSync(dataSyncKey)
+    }
+    window.addEventListener("focus", reconcile)
+    document.addEventListener("visibilitychange", reconcile)
+    return () => {
+      window.removeEventListener("focus", reconcile)
+      document.removeEventListener("visibilitychange", reconcile)
+    }
+  }, [hydrated, dataSyncKey, runDataSync])
+
+  // Publicar al guardar: viajes y gastos viven en el estado de React —
+  // cualquier guardado cambia su firma y dispara un ciclo con debounce.
+  // Si la firma no cambió (el cambio vino del propio ciclo), no se hace
+  // nada: nada de bucles.
+  useEffect(() => {
+    if (!hydrated || !dataSyncKey || !dataAutoSynced.current) return
+    if (dataSigOf(trips, expenses) === lastDataSig.current) return
+    if (dataDebounce.current) window.clearTimeout(dataDebounce.current)
+    dataDebounce.current = window.setTimeout(() => {
+      if (dataSigOf(tripsRef.current, expensesRef.current) !== lastDataSig.current) {
+        runDataSync(dataSyncKey)
+      }
+    }, 2500)
+    return () => {
+      if (dataDebounce.current) window.clearTimeout(dataDebounce.current)
+    }
+  }, [trips, expenses, hydrated, dataSyncKey, runDataSync])
+
+  // Las finanzas se escriben directo a localStorage (sin pasar por el
+  // estado de React): un chequeo cada 30s con la app visible detecta el
+  // cambio por la firma del contenido y dispara el ciclo.
+  useEffect(() => {
+    if (!hydrated || !dataSyncKey) return
+    const id = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return
+      if (financeRawSig() !== lastFinanceSig.current) runDataSync(dataSyncKey)
+    }, 30000)
+    return () => window.clearInterval(id)
+  }, [hydrated, dataSyncKey, runDataSync])
+
   function exportJson() {
     persist(tripsRef.current, expensesRef.current)
     const json = buildExport(trips)
@@ -735,6 +870,12 @@ export function CopilotoApp() {
     expenseTombstonesRef.current = {}
     setSyncCode(null)
     saveSyncCode(null)
+    // Sync automático: fuera la llave local, o al reabrir la app adoptaría
+    // el documento de la nube y el reset no sería total.
+    try {
+      localStorage.removeItem(DATA_SYNC_KEY_STORAGE)
+    } catch {}
+    setDataSyncKey(null)
     setSaveState("idle")
     setSaveError(null)
     refreshInfo()

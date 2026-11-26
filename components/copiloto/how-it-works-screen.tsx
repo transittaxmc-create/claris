@@ -256,6 +256,29 @@ export function HowItWorksScreen() {
             . El servidor solo ve el hash y texto cifrado; nunca ve los datos en claro.
           </li>
           <li>
+            <B>Sync AUTOMÁTICO entre los dos teléfonos (2026-11-26):</B> sin código — al abrir
+            Copiloto, cada teléfono baja lo del otro y publica lo suyo, fusionado por ítem (gana
+            la versión más nueva; lo borrado viaja como lápida y NO resucita). Cubre viajes,
+            gastos y DINERO (ledger + recurrentes). Transporte: Supabase — tabla propia{" "}
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">
+              finance_sync_doc
+            </code>{" "}
+            del proyecto del CRM, con la sesión de Miguel y RLS por dueño (sin service key);
+            rutas{" "}
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">
+              /api/data/publish
+            </code>{" "}
+            y{" "}
+            <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">
+              /api/data/snapshot
+            </code>{" "}
+            con la llave de publicación de siempre. Orden de Miguel (2026-11-26): NO esperar a
+            Vercel — el Blob quedó suspendido y el proyecto financiero congelado (402), por eso el
+            transporte vive en Supabase. Si un teléfono no tiene sesión del CRM abierta o la nube
+            no responde, el sync queda dormido y NO toca ningún dato local. SUBIR/RESTAURAR sigue
+            intacto como respaldo manual.
+          </li>
+          <li>
             <B>Banco (Plaid):</B> Vercel Blob — snapshot en{" "}
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">bank-snapshot.json</code>.
             Se refresca automáticamente cada 5 minutos en la app.
