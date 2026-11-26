@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { CRMNotifications } from "./crm-notifications"
 import { crmSupabaseBrowser, crmCloudConfigured } from "@/lib/crm/supabase-browser"
-import { ensureAccountNumbers, nextAccountNumber, type CrmPhoto } from "@/lib/crm/crm-cloud"
+import { nextAccountNumber, type CrmPhoto } from "@/lib/crm/crm-cloud"
 import { parseMessageForReservation } from "@/lib/crm/parse-message"
 import { verifyAddress } from "@/lib/crm/geocode"
 import { getLocalPhotoDataUrl, saveLocalPhotoDataUrl, deleteLocalPhoto, fileToDownscaledDataUrl, uploadPhotoToCloud, signedPhotoUrl, deleteCloudPhoto } from "@/lib/crm/crm-photos"
@@ -255,6 +255,7 @@ export function CRMScreen({ openMessagesNonce = 0 }: { openMessagesNonce?: numbe
   const [query, setQuery] = useState("")
   const [filter, setFilter] = useState<"All" | ClientStatus>("All")
   const [editing, setEditing] = useState<Client | null>(null)
+  const [accountError, setAccountError] = useState("")
   const [showForm, setShowForm] = useState(false)
   const [selected, setSelected] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<"clients" | "reservations" | "messages">("clients")
@@ -272,7 +273,7 @@ export function CRMScreen({ openMessagesNonce = 0 }: { openMessagesNonce?: numbe
       // Una cuenta por cliente: todo récord sin número recibe el suyo al
       // cargar (orden de creación), y jamás se crea un segundo récord para
       // el mismo cliente — las reservas nuevas se suman a su historial.
-      if (Array.isArray(parsed)) setClients(ensureAccountNumbers(parsed.map((c) => normalizeClient(c as Client))))
+      if (Array.isArray(parsed)) setClients(parsed.map((c) => normalizeClient(c as Client)))
     } catch {}
     setReady(true)
   }, [])
@@ -356,7 +357,7 @@ export function CRMScreen({ openMessagesNonce = 0 }: { openMessagesNonce?: numbe
         // Solo sube lo que NUNCA se sincronizó (migración inicial).
         const localOnly = clients.filter((c) => !cloudIds.has(c.id) && !syncedBefore.has(c.id))
         const keptCloud = cloudClients.filter((c) => !deletedHere.includes(c.id))
-        const merged = ensureAccountNumbers([...keptCloud, ...localOnly].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)))
+        const merged = [...keptCloud, ...localOnly].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
         applyingCloud.current = true
         setClients(merged)
         if (localOnly.length || deletedHere.length) {
@@ -449,9 +450,12 @@ export function CRMScreen({ openMessagesNonce = 0 }: { openMessagesNonce?: numbe
     return sb ? { sb, userId: session.user.id } : null
   }, [session])
 
-  /** Crea el récord de un cliente nuevo (con su número de cuenta) desde la
-   *  bandeja de mensajes. Un cliente por teléfono: si ya existe, se
-   *  devuelve el existente — nunca un segundo archivo. */
+  /** EL MOMENTO DE ACEPTAR (regla de Miguel, 2026-11-26): crear la ficha
+   *  de una persona nueva desde su mensaje en la bandeja ES aceptarla —
+   *  ahí nace su número de cuenta ACT-0-###, antes de que exista reserva.
+   *  Hasta ese momento la persona no tiene número. Un cliente por
+   *  teléfono: si ya existe, se devuelve el existente tal como está —
+   *  nunca un segundo archivo y jamás se reescribe su número. */
   const findOrCreateClient = useCallback((name: string, phone: string): Client => {
     const digits = (phone || "").replace(/\D/g, "")
     const existing = clients.find((c) => digits && c.phone.replace(/\D/g, "") === digits)
@@ -591,25 +595,41 @@ export function CRMScreen({ openMessagesNonce = 0 }: { openMessagesNonce?: numbe
 
   function saveClient() {
     if (!editing || !editing.name.trim()) return
-    // Cliente nuevo → recibe su número de cuenta (uno por cliente, para
-    // siempre). Cliente existente → conserva el suyo; nunca un segundo.
-    const withAccount = editing.accountNumber.trim()
-      ? editing
-      : { ...editing, accountNumber: nextAccountNumber(clients.filter((c) => c.id !== editing.id)) }
+    const isNew = !clients.some((c) => c.id === editing.id)
+    const typed = editing.accountNumber.trim()
+    // Guarda anti-duplicados: un número que ya usa OTRO cliente no se
+    // guarda — se avisa en el formulario y la ficha queda abierta.
+    if (typed) {
+      const clash = clients.find((c) => c.id !== editing.id && (c.accountNumber || "").trim().toLowerCase() === typed.toLowerCase())
+      if (clash) {
+        setAccountError(`Account ${typed} is already used by ${clash.name}. Pick a different number — one account per client.`)
+        return
+      }
+    }
+    // Ficha NUEVA creada a mano → recibe el siguiente ACT-0-### al
+    // guardarla (misma regla que al aceptar un mensaje), salvo que
+    // Miguel haya escrito su propio número. Ficha existente → se guarda
+    // tal como quedó el campo editable: su número no se toca solo.
+    const withAccount = !typed && isNew
+      ? { ...editing, accountNumber: nextAccountNumber(clients) }
+      : { ...editing, accountNumber: typed }
     setClients((prev) => prev.some((c) => c.id === withAccount.id)
       ? prev.map((c) => c.id === withAccount.id ? withAccount : c)
       : [withAccount, ...prev])
+    setAccountError("")
     setSelected(withAccount.id)
     setShowForm(false)
     setEditing(null)
   }
 
   function startNew() {
+    setAccountError("")
     setEditing(emptyClient())
     setShowForm(true)
   }
 
   function startEdit(client: Client) {
+    setAccountError("")
     setEditing({ ...client })
     setShowForm(true)
   }
@@ -751,7 +771,7 @@ export function CRMScreen({ openMessagesNonce = 0 }: { openMessagesNonce?: numbe
           <div className="mt-4 space-y-3 text-sm">
             {current.phone && <p className="text-neutral-300">{current.phone}</p>}
             {current.email && <p className="break-all text-neutral-300">{current.email}</p>}
-            <p className="flex items-center gap-2 text-neutral-400"><Hash className="size-4 text-yellow-400" /> Account: <span className="font-bold text-neutral-100">{current.accountNumber || "—"}</span></p>
+            <p className="flex items-center gap-2 text-neutral-400"><Hash className="size-4 text-yellow-400" /> Account: <span className="font-bold text-neutral-100">{current.accountNumber || "No account number yet"}</span></p>
             <p className="text-neutral-400">Source: <span className="text-neutral-200">{current.source || "—"}</span></p>
             {current.nextContact && <p className="flex items-center gap-2 text-amber-300"><CalendarDays className="size-4" /> Next contact: {current.nextContact}</p>}
             {current.notes && <div className="rounded-xl bg-neutral-950 p-3"><p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-neutral-500">Notes / history</p><p className="whitespace-pre-wrap text-neutral-200">{current.notes}</p></div>}
@@ -791,10 +811,10 @@ export function CRMScreen({ openMessagesNonce = 0 }: { openMessagesNonce?: numbe
         <div className="rounded-2xl border border-yellow-500/30 bg-neutral-900 p-4">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-extrabold text-white">{clients.some((c) => c.id === editing.id) ? "Edit client" : "New client"}</h2>
-            <button onClick={() => { setShowForm(false); setEditing(null) }} aria-label="Close form" className="rounded-lg p-2 text-neutral-400"><X className="size-4" /></button>
+            <button onClick={() => { setShowForm(false); setEditing(null); setAccountError("") }} aria-label="Close form" className="rounded-lg p-2 text-neutral-400"><X className="size-4" /></button>
           </div>
           <div className="space-y-3">
-            <div><label className={labelClass}>Account number</label><p className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-3 text-[16px] font-bold text-yellow-300">{editing.accountNumber || nextAccountNumber(clients.filter((c) => c.id !== editing.id))}<span className="ml-2 text-xs font-semibold text-neutral-500">{editing.accountNumber ? "One account per client — it never changes." : "Assigned when you save. One account per client."}</span></p></div>
+            <div><label className={labelClass}>Account number</label><input value={editing.accountNumber} onChange={(e) => { setEditing({ ...editing, accountNumber: e.target.value }); setAccountError("") }} className={inputClass + " font-bold text-yellow-300"} placeholder={clients.some((c) => c.id === editing.id) ? "No account number yet" : nextAccountNumber(clients)} /><p className="mt-1 text-xs font-semibold text-neutral-500">{clients.some((c) => c.id === editing.id) ? "One account per client. You can correct the number here — it lives only in this profile, never in a message to the client." : `On save this client gets ${nextAccountNumber(clients)} — or type your own number instead. One account per client; it lives only in this profile, never in a message to the client.`}</p>{accountError && <p className="mt-1 text-xs font-bold text-rose-300">{accountError}</p>}</div>
             <div><label className={labelClass}>Full name *</label><input autoFocus value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} className={inputClass} placeholder="Client name" /></div>
             <div><label className={labelClass}>Company / business</label><input value={editing.company} onChange={(e) => setEditing({ ...editing, company: e.target.value })} className={inputClass} placeholder="Company (optional)" /></div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

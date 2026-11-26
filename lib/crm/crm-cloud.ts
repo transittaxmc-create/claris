@@ -105,46 +105,38 @@ export type CrmReservationLike = {
 
 /**
  * Número de cuenta del cliente: UNA cuenta por cliente y por dueño.
- * Formato: ICT-0001, ICT-0002, … secuencial. Se asigna al crear el récord
- * y nunca cambia; un cliente existente jamás recibe un segundo número.
+ * Regla de Miguel (2026-11-26): una persona nueva que escribe NO tiene
+ * número. El número nace SOLO cuando Miguel acepta su mensaje (se crea
+ * su ficha desde la bandeja) o cuando crea la ficha manualmente, en
+ * formato ACT-0-### secuencial tras el mayor ACT existente (el primero
+ * fue ACT-0-100, Mr. Shah). Un número ya asignado JAMÁS se reescribe:
+ * los ICT-#### creados por la versión anterior quedan como están.
  */
-export const ACCOUNT_PREFIX = "ICT"
+export const ACCOUNT_PREFIX = "ACT"
+export const ACCOUNT_FIRST = 100
 
 export function formatAccountNumber(n: number): string {
-  return `${ACCOUNT_PREFIX}-${String(Math.max(1, Math.floor(n) || 1)).padStart(4, "0")}`
+  const value = Math.max(ACCOUNT_FIRST, Math.floor(n) || ACCOUNT_FIRST)
+  return `${ACCOUNT_PREFIX}-0-${value}`
 }
 
 export function nextAccountNumber(existing: Array<{ accountNumber?: string }>): string {
-  let max = 0
+  let max = ACCOUNT_FIRST - 1
   for (const c of existing) {
-    const m = /^ICT-(\d+)$/.exec((c.accountNumber || "").trim())
+    const m = /^ACT-0-(\d+)$/.exec((c.accountNumber || "").trim())
     if (m) max = Math.max(max, parseInt(m[1], 10) || 0)
   }
   return formatAccountNumber(max + 1)
 }
 
-/** Devuelve la lista con número asignado a todo cliente que no tenga uno
- *  (en orden de creación, sin tocar los que ya tienen). No muta la entrada. */
+/** Antes rellenaba un número a todo cliente que no tuviera al cargar la
+ *  lista — eso hacía que una persona nueva "naciera" con cuenta. Por la
+ *  regla de Miguel (2026-11-26) ya NO rellena nada: devuelve la lista
+ *  intacta. Un cliente sin número se queda sin número hasta que Miguel
+ *  acepta su mensaje o le escribe uno en su ficha. Se conserva la
+ *  función por compatibilidad; ningún número existente se toca. */
 export function ensureAccountNumbers<T extends { accountNumber?: string; createdAt: string }>(clients: T[]): T[] {
-  const used = new Set(clients.map((c) => (c.accountNumber || "").trim()).filter(Boolean))
-  let next = 1
-  const bump = () => {
-    while (used.has(formatAccountNumber(next))) next++
-    const value = formatAccountNumber(next)
-    used.add(value)
-    next++
-    return value
-  }
-  const sorted = [...clients].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-  const assigned = new Map<string, string>()
-  for (const c of sorted) {
-    if (!(c.accountNumber || "").trim()) assigned.set((c as unknown as { id: string }).id, bump())
-  }
-  if (!assigned.size) return clients
-  return clients.map((c) => {
-    const id = (c as unknown as { id: string }).id
-    return assigned.has(id) ? { ...c, accountNumber: assigned.get(id) } : c
-  })
+  return clients
 }
 
 function cleanPhotos(value: unknown): CrmPhoto[] {
