@@ -260,6 +260,7 @@ export type CrmMessageRow = {
   status: string
   approved_at: string | null
   sent_at: string | null
+  needs_follow_up: boolean
   created_at: string
   updated_at: string
 }
@@ -276,6 +277,7 @@ export type CrmMessageLike = {
   status: string
   approvedAt: string
   sentAt: string
+  needsFollowUp: boolean
   createdAt: string
   updatedAt: string
 }
@@ -293,6 +295,7 @@ export function messageToRow(m: CrmMessageLike): CrmMessageRow {
     status: m.status || "pending",
     approved_at: m.approvedAt ? m.approvedAt : null,
     sent_at: m.sentAt ? m.sentAt : null,
+    needs_follow_up: !!m.needsFollowUp,
     created_at: m.createdAt || new Date().toISOString(),
     updated_at: m.updatedAt || new Date().toISOString(),
   }
@@ -311,6 +314,7 @@ export function rowToMessage(r: CrmMessageRow): CrmMessageLike {
     status: r.status || "pending",
     approvedAt: r.approved_at || "",
     sentAt: r.sent_at || "",
+    needsFollowUp: !!r.needs_follow_up,
     createdAt: r.created_at || new Date().toISOString(),
     updatedAt: r.updated_at || new Date().toISOString(),
   }
