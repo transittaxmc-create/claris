@@ -267,7 +267,7 @@ export function CRMScreen() {
 type CRMClientOption = { id: string; name: string; phone: string; email: string }
 type FlightLookup = {
   reservationId: string
-  status: "not_found" | "stale" | "on_ground" | "in_air"
+  status: "not_found" | "stale" | "on_ground" | "in_air" | "unknown"
   callsign?: string
   flight?: string
   registration?: string | null
@@ -520,6 +520,7 @@ function CRMReservations({ clients }: { clients: CRMClientOption[] }) {
                   {flightLookup.status === "in_air" && <p className="text-sm font-extrabold text-emerald-300">Aircraft detected in flight</p>}
                   {flightLookup.status === "on_ground" && <p className="text-sm font-extrabold text-amber-300">Aircraft signal detected on the ground</p>}
                   {flightLookup.status === "stale" && <p className="text-sm font-extrabold text-amber-300">Last aircraft position is not recent</p>}
+                  {flightLookup.status === "unknown" && <p className="text-sm font-extrabold text-neutral-200">Aircraft detected; live altitude status unavailable</p>}
                   {flightLookup.status === "not_found" && <p className="text-sm font-extrabold text-neutral-200">No live ADS-B signal found for this callsign</p>}
                   {flightLookup.callsign && <p className="mt-1 text-xs text-neutral-300">ICAO callsign: {flightLookup.callsign}</p>}
                   {flightLookup.status !== "not_found" && (
