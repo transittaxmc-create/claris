@@ -829,7 +829,7 @@ export function HowItWorksScreen() {
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
           <li>El flujo GPS de viajes que ya existe en Copiloto es independiente y no debe duplicarse ni modificarse por este requisito.</li>
           <li>Dentro de cada reservación del CRM, mostrar las direcciones de pickup y drop-off que pertenecen a esa orden.</li>
-          <li>Los campos/datos de ambas direcciones deben seguir siendo editables por el usuario.</li>
+          <li>La dirección original guardada en la orden se muestra sin cambios por defecto. Solo se edita manualmente si aparece una modificación o corrección; no se obliga a editar ni se cambia automáticamente. Si no hay cambios, permanece intacta. El botón de navegación siempre utiliza la dirección vigente que esté guardada en la orden.</li>
           <li>Agregar un botón pequeño de navegación en la esquina o junto a cada dirección. El botón de pickup abre el navegador/GPS con la dirección de recogida ya cargada; el botón de drop-off abre el navegador/GPS con la dirección de destino ya cargada.</li>
           <li>La acción debe evitar copiar, volver a escribir o teclear manualmente la dirección en la aplicación de mapas. No reemplaza ni altera la dirección guardada en la orden.</li>
           <li>Permitir abrir Apple Maps o Google Maps mediante enlaces de navegación compatibles con el dispositivo. Si se ofrecen ambas opciones, la elección debe ser clara y rápida.</li>
@@ -858,6 +858,80 @@ export function HowItWorksScreen() {
           la integración de seguimiento de vuelos ni sus automatizaciones. Próximo paso: inspeccionar
           el código CRM vigente y su modelo de reservaciones; documentar el diseño técnico antes de
           modificarlo. Mantener los cambios aislados del módulo financiero.
+        </P>
+      </Section>
+
+
+      <Section title="14. PLAN DE COMUNICACIONES Y COPILOT — EMAIL, SMS, MENSAJERÍA Y AVISOS (2026-11-25/26)">
+        <P>
+          <B>Objetivo:</B> completar en el CRM Copiloto V7 una bandeja de comunicaciones para el negocio
+          personal de transporte, conectada al perfil del cliente y a sus reservaciones. Esta sección
+          registra el alcance y el estado real; no significa que los canales estén conectados ni que
+          los flujos estén implementados.
+        </P>
+        <P><B>A. Regla central de control humano:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>Los mensajes entrantes de clientes deben poder consultarse en una bandeja del CRM, con historial por cliente y conversación, canal, fecha y estado.</li>
+          <li>Copilot puede resumir el mensaje, consultar el contexto permitido del cliente/reservación y preparar una respuesta sugerida.</li>
+          <li><B>Copilot nunca envía por su cuenta:</B> todo borrador debe quedar visible para revisión y solo se envía después de aprobación expresa del propietario.</li>
+          <li>El usuario puede responder inmediatamente o preparar un mensaje para una fecha/hora futura; los mensajes programados deben mostrar estado, hora local, zona horaria, opción de cancelar y registro de resultado.</li>
+          <li>Los mensajes entrantes son contenido externo no confiable. Nunca deben poder cambiar instrucciones internas, acceder a secretos ni ordenar a Copilot ejecutar acciones sin autorización.</li>
+        </ul>
+        <P><B>B. Email:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>Alcance deseado: recibir y mostrar emails, asociarlos al cliente cuando sea posible, leer el hilo, preparar borrador con Copilot, responder tras aprobación y programar envíos.</li>
+          <li>La conexión Gmail que pueda estar disponible dentro de ChatGPT no equivale a una integración dentro de la aplicación CRM. El CRM necesita su propia autorización OAuth y almacenamiento seguro de tokens, o un proveedor de correo configurado para la aplicación.</li>
+          <li>Evaluar Gmail API para una bandeja bidireccional vinculada a la cuenta del propietario. SendGrid puede servir para correo transaccional/saliente, pero por sí solo no reemplaza una bandeja Gmail completa de entrada y respuesta.</li>
+          <li>Registrar entregas, rebotes y errores; respetar preferencias, bajas y reglas aplicables a mensajes promocionales.</li>
+        </ul>
+        <P><B>C. SMS y mensajería:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>La ruta acordada para SMS del CRM es Twilio. Se requiere un remitente/número apto, credenciales seguras en Vercel, endpoints de entrada/salida, webhook de mensajes entrantes, validación de firma, status callbacks y persistencia del historial.</li>
+          <li>La bandeja debe permitir leer SMS entrantes, responder con borrador de Copilot sujeto a aprobación y programar mensajes salientes.</li>
+          <li>Para tráfico SMS de EE. UU. desde números locales, revisar y completar A2P 10DLC o la verificación que corresponda al tipo de remitente antes de producción. Configurar consentimiento, horarios permitidos, STOP/HELP y supresión de destinatarios; separar mensajes transaccionales de campañas promocionales.</li>
+          <li>Programación: decidir si se utiliza programación nativa del proveedor cuando aplique o una cola/cron propio para horarios, reintentos, cancelación y trazabilidad. No depender de que el iPhone o el navegador permanezcan abiertos.</li>
+          <li><B>Límite del iPhone:</B> el CRM no puede leer libremente la bandeja nativa de Mensajes/SMS del iPhone ni responder como si fuera esa aplicación. Solo recibirá mensajes enviados al número/remitente conectado al proveedor (por ejemplo, Twilio), o datos que el usuario comparta mediante un mecanismo autorizado. No prometer acceso a los SMS personales existentes.</li>
+        </ul>
+        <P><B>D. WhatsApp Business:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>WhatsApp se mantiene como canal separado, con API/webhooks y reglas de ventana de atención y plantillas aprobadas.</li>
+          <li>El propietario quiere conservar su número actual en WhatsApp Business App. No migrarlo, desconectarlo ni registrarlo en WhatsApp Business Platform/Twilio sin explicar primero consecuencias y recibir autorización expresa.</li>
+          <li>Primero completar y probar SMS; después evaluar Sandbox y la compatibilidad/coexistencia del número real.</li>
+        </ul>
+        <P><B>E. Copilot y notificaciones internas:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>Copilot debe ayudar a priorizar mensajes, resumir conversaciones, redactar respuestas, identificar solicitudes de reservación, proponer seguimientos y preparar recordatorios.</li>
+          <li>Notificaciones privadas para el propietario: nueva reservación, cambio/cancelación, mensaje entrante, respuesta pendiente, seguimiento vencido, vuelo con cambio relevante y error de entrega.</li>
+          <li>Las notificaciones push internas no son lo mismo que SMS/email/WhatsApp enviados a clientes. Cerrar un aviso no debe borrar ni resolver el mensaje o tarea original.</li>
+          <li>La programación debe ejecutarse en servidor/cola con zona horaria explícita, idempotencia, reintentos y registro de resultado; no depender de efectos locales al abrir el CRM.</li>
+        </ul>
+        <P><B>F. Estado verificado al 2026-11-25/26:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li><B>CRM actual:</B> el archivo components/copiloto/crm-screen.tsx inspeccionado contiene gestión básica de clientes y guarda en localStorage (claris_crm_clients_v1). No se encontró en ese archivo una bandeja de conversaciones ni un modelo de reservaciones. No asumir persistencia cloud.</li>
+          <li><B>Push:</B> existen componentes/rutas de push. La prueba local en iPhone fue confirmada por el propietario. La prueba remota física, los recordatorios automáticos programados y las pruebas con la app cerrada siguen pendientes.</li>
+          <li><B>Twilio SMS:</B> cuenta creada, pero la auditoría previa no encontró variables TWILIO_* en Vercel ni integración SMS confirmada en el CRM. No conectado; pruebas entrantes/salientes pendientes.</li>
+          <li><B>Credencial Twilio:</B> un Auth Token compartido anteriormente debe tratarse como expuesto. No volver a pedirlo ni copiarlo en el chat. Antes de rotarlo, comprobar dependencias; usar una API Key apropiada para producción y actualizarla de forma segura.</li>
+          <li><B>Email:</B> no se ha verificado una conexión de correo dentro del CRM. Un conector Gmail de ChatGPT, si está disponible, no prueba que la aplicación tenga acceso Gmail.</li>
+          <li><B>WhatsApp:</B> API pendiente; no se ha autorizado migrar el número actual de WhatsApp Business App.</li>
+          <li><B>Copilot:</B> no está confirmada una bandeja bidireccional ni generación de borradores conectada a conversaciones reales. Mantener aprobación humana obligatoria.</li>
+        </ul>
+        <P><B>G. Orden de ejecución recomendado:</B></P>
+        <ol className="mb-3 list-decimal space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>Revisar el modelo actual del CRM y completar el diseño de reservaciones: pickup/drop-off, edición solo si hay cambios, navegación bajo acción del usuario, pickup normal o aeropuerto y Track Flight con proveedor sujeto a aprobación.</li>
+          <li>Resolver acceso y persistencia segura de datos CRM antes de almacenar conversaciones, clientes, reservaciones o trabajos programados; conservar los datos locales y preparar migración/backup verificable. No tocar el Supabase financiero zrcnpmipdhpjdjkfrrgt.</li>
+          <li>Completar push remoto y disparadores automáticos internos; verificar físicamente en el iPhone.</li>
+          <li>Completar la base SMS de Twilio: credenciales seguras, cumplimiento, webhook entrante, respuesta aprobada, status callback, historial y scheduling; probar entrada y salida reales.</li>
+          <li>Integrar email bidireccional con la cuenta/proveedor autorizado, borradores, aprobación, respuesta y scheduling; probar entrada, salida y entrega.</li>
+          <li>Incorporar Copilot a la bandeja multicanal, siempre con borrador y aprobación antes de enviar; probar controles y protección frente a instrucciones maliciosas dentro de mensajes recibidos.</li>
+          <li>Después evaluar WhatsApp Sandbox y, por separado, la ruta segura para el número actual. No activar campañas masivas sin consentimiento y controles de baja.</li>
+          <li>Probar cada canal en iPhone y registrar resultados PASS/FAIL/PENDIENTE, incluyendo entrega, respuesta, cancelación de mensajes programados y comportamiento con la app cerrada.</li>
+        </ol>
+        <P>
+          <B>Regla de cierre:</B> cada etapa debe actualizar este manual con fecha, archivos/servicios
+          modificados, commit, deployment real (READY/BUILDING/FAILED), configuración confirmada sin
+          exponer secretos, pruebas y bloqueos. Un deployment READY no prueba entrega de mensajes ni
+          respaldo de datos. No marcar un canal como operativo hasta completar pruebas reales de
+          extremo a extremo.
         </P>
       </Section>
 
