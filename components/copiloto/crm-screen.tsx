@@ -6,7 +6,7 @@ import { crmSupabaseBrowser, crmCloudConfigured } from "@/lib/crm/supabase-brows
 import { ensureAccountNumbers, nextAccountNumber, type CrmPhoto } from "@/lib/crm/crm-cloud"
 import { getLocalPhotoDataUrl, saveLocalPhotoDataUrl, deleteLocalPhoto, fileToDownscaledDataUrl, uploadPhotoToCloud, signedPhotoUrl, deleteCloudPhoto } from "@/lib/crm/crm-photos"
 import type { Session, SupabaseClient } from "@supabase/supabase-js"
-import { Search, Plus, Users, Phone, Mail, CalendarDays, MessageSquare, MoreHorizontal, X, Save, Trash2, UserRound, Clock3, Filter, MapPin, Plane, ExternalLink, Pencil, ArrowUpRight, Camera, BellRing, Inbox, CheckCheck, Hash, History } from "lucide-react"
+import { Search, Plus, Users, Phone, Mail, CalendarDays, MessageSquare, MoreHorizontal, X, Save, Trash2, UserRound, Clock3, Filter, MapPin, Plane, ExternalLink, Pencil, ArrowUpRight, Camera, BellRing, Inbox, CheckCheck, Hash, History, Undo2, Flag } from "lucide-react"
 
 type ClientStatus = "Lead" | "Active" | "Follow-up" | "Inactive"
 type Client = {
@@ -737,6 +737,15 @@ export function CRMScreen({ openMessagesNonce = 0 }: { openMessagesNonce?: numbe
             {current.phone && <a href={`tel:${current.phone}`} className="flex items-center justify-center gap-2 rounded-xl bg-neutral-800 px-3 py-3 text-sm font-bold text-white"><Phone className="size-4 text-yellow-400" /> Call</a>}
             {current.email && <a href={`mailto:${current.email}`} className="flex items-center justify-center gap-2 rounded-xl bg-neutral-800 px-3 py-3 text-sm font-bold text-white"><Mail className="size-4 text-yellow-400" /> Email</a>}
           </div>
+          {/* Control REAL de estatus en la ficha (orden de Miguel, 2026-11-26):
+              lo de arriba de la lista solo filtra; aquí el estatus se CAMBIA
+              y el cambio se guarda y sube a la nube como todo el CRM. */}
+          <div className="mt-3 flex items-center gap-2">
+            <label htmlFor="crm-profile-status" className="shrink-0 text-xs font-semibold text-neutral-400">Status</label>
+            <select id="crm-profile-status" value={current.status} onChange={(e) => setClients((prev) => prev.map((c) => (c.id === current.id ? { ...c, status: e.target.value as ClientStatus } : c)))} className="min-w-0 flex-1 rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2.5 text-sm font-bold text-white outline-none focus:border-yellow-400">
+              {(["Lead", "Active", "Follow-up", "Inactive"] as const).map((s) => <option key={s}>{s}</option>)}
+            </select>
+          </div>
           <div className="mt-4 space-y-3 text-sm">
             {current.phone && <p className="text-neutral-300">{current.phone}</p>}
             {current.email && <p className="break-all text-neutral-300">{current.email}</p>}
@@ -748,10 +757,11 @@ export function CRMScreen({ openMessagesNonce = 0 }: { openMessagesNonce?: numbe
           {(() => {
             const history = reservationsPeek.filter((r) => r.clientId === current.id).sort((a, b) => (b.serviceDate + b.pickupTime).localeCompare(a.serviceDate + a.pickupTime))
             const clientMessages = messagesPeek.filter((m) => m.clientId === current.id)
+            const followUps = clientMessages.filter((m) => m.needsFollowUp).length
             const upcoming = history.filter((r) => r.serviceDate >= todayStr && r.status !== "Cancelled").length
             return (
               <div className="mt-4 rounded-xl bg-neutral-950 p-3">
-                <p className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-neutral-500"><History className="size-3.5" /> History · {history.length} reservation{history.length === 1 ? "" : "s"} · {upcoming} upcoming · {clientMessages.length} message{clientMessages.length === 1 ? "" : "s"}</p>
+                <p className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-neutral-500"><History className="size-3.5" /> History · {history.length} reservation{history.length === 1 ? "" : "s"} · {upcoming} upcoming · {clientMessages.length} message{clientMessages.length === 1 ? "" : "s"}{followUps > 0 ? ` · ${followUps} follow-up${followUps === 1 ? "" : "s"}` : ""}</p>
                 {history.length === 0 ? (
                   <p className="text-xs text-neutral-500">No reservations yet for this client. New reservations linked to this account appear here — one account per client, always the same file.</p>
                 ) : (
@@ -1241,6 +1251,7 @@ type CRMMessage = {
   status: MessageStatus
   approvedAt: string
   sentAt: string
+  needsFollowUp: boolean
   createdAt: string
   updatedAt: string
 }
@@ -1249,7 +1260,7 @@ const MESSAGES_STORE = "claris_crm_messages_v1"
 const newMessage = (): CRMMessage => ({
   id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `msg-${Date.now()}`,
   clientId: "", reservationId: "", channel: "SMS", fromName: "", fromPhone: "",
-  body: "", draftReply: "", status: "pending", approvedAt: "", sentAt: "",
+  body: "", draftReply: "", status: "pending", approvedAt: "", sentAt: "", needsFollowUp: false,
   createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
 })
 
@@ -1285,7 +1296,9 @@ function CRMMessages({ clients, reservations, cloudSeed, cloudSeedNonce, onCloud
     try {
       const raw = localStorage.getItem(MESSAGES_STORE)
       const parsed = raw ? JSON.parse(raw) : []
-      if (Array.isArray(parsed)) setMessages(parsed as CRMMessage[])
+      // needsFollowUp nació con el deploy de los tres botones (2026-11-26):
+      // los mensajes viejos no traen el campo y valen "sin seguimiento".
+      if (Array.isArray(parsed)) setMessages((parsed as CRMMessage[]).map((m) => ({ ...m, needsFollowUp: !!m.needsFollowUp })))
     } catch {}
     setReady(true)
   }, [])
@@ -1380,6 +1393,13 @@ function CRMMessages({ clients, reservations, cloudSeed, cloudSeedNonce, onCloud
     patchMessage(m.id, { draftReply: draftEdit, status: "approved", approvedAt: new Date().toISOString() })
   }
 
+  /** Reenviar (orden de Miguel, 2026-11-26): el cliente dice "no lo
+   *  recibí" — el mensaje ya enviado vuelve a pendiente con SU MISMO
+   *  borrador, listo para aprobar y enviar otra vez. */
+  function resendMessage(m: CRMMessage) {
+    patchMessage(m.id, { status: "pending", approvedAt: "", sentAt: "", draftReply: m.draftReply })
+  }
+
   const statusChip = (s: MessageStatus) => s === "pending"
     ? "border-rose-700/60 bg-rose-950/50 text-rose-300"
     : s === "approved"
@@ -1423,7 +1443,10 @@ function CRMMessages({ clients, reservations, cloudSeed, cloudSeedNonce, onCloud
         <div className="space-y-3 rounded-2xl border border-yellow-500/30 bg-neutral-900 p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <span className={"rounded-full border px-2.5 py-1 text-[10px] font-bold " + statusChip(current.status)}>{current.status.toUpperCase()}</span>
+              <span className="inline-flex flex-wrap items-center gap-1.5">
+                <span className={"rounded-full border px-2.5 py-1 text-[10px] font-bold " + statusChip(current.status)}>{current.status.toUpperCase()}</span>
+                {current.needsFollowUp && <span className="inline-flex items-center gap-1 rounded-full border border-amber-700/60 bg-amber-950/50 px-2.5 py-1 text-[10px] font-bold text-amber-300"><Flag className="size-3" /> FOLLOW-UP</span>}
+              </span>
               <h3 className="mt-2 text-xl font-extrabold text-white">{current.fromName || "Unknown sender"}</h3>
               <p className="mt-1 text-xs text-neutral-400">{current.channel} · {current.fromPhone || "no phone"} · {new Date(current.createdAt).toLocaleString()}</p>
             </div>
@@ -1466,17 +1489,21 @@ function CRMMessages({ clients, reservations, cloudSeed, cloudSeedNonce, onCloud
             </p>
           )}
           {current.status === "sent" && (
-            <p className="rounded-xl border border-emerald-800/60 bg-emerald-950/30 p-3 text-xs text-emerald-100">Marked as sent{current.sentAt ? ` · ${new Date(current.sentAt).toLocaleString()}` : ""}.</p>
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-emerald-800/60 bg-emerald-950/30 p-3">
+              <p className="min-w-0 flex-1 text-xs text-emerald-100">Marked as sent{current.sentAt ? ` · ${new Date(current.sentAt).toLocaleString()}` : ""}.</p>
+              <button onClick={() => resendMessage(current)} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-2 text-xs font-extrabold text-black"><Undo2 className="size-3.5" /> Reenviar</button>
+            </div>
           )}
 
           <div className="flex flex-wrap gap-2">
             {current.status === "pending" && <button onClick={() => approveAndSend(current)} disabled={!draftEdit.trim()} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-yellow-400 py-3 text-sm font-extrabold text-black disabled:opacity-40"><CheckCheck className="size-4" /> Approve &amp; Send</button>}
             {current.status === "approved" && <button onClick={() => patchMessage(current.id, { status: "sent", sentAt: new Date().toISOString() })} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 text-sm font-extrabold text-black">Mark as sent</button>}
+            {current.status === "sent" && <button onClick={() => patchMessage(current.id, { needsFollowUp: !current.needsFollowUp })} className={"inline-flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold " + (current.needsFollowUp ? "border-amber-500/60 bg-amber-950/40 text-amber-200" : "border-neutral-700 text-neutral-200")}><Flag className="size-4" /> {current.needsFollowUp ? "Following up — tap to clear" : "Mark follow-up"}</button>}
             {(current.status === "pending" || current.status === "approved") && <button onClick={() => { if (window.confirm("Discard this message? It stays in the tray history as discarded.")) { patchMessage(current.id, { status: "discarded" }); setSelectedId(null) } }} className="rounded-xl border border-neutral-700 px-4 py-3 text-sm font-bold text-neutral-300">Discard</button>}
             <button onClick={() => setSelectedId(null)} className="rounded-xl border border-neutral-700 px-4 py-3 text-sm font-bold text-white">Minimize</button>
             <button onClick={() => removeMessage(current.id)} className="inline-flex items-center gap-2 rounded-xl border border-rose-900/70 px-4 py-3 text-sm font-bold text-rose-300"><Trash2 className="size-4" /> Delete</button>
           </div>
-          <p className="text-[11px] text-neutral-500">Minimize keeps the message pending — the counter on the Messages tab stays until you approve, send or discard it. Nothing is ever sent from here without your approval. Delete removes the message everywhere, including the CRM cloud — Discard only closes it and keeps it in the history.</p>
+          <p className="text-[11px] text-neutral-500">Minimize keeps the message pending — the counter on the Messages tab stays until you approve, send or discard it. Nothing is ever sent from here without your approval. Delete removes the message everywhere, including the CRM cloud — Discard only closes it and keeps it in the history. On a sent message, Reenviar puts it back to pending with the same draft, ready to approve and send again, and Mark follow-up flags it so it is not forgotten.</p>
         </div>
       )}
 
@@ -1493,7 +1520,10 @@ function CRMMessages({ clients, reservations, cloudSeed, cloudSeedNonce, onCloud
                 <span className="block truncate text-xs text-neutral-400">{m.body}</span>
                 <span className="mt-0.5 block text-[10px] text-neutral-500">{m.channel} · {new Date(m.createdAt).toLocaleString()}</span>
               </span>
-              <span className={"shrink-0 rounded-full border px-2 py-1 text-[9px] font-bold " + statusChip(m.status)}>{m.status.toUpperCase()}</span>
+              <span className="flex shrink-0 flex-col items-end gap-1">
+                <span className={"rounded-full border px-2 py-1 text-[9px] font-bold " + statusChip(m.status)}>{m.status.toUpperCase()}</span>
+                {m.needsFollowUp && <span className="inline-flex items-center gap-1 rounded-full border border-amber-700/60 bg-amber-950/50 px-2 py-1 text-[9px] font-bold text-amber-300"><Flag className="size-3" /> FOLLOW-UP</span>}
+              </span>
             </button>
           ))}
         </div>
