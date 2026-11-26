@@ -1259,6 +1259,66 @@ export function HowItWorksScreen() {
         </P>
       </Section>
 
+      <Section title="19. AUDITORÍA DE CONTINUIDAD — verificación Supabase y código (2026-11-25)">
+        <P>
+          <B>Revisión de base de datos:</B> se volvió a consultar el proyecto
+          <B>mimgwleghecseoymgdug</B>. Estado <B>ACTIVE_HEALTHY</B>, PostgreSQL 17.12,
+          región <B>us-east-2</B>. La lista de migraciones devuelve una sola migración de
+          aplicación: <B>20261126024701_crm_auth_clients_reservations_rls</B>.
+        </P>
+        <P>
+          <B>Resultado actual:</B> existen <B>public.crm_clients</B> y
+          <B>public.crm_reservations</B>; ambas tienen RLS habilitado y 0 filas. La consulta
+          directa a pg_policies confirma ocho políticas: SELECT, INSERT, UPDATE y DELETE
+          para authenticated en cada tabla. El Security Advisor devolvió
+          <B>lints: []</B> (cero hallazgos en esta consulta). Esto confirma la estructura y
+          políticas; todavía no prueba operaciones con usuarios reales ni aislamiento entre
+          dos cuentas.
+        </P>
+        <P>
+          <B>Auditoría del frontend CRM:</B> el archivo
+          <B>components/copiloto/crm-screen.tsx</B> aún lee y escribe clientes en
+          <B>localStorage: claris_crm_clients_v1</B> y reservaciones en
+          <B>claris_crm_reservations_v1</B>. La interfaz todavía no consume las tablas
+          Supabase y muestra el aviso de que cloud sync no está conectado. No se migró,
+          borró ni sobrescribió ningún dato local.
+        </P>
+        <P>
+          <B>Auditoría de Auth en el repositorio main:</B> package.json no incluye
+          <B>@supabase/supabase-js</B> ni <B>@supabase/ssr</B>; no se encontraron
+          <B>proxy.ts</B>, <B>middleware.ts</B>, clientes SSR/browser ni pantallas de
+          autenticación. La integración Auth y protección de rutas sigue pendiente.
+        </P>
+        <P>
+          <B>Bloqueo de entorno:</B> Vercel devolvió 403 Forbidden / Not authorized al
+          consultar el proyecto y los deployments. Por tanto no se puede inspeccionar ni
+          ejecutar un build/deployment desde la conexión disponible. No se ha hecho un
+          deployment ni se afirma un estado READY. Para continuar con instalación reproducible,
+          pruebas de build y despliegue, se necesita restaurar el acceso de Vercel al equipo
+          <B>islandCity</B> y proyecto <B>claris</B>, o habilitar un CI equivalente con permisos.
+        </P>
+        <P>
+          <B>Protección de datos:</B> no se tocó el proyecto financiero
+          <B>zrcnpmipdhpjdjkfrrgt</B>, ni Finanzas, Plaid, balances, proyecciones, respaldos
+          o notificaciones. No se crearon usuarios de prueba ni se enviaron correos.
+        </P>
+        <P>
+          <B>Siguiente secuencia obligatoria:</B> completar Auth SSR con versiones fijadas y
+          lockfile actualizado; configurar URL y publishable key en los entornos correctos;
+          proteger rutas conservando el acceso funcional de la aplicación; probar login,
+          registro, recuperación, logout, sesión persistente y acceso cruzado denegado con
+          dos cuentas; conectar CRUD de clientes/reservaciones a Supabase; migrar localStorage
+          de forma idempotente con verificación de conteos; y después completar las funciones
+          operativas del CRM de Transporte antes de construir CRM de Impuestos.
+        </P>
+        <P>
+          <B>Deployment y notificaciones:</B> no se creó deployment en esta auditoría.
+          Estado: <B>no verificado por bloqueo 403</B>. No hubo cambios en push notifications
+          y no se ejecutó una prueba push nueva; la prueba local previamente documentada
+          permanece separada de las pruebas remotas pendientes.
+        </P>
+      </Section>
+
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
