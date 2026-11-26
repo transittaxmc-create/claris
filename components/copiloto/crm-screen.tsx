@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { CRMNotifications } from "./crm-notifications"
 import { crmSupabaseBrowser, crmCloudConfigured } from "@/lib/crm/supabase-browser"
-import type { Session } from "@supabase/supabase-js"
-import { Search, Plus, Users, Phone, Mail, CalendarDays, MessageSquare, MoreHorizontal, X, Save, Trash2, UserRound, Clock3, Filter, MapPin, Plane, ExternalLink, Pencil, ArrowUpRight } from "lucide-react"
+import { ensureAccountNumbers, nextAccountNumber, type CrmPhoto } from "@/lib/crm/crm-cloud"
+import { getLocalPhotoDataUrl, saveLocalPhotoDataUrl, deleteLocalPhoto, fileToDownscaledDataUrl, uploadPhotoToCloud, signedPhotoUrl, deleteCloudPhoto } from "@/lib/crm/crm-photos"
+import type { Session, SupabaseClient } from "@supabase/supabase-js"
+import { Search, Plus, Users, Phone, Mail, CalendarDays, MessageSquare, MoreHorizontal, X, Save, Trash2, UserRound, Clock3, Filter, MapPin, Plane, ExternalLink, Pencil, ArrowUpRight, Camera, BellRing, Inbox, CheckCheck, Hash, History } from "lucide-react"
 
 type ClientStatus = "Lead" | "Active" | "Follow-up" | "Inactive"
 type Client = {
@@ -17,14 +19,124 @@ type Client = {
   source: string
   notes: string
   nextContact: string
+  accountNumber: string
+  photos: CrmPhoto[]
   createdAt: string
 }
 
 const STORE = "claris_crm_clients_v1"
 const emptyClient = (): Client => ({
   id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Date.now()),
-  name: "", company: "", phone: "", email: "", status: "Lead", source: "Referral", notes: "", nextContact: "", createdAt: new Date().toISOString(),
+  name: "", company: "", phone: "", email: "", status: "Lead", source: "Referral", notes: "", nextContact: "", accountNumber: "", photos: [], createdAt: new Date().toISOString(),
 })
+
+/** Normaliza un cliente venga de donde venga (local viejo, nube pre/post
+ *  migración): campos nuevos con valores por defecto, sin romper nada. */
+function normalizeClient(raw: Partial<Client> & { id: string }): Client {
+  return {
+    ...emptyClient(),
+    ...raw,
+    accountNumber: typeof raw.accountNumber === "string" ? raw.accountNumber : "",
+    photos: Array.isArray(raw.photos) ? raw.photos : [],
+  }
+}
+
+type PhotoCloud = { sb: SupabaseClient; userId: string } | null
+
+/**
+ * Bloque de fotos de un récord (cliente o reserva): las fotos que manda el
+ * cliente de su recogida o de su vuelo. Se guardan en el dispositivo y, con
+ * sesión, suben al bucket privado del CRM; los metadatos viajan en el
+ * récord (columna photos). Sin sesión funciona local, como todo el CRM.
+ */
+function CrmPhotosBlock({ photos, onChange, kind, recordId, cloud }: { photos: CrmPhoto[]; onChange: (next: CrmPhoto[]) => void; kind: "clients" | "reservations"; recordId: string; cloud: PhotoCloud }) {
+  const [urls, setUrls] = useState<Record<string, string>>({})
+  const [busy, setBusy] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+  const uploadTried = useRef<Set<string>>(new Set())
+
+  // Resolver URLs: primero la copia local; si no hay y la foto está en la
+  // nube, URL firmada temporal.
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const next: Record<string, string> = {}
+      for (const p of photos) {
+        const local = getLocalPhotoDataUrl(p.id)
+        if (local) { next[p.id] = local; continue }
+        if (p.path && cloud) {
+          const signed = await signedPhotoUrl(cloud.sb, p.path)
+          if (signed) next[p.id] = signed
+        }
+      }
+      if (!cancelled) setUrls(next)
+    })()
+    return () => { cancelled = true }
+  }, [photos, cloud])
+
+  // Fotos que quedaron solo-locales (sin sesión al añadirlas) suben solas
+  // en cuanto hay sesión: la foto viaja con el récord.
+  useEffect(() => {
+    if (!cloud) return
+    for (const p of photos) {
+      if (p.path || uploadTried.current.has(p.id)) continue
+      const local = getLocalPhotoDataUrl(p.id)
+      if (!local) continue
+      uploadTried.current.add(p.id)
+      uploadPhotoToCloud(cloud.sb, cloud.userId, kind, recordId, p.id, local).then((path) => {
+        if (path) onChange(photos.map((x) => (x.id === p.id ? { ...x, path } : x)))
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [photos, cloud, kind, recordId])
+
+  async function addPhoto(file: File) {
+    setBusy(true)
+    try {
+      const id = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `photo-${Date.now()}`
+      const dataUrl = await fileToDownscaledDataUrl(file)
+      saveLocalPhotoDataUrl(id, dataUrl)
+      let path = ""
+      if (cloud) path = (await uploadPhotoToCloud(cloud.sb, cloud.userId, kind, recordId, id, dataUrl)) || ""
+      onChange([...photos, { id, path, caption: "", createdAt: new Date().toISOString() }])
+    } catch {}
+    setBusy(false)
+  }
+
+  function removePhoto(photo: CrmPhoto) {
+    if (!window.confirm("Remove this photo from the record?")) return
+    deleteLocalPhoto(photo.id)
+    if (cloud && photo.path) void deleteCloudPhoto(cloud.sb, photo.path)
+    onChange(photos.filter((p) => p.id !== photo.id))
+  }
+
+  return (
+    <div className="rounded-xl bg-neutral-950 p-3">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Client photos · pickup / flight</p>
+        <button onClick={() => fileRef.current?.click()} disabled={busy} className="inline-flex items-center gap-1.5 rounded-lg border border-neutral-700 px-2.5 py-2 text-[11px] font-bold text-neutral-200 disabled:opacity-40"><Camera className="size-3.5" /> {busy ? "Adding…" : "Add photo"}</button>
+        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void addPhoto(f) }} />
+      </div>
+      {photos.length === 0 ? (
+        <p className="text-xs text-neutral-500">No photos yet. Save here the photo the client sends of their pickup or their flight ticket — it stays with this record.</p>
+      ) : (
+        <div className="grid grid-cols-3 gap-2">
+          {photos.map((p) => (
+            <div key={p.id} className="group relative overflow-hidden rounded-lg border border-neutral-800">
+              {urls[p.id] ? (
+                <a href={urls[p.id]} target="_blank" rel="noreferrer"><img src={urls[p.id]} alt={p.caption || "Client photo"} className="aspect-square w-full object-cover" /></a>
+              ) : (
+                <div className="flex aspect-square w-full items-center justify-center bg-neutral-900 text-[10px] text-neutral-500">Photo{p.path ? " in cloud" : " on device"}</div>
+              )}
+              <button onClick={() => removePhoto(p)} aria-label="Remove photo" className="absolute right-1 top-1 rounded-md bg-black/70 p-1.5 text-rose-300"><Trash2 className="size-3.5" /></button>
+              {!p.path && <span className="absolute bottom-1 left-1 rounded bg-black/70 px-1.5 py-0.5 text-[9px] font-bold text-amber-300">Device only</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 const inputClass = "w-full rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-3 text-[16px] text-white placeholder:text-neutral-500 outline-none focus:border-yellow-400"
 const labelClass = "mb-1.5 block text-xs font-semibold text-neutral-400"
@@ -126,13 +238,16 @@ export function CRMScreen() {
   const [editing, setEditing] = useState<Client | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [selected, setSelected] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<"clients" | "reservations">("clients")
+  const [activeTab, setActiveTab] = useState<"clients" | "reservations" | "messages">("clients")
 
   useEffect(() => {
     try {
       const raw = localStorage.getItem(STORE)
       const parsed = raw ? JSON.parse(raw) : []
-      if (Array.isArray(parsed)) setClients(parsed)
+      // Una cuenta por cliente: todo récord sin número recibe el suyo al
+      // cargar (orden de creación), y jamás se crea un segundo récord para
+      // el mismo cliente — las reservas nuevas se suman a su historial.
+      if (Array.isArray(parsed)) setClients(ensureAccountNumbers(parsed.map((c) => normalizeClient(c as Client))))
     } catch {}
     setReady(true)
   }, [])
@@ -147,6 +262,17 @@ export function CRMScreen() {
   const [cloudStatus, setCloudStatus] = useState<"off" | "loading" | "synced" | "error">("off")
   const [cloudSeedReservations, setCloudSeedReservations] = useState<CRMReservation[] | null>(null)
   const [cloudSeedNonce, setCloudSeedNonce] = useState(0)
+  const [cloudSeedMessages, setCloudSeedMessages] = useState<CRMMessage[] | null>(null)
+  const [cloudSeedMessagesNonce, setCloudSeedMessagesNonce] = useState(0)
+  const [messagesCloudPending, setMessagesCloudPending] = useState(false)
+  // Vistas de solo lectura para el aviso de hoy, los recordatorios y el
+  // historial del cliente: las reservas/mensajes los posee cada pestaña y
+  // los reporta hacia arriba cuando cambian.
+  const [reservationsPeek, setReservationsPeek] = useState<CRMReservation[]>([])
+  const [messagesPeek, setMessagesPeek] = useState<CRMMessage[]>([])
+  const [reservationPrefill, setReservationPrefill] = useState<Partial<CRMReservation> | null>(null)
+  const [reservationPrefillNonce, setReservationPrefillNonce] = useState(0)
+  const pendingMessageLink = useRef<string | null>(null)
   const cloudClientIds = useRef<Set<string>>(new Set())
   const cloudSynced = useRef(false)
   const applyingCloud = useRef(false)
@@ -161,6 +287,8 @@ export function CRMScreen() {
         cloudSynced.current = false
         cloudClientIds.current = new Set()
         setCloudSeedReservations(null)
+        setCloudSeedMessages(null)
+        setMessagesCloudPending(false)
         setCloudStatus("off")
       }
     })
@@ -185,10 +313,10 @@ export function CRMScreen() {
         const r = await fetch("/api/crm/state", { cache: "no-store" })
         if (!r.ok) throw new Error("crm_read_failed")
         const data = await r.json()
-        const cloudClients = (data.clients || []) as unknown as Client[]
+        const cloudClients = ((data.clients || []) as unknown as Client[]).map((c) => normalizeClient(c))
         const cloudIds = new Set(cloudClients.map((c) => c.id))
         const localOnly = clients.filter((c) => !cloudIds.has(c.id))
-        const merged = [...cloudClients, ...localOnly].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+        const merged = ensureAccountNumbers([...cloudClients, ...localOnly].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)))
         applyingCloud.current = true
         setClients(merged)
         if (localOnly.length) {
@@ -198,6 +326,9 @@ export function CRMScreen() {
         cloudClientIds.current = new Set(merged.map((c) => c.id))
         setCloudSeedReservations((data.reservations || []) as unknown as CRMReservation[])
         setCloudSeedNonce((n) => n + 1)
+        setCloudSeedMessages((data.messages || []) as unknown as CRMMessage[])
+        setCloudSeedMessagesNonce((n) => n + 1)
+        setMessagesCloudPending(!!data.messagesPending)
         setCloudStatus("synced")
       } catch {
         setCloudStatus("error")
@@ -237,6 +368,80 @@ export function CRMScreen() {
     [session, cloudPost],
   )
 
+  const pushMessagesToCloud = useCallback(
+    async (items: CRMMessage[], deletedIds: string[]) => {
+      if (!session) return
+      try {
+        const res = await cloudPost({ upsertMessages: items, deleteMessageIds: deletedIds })
+        // La tabla de mensajes llega con la migración 20261126120000: si el
+        // proyecto aún no la tiene, la bandeja sigue local y se avisa ahí,
+        // sin marcar error en el resto de la sync (fase 1 intacta).
+        setMessagesCloudPending(!!res?.messagesPending)
+      } catch {
+        setCloudStatus("error")
+      }
+    },
+    [session, cloudPost],
+  )
+
+  // Vistas iniciales desde el dispositivo (la nube las pisa al conectar):
+  // alimentan el aviso de hoy y el historial sin abrir cada pestaña.
+  useEffect(() => {
+    try {
+      const rawR = localStorage.getItem("claris_crm_reservations_v1")
+      const parsedR = rawR ? JSON.parse(rawR) : []
+      if (Array.isArray(parsedR)) setReservationsPeek(parsedR as CRMReservation[])
+      const rawM = localStorage.getItem("claris_crm_messages_v1")
+      const parsedM = rawM ? JSON.parse(rawM) : []
+      if (Array.isArray(parsedM)) setMessagesPeek(parsedM as CRMMessage[])
+    } catch {}
+  }, [])
+
+  const photoCloud: PhotoCloud = useMemo(() => {
+    if (!session) return null
+    const sb = crmSupabaseBrowser()
+    return sb ? { sb, userId: session.user.id } : null
+  }, [session])
+
+  /** Crea el récord de un cliente nuevo (con su número de cuenta) desde la
+   *  bandeja de mensajes. Un cliente por teléfono: si ya existe, se
+   *  devuelve el existente — nunca un segundo archivo. */
+  const findOrCreateClient = useCallback((name: string, phone: string): Client => {
+    const digits = (phone || "").replace(/\D/g, "")
+    const existing = clients.find((c) => digits && c.phone.replace(/\D/g, "") === digits)
+    if (existing) return existing
+    const created: Client = {
+      ...emptyClient(),
+      name: name.trim() || "New client",
+      phone: phone || "",
+      status: "Active",
+      source: "Other",
+      accountNumber: nextAccountNumber(clients),
+    }
+    setClients((prev) => [created, ...prev])
+    return created
+  }, [clients])
+
+  /** Cuando una reserva nacida de un mensaje se guarda, el mensaje queda
+   *  enlazado a esa entrada (su historial crece en el mismo archivo). */
+  const handleReservationSaved = useCallback((r: CRMReservation) => {
+    setReservationsPeek((prev) => (prev.some((x) => x.id === r.id) ? prev.map((x) => (x.id === r.id ? r : x)) : [r, ...prev]))
+    const messageId = pendingMessageLink.current
+    if (messageId) {
+      pendingMessageLink.current = null
+      setMessagesPeek((prev) => prev.map((m) => (m.id === messageId ? { ...m, reservationId: r.id, clientId: m.clientId || r.clientId } : m)))
+      // La pestaña de mensajes posee su almacén: el enlace también se
+      // persiste en su clave local para que no se pierda al recargar.
+      try {
+        const raw = localStorage.getItem("claris_crm_messages_v1")
+        const parsed = raw ? JSON.parse(raw) : []
+        if (Array.isArray(parsed)) {
+          localStorage.setItem("claris_crm_messages_v1", JSON.stringify(parsed.map((m: CRMMessage) => (m.id === messageId ? { ...m, reservationId: r.id, clientId: m.clientId || r.clientId } : m))))
+        }
+      } catch {}
+    }
+  }, [])
+
   // Local reminder: existing client follow-up dates only. It runs when CRM is opened
   // and permission has already been granted; it is not a background scheduler.
   useEffect(() => {
@@ -264,10 +469,70 @@ export function CRMScreen() {
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
     return clients.filter((c) => {
-      const matches = !q || [c.name, c.company, c.phone, c.email].some((v) => v.toLowerCase().includes(q))
+      const matches = !q || [c.name, c.company, c.phone, c.email, c.accountNumber].some((v) => v.toLowerCase().includes(q))
       return matches && (filter === "All" || c.status === filter)
     }).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   }, [clients, query, filter])
+
+  // ---- Fase 5: reservas de hoy, vencidas sin completar y recordatorios ----
+  const todayStr = useMemo(() => new Date().toLocaleDateString("en-CA"), [])
+  const openReservations = useMemo(
+    () => reservationsPeek.filter((r) => r.status === "Requested" || r.status === "Confirmed"),
+    [reservationsPeek],
+  )
+  const todayReservations = useMemo(
+    () => openReservations.filter((r) => r.serviceDate === todayStr).sort((a, b) => (a.pickupTime || "").localeCompare(b.pickupTime || "")),
+    [openReservations, todayStr],
+  )
+  const overdueReservations = useMemo(
+    () => openReservations.filter((r) => r.serviceDate < todayStr).sort((a, b) => (b.serviceDate + b.pickupTime).localeCompare(a.serviceDate + a.pickupTime)),
+    [openReservations, todayStr],
+  )
+  const dueReminders = useMemo(() => {
+    const out: { reservation: CRMReservation; kind: "day-before" | "two-hours"; label: string }[] = []
+    const now = new Date()
+    const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).toLocaleDateString("en-CA")
+    for (const r of openReservations) {
+      if (r.serviceDate === tomorrow) {
+        out.push({ reservation: r, kind: "day-before", label: `Tomorrow · ${r.pickupTime || "time TBD"}` })
+      }
+      if (r.serviceDate === todayStr && r.pickupTime) {
+        const [h, m] = r.pickupTime.split(":").map((x) => parseInt(x, 10) || 0)
+        const pickup = new Date(now.getFullYear(), now.getMonth(), now.getDate(), h, m)
+        const diffMs = pickup.getTime() - now.getTime()
+        if (diffMs > 0 && diffMs <= 2 * 60 * 60 * 1000) {
+          out.push({ reservation: r, kind: "two-hours", label: `In under 2 hours · ${r.pickupTime}` })
+        }
+      }
+    }
+    return out
+  }, [openReservations, todayStr])
+
+  // Aviso local de recordatorios al abrir el CRM (mismo patrón que el de
+  // follow-ups: una vez por recordatorio; no es un programador en segundo
+  // plano — el push remoto sigue bloqueado por el almacén en Blob, §manual).
+  useEffect(() => {
+    if (!ready || !dueReminders.length || !("Notification" in window) || Notification.permission !== "granted" || !("serviceWorker" in navigator)) return
+    const KEY = "claris_crm_reminder_notices_v1"
+    let seen: string[] = []
+    try { seen = JSON.parse(localStorage.getItem(KEY) || "[]") } catch {}
+    const fresh = dueReminders.filter((d) => !seen.includes(`${d.reservation.id}|${d.kind}|${d.reservation.serviceDate}`))
+    if (!fresh.length) return
+    navigator.serviceWorker.ready.then(async (registration) => {
+      for (const d of fresh.slice(0, 3)) {
+        await registration.showNotification(d.kind === "day-before" ? "CRM reminder — pickup tomorrow" : "CRM reminder — pickup in under 2 hours", {
+          body: `${d.reservation.passengerName} · ${d.reservation.serviceDate}${d.reservation.pickupTime ? " " + d.reservation.pickupTime : ""} · ${d.reservation.pickupAddress} → ${d.reservation.dropoffAddress}`,
+          icon: "/icon.svg",
+          badge: "/icon.svg",
+          tag: `crm-reminder-${d.reservation.id}-${d.kind}`,
+          data: { url: "/" },
+        })
+      }
+      try { localStorage.setItem(KEY, JSON.stringify([...seen, ...fresh.map((d) => `${d.reservation.id}|${d.kind}|${d.reservation.serviceDate}`)])) } catch {}
+    }).catch(() => {})
+  }, [dueReminders, ready])
+
+  const pendingMessagesCount = useMemo(() => messagesPeek.filter((m) => m.status === "pending").length, [messagesPeek])
 
   const counts = useMemo(() => ({
     all: clients.length,
@@ -280,10 +545,15 @@ export function CRMScreen() {
 
   function saveClient() {
     if (!editing || !editing.name.trim()) return
-    setClients((prev) => prev.some((c) => c.id === editing.id)
-      ? prev.map((c) => c.id === editing.id ? editing : c)
-      : [editing, ...prev])
-    setSelected(editing.id)
+    // Cliente nuevo → recibe su número de cuenta (uno por cliente, para
+    // siempre). Cliente existente → conserva el suyo; nunca un segundo.
+    const withAccount = editing.accountNumber.trim()
+      ? editing
+      : { ...editing, accountNumber: nextAccountNumber(clients.filter((c) => c.id !== editing.id)) }
+    setClients((prev) => prev.some((c) => c.id === withAccount.id)
+      ? prev.map((c) => c.id === withAccount.id ? withAccount : c)
+      : [withAccount, ...prev])
+    setSelected(withAccount.id)
     setShowForm(false)
     setEditing(null)
   }
@@ -328,12 +598,55 @@ export function CRMScreen() {
         </button>}
       </header>
 
-      <div className="grid grid-cols-2 gap-2 rounded-xl border border-neutral-800 bg-neutral-900 p-1">
+      <div className="grid grid-cols-3 gap-2 rounded-xl border border-neutral-800 bg-neutral-900 p-1">
         <button onClick={() => { setActiveTab("clients"); setSelected(null); setShowForm(false); setEditing(null) }} className={"rounded-lg px-3 py-2.5 text-sm font-bold " + (activeTab === "clients" ? "bg-yellow-400 text-black" : "text-neutral-400")}>Clients</button>
         <button onClick={() => { setActiveTab("reservations"); setSelected(null); setShowForm(false); setEditing(null) }} className={"rounded-lg px-3 py-2.5 text-sm font-bold " + (activeTab === "reservations" ? "bg-yellow-400 text-black" : "text-neutral-400")}>Reservations</button>
+        <button onClick={() => { setActiveTab("messages"); setSelected(null); setShowForm(false); setEditing(null) }} className={"relative rounded-lg px-3 py-2.5 text-sm font-bold " + (activeTab === "messages" ? "bg-yellow-400 text-black" : "text-neutral-400")}>
+          Messages
+          {pendingMessagesCount > 0 && <span className="absolute -right-1 -top-1 flex min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-black text-white">{pendingMessagesCount}</span>}
+        </button>
       </div>
 
       <CrmCloudPanel session={session} status={cloudStatus} />
+
+      {(todayReservations.length > 0 || overdueReservations.length > 0 || dueReminders.length > 0) && (
+        <div className="space-y-2 rounded-2xl border border-yellow-500/30 bg-neutral-900 p-3">
+          {todayReservations.length > 0 && (
+            <div>
+              <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-yellow-300"><CalendarDays className="size-4" /> Reservations today · {todayReservations.length}</p>
+              <div className="mt-2 space-y-1.5">
+                {todayReservations.map((r) => (
+                  <button key={r.id} onClick={() => { setActiveTab("reservations"); setSelected(null); setShowForm(false); setEditing(null) }} className="block w-full rounded-xl bg-neutral-950 px-3 py-2 text-left">
+                    <span className="block text-sm font-bold text-white">{r.pickupTime || "Time TBD"} · {r.passengerName}</span>
+                    <span className="block truncate text-xs text-neutral-400">{r.pickupAddress} → {r.dropoffAddress}{r.pickupKind === "airport" ? ` · ${r.flightNumber}` : ""}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {dueReminders.length > 0 && (
+            <div>
+              <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-sky-300"><BellRing className="size-4" /> Reminders for you</p>
+              <div className="mt-2 space-y-1.5">
+                {dueReminders.map((d) => (
+                  <p key={d.reservation.id + d.kind} className="rounded-xl bg-neutral-950 px-3 py-2 text-xs text-neutral-200"><span className="font-bold text-white">{d.reservation.passengerName}</span> · {d.label} · {d.reservation.pickupAddress} → {d.reservation.dropoffAddress}</p>
+                ))}
+              </div>
+              <p className="mt-1.5 text-[10px] text-neutral-500">Reminders are only for you — nothing is ever sent to the client. They appear here when you open the CRM; remote push reminders are still pending (see How It Works).</p>
+            </div>
+          )}
+          {overdueReservations.length > 0 && (
+            <div>
+              <p className="flex items-center gap-2 text-xs font-black uppercase tracking-wider text-rose-300"><Clock3 className="size-4" /> Past reservations still open · {overdueReservations.length}</p>
+              <div className="mt-2 space-y-1.5">
+                {overdueReservations.map((r) => (
+                  <p key={r.id} className="rounded-xl border border-rose-900/50 bg-rose-950/20 px-3 py-2 text-xs text-rose-100"><span className="font-bold">{r.passengerName}</span> · {r.serviceDate}{r.pickupTime ? " " + r.pickupTime : ""} · {r.status} — mark it Completed or Cancelled so it is never lost or forgotten.</p>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {activeTab === "clients" ? (
       <>
@@ -383,9 +696,33 @@ export function CRMScreen() {
           <div className="mt-4 space-y-3 text-sm">
             {current.phone && <p className="text-neutral-300">{current.phone}</p>}
             {current.email && <p className="break-all text-neutral-300">{current.email}</p>}
+            <p className="flex items-center gap-2 text-neutral-400"><Hash className="size-4 text-yellow-400" /> Account: <span className="font-bold text-neutral-100">{current.accountNumber || "—"}</span></p>
             <p className="text-neutral-400">Source: <span className="text-neutral-200">{current.source || "—"}</span></p>
             {current.nextContact && <p className="flex items-center gap-2 text-amber-300"><CalendarDays className="size-4" /> Next contact: {current.nextContact}</p>}
             {current.notes && <div className="rounded-xl bg-neutral-950 p-3"><p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-neutral-500">Notes / history</p><p className="whitespace-pre-wrap text-neutral-200">{current.notes}</p></div>}
+          </div>
+          {(() => {
+            const history = reservationsPeek.filter((r) => r.clientId === current.id).sort((a, b) => (b.serviceDate + b.pickupTime).localeCompare(a.serviceDate + a.pickupTime))
+            const clientMessages = messagesPeek.filter((m) => m.clientId === current.id)
+            const upcoming = history.filter((r) => r.serviceDate >= todayStr && r.status !== "Cancelled").length
+            return (
+              <div className="mt-4 rounded-xl bg-neutral-950 p-3">
+                <p className="mb-2 flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-neutral-500"><History className="size-3.5" /> History · {history.length} reservation{history.length === 1 ? "" : "s"} · {upcoming} upcoming · {clientMessages.length} message{clientMessages.length === 1 ? "" : "s"}</p>
+                {history.length === 0 ? (
+                  <p className="text-xs text-neutral-500">No reservations yet for this client. New reservations linked to this account appear here — one account per client, always the same file.</p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {history.slice(0, 8).map((r) => (
+                      <p key={r.id} className="rounded-lg bg-neutral-900 px-2.5 py-2 text-xs text-neutral-300"><span className="font-bold text-white">{r.serviceDate}{r.pickupTime ? " · " + r.pickupTime : ""}</span> · {r.status} · {r.pickupAddress} → {r.dropoffAddress}{r.pickupKind === "airport" ? ` · ${r.airline ? r.airline + " " : ""}${r.flightNumber}` : ""}</p>
+                    ))}
+                    {history.length > 8 && <p className="text-[11px] text-neutral-500">…and {history.length - 8} more in Reservations.</p>}
+                  </div>
+                )}
+              </div>
+            )
+          })()}
+          <div className="mt-4">
+            <CrmPhotosBlock photos={current.photos} kind="clients" recordId={current.id} cloud={photoCloud} onChange={(next) => setClients((prev) => prev.map((c) => (c.id === current.id ? { ...c, photos: next } : c)))} />
           </div>
           <div className="mt-4 flex gap-2">
             <button onClick={() => startEdit(current)} className="flex-1 rounded-xl border border-neutral-700 py-3 text-sm font-bold text-white">Edit client</button>
@@ -401,6 +738,7 @@ export function CRMScreen() {
             <button onClick={() => { setShowForm(false); setEditing(null) }} aria-label="Close form" className="rounded-lg p-2 text-neutral-400"><X className="size-4" /></button>
           </div>
           <div className="space-y-3">
+            <div><label className={labelClass}>Account number</label><p className="rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-3 text-[16px] font-bold text-yellow-300">{editing.accountNumber || nextAccountNumber(clients.filter((c) => c.id !== editing.id))}<span className="ml-2 text-xs font-semibold text-neutral-500">{editing.accountNumber ? "One account per client — it never changes." : "Assigned when you save. One account per client."}</span></p></div>
             <div><label className={labelClass}>Full name *</label><input autoFocus value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value })} className={inputClass} placeholder="Client name" /></div>
             <div><label className={labelClass}>Company / business</label><input value={editing.company} onChange={(e) => setEditing({ ...editing, company: e.target.value })} className={inputClass} placeholder="Company (optional)" /></div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -437,6 +775,7 @@ export function CRMScreen() {
               </span>
               <span className="flex shrink-0 flex-col items-end gap-1">
                 <span className={"rounded-full border px-2 py-1 text-[10px] font-bold " + statusStyle(client.status)}>{client.status}</span>
+                {client.accountNumber && <span className="text-[10px] font-bold text-yellow-400/80">{client.accountNumber}</span>}
                 {client.nextContact && <span className="text-[10px] text-neutral-500">{client.nextContact}</span>}
               </span>
             </button>
@@ -445,14 +784,36 @@ export function CRMScreen() {
       )}
       <p className="text-center text-[10px] text-neutral-600">{session ? (cloudStatus === "synced" ? "Client records are synced with the CRM cloud and also kept on this device." : cloudStatus === "error" ? "CRM cloud sync hit a problem — records are safe on this device." : "Connecting to the CRM cloud…") : "Client records are currently saved on this device. Sign in above to sync them with the CRM cloud."}</p>
       </>
+      ) : activeTab === "reservations" ? (
+        <CRMReservations clients={clients.map(({ id, name, phone, email, accountNumber }) => ({ id, name, phone, email, accountNumber }))} cloudSeed={cloudSeedReservations} cloudSeedNonce={cloudSeedNonce} onCloudSync={session ? pushReservationsToCloud : null} onReservationsChanged={setReservationsPeek} onReservationSaved={handleReservationSaved} prefill={reservationPrefill} prefillNonce={reservationPrefillNonce} photoCloud={photoCloud} />
       ) : (
-        <CRMReservations clients={clients.map(({ id, name, phone, email }) => ({ id, name, phone, email }))} cloudSeed={cloudSeedReservations} cloudSeedNonce={cloudSeedNonce} onCloudSync={session ? pushReservationsToCloud : null} />
+        <CRMMessages
+          clients={clients}
+          reservations={reservationsPeek}
+          cloudSeed={cloudSeedMessages}
+          cloudSeedNonce={cloudSeedMessagesNonce}
+          onCloudSync={session ? pushMessagesToCloud : null}
+          cloudPending={messagesCloudPending}
+          onMessagesChanged={setMessagesPeek}
+          findOrCreateClient={findOrCreateClient}
+          onCreateReservation={(message: CRMMessage) => {
+            pendingMessageLink.current = message.id
+            setReservationPrefill({
+              clientId: message.clientId || "",
+              passengerName: message.fromName || "",
+              passengerPhone: message.fromPhone || "",
+              notes: message.body || "",
+            })
+            setReservationPrefillNonce((n) => n + 1)
+            setActiveTab("reservations")
+          }}
+        />
       )}
     </section>
   )
 }
 
-type CRMClientOption = { id: string; name: string; phone: string; email: string }
+type CRMClientOption = { id: string; name: string; phone: string; email: string; accountNumber?: string }
 type FlightLookup = {
   reservationId: string
   status: "not_found" | "stale" | "on_ground" | "in_air" | "unknown"
@@ -500,8 +861,13 @@ type CRMReservation = {
   terminal: string
   gate: string
   notes: string
+  photos: CrmPhoto[]
   createdAt: string
   updatedAt: string
+}
+
+function normalizeReservation(raw: Partial<CRMReservation> & { id: string }): CRMReservation {
+  return { ...newReservation(), ...raw, photos: Array.isArray(raw.photos) ? raw.photos : [] }
 }
 
 const RESERVATIONS_STORE = "claris_crm_reservations_v1"
@@ -514,7 +880,7 @@ const newReservation = (): CRMReservation => ({
   passengers: 1, status: "Requested", pickupKind: "standard",
   pickupAddress: "", dropoffAddress: "", airport: "", airline: "",
   flightNumber: "", flightDate: "", scheduledArrival: "", terminal: "",
-  gate: "", notes: "", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+  gate: "", notes: "", photos: [], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
 })
 const appleMapsLink = (address: string) => `https://maps.apple.com/?daddr=${encodeURIComponent(address)}`
 const googleMapsLink = (address: string) => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`
@@ -537,7 +903,7 @@ function AddressNavigation({ label, address }: { label: string; address: string 
   )
 }
 
-function CRMReservations({ clients, cloudSeed, cloudSeedNonce, onCloudSync }: { clients: CRMClientOption[]; cloudSeed: CRMReservation[] | null; cloudSeedNonce: number; onCloudSync: ((items: CRMReservation[], deletedIds: string[]) => void) | null }) {
+function CRMReservations({ clients, cloudSeed, cloudSeedNonce, onCloudSync, onReservationsChanged, onReservationSaved, prefill, prefillNonce, photoCloud }: { clients: CRMClientOption[]; cloudSeed: CRMReservation[] | null; cloudSeedNonce: number; onCloudSync: ((items: CRMReservation[], deletedIds: string[]) => void) | null; onReservationsChanged?: (items: CRMReservation[]) => void; onReservationSaved?: (r: CRMReservation) => void; prefill?: Partial<CRMReservation> | null; prefillNonce?: number; photoCloud?: PhotoCloud }) {
   const [reservations, setReservations] = useState<CRMReservation[]>([])
   const [ready, setReady] = useState(false)
   const [editing, setEditing] = useState<CRMReservation | null>(null)
@@ -552,10 +918,28 @@ function CRMReservations({ clients, cloudSeed, cloudSeedNonce, onCloudSync }: { 
     try {
       const raw = localStorage.getItem(RESERVATIONS_STORE)
       const parsed = raw ? JSON.parse(raw) : []
-      if (Array.isArray(parsed)) setReservations(parsed)
+      if (Array.isArray(parsed)) setReservations(parsed.map((r) => normalizeReservation(r as CRMReservation)))
     } catch {}
     setReady(true)
   }, [])
+
+  // Reporta la lista al padre (aviso de hoy, recordatorios, historial).
+  useEffect(() => {
+    if (ready) onReservationsChanged?.(reservations)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reservations, ready])
+
+  // Prefill desde la bandeja de mensajes: abre el formulario ya llenado
+  // con el pasajero del mensaje; al guardar, el padre enlaza el mensaje.
+  const prefillApplied = useRef(0)
+  useEffect(() => {
+    if (!prefill || !prefillNonce || prefillApplied.current === prefillNonce) return
+    prefillApplied.current = prefillNonce
+    setEditing({ ...newReservation(), ...prefill })
+    setShowForm(true)
+    setSelectedId(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefill, prefillNonce])
 
   useEffect(() => {
     if (!ready) return
@@ -619,6 +1003,7 @@ function CRMReservations({ clients, cloudSeed, cloudSeedNonce, onCloudSync }: { 
     setSelectedId(saved.id)
     setShowForm(false)
     setEditing(null)
+    onReservationSaved?.(saved)
   }
   function removeReservation(id: string) {
     if (!window.confirm("Delete this reservation?")) return
@@ -669,7 +1054,7 @@ function CRMReservations({ clients, cloudSeed, cloudSeedNonce, onCloudSync }: { 
         <div className="rounded-2xl border border-yellow-500/30 bg-neutral-900 p-4">
           <div className="mb-4 flex items-center justify-between gap-2"><h3 className="text-lg font-extrabold text-white">{reservations.some((r) => r.id === editing.id) ? "Edit reservation" : "New reservation"}</h3><button onClick={() => { setShowForm(false); setEditing(null) }} aria-label="Close reservation form" className="rounded-lg p-2 text-neutral-400"><X className="size-4" /></button></div>
           <div className="space-y-3">
-            <div><label className={reservationLabel}>Existing client (optional)</label><select value={editing.clientId} onChange={(e) => { const client = clients.find((c) => c.id === e.target.value); setEditing((prev) => prev ? { ...prev, clientId: e.target.value, passengerName: client?.name ?? prev.passengerName, passengerPhone: client?.phone ?? prev.passengerPhone } : prev) }} className={reservationInput}><option value="">Choose a CRM client or enter passenger below</option>{clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}</select></div>
+            <div><label className={reservationLabel}>Existing client (optional)</label><select value={editing.clientId} onChange={(e) => { const client = clients.find((c) => c.id === e.target.value); setEditing((prev) => prev ? { ...prev, clientId: e.target.value, passengerName: client?.name ?? prev.passengerName, passengerPhone: client?.phone ?? prev.passengerPhone } : prev) }} className={reservationInput}><option value="">Choose a CRM client or enter passenger below</option>{clients.map((client) => <option key={client.id} value={client.id}>{client.name}{client.accountNumber ? ` · ${client.accountNumber}` : ""}</option>)}</select></div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div><label className={reservationLabel}>Passenger name *</label><input value={editing.passengerName} onChange={(e) => patch("passengerName", e.target.value)} className={reservationInput} placeholder="Passenger full name" /></div>
               <div><label className={reservationLabel}>Passenger phone</label><input type="tel" value={editing.passengerPhone} onChange={(e) => patch("passengerPhone", e.target.value)} className={reservationInput} placeholder="Phone number" /></div>
@@ -730,7 +1115,7 @@ function CRMReservations({ clients, cloudSeed, cloudSeedNonce, onCloudSync }: { 
           {current.pickupKind === "airport" && (
             <div className="rounded-xl border border-sky-900/70 bg-sky-950/20 p-3">
               <div className="flex items-center gap-2 text-sm font-extrabold text-sky-200"><Plane className="size-4" /> Airport pickup</div>
-              <p className="mt-2 text-sm text-white">{current.airline ? current.airline + " · " : ""}{current.flightNumber}</p>
+              <button disabled={flightLoading} onClick={() => trackFlight(current)} aria-label={`Track flight ${current.flightNumber} live`} className="mt-2 inline-flex max-w-full flex-wrap items-center gap-2 rounded-lg border border-sky-800/70 bg-sky-950/40 px-2.5 py-1.5 text-left disabled:opacity-50"><Plane className="size-4 shrink-0 text-sky-300" /><span className="text-sm font-bold text-white">{current.airline ? current.airline + " · " : ""}{current.flightNumber}</span><span className="text-[10px] font-bold uppercase tracking-wider text-sky-300">{flightLoading ? "Checking…" : "Tap for live status"}</span></button>
               <p className="mt-1 text-xs text-neutral-300">{current.airport} · {current.flightDate}{current.scheduledArrival ? " · Arrival " + current.scheduledArrival : ""}</p>
               {(current.terminal || current.gate) && <p className="mt-1 text-xs text-neutral-400">{[current.terminal && "Terminal " + current.terminal, current.gate && "Gate " + current.gate].filter(Boolean).join(" · ")}</p>}
               <button disabled={flightLoading} onClick={() => trackFlight(current)} className="mt-3 inline-flex items-center gap-2 rounded-xl bg-sky-200 px-3 py-2.5 text-xs font-extrabold text-sky-950 disabled:opacity-50"><Plane className="size-4" /> {flightLoading ? "Checking live aircraft…" : "Track Flight — Live ADS-B"}</button>
@@ -765,6 +1150,7 @@ function CRMReservations({ clients, cloudSeed, cloudSeedNonce, onCloudSync }: { 
             </div>
           )}
           {current.notes && <div className="rounded-xl bg-neutral-950 p-3"><p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-neutral-500">Notes</p><p className="whitespace-pre-wrap text-sm text-neutral-200">{current.notes}</p></div>}
+          <CrmPhotosBlock photos={current.photos} kind="reservations" recordId={current.id} cloud={photoCloud ?? null} onChange={(next) => setReservations((prev) => prev.map((r) => (r.id === current.id ? { ...r, photos: next, updatedAt: new Date().toISOString() } : r)))} />
           <div className="flex gap-2"><button onClick={() => beginEdit(current)} className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-neutral-700 py-3 text-sm font-bold text-white"><Pencil className="size-4" /> Edit reservation</button><button onClick={() => removeReservation(current.id)} className="rounded-xl border border-rose-900/70 px-4 py-3 text-rose-300"><Trash2 className="size-4" /></button></div>
         </div>
       )}
@@ -788,3 +1174,258 @@ function CRMReservations({ clients, cloudSeed, cloudSeedNonce, onCloudSync }: { 
   )
 }
 
+
+type MessageStatus = "pending" | "approved" | "sent" | "discarded"
+type CRMMessage = {
+  id: string
+  clientId: string
+  reservationId: string
+  channel: string
+  fromName: string
+  fromPhone: string
+  body: string
+  draftReply: string
+  status: MessageStatus
+  approvedAt: string
+  sentAt: string
+  createdAt: string
+  updatedAt: string
+}
+
+const MESSAGES_STORE = "claris_crm_messages_v1"
+const newMessage = (): CRMMessage => ({
+  id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `msg-${Date.now()}`,
+  clientId: "", reservationId: "", channel: "SMS", fromName: "", fromPhone: "",
+  body: "", draftReply: "", status: "pending", approvedAt: "", sentAt: "",
+  createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+})
+
+/**
+ * Bandeja de mensajes "Approve & Send" (diseño de Miguel, 2026-11-26).
+ * Un mensaje de cliente se registra aquí con su borrador de respuesta
+ * EDITABLE. Nada sale solo: Miguel lo ve, lo edita si hace falta y toca
+ * Approve & Send. Si está ocupado, lo minimiza y el pendiente NO se
+ * pierde: el contador queda visible hasta resolverlo.
+ * HONESTIDAD TÉCNICA: la app no tiene proveedor de SMS/WhatsApp saliente;
+ * "Approve & Send" registra la aprobación y el estado. El envío real
+ * ocurre por el canal aprobado de Miguel/Amani (su teléfono / ZapClaw con
+ * su aprobación) y aquí se marca "sent" cuando ya salió.
+ */
+function CRMMessages({ clients, reservations, cloudSeed, cloudSeedNonce, onCloudSync, cloudPending, onMessagesChanged, findOrCreateClient, onCreateReservation }: {
+  clients: Client[]
+  reservations: CRMReservation[]
+  cloudSeed: CRMMessage[] | null
+  cloudSeedNonce: number
+  onCloudSync: ((items: CRMMessage[], deletedIds: string[]) => void) | null
+  cloudPending: boolean
+  onMessagesChanged?: (items: CRMMessage[]) => void
+  findOrCreateClient: (name: string, phone: string) => Client
+  onCreateReservation: (message: CRMMessage) => void
+}) {
+  const [messages, setMessages] = useState<CRMMessage[]>([])
+  const [ready, setReady] = useState(false)
+  const [intake, setIntake] = useState<CRMMessage | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [draftEdit, setDraftEdit] = useState("")
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(MESSAGES_STORE)
+      const parsed = raw ? JSON.parse(raw) : []
+      if (Array.isArray(parsed)) setMessages(parsed as CRMMessage[])
+    } catch {}
+    setReady(true)
+  }, [])
+
+  useEffect(() => {
+    if (!ready) return
+    try { localStorage.setItem(MESSAGES_STORE, JSON.stringify(messages)) } catch {}
+    onMessagesChanged?.(messages)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, ready])
+
+  // ---- CRM cloud (mensajes): mismo patrón que reservas ----
+  const seedAppliedNonce = useRef(0)
+  const lastSyncedIds = useRef<Set<string>>(new Set())
+  const [seedMerged, setSeedMerged] = useState(false)
+
+  useEffect(() => {
+    if (!cloudSeed || !ready || seedAppliedNonce.current === cloudSeedNonce) return
+    seedAppliedNonce.current = cloudSeedNonce
+    const cloudIds = new Set(cloudSeed.map((m) => m.id))
+    const localOnly = messages.filter((m) => !cloudIds.has(m.id))
+    const merged = [...cloudSeed, ...localOnly]
+    setMessages(merged)
+    lastSyncedIds.current = new Set(cloudSeed.map((m) => m.id))
+    setSeedMerged(true)
+    if (localOnly.length && onCloudSync) {
+      onCloudSync(merged, [])
+      lastSyncedIds.current = new Set(merged.map((m) => m.id))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cloudSeed, cloudSeedNonce, ready])
+
+  useEffect(() => {
+    if (!ready || !seedMerged || !onCloudSync) return
+    const t = setTimeout(() => {
+      const currentIds = new Set(messages.map((m) => m.id))
+      const deleted = [...lastSyncedIds.current].filter((id) => !currentIds.has(id))
+      onCloudSync(messages, deleted)
+      lastSyncedIds.current = currentIds
+    }, 800)
+    return () => clearTimeout(t)
+  }, [messages, ready, seedMerged, onCloudSync])
+
+  const ordered = useMemo(() => {
+    const rank: Record<MessageStatus, number> = { pending: 0, approved: 1, sent: 2, discarded: 3 }
+    return [...messages].sort((a, b) => rank[a.status] - rank[b.status] || b.createdAt.localeCompare(a.createdAt))
+  }, [messages])
+  const pendingCount = messages.filter((m) => m.status === "pending").length
+  const current = messages.find((m) => m.id === selectedId) ?? null
+
+  useEffect(() => {
+    if (current) setDraftEdit(current.draftReply)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId])
+
+  function patchMessage(id: string, patch: Partial<CRMMessage>) {
+    setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch, updatedAt: new Date().toISOString() } : m)))
+  }
+
+  function saveIntake() {
+    if (!intake || !intake.body.trim()) return
+    // Enlace automático por teléfono: si el número ya es de un cliente, el
+    // mensaje cae en SU archivo (nunca un segundo récord).
+    const digits = intake.fromPhone.replace(/\D/g, "")
+    const match = digits ? clients.find((c) => c.phone.replace(/\D/g, "") === digits) : undefined
+    const saved = { ...intake, clientId: intake.clientId || match?.id || "" }
+    setMessages((prev) => [saved, ...prev])
+    setIntake(null)
+    setSelectedId(saved.id)
+  }
+
+  function approveAndSend(m: CRMMessage) {
+    patchMessage(m.id, { draftReply: draftEdit, status: "approved", approvedAt: new Date().toISOString() })
+  }
+
+  const statusChip = (s: MessageStatus) => s === "pending"
+    ? "border-rose-700/60 bg-rose-950/50 text-rose-300"
+    : s === "approved"
+      ? "border-amber-700/60 bg-amber-950/50 text-amber-300"
+      : s === "sent"
+        ? "border-emerald-700/60 bg-emerald-950/50 text-emerald-300"
+        : "border-neutral-700 bg-neutral-900 text-neutral-400"
+
+  if (!ready) return <div className="py-8 text-center text-sm text-neutral-500">Loading messages…</div>
+
+  const linkedClient = current?.clientId ? clients.find((c) => c.id === current.clientId) ?? null : null
+  const linkedReservation = current?.reservationId ? reservations.find((r) => r.id === current.reservationId) ?? null : null
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <h2 className="flex items-center gap-2 text-lg font-extrabold text-white"><Inbox className="size-5 text-yellow-400" /> Message tray</h2>
+          <p className="text-xs text-neutral-500">{pendingCount} pending · nothing is sent without your approval</p>
+        </div>
+        <button onClick={() => setIntake(newMessage())} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-yellow-400 px-3 py-3 text-sm font-extrabold text-black"><Plus className="size-4" /> Log message</button>
+      </div>
+
+      {intake && (
+        <div className="rounded-2xl border border-yellow-500/30 bg-neutral-900 p-4">
+          <div className="mb-4 flex items-center justify-between gap-2"><h3 className="text-lg font-extrabold text-white">Incoming client message</h3><button onClick={() => setIntake(null)} aria-label="Close message form" className="rounded-lg p-2 text-neutral-400"><X className="size-4" /></button></div>
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div><label className={reservationLabel}>From (client name)</label><input value={intake.fromName} onChange={(e) => setIntake({ ...intake, fromName: e.target.value })} className={reservationInput} placeholder="Client name" /></div>
+              <div><label className={reservationLabel}>Phone</label><input type="tel" value={intake.fromPhone} onChange={(e) => setIntake({ ...intake, fromPhone: e.target.value })} className={reservationInput} placeholder="Phone number" /></div>
+            </div>
+            <div><label className={reservationLabel}>Channel</label><select value={intake.channel} onChange={(e) => setIntake({ ...intake, channel: e.target.value })} className={reservationInput}><option>SMS</option><option>WhatsApp</option><option>Other</option></select></div>
+            <div><label className={reservationLabel}>Message received *</label><textarea rows={3} value={intake.body} onChange={(e) => setIntake({ ...intake, body: e.target.value })} className={reservationInput + " resize-y"} placeholder="Paste the client's message exactly as it arrived…" /></div>
+            <div><label className={reservationLabel}>Draft reply (editable — Miguel approves before anything goes out)</label><textarea rows={3} value={intake.draftReply} onChange={(e) => setIntake({ ...intake, draftReply: e.target.value })} className={reservationInput + " resize-y"} placeholder="Proposed reply…" /></div>
+          </div>
+          <button disabled={!intake.body.trim()} onClick={saveIntake} className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-yellow-400 py-3.5 text-sm font-extrabold text-black disabled:opacity-40"><Save className="size-4" /> Save to tray</button>
+        </div>
+      )}
+
+      {current && !intake && (
+        <div className="space-y-3 rounded-2xl border border-yellow-500/30 bg-neutral-900 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <span className={"rounded-full border px-2.5 py-1 text-[10px] font-bold " + statusChip(current.status)}>{current.status.toUpperCase()}</span>
+              <h3 className="mt-2 text-xl font-extrabold text-white">{current.fromName || "Unknown sender"}</h3>
+              <p className="mt-1 text-xs text-neutral-400">{current.channel} · {current.fromPhone || "no phone"} · {new Date(current.createdAt).toLocaleString()}</p>
+            </div>
+            <button onClick={() => setSelectedId(null)} aria-label="Minimize — the pending message stays in the tray" className="rounded-lg p-2 text-neutral-400"><X className="size-4" /></button>
+          </div>
+          <div className="rounded-xl bg-neutral-950 p-3">
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-neutral-500">Client wrote</p>
+            <p className="whitespace-pre-wrap text-sm text-neutral-100">{current.body}</p>
+          </div>
+          <div>
+            <label className={reservationLabel}>Reply draft — editable</label>
+            <textarea rows={3} value={draftEdit} onChange={(e) => setDraftEdit(e.target.value)} className={reservationInput + " resize-y"} placeholder="Write the reply Miguel will approve…" />
+            {draftEdit !== current.draftReply && <button onClick={() => patchMessage(current.id, { draftReply: draftEdit })} className="mt-2 rounded-lg border border-neutral-700 px-3 py-2 text-xs font-bold text-white">Save draft edits</button>}
+          </div>
+
+          <div className="rounded-xl border border-neutral-800 bg-neutral-950/70 p-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">Client file</p>
+            {linkedClient ? (
+              <p className="mt-1 text-sm text-neutral-200">{linkedClient.name} · <span className="font-bold text-yellow-300">{linkedClient.accountNumber || "no account yet"}</span>{linkedClient.phone ? ` · ${linkedClient.phone}` : ""}</p>
+            ) : (
+              <div className="mt-2 flex flex-wrap gap-2">
+                <button onClick={() => { const c = findOrCreateClient(current.fromName, current.fromPhone); patchMessage(current.id, { clientId: c.id }) }} className="rounded-lg bg-neutral-800 px-3 py-2.5 text-xs font-bold text-white">Create / find client record</button>
+                <select value="" onChange={(e) => { if (e.target.value) patchMessage(current.id, { clientId: e.target.value }) }} className="min-w-0 flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-2 py-2.5 text-xs text-white">
+                  <option value="">…or link an existing client</option>
+                  {clients.map((c) => <option key={c.id} value={c.id}>{c.name}{c.accountNumber ? ` · ${c.accountNumber}` : ""}</option>)}
+                </select>
+              </div>
+            )}
+            <p className="mt-3 text-[10px] font-bold uppercase tracking-wider text-neutral-500">Reservation entry</p>
+            {linkedReservation ? (
+              <p className="mt-1 text-sm text-neutral-200">{linkedReservation.serviceDate}{linkedReservation.pickupTime ? " · " + linkedReservation.pickupTime : ""} · {linkedReservation.pickupAddress} → {linkedReservation.dropoffAddress}{linkedReservation.pickupKind === "airport" ? ` · ${linkedReservation.flightNumber}` : ""}</p>
+            ) : (
+              <button onClick={() => onCreateReservation(current)} className="mt-2 rounded-lg bg-neutral-800 px-3 py-2.5 text-xs font-bold text-white">Create reservation from this message</button>
+            )}
+          </div>
+
+          {current.status === "approved" && (
+            <p className="rounded-xl border border-amber-800/60 bg-amber-950/30 p-3 text-xs leading-relaxed text-amber-100">
+              Approved by you{current.approvedAt ? ` · ${new Date(current.approvedAt).toLocaleString()}` : ""}. The CRM does not send messages by itself — this reply goes out through your usual approved channel (your phone / ZapClaw, with your approval). When it has gone out, tap “Mark as sent”.
+            </p>
+          )}
+          {current.status === "sent" && (
+            <p className="rounded-xl border border-emerald-800/60 bg-emerald-950/30 p-3 text-xs text-emerald-100">Marked as sent{current.sentAt ? ` · ${new Date(current.sentAt).toLocaleString()}` : ""}.</p>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            {current.status === "pending" && <button onClick={() => approveAndSend(current)} disabled={!draftEdit.trim()} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-yellow-400 py-3 text-sm font-extrabold text-black disabled:opacity-40"><CheckCheck className="size-4" /> Approve &amp; Send</button>}
+            {current.status === "approved" && <button onClick={() => patchMessage(current.id, { status: "sent", sentAt: new Date().toISOString() })} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 text-sm font-extrabold text-black">Mark as sent</button>}
+            {(current.status === "pending" || current.status === "approved") && <button onClick={() => { if (window.confirm("Discard this message? It stays in the tray history as discarded.")) { patchMessage(current.id, { status: "discarded" }); setSelectedId(null) } }} className="rounded-xl border border-neutral-700 px-4 py-3 text-sm font-bold text-neutral-300">Discard</button>}
+            <button onClick={() => setSelectedId(null)} className="rounded-xl border border-neutral-700 px-4 py-3 text-sm font-bold text-white">Minimize</button>
+          </div>
+          <p className="text-[11px] text-neutral-500">Minimize keeps the message pending — the counter on the Messages tab stays until you approve, send or discard it. Nothing is ever sent from here without your approval.</p>
+        </div>
+      )}
+
+      {!intake && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between"><h3 className="text-sm font-extrabold text-white">Tray</h3><span className="text-xs text-neutral-500">{messages.length} shown</span></div>
+          {messages.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-neutral-700 px-5 py-10 text-center"><MessageSquare className="mx-auto mb-3 size-8 text-neutral-600" /><p className="font-bold text-white">No messages in the tray</p><p className="mt-1 text-sm text-neutral-500">When a client writes, the message and its draft reply land here for your approval — even if you cannot look at it for hours, it is never lost.</p></div>
+          ) : ordered.map((m) => (
+            <button key={m.id} onClick={() => setSelectedId(m.id)} className={"flex w-full items-center gap-3 rounded-2xl border p-3 text-left " + (selectedId === m.id ? "border-yellow-500/50 bg-yellow-400/5" : "border-neutral-800 bg-neutral-900/70")}>
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-neutral-800 text-yellow-400"><MessageSquare className="size-5" /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-bold text-white">{m.fromName || m.fromPhone || "Unknown sender"}</span>
+                <span className="block truncate text-xs text-neutral-400">{m.body}</span>
+                <span className="mt-0.5 block text-[10px] text-neutral-500">{m.channel} · {new Date(m.createdAt).toLocaleString()}</span>
+              </span>
+              <span className={"shrink-0 rounded-full border px-2 py-1 text-[9px] font-bold " + statusChip(m.status)}>{m.status.toUpperCase()}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      <p className="text-center text-[10px] text-neutral-600">{cloudPending ? "Message tray is saved on this device until the CRM cloud update (migration) is applied to the CRM project." : onCloudSync ? "Messages are synced with the CRM cloud and also kept on this device." : "Messages are saved on this device only. Sign in above to sync them with the CRM cloud."}</p>
+    </div>
+  )
+}

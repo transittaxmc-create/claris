@@ -20,6 +20,35 @@ export function HowItWorksScreen() {
         </p>
       </header>
 
+      <Section title="INDEX — the one index for this whole manual">
+        <P>
+          <B>Rule (Miguel, 2026-11-26):</B> this manual has <B>ONE single index</B> — this one. A
+          topic that is already listed here is updated <B>in its own section</B>, never in a new
+          one; a genuinely new topic is added to this index <B>once</B>, with its section. Every
+          deployment updates this index and its sections in the same deployment. (Older sections
+          keep the numbers they were written with — two historical series overlap; the date in
+          each title tells them apart. Nothing was renumbered, so no older note breaks.)
+        </P>
+        <P><B>Daily use</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>§1 TODAY — daily trip entries · §2 Tolls — automatic E-ZPass detection · §3 TOLL AUDIT — E-ZPass reconciliation · §4 EARNINGS — daily jobs and receivables · §5 MONEY — registers and projections · §6 REPORTS · §7 MORE</li>
+          <li>§8 DATA &amp; BACKUP — where data lives and how to switch phones · §9 TAXES 2026 — Schedule C and self-employment · §10 Standing rules</li>
+        </ul>
+        <P><B>CRM</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>§11 CRM COPILOTO V7 — official project continuity (2026-11-25) · §13 CRM RESERVATIONS — airport flight tracking &amp; address navigation (2026-11-25) · §17 SUPABASE CRM AUTH + DATABASE (2026-11-25) · §18 CRM AUTH + TABLES (2026-11-25) · §18 (second) REAL PROGRESS — CRM tables created, Auth pending (2026-11-25)</li>
+          <li>§19 CRM CLOUD — Phase 1 in production (2026-11-26) · §20 CRM PHASES 2–5 — account number, photos, message tray, reminders (2026-11-26)</li>
+        </ul>
+        <P><B>Communications, continuity and incidents</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>§10 (second) TWILIO SMS — continuity and security (2026-11-25) · §14 COMMUNICATIONS &amp; COPILOT PLAN — email, SMS, messaging and notices (2026-11-25/26) · §11 (second) CONTINUITY AUDIT (2026-11-25) · §12 PRODUCTION TECHNICAL TEST (2026-11-25/26) · §15 VERCEL BUILD INCIDENT — CRM import (2026-11-25/26) · §16 PREVIOUS CHAT RECOVERY &amp; HANDOFF BETWEEN CHATS (2026-11-25/26)</li>
+        </ul>
+        <P><B>Priorities</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>§21 LISTA DE PRIORIDADES — the open priorities, in plain language, updated with every deployment</li>
+        </ul>
+      </Section>
+
       <Section title="1. TODAY — daily trip entries">
         <ul className="list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
           <li>
@@ -1317,6 +1346,88 @@ export function HowItWorksScreen() {
           <B>Finance protection:</B> this Phase 1 deployment changed only the CRM connection files
           listed in its production record. It did not change finance screens, finance data, Plaid or
           the finance Supabase project.
+        </P>
+      </Section>
+
+      <Section title="20. CRM PHASES 2–5 — ACCOUNT NUMBER, PHOTOS, MESSAGE TRAY, REMINDERS (BUILT IN TEST BRANCH, 2026-11-26)">
+        <P>
+          <B>Status:</B> built and verified on 2026-11-26 in the test branch <B>test/crm-fases</B>
+          (worktree claris-test-crm), on Miguel&apos;s order to complete everything defined for the
+          CRM, and <B>deployed to production in this same deployment</B> — Miguel authorized the
+          upload in the same order (“tiene un sí al lado”), so no separate “súbelo” was waited
+          for. The deployment commit is recorded in the report <B>crm-fases-2026-11-26.md</B>.
+          This section supersedes the “Still not built” list at the end of section 19: those four
+          items are exactly what was built here. Still owed after this deployment: applying the
+          migration below in the CRM project, and Miguel&apos;s visual confirmation on his phone.
+        </P>
+        <P><B>Reservation view — completed in this same build (Miguel&apos;s older request, finished here):</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>Opening a reservation shows everything in that one view: pickup, drop-off, and for airport pickups the flight number and the scheduled arrival time (plus terminal/gate when present). The list card already shows passenger, date/time, flight and “pickup → drop-off” without opening it.</li>
+          <li><B>GPS buttons:</B> each address in the open reservation carries <B>Apple Maps</B> and <B>Google Maps</B> buttons that open navigation with that address already loaded — one for going to pick up, one for going to drop off, no typing. (These buttons already existed; verified in this build.)</li>
+          <li><B>Tappable flight number:</B> the flight number itself is now a button — tapping it runs the same live Track Flight (ADS-B) check as the “Track Flight — Live ADS-B” button and shows the live result in the same view. Before this build the flight number was plain text and only the separate button tracked the flight.</li>
+        </ul>
+        <P><B>Phase 2 — one account number per client + history:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>Every client record carries an <B>account number</B>: format <B>ICT-####</B> (ICT-0001, ICT-0002, …), sequential per owner, assigned once when the client is created and never changed or reused. Existing clients without a number receive the next ones in creation order when the CRM opens.</li>
+          <li><B>One account per client, never one per call or booking.</B> Creating a reservation or logging a message for an existing client links to that same record — matched by phone number — and adds to its history; it never creates a second file.</li>
+          <li>The client file shows its <B>history</B>: all of the client&apos;s reservations (past and upcoming), how many times they have booked, and how many messages are on file.</li>
+        </ul>
+        <P><B>Phase 3 — client photos in the record and the reservation:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>Photos (the pickup or flight photo a client sends) attach to the client file and to the reservation. On the device they are stored downsized; with a CRM session they also upload to the <B>private</B> Storage bucket <B>crm-client-photos</B> in the CRM Supabase project, in the owner&apos;s own folder, and are viewed through short-lived signed links.</li>
+          <li>Without a session — or before the migration below is applied — photos keep working on the device and are honestly marked <B>“Device only”</B>. Nothing breaks and no photo is silently lost.</li>
+        </ul>
+        <P><B>Phase 4 — message tray with Approve &amp; Send:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>The CRM has a <B>Messages</B> tab: incoming client messages (SMS / WhatsApp / other) are logged with the client&apos;s text and a proposed reply. A <B>pending counter</B> stays on the tab until every message is resolved — dismissing or minimizing a message never loses the pending item.</li>
+          <li>Opening a message shows the client&apos;s text and the <B>editable draft</B>. <B>Approve &amp; Send</B> records Miguel&apos;s approval; <B>Mark as sent</B> records that the reply went out; Discard closes it. A message from an existing client links to their account automatically by phone; a new sender creates their client record with its account number from inside the tray.</li>
+          <li>When the message is a booking, <B>“Create reservation from this message”</B> opens the reservation form pre-filled and links the created reservation back to the message and to the client&apos;s history.</li>
+          <li><B>HONEST LIMIT — read before describing this feature:</B> the app does <B>not</B> gain a sending provider. “Approve &amp; Send” records the approval and the state inside the CRM; the reply itself still goes out through Miguel&apos;s / Amani&apos;s usual approved channel, and only then is it marked as sent. <B>Nothing is ever sent to a client automatically, and nothing is sent without Miguel seeing and approving the exact text first.</B></li>
+        </ul>
+        <P><B>Phase 5 — reservations today + reminders for Miguel only:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>Opening the CRM shows <B>“Reservations today”</B> so the day can be planned, a <B>reminders strip</B> (one day before, and pickup in under two hours), and a red <B>“Past reservations still open”</B> list — a reservation that passed without being completed or cancelled stays visible so none is ever lost.</li>
+          <li>Reminders are <B>for Miguel only, never for the client</B>. Built today: the reminder model and logic, the in-app strips, and a device notification when the app is open at the right moment. <B>Remote push with the app closed is still blocked</B>: the existing push route stores subscriptions in the Vercel Blob, which is suspended, and there is no scheduler — do not describe remote push reminders as working.</li>
+        </ul>
+        <P><B>Required step at deploy time — migration first:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>The branch carries <B>supabase/migrations/20261126120000_crm_account_photos_messages.sql</B>: account_number + photos columns, the <B>crm_messages</B> table (owner-only RLS) and the private <B>crm-client-photos</B> bucket with owner-folder policies — all in the CRM project <B>mimgwleghecseoymgdug</B> only. It must be applied in that project&apos;s SQL editor <B>before or together with</B> the production deploy.</li>
+          <li>The code is safe before the migration: verified live on 2026-11-26 against the real CRM project without it — sign-in, phase-1 sync and client saves keep working (legacy fallback), the state route answers <B>messagesPending: true</B>, and photos stay device-only. The new fields simply start syncing once the migration exists.</li>
+        </ul>
+        <P>
+          <B>Verification:</B> typecheck with zero new errors over the 65-error baseline and a
+          passing production build; a 31-check browser harness with invented data only passed
+          31/31 (account numbers, history, photos, tray flow, banners, persistence, and the
+          pre-migration cloud degradation). <B>Finance protection:</B> no finance screen, finance
+          data, Plaid, or the finance Supabase project was touched. Full record:
+          crm-fases-2026-11-26.md.
+        </P>
+      </Section>
+
+      <Section title="21. LISTA DE PRIORIDADES — lo que está abierto, en lenguaje claro">
+        <P>
+          <B>Para qué es esta lista (palabras de Miguel, 2026-11-26):</B> aquí quedan las
+          prioridades abiertas, escritas claro, dentro de su propia aplicación. Si Amani no
+          termina algo, Miguel lo ve aquí y busca cómo terminarlo. <B>Esta lista se actualiza en
+          cada deploy</B>, en esta misma sección, junto con las notas de ese deploy — nunca en una
+          sección nueva.
+        </P>
+        <P><B>Prioridad 1 — El medidor de tarifa (el proyecto primero de la lista):</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li><B>El caso:</B> el cliente va en el carro y pregunta “¿cuánto me va a cobrar?”. Miguel escribe la dirección y la herramienta le da el precio competitivo en segundos, sin adivinar.</li>
+          <li><B>Cómo se calcula:</B> la fórmula de la TLC partida en la línea de la ciudad — millas y minutos <B>dentro</B> de NYC a su tarifa y <B>fuera</B> a la otra — más los peajes a costo E-ZPass, más el cargo de aeropuerto cuando aplica, redondeado a $5; y comparado con el mercado: lo que cobran Uber, Lyft, Empower y Throo por ese mismo viaje.</li>
+          <li><B>Estado:</B> la fórmula está verificada contra la página de la TLC y las notas de tarifas por trabajo están guardadas. <B>Falta construir la herramienta rápida</B> (escribir la dirección → ver el precio) y terminar la investigación de qué sitios dan el precio del mercado en vivo en segundos. La estrategia acordada: primero ganar clientes con el mejor precio; subir precios después.</li>
+        </ul>
+        <P><B>Prioridad 2 — El CRM completo (esta construcción):</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li><B>Hecho y en producción con este deploy:</B> la conexión a la nube (fase 1, §19) y las fases 2–5 (§20): número de cuenta por cliente con su historial, foto del cliente en su ficha y en la reserva, bandeja de mensajes con borrador editable y Approve &amp; Send, aviso de reservas de hoy y recordatorios solo para Miguel.</li>
+          <li><B>Pendiente, paso corto:</B> aplicar la migración <B>20261126120000</B> en el proyecto de Supabase del CRM (SQL Editor, un minuto) para que el número de cuenta, las fotos y los mensajes también vivan en la nube — la app ya funciona sin ella, degradando con honestidad.</li>
+          <li><B>Pendiente, bloqueado fuera del CRM:</B> el aviso push con la aplicación cerrada — el almacén de suscripciones (Vercel Blob) sigue suspendido y falta un disparador programado. Y la confirmación visual de Miguel en su teléfono de todo lo anterior.</li>
+        </ul>
+        <P>
+          <B>Cómo se mantiene esta lista:</B> cada deploy mueve lo terminado fuera de la lista (o
+          lo marca hecho con su fecha), añade lo nuevo que Miguel pida, y deja el orden de
+          prioridad como él lo dejó. Si algo cambia de orden, se cambia aquí primero.
         </P>
       </Section>
 
