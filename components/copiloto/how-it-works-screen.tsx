@@ -993,6 +993,85 @@ export function HowItWorksScreen() {
         </P>
       </Section>
 
+      <Section title="16. RECUPERACIÓN DEL CHAT ANTERIOR Y HANDOFF ENTRE CHATS (2026-11-25/26)">
+        <P>
+          <B>Motivo de esta actualización:</B> el chat anterior alcanzó su límite y el trabajo continúa
+          en una conversación nueva. El propietario pidió recuperar el contexto previo y documentar
+          la continuidad aquí, sin reiniciar el proyecto ni perder acuerdos. Esta sección complementa
+          las secciones 11 a 15; no las reemplaza ni borra su historial.
+        </P>
+        <P>
+          <B>Continuidad histórica recuperada:</B> los chats previos establecieron que CRM Copiloto V7
+          es un módulo personal y ligero dentro de Claris, no una aplicación independiente ni un CRM
+          empresarial para cientos de usuarios. La navegación acordada es More → Client management → CRM.
+          Mantener el menú inferior existente. Separar claramente el trabajo de Transporte/CRM del
+          módulo financiero y de Plaid. El propietario pidió que decisiones, archivos, enlaces,
+          arquitectura, pruebas y pendientes se documenten en este manual al terminar cada fase.
+        </P>
+        <P>
+          <B>Historial de continuidad:</B> commits documentales anteriores identificados en los chats
+          recuperados: <B>eb71faa8fa99fa63dfb83efd2ac12d61aafa5646</B> (visión, alcance y arquitectura
+          inicial del CRM, canales y reglas de aislamiento) y <B>e29fca99fd45e317742bd90297da1167ea90b9d8</B>
+          (continuidad de Twilio, seguridad del token expuesto, mensajería y pruebas pendientes).
+          El manual actual contiene además las secciones de auditoría, push, reservas/vuelos,
+          comunicaciones y el incidente de build descrito arriba.
+        </P>
+        <P>
+          <B>Decisión de reservaciones reafirmada en el chat anterior:</B> toda reservación debe
+          mostrar pickup y drop-off. Si el pickup es una dirección normal, se usan los campos
+          habituales y no se exige número de vuelo. Si el pickup es un aeropuerto, se solicitan
+          los datos de vuelo pertinentes, incluido número de vuelo y aerolínea cuando corresponda.
+          La ficha debe permitir abrir el seguimiento desde el mismo número de vuelo mediante una
+          acción Track Flight. La dirección guardada se conserva y solo se edita cuando el usuario
+          informa un cambio/corrección; navegar debe usar la dirección vigente guardada.
+        </P>
+        <P>
+          <B>Límite de seguimiento de vuelos:</B> la idea de consultar si el vuelo ya aterrizó debe
+          mostrarse como información de seguimiento, no como garantía de que el pasajero está listo.
+          La integración ADSB.lol descrita en la sección 13 detecta señales ADS-B/callsign y estados
+          técnicos limitados; no confirma por sí sola aterrizaje comercial, cancelación, retraso
+          oficial, puerta, terminal ni disponibilidad del pasajero. No añadir tracking automático,
+          ETA ni notificaciones de cambio sin proveedor/eventos adecuados, evaluación de cobertura
+          y pruebas reales. Mantener la consulta manual actual hasta completar esa validación.
+        </P>
+        <P>
+          <B>Notificaciones y operación:</B> el propietario quiere que, inicialmente, Copiloto
+          notifique al propio operador sobre citas/appointments y tareas; más adelante podrá evaluarse
+          broadcast o mensajes a clientes. Los avisos al cliente requieren canal conectado, consentimiento
+          y reglas de aprobación. Los mensajes generados por IA deben permanecer como borradores hasta
+          que el propietario los revise y apruebe explícitamente. Push, SMS, email y WhatsApp son
+          canales independientes; no inferir que uno funciona porque otro esté configurado.
+        </P>
+        <P>
+          <B>Estado real preservado:</B> CRM de clientes/reservaciones sigue usando almacenamiento
+          local del navegador según la inspección actual; persistencia Supabase CRM no confirmada.
+          El proyecto CRM esperado es <B>mimgwleghecseoymgdug</B>; el proyecto financiero
+          <B>zrcnpmipdhpjdjkfrrgt</B> está excluido. Push tiene infraestructura/endpoints y variables
+          documentados, pero la entrega remota al iPhone, notificaciones con la app cerrada y
+          recordatorios programados de citas siguen pendientes de pruebas. Twilio no está conectado
+          de forma confirmada; WhatsApp Business y la integración de email en el CRM también siguen
+          pendientes. No afirmar sincronización cloud, backup, entrega push ni SMS operativo sin
+          evidencia verificable.
+        </P>
+        <P>
+          <B>Último incidente de Vercel de esta continuidad:</B> deployment fallido
+          <B>dpl_CapqAWw6DZxVyff5PHbBKiEYZ3pr</B>, commit <B>b42e6fd</B>, por secuencia literal
+          \\n en el import de <B>components/copiloto/copiloto-app.tsx</B>. La inspección posterior
+          verificó que la rama main ya contenía los imports separados. Se añadió el registro del
+          incidente en la sección 15. Después se añadió esta sección 16 al manual en el commit
+          <B>a205bf3b64c8759e3be178ceff21c677fadd6db1</B>; el deployment de producción
+          <B>dpl_EvqM4SEXgX5kFczLhJGYW6YJ2jsX</B> fue verificado como <B>READY</B>.
+        </P>
+        <P>
+          <B>Regla obligatoria para el siguiente chat:</B> empezar leyendo este manual y revisando
+          GitHub main, los archivos reales y el último deployment Vercel. Continuar desde el estado
+          documentado; no pedir al propietario que repita decisiones ya registradas. Después de cada
+          cambio o deployment, actualizar este manual con commit/ID/estado real, indicar si push fue
+          registrado y separar claramente pruebas completadas de pruebas pendientes. No tocar el
+          módulo financiero ni el Supabase financiero.
+        </P>
+      </Section>
+
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
