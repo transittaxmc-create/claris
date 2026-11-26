@@ -951,6 +951,48 @@ export function HowItWorksScreen() {
         </P>
       </Section>
 
+      <Section title="15. INCIDENTE DE BUILD VERCEL — IMPORT CRM CON SALTO DE LÍNEA INVÁLIDO (2026-11-25/26)">
+        <P>
+          <B>Incidente:</B> el deployment de producción <B>dpl_CapqAWw6DZxVyff5PHbBKiEYZ3pr</B>,
+          asociado al commit <B>b42e6fde48ea94785fa9eb9c056a21e331c0cd9d</B> ("Fix CRM integration
+          formatting and routing"), falló durante <B>pnpm run build</B>. El log de Turbopack señaló
+          <B>components/copiloto/copiloto-app.tsx:18:47</B> con el error <B>Expected unicode escape</B>.
+        </P>
+        <P>
+          <B>Causa raíz:</B> la línea de import de CreditScreen contenía los caracteres literales
+          <B>\\n</B> antes del import de CRMScreen, en vez de un salto de línea real. El parser
+          interpretó la secuencia como un escape inválido y detuvo la compilación. No fue un fallo
+          de Supabase, dependencias ni del servicio de Vercel.
+        </P>
+        <P>
+          <B>Verificación de corrección:</B> se inspeccionó el mismo archivo en el commit fallido
+          y en la rama <B>main</B>. En el commit fallido los imports estaban unidos por la secuencia
+          literal; en <B>main</B> los imports ya están separados correctamente, cada uno en su propia
+          línea. No se repitió ni duplicó el cambio porque ya estaba aplicado en el código actual.
+        </P>
+        <P>
+          <B>Estado de producción verificado:</B> la rama main apunta al commit
+          <B>c130f2456f3c5645f41c6909fdc63c4f237559f8</B> ("docs(crm): record ADS-B live tracking
+          deployment and test plan"). Vercel reportó el deployment
+          <B>dpl_MTs2ZT9XhLNGBtBhw4bnbDkW9XPm</B> en estado <B>READY</B>, target production,
+          con alias de producción del proyecto Claris. Esto confirma que el deployment más reciente
+          terminó correctamente; no cambia el estado histórico del deployment fallido.
+        </P>
+        <P>
+          <B>Alcance y pruebas:</B> esta revisión fue de lectura y verificación; no se modificó
+          lógica del CRM, no se registraron nuevas suscripciones push y no se realizaron nuevas
+          pruebas físicas de notificación. La prueba remota push, los recordatorios automáticos y
+          las pruebas con la app cerrada continúan pendientes según las secciones anteriores.
+          No se modificó el módulo financiero.
+        </P>
+        <P>
+          <B>Regla para incidentes de build:</B> conservar el ID del deployment, commit, primer
+          error del log, archivo/línea, causa raíz, commit que contiene la corrección y estado del
+          deployment posterior. No lanzar un nuevo build si la corrección ya está en main y existe
+          un deployment de producción READY que incluye ese código.
+        </P>
+      </Section>
+
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
