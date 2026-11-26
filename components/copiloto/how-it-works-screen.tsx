@@ -1072,6 +1072,76 @@ export function HowItWorksScreen() {
         </P>
       </Section>
 
+
+      <Section title="17. SUPABASE CRM AUTH + DATABASE — revisión y continuidad (2026-11-25)">
+        <P>
+          <B>Proyecto verificado:</B> Supabase CRM <B>mimgwleghecseoymgdug</B>, nombre CRM,
+          organización Copiloto V7 CRM, región <B>us-east-2</B>, estado <B>ACTIVE_HEALTHY</B>.
+          La autorización ya permite consultar proyecto, URL de API y clave pública. Este proyecto
+          es exclusivo del CRM. No usar el Supabase financiero <B>zrcnpmipdhpjdjkfrrgt</B>.
+        </P>
+        <P>
+          <B>Estado real de Supabase al revisar:</B> servicio Auth disponible en el proyecto;
+          <B>0 usuarios</B> registrados; <B>0 tablas de aplicación en public</B>; lista de
+          migraciones de aplicación vacía. No se creó todavía ningún usuario, tabla, política,
+          registro ni migración. Auth no está conectado a la interfaz ni se han configurado
+          rutas protegidas.
+        </P>
+        <P>
+          <B>Auditoría de seguridad:</B> el advisor reporta la función
+          <B>public.rls_auto_enable()</B> como SECURITY DEFINER ejecutable por anon y
+          authenticated. La inspección SQL confirma que es una función asociada al event trigger
+          <B>ensure_rls</B>, habilitado, y que su cuerpo activa RLS automáticamente al crear tablas
+          en public. No se modificó ni eliminó esta función ni el trigger. Revisar cuidadosamente
+          el aviso antes de cambios de permisos; toda tabla CRM nueva debe tener políticas RLS
+          explícitas de propiedad.
+        </P>
+        <P>
+          <B>Estado real del código en GitHub main:</B> repositorio
+          <B>transittaxmc-create/claris</B>; Next.js <B>16.3.3</B>, React 19, pnpm
+          <B>12.3.4</B>. <B>package.json</B> y <B>pnpm-lock.yaml</B> no incluyen
+          <B>@supabase/supabase-js</B> ni <B>@supabase/ssr</B>. No existe <B>proxy.ts</B> ni
+          <B>middleware.ts</B>. app/page.tsx renderiza CopilotoApp como cliente y no hay
+          autenticación server-side ni guard de rutas. No se cambió ningún archivo de aplicación
+          durante esta auditoría.
+        </P>
+        <P>
+          <B>Modelo CRM actual observado:</B> components/copiloto/crm-screen.tsx guarda clientes
+          en localStorage <B>claris_crm_clients_v1</B> y reservaciones en
+          <B>claris_crm_reservations_v1</B>. Clientes incluyen name, company, phone, email,
+          status, source, notes, nextContact y createdAt. Reservaciones incluyen clientId,
+          passengerName/Phone, serviceDate, pickupTime, passengers, status, pickupKind,
+          pickupAddress, dropoffAddress, airport, airline, flightNumber, flightDate,
+          scheduledArrival, terminal, gate, notes, createdAt y updatedAt. Los datos locales
+          no se borraron ni migraron; se deben preservar y sincronizar después de establecer
+          Auth y el esquema.
+        </P>
+        <P><B>Plan de continuación confirmado:</B></P>
+        <ol className="mb-3 list-decimal space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li><B>Paso 2 — Auth:</B> instalar y fijar versiones compatibles de @supabase/supabase-js y @supabase/ssr; crear clientes browser/server; usar proxy.ts para refrescar cookies en Next.js 16; implementar registro, login, logout, recuperación de contraseña y verificación de sesión con getClaims() en el servidor; proteger la aplicación sin alterar el flujo del módulo financiero. Las variables públicas NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY deben configurarse en el proyecto Vercel correcto. Nunca poner service_role/secret key en el navegador ni en Git.</li>
+          <li><B>Paso 3 — Tablas y RLS:</B> diseñar tablas para perfiles, clientes y reservaciones basadas en los campos que realmente usa la interfaz; relacionar auth.users mediante UUID y client_id; crear índices, restricciones y políticas SELECT/INSERT/UPDATE/DELETE con auth.uid() = user_id. No crear todavía entidades futuras (casos fiscales, documentos, tareas, etc.) sin definir primero sus campos y flujos.</li>
+          <li>Conectar CRM a la nube en una fase posterior y hacer migración idempotente de los dos almacenes locales, sin borrar localStorage hasta comprobar conteos y contenido en Supabase. Probar usuario autorizado, acceso cruzado denegado, altas, ediciones, borrados, búsqueda y persistencia entre dispositivos.</li>
+        </ol>
+        <P>
+          <B>Estado de Vercel:</B> el intento de consultar deployments mediante la integración autorizada
+          devolvió <B>403 Forbidden</B>; por tanto el estado actual READY/BUILDING/FAILED no está
+          verificado en esta revisión. No afirmar que hubo deployment ni que la aplicación fue
+          probada en producción. La actualización de este manual es documentación en GitHub; el
+          resultado de su build debe verificarse por separado.
+        </P>
+        <P>
+          <B>Notificaciones:</B> la prueba local en iPhone permanece confirmada previamente por
+          Miguel. Esta revisión no realizó ni registró una prueba push nueva; la prueba remota y
+          automatizaciones siguen pendientes.
+        </P>
+        <P>
+          <B>Regla de seguridad y continuidad:</B> no tocar el módulo financiero, Plaid, balances,
+          proyecciones ni el proyecto Supabase financiero. No exponer secretos en chat o código.
+          No borrar datos locales ni crear cuentas de prueba sin autorización. Documentar cada
+          cambio, resultado de build, estado de deployment y pruebas de push por separado.
+        </P>
+      </Section>
+
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
