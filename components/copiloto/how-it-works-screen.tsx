@@ -738,6 +738,59 @@ export function HowItWorksScreen() {
         </P>
       </Section>
 
+      <Section title="11. AUDITORÍA DE CONTINUIDAD — 2026-11-25">
+        <P>
+          <B>Objetivo:</B> dejar un punto de recuperación verificable para que la siguiente sesión
+          continúe desde el estado real del repositorio, sin reconstruir ni repetir trabajo.
+        </P>
+        <P><B>Identidad y respaldo de código verificados:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>Repositorio canónico: <B>transittaxmc-create/claris</B>; rama de producción: <B>main</B>; proyecto Vercel: <B>claris</B> (Next.js), ID <B>prj_EaOp8GqqgF0i4BBEp3CJSY8phcKW</B>.</li>
+          <li>Último commit revisado antes de esta actualización: <B>e29fca99fd45e317742bd90297da1167ea90b9d8</B> — “Docs: documentar continuidad Twilio SMS y seguridad CRM”. La revisión de estado combinado de GitHub devolvió check Vercel = success.</li>
+          <li>Deployment de producción correspondiente: <B>dpl_E5knNR2e6rgLmkNSMPtktcb8PpfW</B>, commit <B>e29fca99</B>, estado <B>READY</B>; alias de producción incluye <B>https://claris-lime.vercel.app</B>.</li>
+          <li>La auditoría confirmó que los archivos CRM y push existen en <B>main</B>: <B>components/copiloto/crm-screen.tsx</B>, <B>components/copiloto/crm-notifications.tsx</B>, <B>lib/crm-push.ts</B> y las rutas <B>/api/crm/push/config</B>, <B>/subscribe</B>, <B>/test</B> y <B>/send</B>.</li>
+          <li>La actualización de esta sección es documentación solamente; no cambia lógica del CRM, finanzas, Supabase ni credenciales. El commit/deployment que resulte de esta actualización debe verificarse y añadirse a este registro.</li>
+        </ul>
+        <P><B>Push — inventario de configuración y pruebas:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>La inspección de nombres de variables Vercel encontró <B>CRM_PUSH_VAPID_PUBLIC_KEY</B>, <B>CRM_PUSH_VAPID_PRIVATE_KEY</B>, <B>CRM_PUSH_STORE_SECRET</B>, <B>CRM_PUSH_SEND_SECRET</B> y <B>CRM_PUSH_SUBJECT</B>, dirigidas a Production, Preview y Development. Los valores secretos no se leyeron ni se copiaron.</li>
+          <li><B>LOCAL TEST = PASS</B>, confirmado por Miguel en el iPhone físico el 2026-11-25.</li>
+          <li><B>REMOTE PUSH TEST = PENDIENTE</B>: todavía falta que Miguel confirme que el aviso enviado por el servidor apareció físicamente en el iPhone. La existencia de la ruta y de las variables no prueba la entrega.</li>
+          <li>Recordatorios automáticos de citas, eventos programados, cron/cola y prueba con app cerrada = <B>PENDIENTES</B>.</li>
+        </ul>
+        <P><B>CRM, persistencia y Supabase:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>El CRM actual usa <B>claris_crm_clients_v1</B> en localStorage del dispositivo. La auditoría no encontró evidencia de persistencia cloud CRM habilitada; no asumir sincronización entre teléfonos.</li>
+          <li>El proyecto Supabase CRM esperado es <B>mimgwleghecseoymgdug</B>; el Supabase financiero es <B>zrcnpmipdhpjdjkfrrgt</B> y está prohibido reutilizarlo para CRM.</li>
+          <li>La consulta directa de acceso al proyecto CRM devolvió falta de permisos durante esta auditoría. Estado: <B>acceso y proyecto destino aún no verificados</B>; no ejecutar migraciones ni SQL hasta recuperar autorización y comprobar el project ref.</li>
+          <li>Se encontraron variables de entorno con nombres SUPABASE_* en Vercel, pero sus valores no se inspeccionaron. Por tanto, <B>no está verificado a qué proyecto apuntan</B>. Antes de usarlas, confirmar el destino sin mostrar secretos y evitar cualquier conexión accidental al proyecto financiero.</li>
+        </ul>
+        <P><B>Twilio SMS y WhatsApp:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>La inspección de variables Vercel no encontró ninguna variable <B>TWILIO_*</B>. El código revisado tampoco contiene una integración SMS de Twilio confirmada. Twilio no está conectado al CRM.</li>
+          <li>La cuenta Twilio existe, pero el Auth Token compartido anteriormente debe tratarse como expuesto. No volver a copiarlo ni pedirlo por chat. Solicitar un secondary token y comprobar primero si otro servicio usa la credencial actual; no promover/rotar hasta planificar la actualización segura de todas las dependencias.</li>
+          <li>Prueba de SMS desde Twilio Console, endpoints/webhooks SMS, SMS entrante/saliente y estados de entrega = <B>PENDIENTES</B>. WhatsApp Business API también está pendiente; no migrar ni desconectar el número actual de WhatsApp Business App sin autorización expresa.</li>
+        </ul>
+        <P><B>Orden de continuación para el siguiente chat:</B></P>
+        <ol className="mb-3 list-decimal space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>Leer primero las secciones 8, 10 y 11 de este manual y verificar el último commit de <B>main</B> y el último deployment real de Vercel; no asumir que el SHA anterior sigue siendo el último después de esta actualización.</li>
+          <li>Completar <B>Remote Push Test</B> desde el iPhone y registrar PASS/FAIL según evidencia física; si falla, revisar endpoint, permiso, suscripción, VAPID y logs sin revelar secretos.</li>
+          <li>Guiar a Miguel en Safari para solicitar el secondary token de Twilio; antes de promoverlo, confirmar si la credencial anterior se usa en otro sistema. Después ejecutar la prueba controlada de SMS en Twilio Console.</li>
+          <li>Recuperar autorización del proyecto Supabase CRM, confirmar el project ref <B>mimgwleghecseoymgdug</B> y verificar de forma segura el destino de las variables Vercel. No tocar el Supabase financiero.</li>
+          <li>Diseñar persistencia cloud CRM/Auth/RLS y migración desde localStorage solo después de contar con acceso, esquema revisado y backup de datos locales. No borrar ni sobrescribir registros existentes.</li>
+          <li>Luego implementar automatizaciones de citas y la bandeja persistente de mensajes; probar cada flujo en el iPhone antes de marcarlo terminado.</li>
+        </ol>
+        <P>
+          <B>Regla de respaldo y cierre:</B> GitHub <B>main</B> conserva el código y la documentación
+          versionados; un deployment READY confirma la publicación del código, pero no es un backup
+          de los datos de clientes del dispositivo. No declarar backup de datos CRM hasta probar una
+          exportación/restauración o persistencia cloud con conteos verificados. Al final de cada sesión,
+          actualizar este manual con fecha, commit, deployment (READY/BUILDING/FAILED), archivos
+          modificados, pruebas PASS/FAIL/PENDIENTES, bloqueos y el siguiente paso exacto. Confirmar
+          expresamente al propietario que la documentación quedó actualizada o indicar que no se pudo.
+        </P>
+      </Section>
+
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
