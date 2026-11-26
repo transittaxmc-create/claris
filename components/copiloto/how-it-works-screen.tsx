@@ -1333,10 +1333,14 @@ export function HowItWorksScreen() {
           local. No hay migración de clientes ni reservaciones ejecutada.
         </P>
         <P>
-          <B>Deployment y notificaciones:</B> este cambio fue de base de datos y documentación;
-          no se ha confirmado un nuevo deployment Vercel para el último commit, por lo que su estado
-          se marca <B>NO VERIFICADO</B>. No se registraron dispositivos push ni se ejecutaron pruebas
-          push en esta etapa. Remote Push Test y recordatorios programados siguen pendientes.
+          <B>Deployment y notificaciones:</B> Preview de Vercel para el commit
+          <B>cda6a204d8c6611141e1e4bf5d6efe6fb1d537a3</B>, deployment
+          <B>dpl_54sfSvYoaJ2D1LLAYzkNK1CGsh24</B>, URL
+          <B>https://claris-ge8ocnwx9-island-city.vercel.app</B>, verificado como
+          <B>BUILDING</B> a las 03:53 UTC del 26-nov-2026. No se ha afirmado READY ni se ha
+          desplegado a producción. El commit de documentación posterior genera un Preview nuevo
+          cuyo estado debe revisarse por separado. No se registraron dispositivos push ni se
+          ejecutaron pruebas push en esta etapa. Remote Push Test y recordatorios programados siguen pendientes.
         </P>
         <P>
           <B>Siguiente etapa:</B> completar URL Configuration y pruebas de Auth reales; luego
