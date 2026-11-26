@@ -1438,6 +1438,13 @@ export function HowItWorksScreen() {
           <li><B>Ignore vs. close — the light rule:</B> deliberately ignoring a message with <B>Discard</B> takes it out of pending and <B>turns the light off</B>. Merely closing or minimizing a message because he is busy leaves it pending — <B>the light stays on</B> until he answers it (approve/send) or discards it. The full conversation stays in the client&apos;s file either way.</li>
           <li><B>GPS READY was not removed — it moved down</B> into the <B>LOCATIONS</B> box, next to pickup and drop-off, where the GPS labels already live. There it reads <B>GPS READY</B> in green, lit, while the GPS is active, and <B>GPS OFF</B> in gray when it is not — the same GPS state the header location line has always used, shown in its new place.</li>
         </ul>
+        <P><B>Deletion now sticks — in the app AND in the cloud (Miguel&apos;s order, 2026-11-26):</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li><B>The bug:</B> the CRM sync used to be a plain union — any record a phone still held locally but the cloud no longer had was uploaded again on the next open, so records deleted in the cloud (or on the other phone) came back. That is why the duplicate Mr. Shah message and the Roberto Prueba test clients kept resurrecting.</li>
+          <li><B>The fix:</B> each device now remembers, per record type (clients, reservations, messages), which ids it has already synced with the cloud. On open, a local record that was synced before and is no longer in the cloud counts as deleted elsewhere: it is removed from the device and is NOT uploaded again. A record deleted on this phone is likewise removed from the cloud. Only never-synced records upload as new.</li>
+          <li><B>Messages have a real Delete button</B> (in the open message, next to Discard): Delete removes the message from the device and from the CRM cloud for good. <B>Discard is different</B> — it only closes the message and keeps it in the tray history as discarded.</li>
+          <li><B>One cleanup still owed by hand:</B> with this fix live, the duplicate Mr. Shah message from 9:30 AM is deleted once in the cloud and stays deleted (the 9:43 AM copy with Ref-7B42 is the one that stays). The three Roberto Prueba test clients and his test reservation stay as they are until Miguel says to remove them.</li>
+        </ul>
       </Section>
 
       <Section title="21. LISTA DE PRIORIDADES — lo que está abierto, en lenguaje claro">
@@ -1457,6 +1464,7 @@ export function HowItWorksScreen() {
         <P><B>Prioridad 2 — El CRM completo (esta construcción):</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
           <li><B>Hecho y en producción con este deploy:</B> la conexión a la nube (fase 1, §19) y las fases 2–5 (§20): número de cuenta por cliente con su historial, foto del cliente en su ficha y en la reserva, bandeja de mensajes con borrador editable y Approve &amp; Send, aviso de reservas de hoy y recordatorios solo para Miguel. Y el aviso <B>MESSAGE en TODAY</B> (§20): la luz en el hueco donde estaba GPS READY — parpadea suave con mensajes pendientes, tocarla abre la bandeja, ignorar a propósito la apaga y cerrar por ocupado la deja prendida; GPS READY bajó junto a pickup/drop-off (verde activo, gris apagado).</li>
+          <li><B>Hecho con este deploy:</B> borrar ya es borrar de verdad — lo que se borra en Copiloto se borra también en la nube y no resucita; la bandeja de mensajes gana botón <B>Delete</B> aparte de Discard (§20).</li>
           <li><B>Pendiente, paso corto:</B> aplicar la migración <B>20261126120000</B> en el proyecto de Supabase del CRM (SQL Editor, un minuto) para que el número de cuenta, las fotos y los mensajes también vivan en la nube — la app ya funciona sin ella, degradando con honestidad.</li>
           <li><B>Pendiente, bloqueado fuera del CRM:</B> el aviso push con la aplicación cerrada — el almacén de suscripciones (Vercel Blob) sigue suspendido y falta un disparador programado. Y la confirmación visual de Miguel en su teléfono de todo lo anterior.</li>
         </ul>

@@ -25,6 +25,23 @@ type Client = {
 }
 
 const STORE = "claris_crm_clients_v1"
+const SYNCED_CLIENTS_KEY = "claris_crm_synced_clients_v1"
+const SYNCED_RESERVATIONS_KEY = "claris_crm_synced_reservations_v1"
+const SYNCED_MESSAGES_KEY = "claris_crm_synced_messages_v1"
+
+/** Ids que ESTE dispositivo ya confirmó en la nube, por tipo de récord,
+ *  persistidos entre sesiones. Es la memoria que distingue "récord nuevo
+ *  de este teléfono" de "récord borrado en otro lado": sin ella la sync
+ *  era una unión y todo lo borrado resucitaba. */
+function readSyncedIds(key: string): Set<string> {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || "[]")
+    return new Set(Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === "string") : [])
+  } catch { return new Set() }
+}
+function writeSyncedIds(key: string, ids: Set<string>) {
+  try { localStorage.setItem(key, JSON.stringify([...ids])) } catch {}
+}
 const emptyClient = (): Client => ({
   id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : String(Date.now()),
   name: "", company: "", phone: "", email: "", status: "Lead", source: "Referral", notes: "", nextContact: "", accountNumber: "", photos: [], createdAt: new Date().toISOString(),
@@ -292,6 +309,11 @@ export function CRMScreen({ openMessagesNonce = 0 }: { openMessagesNonce?: numbe
       if (!s) {
         cloudSynced.current = false
         cloudClientIds.current = new Set()
+        // OJO: el conjunto sincronizado persistido NO se limpia al cerrar
+        // sesión — es memoria del dispositivo, no de la sesión. El evento
+        // inicial de auth llega con sesión nula al abrir la pantalla
+        // (antes de entrar), y limpiarlo ahí borraría la memoria de
+        // borrados justo cuando hace falta (verificado en harness).
         setCloudSeedReservations(null)
         setCloudSeedMessages(null)
         setMessagesCloudPending(false)
@@ -308,8 +330,9 @@ export function CRMScreen({ openMessagesNonce = 0 }: { openMessagesNonce?: numbe
   }, [])
 
   // Carga inicial con sesión: la nube manda en los ids que tenga; lo local
-  // que la nube no tenga se SUBE (migración idempotente con los mismos ids)
-  // y localStorage NUNCA se borra: queda como caché del dispositivo.
+  // NUNCA sincronizado se SUBE (migración idempotente con los mismos ids).
+  // Lo ya sincronizado que la nube ya no tiene se cae de la copia local y
+  // NO se vuelve a subir: fue borrado en otro lado y el borrado manda.
   useEffect(() => {
     if (!session || !ready || cloudSynced.current) return
     cloudSynced.current = true
@@ -321,15 +344,25 @@ export function CRMScreen({ openMessagesNonce = 0 }: { openMessagesNonce?: numbe
         const data = await r.json()
         const cloudClients = ((data.clients || []) as unknown as Client[]).map((c) => normalizeClient(c))
         const cloudIds = new Set(cloudClients.map((c) => c.id))
-        const localOnly = clients.filter((c) => !cloudIds.has(c.id))
-        const merged = ensureAccountNumbers([...cloudClients, ...localOnly].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)))
+        const localIds = new Set(clients.map((c) => c.id))
+        const syncedBefore = readSyncedIds(SYNCED_CLIENTS_KEY)
+        // Borrado en ESTE teléfono: sincronizado antes, ya no está local y
+        // la nube aún lo tiene → sale de la fusión y se borra en la nube.
+        const deletedHere = [...syncedBefore].filter((id) => !localIds.has(id) && cloudIds.has(id))
+        // Borrado en otro lado: sincronizado antes, sigue local, la nube ya
+        // no lo tiene → se cae de la copia local y NO se vuelve a subir.
+        // Solo sube lo que NUNCA se sincronizó (migración inicial).
+        const localOnly = clients.filter((c) => !cloudIds.has(c.id) && !syncedBefore.has(c.id))
+        const keptCloud = cloudClients.filter((c) => !deletedHere.includes(c.id))
+        const merged = ensureAccountNumbers([...keptCloud, ...localOnly].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)))
         applyingCloud.current = true
         setClients(merged)
-        if (localOnly.length) {
-          const res = await cloudPost({ upsertClients: localOnly })
+        if (localOnly.length || deletedHere.length) {
+          const res = await cloudPost({ upsertClients: localOnly, deleteClientIds: deletedHere })
           if (typeof res?.counts?.clients === "number" && res.counts.clients < merged.length) throw new Error("crm_count_mismatch")
         }
         cloudClientIds.current = new Set(merged.map((c) => c.id))
+        writeSyncedIds(SYNCED_CLIENTS_KEY, cloudClientIds.current)
         setCloudSeedReservations((data.reservations || []) as unknown as CRMReservation[])
         setCloudSeedNonce((n) => n + 1)
         setCloudSeedMessages((data.messages || []) as unknown as CRMMessage[])
@@ -355,6 +388,7 @@ export function CRMScreen({ openMessagesNonce = 0 }: { openMessagesNonce?: numbe
       try {
         await cloudPost({ upsertClients: clients, deleteClientIds: deleted })
         cloudClientIds.current = currentIds
+        writeSyncedIds(SYNCED_CLIENTS_KEY, currentIds)
       } catch {
         setCloudStatus("error")
       }
@@ -363,28 +397,32 @@ export function CRMScreen({ openMessagesNonce = 0 }: { openMessagesNonce?: numbe
   }, [clients, ready, session, cloudStatus, cloudPost])
 
   const pushReservationsToCloud = useCallback(
-    async (items: CRMReservation[], deletedIds: string[]) => {
-      if (!session) return
+    async (items: CRMReservation[], deletedIds: string[]): Promise<boolean> => {
+      if (!session) return false
       try {
         await cloudPost({ upsertReservations: items, deleteReservationIds: deletedIds })
+        return true
       } catch {
         setCloudStatus("error")
+        return false
       }
     },
     [session, cloudPost],
   )
 
   const pushMessagesToCloud = useCallback(
-    async (items: CRMMessage[], deletedIds: string[]) => {
-      if (!session) return
+    async (items: CRMMessage[], deletedIds: string[]): Promise<boolean> => {
+      if (!session) return false
       try {
         const res = await cloudPost({ upsertMessages: items, deleteMessageIds: deletedIds })
         // La tabla de mensajes llega con la migración 20261126120000: si el
         // proyecto aún no la tiene, la bandeja sigue local y se avisa ahí,
         // sin marcar error en el resto de la sync (fase 1 intacta).
         setMessagesCloudPending(!!res?.messagesPending)
+        return true
       } catch {
         setCloudStatus("error")
+        return false
       }
     },
     [session, cloudPost],
@@ -909,7 +947,7 @@ function AddressNavigation({ label, address }: { label: string; address: string 
   )
 }
 
-function CRMReservations({ clients, cloudSeed, cloudSeedNonce, onCloudSync, onReservationsChanged, onReservationSaved, prefill, prefillNonce, photoCloud }: { clients: CRMClientOption[]; cloudSeed: CRMReservation[] | null; cloudSeedNonce: number; onCloudSync: ((items: CRMReservation[], deletedIds: string[]) => void) | null; onReservationsChanged?: (items: CRMReservation[]) => void; onReservationSaved?: (r: CRMReservation) => void; prefill?: Partial<CRMReservation> | null; prefillNonce?: number; photoCloud?: PhotoCloud }) {
+function CRMReservations({ clients, cloudSeed, cloudSeedNonce, onCloudSync, onReservationsChanged, onReservationSaved, prefill, prefillNonce, photoCloud }: { clients: CRMClientOption[]; cloudSeed: CRMReservation[] | null; cloudSeedNonce: number; onCloudSync: ((items: CRMReservation[], deletedIds: string[]) => Promise<boolean>) | null; onReservationsChanged?: (items: CRMReservation[]) => void; onReservationSaved?: (r: CRMReservation) => void; prefill?: Partial<CRMReservation> | null; prefillNonce?: number; photoCloud?: PhotoCloud }) {
   const [reservations, setReservations] = useState<CRMReservation[]>([])
   const [ready, setReady] = useState(false)
   const [editing, setEditing] = useState<CRMReservation | null>(null)
@@ -961,25 +999,34 @@ function CRMReservations({ clients, cloudSeed, cloudSeedNonce, onCloudSync, onRe
     if (!cloudSeed || !ready || seedAppliedNonce.current === cloudSeedNonce) return
     seedAppliedNonce.current = cloudSeedNonce
     const cloudIds = new Set(cloudSeed.map((r) => r.id))
-    const localOnly = reservations.filter((r) => !cloudIds.has(r.id))
-    const merged = [...cloudSeed, ...localOnly]
+    const localIds = new Set(reservations.map((r) => r.id))
+    const syncedBefore = readSyncedIds(SYNCED_RESERVATIONS_KEY)
+    const deletedHere = [...syncedBefore].filter((id) => !localIds.has(id) && cloudIds.has(id))
+    const localOnly = reservations.filter((r) => !cloudIds.has(r.id) && !syncedBefore.has(r.id))
+    const merged = [...cloudSeed.filter((r) => !deletedHere.includes(r.id)), ...localOnly]
     setReservations(merged)
-    lastSyncedIds.current = new Set(cloudSeed.map((r) => r.id))
+    lastSyncedIds.current = new Set(cloudIds)
+    writeSyncedIds(SYNCED_RESERVATIONS_KEY, cloudIds)
     setSeedMerged(true)
-    if (localOnly.length && onCloudSync) {
-      onCloudSync(merged, [])
-      lastSyncedIds.current = new Set(merged.map((r) => r.id))
+    if ((localOnly.length || deletedHere.length) && onCloudSync) {
+      void onCloudSync(merged, deletedHere).then((ok) => {
+        if (!ok) return
+        lastSyncedIds.current = new Set(merged.map((r) => r.id))
+        writeSyncedIds(SYNCED_RESERVATIONS_KEY, lastSyncedIds.current)
+      })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cloudSeed, cloudSeedNonce, ready])
 
   useEffect(() => {
     if (!ready || !seedMerged || !onCloudSync) return
-    const t = setTimeout(() => {
+    const t = setTimeout(async () => {
       const currentIds = new Set(reservations.map((r) => r.id))
       const deleted = [...lastSyncedIds.current].filter((id) => !currentIds.has(id))
-      onCloudSync(reservations, deleted)
+      const ok = await onCloudSync(reservations, deleted)
+      if (!ok) return
       lastSyncedIds.current = currentIds
+      writeSyncedIds(SYNCED_RESERVATIONS_KEY, currentIds)
     }, 800)
     return () => clearTimeout(t)
   }, [reservations, ready, seedMerged, onCloudSync])
@@ -1222,7 +1269,7 @@ function CRMMessages({ clients, reservations, cloudSeed, cloudSeedNonce, onCloud
   reservations: CRMReservation[]
   cloudSeed: CRMMessage[] | null
   cloudSeedNonce: number
-  onCloudSync: ((items: CRMMessage[], deletedIds: string[]) => void) | null
+  onCloudSync: ((items: CRMMessage[], deletedIds: string[]) => Promise<boolean>) | null
   cloudPending: boolean
   onMessagesChanged?: (items: CRMMessage[]) => void
   findOrCreateClient: (name: string, phone: string) => Client
@@ -1257,27 +1304,40 @@ function CRMMessages({ clients, reservations, cloudSeed, cloudSeedNonce, onCloud
 
   useEffect(() => {
     if (!cloudSeed || !ready || seedAppliedNonce.current === cloudSeedNonce) return
+    // Guarda de degradación: si la tabla de mensajes no respondió, la
+    // bandeja queda local como hoy y la nube vacía NO se interpreta como
+    // "todo borrado".
+    if (cloudPending) return
     seedAppliedNonce.current = cloudSeedNonce
     const cloudIds = new Set(cloudSeed.map((m) => m.id))
-    const localOnly = messages.filter((m) => !cloudIds.has(m.id))
-    const merged = [...cloudSeed, ...localOnly]
+    const localIds = new Set(messages.map((m) => m.id))
+    const syncedBefore = readSyncedIds(SYNCED_MESSAGES_KEY)
+    const deletedHere = [...syncedBefore].filter((id) => !localIds.has(id) && cloudIds.has(id))
+    const localOnly = messages.filter((m) => !cloudIds.has(m.id) && !syncedBefore.has(m.id))
+    const merged = [...cloudSeed.filter((m) => !deletedHere.includes(m.id)), ...localOnly]
     setMessages(merged)
-    lastSyncedIds.current = new Set(cloudSeed.map((m) => m.id))
+    lastSyncedIds.current = new Set(cloudIds)
+    writeSyncedIds(SYNCED_MESSAGES_KEY, cloudIds)
     setSeedMerged(true)
-    if (localOnly.length && onCloudSync) {
-      onCloudSync(merged, [])
-      lastSyncedIds.current = new Set(merged.map((m) => m.id))
+    if ((localOnly.length || deletedHere.length) && onCloudSync) {
+      void onCloudSync(merged, deletedHere).then((ok) => {
+        if (!ok) return
+        lastSyncedIds.current = new Set(merged.map((m) => m.id))
+        writeSyncedIds(SYNCED_MESSAGES_KEY, lastSyncedIds.current)
+      })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cloudSeed, cloudSeedNonce, ready])
 
   useEffect(() => {
     if (!ready || !seedMerged || !onCloudSync) return
-    const t = setTimeout(() => {
+    const t = setTimeout(async () => {
       const currentIds = new Set(messages.map((m) => m.id))
       const deleted = [...lastSyncedIds.current].filter((id) => !currentIds.has(id))
-      onCloudSync(messages, deleted)
+      const ok = await onCloudSync(messages, deleted)
+      if (!ok) return
       lastSyncedIds.current = currentIds
+      writeSyncedIds(SYNCED_MESSAGES_KEY, currentIds)
     }, 800)
     return () => clearTimeout(t)
   }, [messages, ready, seedMerged, onCloudSync])
@@ -1293,6 +1353,12 @@ function CRMMessages({ clients, reservations, cloudSeed, cloudSeedNonce, onCloud
     if (current) setDraftEdit(current.draftReply)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId])
+
+  function removeMessage(id: string) {
+    if (!window.confirm("Delete this message permanently? It is removed from this device and from the CRM cloud — it does not stay in the tray history.")) return
+    setMessages((prev) => prev.filter((m) => m.id !== id))
+    setSelectedId(null)
+  }
 
   function patchMessage(id: string, patch: Partial<CRMMessage>) {
     setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch, updatedAt: new Date().toISOString() } : m)))
@@ -1408,8 +1474,9 @@ function CRMMessages({ clients, reservations, cloudSeed, cloudSeedNonce, onCloud
             {current.status === "approved" && <button onClick={() => patchMessage(current.id, { status: "sent", sentAt: new Date().toISOString() })} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 text-sm font-extrabold text-black">Mark as sent</button>}
             {(current.status === "pending" || current.status === "approved") && <button onClick={() => { if (window.confirm("Discard this message? It stays in the tray history as discarded.")) { patchMessage(current.id, { status: "discarded" }); setSelectedId(null) } }} className="rounded-xl border border-neutral-700 px-4 py-3 text-sm font-bold text-neutral-300">Discard</button>}
             <button onClick={() => setSelectedId(null)} className="rounded-xl border border-neutral-700 px-4 py-3 text-sm font-bold text-white">Minimize</button>
+            <button onClick={() => removeMessage(current.id)} className="inline-flex items-center gap-2 rounded-xl border border-rose-900/70 px-4 py-3 text-sm font-bold text-rose-300"><Trash2 className="size-4" /> Delete</button>
           </div>
-          <p className="text-[11px] text-neutral-500">Minimize keeps the message pending — the counter on the Messages tab stays until you approve, send or discard it. Nothing is ever sent from here without your approval.</p>
+          <p className="text-[11px] text-neutral-500">Minimize keeps the message pending — the counter on the Messages tab stays until you approve, send or discard it. Nothing is ever sent from here without your approval. Delete removes the message everywhere, including the CRM cloud — Discard only closes it and keeps it in the history.</p>
         </div>
       )}
 
