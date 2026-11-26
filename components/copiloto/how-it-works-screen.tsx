@@ -1202,6 +1202,63 @@ export function HowItWorksScreen() {
         </P>
       </Section>
 
+
+      <Section title="18. PROGRESO REAL — tablas CRM creadas y Auth pendiente (2026-11-25)">
+        <P>
+          <B>Confirmación del propietario:</B> Miguel confirmó que
+          <B>mimgwleghecseoymgdug</B> es el proyecto Supabase correcto. La conexión a Supabase
+          está autorizada y el proyecto responde ACTIVE_HEALTHY. No se debe volver al proyecto
+          financiero ni crear otro proyecto.
+        </P>
+        <P>
+          <B>Paso 3 — primera migración aplicada:</B> migración
+          <B>20261126024701_crm_auth_clients_reservations_rls</B> aplicada correctamente.
+          Se crearon <B>public.crm_clients</B> y <B>public.crm_reservations</B>, ambas con
+          RLS habilitado, claves foráneas a auth.users, índices y restricciones de estado/cantidad.
+          Las dos tablas tienen 0 filas; no se migraron ni eliminaron los datos existentes de
+          localStorage. Se instalaron ocho políticas (SELECT/INSERT/UPDATE/DELETE por tabla)
+          limitadas a <B>auth.uid() = user_id</B>; las reservaciones también verifican que el
+          client_id pertenezca al mismo usuario. Se revocó EXECUTE de public.rls_auto_enable()
+          para PUBLIC, anon y authenticated; el event trigger ensure_rls sigue habilitado.
+        </P>
+        <P>
+          <B>Verificación posterior:</B> list_tables confirmó las dos tablas y RLS activo.
+          La consulta de pg_policies confirmó las ocho políticas. El security advisor de Supabase
+          devolvió <B>0 avisos (lints: [])</B> después de la migración. Aún falta probar operaciones
+          reales con dos usuarios autenticados distintos; no hay usuarios de prueba y no se
+          afirma que el aislamiento multiusuario ya haya pasado pruebas de extremo a extremo.
+        </P>
+        <P>
+          <B>Paso 2 — Auth:</B> todavía pendiente de integración en Next.js. Auth del proyecto
+          Supabase está disponible, pero no hay pantallas login/registro/reset password, clientes
+          SSR/browser, verificación getClaims(), proxy.ts ni protección server-side. No se han
+          creado usuarios ni enviado correos. La integración requiere añadir @supabase/ssr y
+          @supabase/supabase-js al proyecto y fijar el lockfile.
+        </P>
+        <P>
+          <B>Bloqueo actual de Vercel:</B> las llamadas autorizadas de Vercel para leer
+          deployments/sandboxes responden <B>403 Forbidden / Not authorized</B>. Por ello no se
+          pudo abrir un entorno de trabajo de Vercel ni verificar build/deployment en esta etapa.
+          No se realizó deployment. Antes de desplegar, recuperar acceso autorizado a Vercel
+          (equipo islandCity / proyecto claris) o utilizar un flujo GitHub CI autorizado.
+        </P>
+        <P>
+          <B>Próximas tareas:</B> (1) restablecer lectura/escritura de Vercel o CI autorizado;
+          (2) implementar Auth SSR para Next.js 16 con proxy.ts, login, registro, logout y
+          recuperación; (3) configurar NEXT_PUBLIC_SUPABASE_URL y
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY en Vercel Production/Preview/Development sin
+          exponer secretos; (4) proteger la aplicación y conservar la ruta/experiencia actual;
+          (5) compilar y desplegar; (6) ejecutar pruebas con dos cuentas y luego migrar datos
+          locales de forma idempotente sin pérdida.
+        </P>
+        <P>
+          <B>Deployment:</B> no se inició ninguno para este cambio de base de datos. Estado de
+          deployment: <B>no creado / no aplicable</B>. Push notifications: sin cambios; no se
+          realizó una nueva prueba push en esta sesión. La prueba local de iPhone previamente
+          documentada sigue siendo la única prueba reportada; pruebas remotas pendientes.
+        </P>
+      </Section>
+
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
