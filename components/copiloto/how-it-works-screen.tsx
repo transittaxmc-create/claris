@@ -57,8 +57,9 @@ export function HowItWorksScreen() {
             to show/hide.
           </li>
           <li>
-            <B>TODAY | REGISTER</B> line: two totals under the strip, both hidden on open. Each one
-            shows/hides with its own tap.
+            <B>TODAY | REGISTER</B> line: two totals under the strip. The <B>TODAY</B> total is
+            always visible — no dots mask (Miguel's order, 2026-11-20); the <B>REGISTER</B> total
+            starts hidden and shows/hides with its own tap.
           </li>
           <li>
             <B>Header:</B> greeting + your live location with neighborhood, e.g.{" "}
@@ -75,6 +76,29 @@ export function HowItWorksScreen() {
           <li>
             <B>LOCATIONS:</B> capture pickup/dropoff with GPS. Capturing the <B>pickup</B> starts
             toll detection (no need to press START).
+          </li>
+          <li>
+            <B>Quick platform row:</B> the first box always shows the first platform in the list
+            (<B>Eco Ride</B>). Tapping a quick button only changes the trip's platform (yellow
+            frame) — it never moves the first box and never duplicates the platform. The selector
+            also carries <B>Jurny</B>, <B>Curb</B> and <B>CO-OP Drive</B> (with the blue
+            ACCESS-A-RIDE badge) and the delivery platforms <B>Dasher</B> and <B>Spark Driver</B>,
+            each with its own logo.
+          </li>
+          <li>
+            <B>Camera button:</B> the floating camera fills the trip from a photo of the dispatch
+            or job screen. The button never hides under the iPhone's Dynamic Island — a saved
+            position that ends up too high rescues itself on open.
+          </li>
+          <li>
+            <B>DASHBOARD:</B> the gold button in TODAY's header opens the hub — the day's money
+            line from Projections (out today / earned today / shortfall, or the next outgoing
+            with its date), the <B>HOURLY</B> card (moved here from EARNINGS) and the{" "}
+            <B>E-ZPASS · RESUMEN</B> card (today/shift, week, year, plus what is payable and the
+            TOLL AUDIT reconciliation). Starting a <B>NEW SHIFT</B> zeroes the shift counters
+            (dashboard earnings, E-ZPass today, miles) — a closed shift's figures keep showing
+            until the next START; week and year stay calendar-based and the register is never
+            touched.
           </li>
         </ul>
       </Section>
@@ -144,6 +168,30 @@ export function HowItWorksScreen() {
           <li><B>Update receivables → Money</B> (⋯ menu) sends the day's net by platform to MONEY.</li>
           <li>Hourly rate shows on TODAY next to the daily total (green if on pace).</li>
           <li>Quick platform buttons on TODAY for faster entry; BREAK is in the ⋯ menu.</li>
+          <li>
+            <B>Edit trip:</B> amounts use the rolling decimal — type the digits and the point
+            places itself (4025 → $40.25), in FARE and in every Edit trip box. The platform list
+            in Edit trip is the same as TODAY's: same order, same clean logos, yellow frame on
+            the selected one.
+          </li>
+          <li>
+            <B>NO SHOW / CANCELADO:</B> in the trip editor, a job that did not happen can be
+            closed without deleting it — <B>NO SHOW</B> sets the trip to <B>$5.00</B> (it counts
+            as earned) and <B>CANCELADO</B> sets it to <B>$0</B>. The trip stays in the list as a
+            record, marked; tap the mark again to undo. The editor also shows a discreet{" "}
+            <B>Received: date · time</B> line — when that job was received/uploaded.
+          </li>
+          <li>
+            <B>Per-hour, one single source:</B> the $/h chip on TODAY counts from the moment the
+            shift starts (<B>START</B>) and uses the exact same calculation as the DASHBOARD, so
+            both always agree.
+          </li>
+          <li>
+            <B>Fixing an earlier day:</B> if you correct a trip from a previous day, that day's
+            receivable in MONEY updates by itself, as long as the receivable is still in MONEY.
+            A receivable you deleted never comes back on its own — only that day's{" "}
+            <B>Update receivables → Money</B> button brings it back.
+          </li>
         </ul>
       </Section>
 
@@ -173,6 +221,43 @@ export function HowItWorksScreen() {
             Empower, Gallant, AKI Mobility, TG TEXPORT, CTG, Aventus Ride) = real income. Your own
             cards/accounts moving money (UBER PRO CARD, BRANCH, bank-to-bank) = internal transfer.
           </li>
+          <li>
+            <B>Balance by hand:</B> tap an account's balance in MONEY and type the real balance —
+            the box opens empty (placeholder $0.00), the value saves, and it counts into
+            Projections' starting balance like any other balance.
+          </li>
+          <li>
+            <B>Projections summary line:</B> the top of Projections is one line —{" "}
+            <B>REAL BANK | STARTING | ENDING</B>. Tap it and the full detail opens (REAL BANK |
+            PROJECTED MONTH plus the five-column strip); tap again to close it.
+          </li>
+          <li>
+            <B>Balance Account row:</B> the first row of the Projections register is one discreet
+            line, <B>Balance Account</B>. Tap it to see every switched-on account with its
+            balance — the ★ main account first — and the total, which is the same starting
+            balance as the strip above. Accounts switched off do not appear and do not count.
+          </li>
+          <li>
+            <B>Checks and reconciliation:</B> a projected income row stays in the list, counting,
+            past its day — until the money lands in the bank (then it leaves by itself) or you
+            tap its check circle. A checked row stays visible that day marked{" "}
+            <B>✓ CHECKED · NO LONGER COUNTS</B> and counts $0; from the next day it is gone, and
+            tapping again the same day undoes it. When bank money matches a projection, the row
+            is written under <B>✓ RECONCILED WITH THE BANK — RECORD ONLY</B> with Projected vs
+            Arrived and the Difference when it is not $0.
+          </li>
+          <li>
+            <B>Weekly band:</B> after the last row of each week (Mon–Sun) the register shows that
+            week's band — <B>WEEK IN / OUT / NET</B> — plus the <B>WEEKLY TOLLS</B> line. Tolls
+            live only on the WEEKLY TOLLS line and never count inside the band's OUT. Every week
+            that has rows shows its band.
+          </li>
+          <li>
+            <B>POR PAGAR · LIABILITIES:</B> every recurrent bill carries its own liability
+            account. Categorizing a bank payment with that bill's category writes the payment
+            into the bill and subtracts from what it owes — a paid bill stays paid, and each
+            account keeps its annual record (total paid and number of payments).
+          </li>
         </ul>
       </Section>
 
@@ -192,6 +277,11 @@ export function HowItWorksScreen() {
           <li>
             <B>Weekly vendor report:</B> spending by vendor and category, weeks grouped by month.
           </li>
+          <li>
+            <B>Mile modes:</B> miles are counted continuously while you move and split by mode —{" "}
+            <B>business</B>, <B>commute</B> and <B>personal</B>. A home geofence (Set home) can
+            mark the commute automatically.
+          </li>
         </ul>
       </Section>
 
@@ -201,6 +291,16 @@ export function HowItWorksScreen() {
           <B>Pending deposits</B> (money held by platforms) · <B>Data</B> (backup, sync, reset) ·
           this manual.
         </P>
+        <ul className="list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>
+            <B>CREDIT (MORE):</B> the register of credit accounts — balance, due day, frequency
+            and a payoff plan per account. An overdue account shows <B>OVERDUE</B> with its date.
+          </li>
+          <li>
+            <B>Daily goal:</B> in <B>DATA → BOARD GOALS</B> the goal field is free-writing — erase
+            the whole number and type yours; it saves when you leave the field.
+          </li>
+        </ul>
       </Section>
 
       {/* ───────────────────────────────────────────────────────────── */}
@@ -1443,7 +1543,7 @@ export function HowItWorksScreen() {
           <li><B>The bug:</B> the CRM sync used to be a plain union — any record a phone still held locally but the cloud no longer had was uploaded again on the next open, so records deleted in the cloud (or on the other phone) came back. That is why the duplicate Mr. Shah message and the Roberto Prueba test clients kept resurrecting.</li>
           <li><B>The fix:</B> each device now remembers, per record type (clients, reservations, messages), which ids it has already synced with the cloud. On open, a local record that was synced before and is no longer in the cloud counts as deleted elsewhere: it is removed from the device and is NOT uploaded again. A record deleted on this phone is likewise removed from the cloud. Only never-synced records upload as new.</li>
           <li><B>Messages have a real Delete button</B> (in the open message, next to Discard): Delete removes the message from the device and from the CRM cloud for good. <B>Discard is different</B> — it only closes the message and keeps it in the tray history as discarded.</li>
-          <li><B>One cleanup still owed by hand:</B> with this fix live, the duplicate Mr. Shah message from 9:30 AM is deleted once in the cloud and stays deleted (the 9:43 AM copy with Ref-7B42 is the one that stays). The three Roberto Prueba test clients and his test reservation stay as they are until Miguel says to remove them.</li>
+          <li><B>Cleanup done (2026-11-26):</B> Miguel deleted the duplicate Mr. Shah message from 9:30 AM himself, with the new Delete button, and it stayed deleted — in the cloud only the 9:43 AM copy with Ref-7B42 remains (the 9:30 copy lived only on his phone). The three Roberto Prueba test clients and his test reservation stay as they are until Miguel says to remove them.</li>
         </ul>
         <P><B>Three more tray/profile tools (Miguel&apos;s orders, 2026-11-26 — calls ~13:48 and ~14:41):</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
@@ -1473,7 +1573,7 @@ export function HowItWorksScreen() {
           <li><B>Hecho y en producción con este deploy:</B> la conexión a la nube (fase 1, §19) y las fases 2–5 (§20): número de cuenta por cliente con su historial, foto del cliente en su ficha y en la reserva, bandeja de mensajes con borrador editable y Approve &amp; Send, aviso de reservas de hoy y recordatorios solo para Miguel. Y el aviso <B>MESSAGE en TODAY</B> (§20): la luz en el hueco donde estaba GPS READY — parpadea suave con mensajes pendientes, tocarla abre la bandeja, ignorar a propósito la apaga y cerrar por ocupado la deja prendida; GPS READY bajó junto a pickup/drop-off (verde activo, gris apagado).</li>
           <li><B>Hecho con este deploy:</B> borrar ya es borrar de verdad — lo que se borra en Copiloto se borra también en la nube y no resucita; la bandeja de mensajes gana botón <B>Delete</B> aparte de Discard (§20).</li>
           <li><B>Hecho con este deploy:</B> tres herramientas más del CRM (§20) — botón <B>Reenviar</B> junto al “Sent” de cada mensaje enviado (vuelve a pendiente con su mismo borrador), <B>control de estatus real en la ficha del cliente</B> (la fila de la lista solo filtraba) y <B>marca de seguimiento</B> en mensajes enviados. Pendiente corto: aplicar la migración <B>20261126170000</B> en el Supabase del CRM para que la marca de seguimiento también viaje a la nube; sin ella la marca queda en el teléfono y todo lo demás funciona igual.</li>
-          <li><B>Pendiente, paso corto:</B> aplicar la migración <B>20261126120000</B> en el proyecto de Supabase del CRM (SQL Editor, un minuto) para que el número de cuenta, las fotos y los mensajes también vivan en la nube — la app ya funciona sin ella, degradando con honestidad.</li>
+          <li><B>Hecho (2026-11-26):</B> la migración <B>20261126120000</B> quedó aplicada en el proyecto de Supabase del CRM — el número de cuenta, las fotos y los mensajes ya viven también en la nube.</li>
           <li><B>Pendiente, bloqueado fuera del CRM:</B> el aviso push con la aplicación cerrada — el almacén de suscripciones (Vercel Blob) sigue suspendido y falta un disparador programado. Y la confirmación visual de Miguel en su teléfono de todo lo anterior.</li>
         </ul>
         <P>
