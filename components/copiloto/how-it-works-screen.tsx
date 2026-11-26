@@ -1472,7 +1472,7 @@ export function HowItWorksScreen() {
         </P>
       </Section>
 
-      <Section title="20. CRM PHASES 2–5 — ACCOUNT NUMBER, PHOTOS, MESSAGE TRAY, REMINDERS (BUILT IN TEST BRANCH, 2026-11-26)">
+      <Section title="20. CRM PHASES 2–5 — ACCOUNT NUMBER, PHOTOS, MESSAGE TRAY, REMINDERS (IN PRODUCTION, 2026-11-26)">
         <P>
           <B>Status:</B> built and verified on 2026-11-26 in the test branch <B>test/crm-fases</B>
           (worktree claris-test-crm), on Miguel&apos;s order to complete everything defined for the
