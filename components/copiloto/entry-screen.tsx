@@ -253,6 +253,7 @@ export function EntryScreen({
   trips = [],
   shift,
   onGoDashboard,
+  onGoMessages,
   dispatchFill,
   onDispatchConsumed,
 }: {
@@ -260,6 +261,7 @@ export function EntryScreen({
   trips?: Trip[]
   shift: ShiftApi
   onGoDashboard?: () => void
+  onGoMessages?: () => void
   /** Lectura de una foto de despacho (botón flotante) lista para llenar el borrador. */
   dispatchFill?: { scan: DispatchScan; n: number } | null
   onDispatchConsumed?: () => void
@@ -291,6 +293,32 @@ export function EntryScreen({
   // REGISTER oculto al abrir (privacidad ante el cliente): se muestra con un toque.
   // TODAY siempre visible, sin puntitos (orden de Miguel, 2026-11-20).
   const [showRegister, setShowRegister] = useState(false)
+  // Bombillito de mensajes (Miguel, 2026-11-26): cuenta los mensajes del
+  // CRM que siguen PENDIENTES en este aparato — la misma copia local
+  // (claris_crm_messages_v1) que alimenta el contador de la pestaña
+  // Messages del CRM. Se relee al montar, al volver el foco y cada 15 s:
+  // la luz de TODAY nunca depende de que él abra el CRM primero.
+  const [pendingMessages, setPendingMessages] = useState(0)
+  useEffect(() => {
+    const read = () => {
+      try {
+        const raw = localStorage.getItem("claris_crm_messages_v1")
+        const parsed = raw ? JSON.parse(raw) : []
+        setPendingMessages(
+          Array.isArray(parsed)
+            ? parsed.filter((m: { status?: string }) => m?.status === "pending").length
+            : 0,
+        )
+      } catch {}
+    }
+    read()
+    const id = window.setInterval(read, 15_000)
+    window.addEventListener("focus", read)
+    return () => {
+      window.clearInterval(id)
+      window.removeEventListener("focus", read)
+    }
+  }, [])
   // NOTES colapsada por defecto: así todo TODAY cabe sin scroll.
   const [notesOpen, setNotesOpen] = useState(false)
   // E-ZPass: peajes ya cobrados en este viaje (no duplicar) + aviso visual
@@ -613,10 +641,28 @@ export function EntryScreen({
               DASHBOARD
             </button>
           ) : null}
-          <div className="flex items-center gap-1 rounded-full border border-lime-500/50 bg-lime-500/10 px-2.5 py-1 text-[11px] font-semibold text-lime-400">
-            <span className="size-1.5 rounded-full bg-lime-400" />
-            {place ? "GPS ready" : "Locating"}
-          </div>
+          {/* Bombillito de mensajes (Miguel, 2026-11-26): en el hueco donde
+              vivía la pastilla "GPS ready" va ahora el aviso MESSAGE, del
+              mismo tamaño. La luz parpadea suave mientras haya mensajes
+              del CRM pendientes y queda quieta y apagada cuando no hay
+              ninguno; ignorar un mensaje a propósito (Discard) lo saca de
+              pendientes y apaga la luz, cerrarlo sin responder la deja
+              prendida. Tocarla abre el CRM directo en la pestaña Messages.
+              El GPS READY bajó a la caja LOCATIONS, junto a pickup/drop-off. */}
+          <button
+            type="button"
+            onClick={onGoMessages}
+            title={pendingMessages > 0 ? `${pendingMessages} pending message${pendingMessages === 1 ? "" : "s"} — open Messages` : "Open Messages"}
+            className={cn(
+              "flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold",
+              pendingMessages > 0
+                ? "border-amber-300/60 bg-amber-300/10 text-amber-200"
+                : "border-neutral-700 bg-neutral-800/40 text-neutral-400",
+            )}
+          >
+            <span className={cn("size-1.5 rounded-full", pendingMessages > 0 ? "animate-pulse bg-amber-300" : "bg-neutral-500")} />
+            MESSAGE
+          </button>
         </div>
         <p className="mt-1 text-lg font-bold leading-tight text-white">{greeting}</p>
         <p className="text-sm text-neutral-500">Drive safe. Earn smart.</p>
@@ -818,7 +864,22 @@ export function EntryScreen({
           <div className="mb-2 flex items-center gap-2">
             <MapPin className="size-4 text-green-400" />
             <span className="text-[11px] font-bold tracking-wide text-neutral-400">LOCATIONS</span>
-            <div className="ml-auto h-px flex-1 bg-neutral-800" />
+            <div className="h-px flex-1 bg-neutral-800" />
+            {/* GPS READY vive ahora aquí (Miguel, 2026-11-26): junto a
+                pickup/drop-off — verde y encendido con el GPS activo,
+                gris cuando está apagado. El estado es el mismo de siempre
+                (place, de geo.ts); no hay una segunda lógica de GPS. */}
+            <span
+              className={cn(
+                "flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold",
+                place
+                  ? "border-lime-500/50 bg-lime-500/10 text-lime-400"
+                  : "border-neutral-700 bg-neutral-800 text-neutral-500",
+              )}
+            >
+              <span className={cn("size-1.5 rounded-full", place ? "bg-lime-400" : "bg-neutral-500")} />
+              {place ? "GPS READY" : "GPS OFF"}
+            </span>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

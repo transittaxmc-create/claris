@@ -230,7 +230,7 @@ function CrmCloudPanel({ session, status }: { session: Session | null; status: "
   )
 }
 
-export function CRMScreen() {
+export function CRMScreen({ openMessagesNonce = 0 }: { openMessagesNonce?: number }) {
   const [clients, setClients] = useState<Client[]>([])
   const [ready, setReady] = useState(false)
   const [query, setQuery] = useState("")
@@ -239,6 +239,12 @@ export function CRMScreen() {
   const [showForm, setShowForm] = useState(false)
   const [selected, setSelected] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<"clients" | "reservations" | "messages">("clients")
+
+  // El bombillito MESSAGE de TODAY (Miguel, 2026-11-26) abre el CRM
+  // directo en la bandeja de mensajes: cada toque sube el nonce.
+  useEffect(() => {
+    if (openMessagesNonce > 0) setActiveTab("messages")
+  }, [openMessagesNonce])
 
   useEffect(() => {
     try {

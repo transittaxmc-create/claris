@@ -93,6 +93,9 @@ function Placeholder({ label }: { label: string }) {
 
 export function CopilotoApp() {
   const [tab, setTab] = useState<Tab>("ENTRY")
+  // Bombillito MESSAGE de TODAY (Miguel, 2026-11-26): tocarlo abre el CRM
+  // directo en la pestaña Messages — el nonce le avisa al CRM cada vez.
+  const [crmMessagesNonce, setCrmMessagesNonce] = useState(0)
   const shift = useShift()
   const [trips, setTrips] = useState<Trip[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -817,7 +820,7 @@ export function CopilotoApp() {
       <main className="min-h-0 flex-1 overflow-hidden">
         <div className={tab === "AI" ? "h-full min-h-0 overflow-hidden overflow-x-clip" : "h-full overflow-y-auto overflow-x-clip"}>
           {tab === "ENTRY" && (
-            <EntryScreen onSave={saveNewFromEntry} trips={trips} shift={shift} onGoDashboard={() => setTab("V1DASH")} dispatchFill={dispatchFill} onDispatchConsumed={() => setDispatchFill(null)} />
+            <EntryScreen onSave={saveNewFromEntry} trips={trips} shift={shift} onGoDashboard={() => setTab("V1DASH")} onGoMessages={() => { setCrmMessagesNonce((n) => n + 1); setTab("CRM") }} dispatchFill={dispatchFill} onDispatchConsumed={() => setDispatchFill(null)} />
           )}
           {tab === "REGISTER" && (
             <RegisterScreen
@@ -896,7 +899,7 @@ export function CopilotoApp() {
           {tab === "SOBRES" && <SobresScreen />}
           {tab === "TOLLAUDIT" && <TollAuditScreen trips={trips} />}
           {tab === "CREDIT" && <CreditScreen />}
-          {tab === "CRM" && <CRMScreen />}
+          {tab === "CRM" && <CRMScreen openMessagesNonce={crmMessagesNonce} />}
           {tab === "TAX2026" && <Tax2026Screen trips={trips} expenses={expenses} />}
           {tab === "HELP" && <HowItWorksScreen />}
           {tab !== "ENTRY" &&
