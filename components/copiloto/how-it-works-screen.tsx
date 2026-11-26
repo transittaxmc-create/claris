@@ -791,6 +791,34 @@ export function HowItWorksScreen() {
         </P>
       </Section>
 
+      <Section title="12. PRUEBA TÉCNICA DE PRODUCCIÓN — 2026-11-25/26">
+        <P>
+          <B>Deployment:</B> el commit <B>4f47fda0989afb5b9581c0007c92122910b31c7d</B>
+          quedó publicado en producción en el deployment <B>dpl_7Np1m8P125YmC4JEwq1xsudE9knZ</B>,
+          estado final <B>READY</B>. El alias <B>https://claris-lime.vercel.app</B> está asociado
+          a ese deployment. Esta publicación contiene la auditoría documental de la sección 11.
+        </P>
+        <P><B>Comprobaciones HTTP realizadas desde el deployment publicado:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li><B>PASS:</B> página principal responde HTTP 200 y entrega la aplicación Copiloto V7.</li>
+          <li><B>PASS:</B> <B>/api/crm/push/config</B> responde HTTP 200 y devuelve <B>enabled=true</B> con clave pública VAPID presente. No se copiaron claves privadas ni secretos.</li>
+          <li><B>PASS:</B> <B>/sw.js</B> responde HTTP 200 y contiene los manejadores de eventos <B>push</B> y <B>notificationclick</B>.</li>
+          <li><B>NO VERIFICADO:</B> entrega remota de extremo a extremo al iPhone. La prueba requiere una suscripción push real generada y registrada desde el dispositivo de Miguel; no se debe enviar una prueba con una suscripción inventada ni marcarla como PASS por el simple hecho de que el servidor esté configurado.</li>
+          <li><B>PENDIENTE:</B> Miguel debe abrir Copiloto desde el icono instalado en la pantalla de inicio del iPhone, entrar al panel de notificaciones del CRM y pulsar <B>Send remote push test</B> si el dispositivo ya aparece registrado. Si no está registrado, pulsar primero <B>Enable remote push</B> y aceptar el permiso. Confirmar si el aviso “Copiloto CRM — prueba push” aparece físicamente.</li>
+        </ul>
+        <P>
+          <B>Resultado global:</B> infraestructura y endpoints de configuración de push disponibles;
+          prueba local previamente confirmada PASS; prueba remota física aún pendiente; automatizaciones
+          de citas y pruebas con la app cerrada siguen pendientes. No declarar el sistema de notificaciones
+          completamente operativo hasta confirmar la recepción en el iPhone y probar los disparadores automáticos.
+        </P>
+        <P>
+          <B>Nota de observabilidad:</B> la consulta de logs de runtime de 24 horas no fue aceptada por
+          la retención del plan Hobby; una consulta de los últimos 30 minutos no devolvió registros.
+          Esto no equivale a una prueba de ausencia de errores ni sustituye la prueba funcional del dispositivo.
+        </P>
+      </Section>
+
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
