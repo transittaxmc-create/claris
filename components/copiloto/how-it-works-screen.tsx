@@ -1402,6 +1402,13 @@ export function HowItWorksScreen() {
           data, Plaid, or the finance Supabase project was touched. Full record:
           crm-fases-2026-11-26.md.
         </P>
+        <P>
+          <B>Push fix (2026-11-26):</B> device registration no longer dies on the malformed
+          Blob address — the subscription store is now read by its pathname. The test push
+          also sends even while the device-save store is suspended: if saving the device
+          fails, the test still goes out and the screen honestly notes that the save stays
+          pending.
+        </P>
       </Section>
 
       <Section title="21. LISTA DE PRIORIDADES — lo que está abierto, en lenguaje claro">

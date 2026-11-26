@@ -98,11 +98,13 @@ export function CRMNotifications() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ subscription: subscription.toJSON() }),
       })
+      let saveError = ""
       if (!saved.ok) {
         const detail = await saved.json().catch(() => null)
-        throw new Error(detail?.error || "Could not save this device subscription.")
+        saveError = detail?.error || "Could not save this device subscription."
+      } else {
+        setSubscribed(true)
       }
-      setSubscribed(true)
 
       const test = await fetch("/api/crm/push/test", {
         method: "POST",
@@ -113,7 +115,12 @@ export function CRMNotifications() {
         const detail = await test.json().catch(() => null)
         throw new Error(detail?.error || "The server could not send the push test.")
       }
-      setMessage("Remote push test sent by the server. Check the iPhone notification.")
+      setMessage(
+        "Remote push test sent by the server. Check the iPhone notification." +
+          (saveError
+            ? ` Note: this device could not be saved on the server yet (${saveError}) — the save stays pending.`
+            : ""),
+      )
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not activate remote push.")
     } finally {

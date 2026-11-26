@@ -83,7 +83,7 @@ function decryptStore(value: string): CrmPushSubscription[] {
 
 async function readSubscriptions(): Promise<CrmPushSubscription[]> {
   try {
-    const info = await head("https://blob.vercel-storage.com/" + STORE_PATH)
+    const info = await head(STORE_PATH)
     const response = await fetch(info.url, { cache: "no-store" })
     if (!response.ok) throw new Error("Could not read CRM push subscription store")
     return decryptStore(await response.text())
