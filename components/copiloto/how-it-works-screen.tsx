@@ -91,6 +91,16 @@ export function HowItWorksScreen() {
             position that ends up too high rescues itself on open.
           </li>
           <li>
+            <B>Top and bottom frame (fixed 2026-11-26):</B> the phone's status bar is now{" "}
+            <B>solid black</B> and the app starts below it — the old translucent style laid the
+            app UNDER a transparent skin at the top, and the light document background behind
+            it showed as the gray/white strip Miguel photographed; a matching edge showed at
+            the bottom. The document background is now black end to end, so no content hides
+            under a strip at the top or the bottom of any screen: the first and last elements
+            are always fully visible. (Miguel's correction, 2026-11-26: it only happened in
+            this app, so it was the app — not the phone.)
+          </li>
+          <li>
             <B>DASHBOARD:</B> the gold button in TODAY's header opens the hub — the day's money
             line from Projections (out today / earned today / shortfall, or the next outgoing
             with its date), the <B>HOURLY</B> card (moved here from EARNINGS) and the{" "}

@@ -10,10 +10,15 @@ export const metadata: Metadata = {
   generator: 'v0.app',
   // Permite añadir la app a la pantalla de inicio y abrirla a pantalla completa
   // (sin la barra del navegador): así se ve igual que desde el preview.
+  // Barra de estado SÓLIDA negra ('black', NO 'black-translucent'): con la
+  // translúcida iOS pone la vista web DEBAJO de la barra y el contenido se
+  // esconde bajo ese "skin" transparente de arriba (queja de Miguel,
+  // 2026-11-26: pasaba solo en esta app). Con 'black' la barra es opaca,
+  // la app empieza debajo de ella y nada queda tapado arriba.
   appleWebApp: {
     capable: true,
     title: 'Copiloto',
-    statusBarStyle: 'black-translucent',
+    statusBarStyle: 'black',
   },
   formatDetection: { telephone: false, date: false, email: false, address: false },
   icons: {

@@ -279,6 +279,16 @@ html, body {
   overscroll-behavior: none;
   overflow-x: clip;
 }
+
+/* 4) El documento entero es NEGRO como la app (Miguel, 2026-11-26): el
+   --background de :root es blanco (heredado de shadcn) y era lo que iOS
+   pintaba detrás de la barra de estado y en los márgenes del sistema —
+   la franja gris/blanca de arriba que él fotografió. Con el fondo del
+   documento en negro, ningún borde del sistema se ve claro ni deja ver
+   contenido "debajo de un skin": arriba y abajo todo es negro sólido. */
+html, body {
+  background: #000;
+}
 /* Evita el "pull to refresh" accidental que mueve toda la página. */
 body {
   overscroll-behavior-y: none;
