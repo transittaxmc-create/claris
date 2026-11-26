@@ -305,7 +305,7 @@ const newReservation = (): CRMReservation => ({
 })
 const appleMapsLink = (address: string) => `https://maps.apple.com/?daddr=${encodeURIComponent(address)}`
 const googleMapsLink = (address: string) => `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(address)}`
-const flightAwareLink = (flightNumber: string) => `https://www.flightaware.com/live/flight/${encodeURIComponent(flightNumber.trim().replace(/\\s+/g, ""))}`
+const flightAwareLink = (flightNumber: string) => `https://www.flightaware.com/live/flight/${encodeURIComponent(flightNumber.trim().replace(/\s+/g, ""))}`
 
 function AddressNavigation({ label, address }: { label: string; address: string }) {
   if (!address.trim()) return null
