@@ -853,11 +853,28 @@ export function HowItWorksScreen() {
           <li>Los canales SMS y push tienen sus estados pendientes documentados en las secciones 10–12; no afirmar que alertas de vuelos o mensajes a clientes funcionan hasta implementar y probar cada canal.</li>
         </ul>
         <P>
-          <B>Estado al 2026-11-25:</B> requisitos y distinción funcional confirmados con el propietario.
-          No se ha implementado el formulario de reservaciones, el botón de navegación por dirección,
-          la integración de seguimiento de vuelos ni sus automatizaciones. Próximo paso: inspeccionar
-          el código CRM vigente y su modelo de reservaciones; documentar el diseño técnico antes de
-          modificarlo. Mantener los cambios aislados del módulo financiero.
+          <B>Implementación inicial — 2026-11-25:</B> se añadió una pestaña <B>Reservations</B> dentro
+          del CRM, separada de la pestaña Clients y del GPS de viajes existente. El componente está
+          en <B>components/copiloto/crm-screen.tsx</B>. Permite crear, consultar, editar y eliminar
+          reservaciones; asociarlas a un cliente existente o registrar al pasajero directamente;
+          guardar fecha/hora del servicio, pasajeros, estado, pickup, drop-off y notas.
+        </P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li><B>Direcciones:</B> pickup y drop-off originales se muestran sin cambios. Solo se modifican al editar y guardar expresamente la reservación. En el detalle hay enlaces separados a Apple Maps y Google Maps para cada dirección; la navegación solo comienza cuando el propietario toca el enlace.</li>
+          <li><B>Recogida normal:</B> no muestra ni exige campos de vuelo.</li>
+          <li><B>Recogida de aeropuerto:</B> habilita aeropuerto/código, aerolínea, número de vuelo, fecha del vuelo, hora programada de llegada, terminal y puerta. Exige aeropuerto, número y fecha para guardar.</li>
+          <li><B>Track Flight:</B> abre el identificador del vuelo en FlightAware en otra página. Es una consulta externa; no significa que Copiloto reciba el estado del vuelo ni que haya alertas automáticas.</li>
+          <li><B>Almacenamiento actual:</B> reservaciones se guardan en localStorage con clave <B>claris_crm_reservations_v1</B>, separada de <B>claris_crm_clients_v1</B>. Es almacenamiento de ese navegador/dispositivo, no respaldo ni sincronización cloud.</li>
+          <li><B>Base CRM:</B> al revisar los proyectos accesibles de Supabase no apareció el proyecto CRM esperado <B>mimgwleghecseoymgdug</B>; los proyectos devueltos fueron otros proyectos inactivos. No se creó una base nueva ni se tocó el proyecto financiero <B>zrcnpmipdhpjdjkfrrgt</B>. La persistencia cloud queda pendiente hasta verificar y autorizar el proyecto CRM correcto.</li>
+          <li><B>Proveedor de vuelos:</B> no se conectó API ni se activó ningún servicio de pago. Para mostrar estados dentro del CRM (on time, delayed, in flight, landed, cancelled), cambios de ETA/terminal/puerta y avisos, falta seleccionar y autorizar un proveedor/API con cobertura y precio aceptados.</li>
+          <li><B>Pruebas:</B> el código fue guardado en GitHub y se generó deployment automático de Vercel. Falta confirmar resultado final del build y probar físicamente en iPhone: crear/editar una reservación, persistencia tras cerrar/reabrir, los dos enlaces de mapas, pickup normal sin campos de vuelo y airport pickup con Track Flight.</li>
+        </ul>
+        <P>
+          <B>Estado de fase:</B> interfaz y flujo básico de reservaciones implementados; navegación por dirección
+          y consulta externa de vuelo incorporadas en código. La fase no se declara totalmente cerrada:
+          sincronización/backup cloud, estado de vuelo dentro de Copiloto y alertas automáticas permanecen
+          pendientes por falta de proyecto CRM accesible y proveedor de datos de vuelos aprobado. No alterar
+          ni duplicar el GPS de viajes; mantener los cambios aislados del módulo financiero.
         </P>
       </Section>
 
@@ -907,7 +924,7 @@ export function HowItWorksScreen() {
         </ul>
         <P><B>F. Estado verificado al 2026-11-25/26:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li><B>CRM actual:</B> el archivo components/copiloto/crm-screen.tsx inspeccionado contiene gestión básica de clientes y guarda en localStorage (claris_crm_clients_v1). No se encontró en ese archivo una bandeja de conversaciones ni un modelo de reservaciones. No asumir persistencia cloud.</li>
+          <li><B>CRM actual:</B> components/copiloto/crm-screen.tsx contiene pestañas Clients y Reservations. Clientes y reservaciones se guardan en localStorage (claris_crm_clients_v1 y claris_crm_reservations_v1); no hay persistencia cloud confirmada ni bandeja de conversaciones.</li>
           <li><B>Push:</B> existen componentes/rutas de push. La prueba local en iPhone fue confirmada por el propietario. La prueba remota física, los recordatorios automáticos programados y las pruebas con la app cerrada siguen pendientes.</li>
           <li><B>Twilio SMS:</B> cuenta creada, pero la auditoría previa no encontró variables TWILIO_* en Vercel ni integración SMS confirmada en el CRM. No conectado; pruebas entrantes/salientes pendientes.</li>
           <li><B>Credencial Twilio:</B> un Auth Token compartido anteriormente debe tratarse como expuesto. No volver a pedirlo ni copiarlo en el chat. Antes de rotarlo, comprobar dependencias; usar una API Key apropiada para producción y actualizarla de forma segura.</li>
