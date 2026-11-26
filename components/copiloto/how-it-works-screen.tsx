@@ -413,9 +413,17 @@ export function HowItWorksScreen() {
 
       <Section title="11. CRM COPILOTO V7 — CONTINUIDAD OFICIAL DEL PROYECTO">
         <P>
-          <B>Actualizado: 2026-11-25 · Documento de referencia para Miguel y todos los agentes.</B>
+          <B>Actualizado: 2026-11-26 · Documento de referencia para Miguel y todos los agentes.</B>
           Esta sección es la fuente de continuidad del CRM. Leerla completa antes de investigar,
           modificar código, bases de datos, permisos o despliegues. No asumir ni inventar estados.
+        </P>
+
+        <P>
+          <B>Current CRM cloud status — 2026-11-26:</B> Phase 1 is live in production. Section 19
+          is the controlling record for the CRM cloud connection. Earlier statements in sections
+          11–18 that describe CRM cloud sync, Supabase access or Auth as pending were written before
+          that deployment and are superseded for the clients/reservations connection; they remain
+          dated history for the other features they discuss.
         </P>
 
         <P><B>Identidad y ubicación del módulo:</B></P>
@@ -475,7 +483,7 @@ export function HowItWorksScreen() {
           <li><B>Vercel — proyecto desplegado en esta sesión:</B> <a className="text-yellow-300 underline" href="https://vercel.com/island-city/claris" target="_blank" rel="noreferrer">https://vercel.com/island-city/claris</a> — nombre <B>claris</B>, ID <B>prj_EaOp8GqqgF0i4BBEp3CJSY8phcKW</B>, conectado al repositorio GitHub anterior.</li>
           <li><B>Último despliegue de producción registrado:</B> <a className="text-yellow-300 underline" href="https://claris-lime.vercel.app/" target="_blank" rel="noreferrer">https://claris-lime.vercel.app/</a> — alias del proyecto Vercel <B>claris</B>; deployment <B>dpl_DyeTiM8ricAkko4eREZSVJPG51nT</B>, estado READY; commit <B>21a0a86230ffca0b9675194c36ab2f86c80d28c6</B>. Preview: <a className="text-yellow-300 underline" href="https://claris-9g25myvvb-island-city.vercel.app" target="_blank" rel="noreferrer">claris-9g25myvvb-island-city.vercel.app</a>.</li>
           <li><B>Otro proyecto Vercel:</B> <B>claris-lime</B> es un proyecto separado en Vercel conectado al mismo repositorio. No se debe decir que este último despliegue actualizó claris-lime; verificar el proyecto y su último deployment antes de publicar allí o cambiar dominios.</li>
-          <li><B>Supabase exclusivo CRM:</B> Project ID <B>mimgwleghecseoymgdug</B>; URL de proyecto <a className="text-yellow-300 underline" href="https://mimgwleghecseoymgdug.supabase.co" target="_blank" rel="noreferrer">https://mimgwleghecseoymgdug.supabase.co</a>. Acceso directo al dashboard: <a className="text-yellow-300 underline" href="https://supabase.com/dashboard/project/mimgwleghecseoymgdug" target="_blank" rel="noreferrer">abrir proyecto CRM</a>. Este dashboard URL se deriva del Project ID confirmado; autorización aún pendiente.</li>
+          <li><B>Supabase exclusivo CRM:</B> Project ID <B>mimgwleghecseoymgdug</B>; URL de proyecto <a className="text-yellow-300 underline" href="https://mimgwleghecseoymgdug.supabase.co" target="_blank" rel="noreferrer">https://mimgwleghecseoymgdug.supabase.co</a>. Acceso directo al dashboard: <a className="text-yellow-300 underline" href="https://supabase.com/dashboard/project/mimgwleghecseoymgdug" target="_blank" rel="noreferrer">abrir proyecto CRM</a>. This is the CRM-only Supabase project used by the production CRM CLOUD connection described in section 19.</li>
           <li><B>Supabase financiero (NO usar para CRM):</B> Project ID <B>zrcnpmipdhpjdjkfrrgt</B>. Pertenece a Claris / Island City Transit y debe permanecer aislado.</li>
         </ul>
 
@@ -558,17 +566,17 @@ export function HowItWorksScreen() {
         <P><B>Stack y configuración que deben verificarse antes de continuar:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
           <li>Aplicación: Next.js 16, React y componente principal <B>CopilotoApp</B>, en el repositorio <B>transittaxmc-create/claris</B>.</li>
-          <li>En la conversación de configuración se compartieron instrucciones para instalar <B>@supabase/supabase-js</B> y <B>@supabase/ssr</B> y configurar clientes/middleware de sesión. Antes de reinstalar o duplicar archivos, inspeccionar package.json, lockfile, helpers de Supabase y middleware para saber qué quedó realmente aplicado.</li>
-          <li>Variables CRM esperadas en Vercel deben apuntar únicamente al proyecto <B>mimgwleghecseoymgdug</B>. Confirmar los nombres y valores existentes sin imprimir secretos. Nunca copiar las credenciales del proyecto financiero ni exponer service-role/secret keys al navegador.</li>
-          <li>El usuario indicó que intentó autorizar Supabase y que no le aparecía el flujo como en una conexión anterior. La revisión de herramientas del 2026-11-25 no pudo acceder al proyecto CRM: autorización/permisos siguen siendo el bloqueo principal. No crear tablas ni cambiar variables hasta confirmar el proyecto correcto.</li>
+          <li><B>Supabase client stack:</B> <B>@supabase/supabase-js</B> and <B>@supabase/ssr</B> are installed and locked. The CRM uses browser/server Supabase clients and <B>proxy.ts</B> to refresh the CRM session; do not reinstall or duplicate them.</li>
+          <li><B>CRM cloud variables:</B> Vercel uses <B>NEXT_PUBLIC_CRM_SUPABASE_URL</B> and <B>NEXT_PUBLIC_CRM_SUPABASE_PUBLISHABLE_KEY</B> for the CRM-only project <B>mimgwleghecseoymgdug</B>. No CRM service-role key is used in the browser or by the CRM state route. Never copy the finance project credentials or expose secret keys to the browser.</li>
+          <li><B>CRM Supabase access:</B> verified for Phase 1. The production app connects only to the CRM project <B>mimgwleghecseoymgdug</B>; the finance project remains separate and untouched.</li>
         </ul>
 
         <P><B>Estado de decisiones — confirmado, propuesto y pendiente:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
           <li><B>Confirmado por el propietario:</B> CRM dentro de Claris existente; nombre V7; Supabase separado para CRM; finanzas y Plaid intactos; acceso por More → Client management → CRM; no añadir opción al menú inferior.</li>
-          <li><B>Implementado y verificado en código:</B> pantalla inicial de clientes con alta/edición/eliminación, búsqueda, filtros, estados, notas, fecha de seguimiento, botones tel: y mailto:, y almacenamiento local en <B>claris_crm_clients_v1</B>.</li>
-          <li><B>Propuesto, no confirmado como creado:</B> esquema relacional con perfiles, organizaciones, membresías, clientes, contactos, servicios, trabajos de transporte, casos de impuestos, documentos, citas, tareas y actividad; roles, Auth y RLS.</li>
-          <li><B>Pendiente:</B> acceso efectivo a Supabase CRM, inspección del esquema real, persistencia cloud, migración segura de datos locales, documentos/expedientes/citas/tareas completas, SMS, WhatsApp Business, automatizaciones y push probado en segundo plano.</li>
+          <li><B>Implementado y verificado en código:</B> pantalla inicial de clientes con alta/edición/eliminación, búsqueda, filtros, estados, notas, fecha de seguimiento, botones tel: y mailto:, almacenamiento local en <B>claris_crm_clients_v1</B>, panel <B>CRM CLOUD</B>, Auth y sincronización con el Supabase exclusivo del CRM.</li>
+          <li><B>Propuesto, no confirmado como creado:</B> expansión relacional futura con perfiles, organizaciones, membresías, contactos, servicios, trabajos de transporte, casos de impuestos, documentos, citas, tareas y actividad. Las tablas actuales de clientes/reservaciones, Auth y RLS sí están creadas y conectadas.</li>
+          <li><B>Still pending:</B> the owner’s own account sign-in and visual confirmation on his phone; complete client files/documents/appointments/tasks; SMS and WhatsApp Business; automatic reminders; and a background push test. CRM cloud access, Auth, RLS and the idempotent upload of local clients/reservations are no longer pending for Phase 1.</li>
           <li><B>No decidido / no recuperado:</B> proveedor de SMS, proveedor/API de WhatsApp, número empresarial, cuentas/credenciales de Meta, costos, plantillas, reglas de campañas y consentimiento detallado. No solicitar de nuevo al propietario información que ya aparezca en chats o enlaces; primero revisar el historial y las cuentas conectadas disponibles.</li>
         </ul>
 
@@ -588,17 +596,17 @@ export function HowItWorksScreen() {
           <li>Campos actuales: nombre, empresa, teléfono, email, estado, origen, notas/historial de interacción, próxima fecha de contacto y fecha de creación.</li>
           <li>Estados actuales: Lead, Active, Follow-up e Inactive. Orígenes: Referral, Website, Social media, Returning client, Walk-in y Other.</li>
           <li>Acciones disponibles: llamar por teléfono, enviar email, abrir detalle, editar y eliminar cliente.</li>
-          <li>La clave de almacenamiento actual es <B>claris_crm_clients_v1</B> en localStorage. Por tanto, los registros actuales quedan guardados en ese dispositivo/navegador; todavía no hay persistencia CRM en la nube confirmada.</li>
-          <li>El componente muestra expresamente que Cloud sync se habilitará después de autorizar el acceso a la base de datos CRM.</li>
+          <li><B>Local cache:</B> clients still use <B>claris_crm_clients_v1</B> in localStorage as the on-device cache. The cloud connection never deletes localStorage.</li>
+          <li><B>CRM CLOUD:</B> with an active session, clients sync with the CRM-only Supabase project. Local-only clients upload with the same ids; when the same id exists in both places, the cloud version controls. Without a session, the CRM remains fully local.</li>
         </ul>
 
         <P><B>Supabase — separación obligatoria:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
           <li>Proyecto Supabase destinado exclusivamente al CRM V7, según la información del propietario: <B>mimgwleghecseoymgdug</B>. Debe verificarse el acceso y la identidad del proyecto antes de ejecutar cambios.</li>
           <li>Proyecto financiero Claris / Island City Transit: <B>zrcnpmipdhpjdjkfrrgt</B>. Es distinto y NO debe utilizarse para guardar datos CRM.</li>
-          <li>En la revisión del 2026-11-25, el listado de proyectos accesibles no mostró el proyecto CRM y la consulta directa devolvió falta de permisos. Estado: <B>acceso al proyecto CRM no verificado / pendiente de autorización</B>. No decir que la conexión está lista.</li>
-          <li>Después de recuperar autorización: inspeccionar el proyecto correcto; diseñar tablas CRM independientes, relaciones, índices, Auth y políticas RLS; probar permisos por usuario/rol antes de habilitar datos reales.</li>
-          <li>Planificar una migración segura desde localStorage, si existen registros, con respaldo, conteo y verificación antes/después. No borrar ni sobrescribir registros locales.</li>
+          <li><B>Current status:</B> CRM Supabase access and the production connection are verified. The earlier 2026-11-25 access problem is superseded by section 19.</li>
+          <li>Las tablas CRM independientes <B>public.crm_clients</B> y <B>public.crm_reservations</B>, sus relaciones e índices, Auth y las políticas RLS por propietario ya están creadas y conectadas. No recrearlas ni duplicarlas.</li>
+          <li>La subida desde localStorage es idempotente: los registros solo locales suben con los mismos ids y localStorage se conserva como caché. Verificar conteos al conectar la cuenta real del propietario; no borrar registros locales.</li>
         </ul>
 
         <P><B>INFORME DE NOTIFICACIONES Y MENSAJERÍA — actualizado 2026-11-25:</B></P>
@@ -669,10 +677,10 @@ export function HowItWorksScreen() {
 
         <P><B>Próximos pasos, en este orden:</B></P>
         <ol className="mb-3 list-decimal space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>Recuperar y verificar autorización del Supabase CRM <B>mimgwleghecseoymgdug</B>; confirmar que no se está trabajando en el Supabase financiero.</li>
+          <li>Confirmar en el teléfono del propietario su cuenta real del panel CRM CLOUD y los conteos tras la primera sincronización; seguir usando solo el Supabase CRM <B>mimgwleghecseoymgdug</B>, nunca el financiero.</li>
           <li>Inspeccionar el código y el estado real del proyecto; documentar lo que ya existe antes de cambiarlo.</li>
-          <li>Diseñar y crear el esquema CRM con Auth/RLS, relaciones e índices, exclusivamente en el proyecto CRM autorizado.</li>
-          <li>Conectar el módulo actual a la nube, preservar los datos locales y probar altas, ediciones, búsquedas, permisos y persistencia entre dispositivos.</li>
+          <li>Preservar el esquema CRM, Auth y RLS ya creados y conectados; no recrearlos ni duplicarlos.</li>
+          <li>Probar con la cuenta real del propietario altas, ediciones, búsquedas, permisos y persistencia entre dispositivos, preservando siempre los datos locales.</li>
           <li>Diseñar e implementar push notifications para los eventos acordados, y probar entrega con la aplicación cerrada en dispositivos compatibles y con permiso concedido.</li>
           <li>Verificar el resultado en la aplicación real y actualizar esta sección con fecha, archivos cambiados, pruebas, resultados y siguiente tarea.</li>
         </ol>
@@ -865,15 +873,15 @@ export function HowItWorksScreen() {
           <li><B>Recogida de aeropuerto:</B> habilita aeropuerto/código, aerolínea, número de vuelo, fecha del vuelo, hora programada de llegada, terminal y puerta. Exige aeropuerto, número y fecha para guardar.</li>
           <li><B>Aeropuertos preconfigurados:</B> JFK, LGA, EWR, ISP (Long Island MacArthur), BDL (Bradley International, Connecticut), HVN (Tweed New Haven, Connecticut) y HPN (Westchester County, zona cercana de NY). Se conserva opción de aeropuerto manual.</li>
           <li><B>Track Flight:</B> ahora realiza una consulta manual al endpoint server-side de ADSB.lol (<B>app/api/crm/flights/track/route.ts</B>) y busca el callsign ICAO correspondiente al número de vuelo y aerolínea. Si detecta el avión, presenta en vuelo, señal en tierra o última posición no reciente, con posición, altitud, velocidad y rumbo cuando están disponibles. FlightAware queda como enlace externo alternativo.</li>
-          <li><B>Almacenamiento actual:</B> reservaciones se guardan en localStorage con clave <B>claris_crm_reservations_v1</B>, separada de <B>claris_crm_clients_v1</B>. Es almacenamiento de ese navegador/dispositivo, no respaldo ni sincronización cloud.</li>
-          <li><B>Base CRM:</B> al revisar los proyectos accesibles de Supabase no apareció el proyecto CRM esperado <B>mimgwleghecseoymgdug</B>; los proyectos devueltos fueron otros proyectos inactivos. No se creó una base nueva ni se tocó el proyecto financiero <B>zrcnpmipdhpjdjkfrrgt</B>. La persistencia cloud queda pendiente hasta verificar y autorizar el proyecto CRM correcto.</li>
+          <li><B>Almacenamiento actual:</B> reservaciones usan localStorage con clave <B>claris_crm_reservations_v1</B> como caché del dispositivo. Con sesión activa en CRM CLOUD, también se sincronizan con el Supabase exclusivo del CRM; la subida de reservaciones ocurre al abrir la pestaña Reservations con la sesión activa.</li>
+          <li><B>Base CRM:</B> el proyecto <B>mimgwleghecseoymgdug</B> está verificado y conectado para clientes y reservaciones. No se creó una base nueva ni se tocó el proyecto financiero <B>zrcnpmipdhpjdjkfrrgt</B>.</li>
           <li><B>Proveedor gratuito elegido (25-nov-2026):</B> ADSB.lol API, base https://api.adsb.lol/v2, sin API key ni cuenta para el nivel anónimo; 500 solicitudes/día por IP sin clave. Tiene búsqueda de aeronaves por callsign. Su API declara licencia ODbL 1.0. La ODbL permite expresamente uso comercial; requiere atribución en uso público y share-alike si se publica una base de datos adaptada. Se muestra atribución visible en el CRM. ADSB.lol advierte que los datos se entregan “as is” y no garantiza precisión, puntualidad, integridad ni disponibilidad. Fuentes oficiales: https://www.adsb.lol/docs/open-data/api ; https://www.adsb.lol/docs/privacy-license ; https://opendatacommons.org/licenses/odbl/1-0/ ; https://opendatacommons.org/licenses/odbl/summary/.</li>
           <li><B>Implementación ADSB.lol:</B> integración manual bajo demanda, sin API key, cuenta ni mensualidad. El CRM convierte aerolínea/número de vuelo a callsign ICAO para las aerolíneas comunes y consulta solo al pulsar Track Flight; se evita el polling automático. La API no ofrece por sí sola horarios programados, confirmación de demora/cancelación, puerta, terminal ni disponibilidad del pasajero. Un resultado sin señal no significa cancelación. Se conserva FlightAware como enlace externo. La consulta está limitada por el proveedor (500/día/IP sin clave) y usa caché breve de 15 segundos.</li>
           <li><B>Build de integración gratuita:</B> el commit <B>0ce3125ba9fab8dca5c69693863cb24e42c6db26</B> obtuvo deployment Vercel <B>dpl_Fxaior9uKQ2TFJMP1YxhapvhNPn7</B>, estado <B>READY</B>, alias de producción https://claris-lime.vercel.app. El build compiló correctamente y el inventario de rutas confirmó <B>/api/crm/flights/track</B>. El proyecto mantiene <B>typescript.ignoreBuildErrors=true</B>, por lo que Vercel omite validación TypeScript; el estado READY no sustituye pruebas de ejecución. La documentación de esta integración fue actualizada en GitHub; el deployment de esa última actualización se verificará después del commit documental.</li>
           <li><B>Pruebas pendientes tras integración ADSB.lol:</B> no se ha ejecutado una consulta real de vuelo desde el iPhone ni se ha confirmado cobertura/identificación para los vuelos del propietario. En el dispositivo probar una reservación de prueba, elegir uno de los aeropuertos preconfigurados, introducir aerolínea y número de vuelo, pulsar Track Flight y registrar si devuelve avión/posición o “sin señal”. Repetir con las aerolíneas habituales y revisar mapeo de callsign. También probar alta/edición/reapertura, direcciones y enlaces Apple/Google Maps, pickup normal y fallback FlightAware. El build READY solo confirma compilación y despliegue, no el resultado del proveedor externo.</li>
         </ul>
         <P>
-          <B>Estado de fase:</B> interfaz de reservaciones, navegación y consulta manual de posición ADS-B gratuita implementadas en código. Pendiente: verificar físicamente en iPhone que la API responda con vuelos reales de las aerolíneas usadas, validar mapeos de callsign y cobertura en los aeropuertos listados. La consulta no confirma demoras/cancelaciones ni reemplaza información de aerolínea/aeropuerto. Persistencia/backup cloud y alertas automáticas continúan pendientes por acceso al proyecto CRM y por no existir un feed de eventos programado conectado. No alterar ni duplicar el GPS de viajes; mantener cambios aislados del módulo financiero.
+          <B>Estado de fase:</B> interfaz de reservaciones, navegación y consulta manual de posición ADS-B gratuita implementadas en código. Pendiente: verificar físicamente en iPhone que la API responda con vuelos reales de las aerolíneas usadas, validar mapeos de callsign y cobertura en los aeropuertos listados. La consulta no confirma demoras/cancelaciones ni reemplaza información de aerolínea/aeropuerto. La persistencia cloud de clientes/reservaciones ya está en producción según la sección 19; las alertas automáticas continúan pendientes porque no existe un feed de eventos programado conectado. No alterar ni duplicar el GPS de viajes; mantener cambios aislados del módulo financiero.
         </P>
       </Section>
 
@@ -923,7 +931,7 @@ export function HowItWorksScreen() {
         </ul>
         <P><B>F. Estado verificado al 2026-11-25/26:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li><B>CRM actual:</B> components/copiloto/crm-screen.tsx contiene pestañas Clients y Reservations. Clientes y reservaciones se guardan en localStorage (claris_crm_clients_v1 y claris_crm_reservations_v1); no hay persistencia cloud confirmada ni bandeja de conversaciones.</li>
+          <li><B>CRM actual:</B> components/copiloto/crm-screen.tsx contiene pestañas Clients y Reservations. Clientes y reservaciones conservan su caché en localStorage y, con sesión activa, se sincronizan con el Supabase exclusivo del CRM. Todavía no hay bandeja de conversaciones.</li>
           <li><B>Push:</B> existen componentes/rutas de push. La prueba local en iPhone fue confirmada por el propietario. La prueba remota física, los recordatorios automáticos programados y las pruebas con la app cerrada siguen pendientes.</li>
           <li><B>Twilio SMS:</B> cuenta creada, pero la auditoría previa no encontró variables TWILIO_* en Vercel ni integración SMS confirmada en el CRM. No conectado; pruebas entrantes/salientes pendientes.</li>
           <li><B>Credencial Twilio:</B> un Auth Token compartido anteriormente debe tratarse como expuesto. No volver a pedirlo ni copiarlo en el chat. Antes de rotarlo, comprobar dependencias; usar una API Key apropiada para producción y actualizarla de forma segura.</li>
@@ -934,7 +942,7 @@ export function HowItWorksScreen() {
         <P><B>G. Orden de ejecución recomendado:</B></P>
         <ol className="mb-3 list-decimal space-y-1.5 pl-4 text-[12px] text-neutral-300">
           <li>Revisar el modelo actual del CRM y completar el diseño de reservaciones: pickup/drop-off, edición solo si hay cambios, navegación bajo acción del usuario, pickup normal o aeropuerto y Track Flight con proveedor sujeto a aprobación.</li>
-          <li>Resolver acceso y persistencia segura de datos CRM antes de almacenar conversaciones, clientes, reservaciones o trabajos programados; conservar los datos locales y preparar migración/backup verificable. No tocar el Supabase financiero zrcnpmipdhpjdjkfrrgt.</li>
+          <li>Mantener la conexión cloud segura ya creada para clientes y reservaciones antes de almacenar conversaciones o trabajos programados; conservar los datos locales y verificar conteos. No tocar el Supabase financiero zrcnpmipdhpjdjkfrrgt.</li>
           <li>Completar push remoto y disparadores automáticos internos; verificar físicamente en el iPhone.</li>
           <li>Completar la base SMS de Twilio: credenciales seguras, cumplimiento, webhook entrante, respuesta aprobada, status callback, historial y scheduling; probar entrada y salida reales.</li>
           <li>Integrar email bidireccional con la cuenta/proveedor autorizado, borradores, aprobación, respuesta y scheduling; probar entrada, salida y entrega.</li>
@@ -1043,15 +1051,14 @@ export function HowItWorksScreen() {
           canales independientes; no inferir que uno funciona porque otro esté configurado.
         </P>
         <P>
-          <B>Estado real preservado:</B> CRM de clientes/reservaciones sigue usando almacenamiento
-          local del navegador según la inspección actual; persistencia Supabase CRM no confirmada.
-          El proyecto CRM esperado es <B>mimgwleghecseoymgdug</B>; el proyecto financiero
-          <B>zrcnpmipdhpjdjkfrrgt</B> está excluido. Push tiene infraestructura/endpoints y variables
+          <B>Estado real actualizado por la sección 19:</B> CRM de clientes/reservaciones conserva
+          la caché local del navegador y, con sesión activa, se sincroniza con su proyecto Supabase
+          exclusivo <B>mimgwleghecseoymgdug</B>; el proyecto financiero
+          <B>zrcnpmipdhpjdjkfrrgt</B> está excluido y no fue tocado. Push tiene infraestructura/endpoints y variables
           documentados, pero la entrega remota al iPhone, notificaciones con la app cerrada y
           recordatorios programados de citas siguen pendientes de pruebas. Twilio no está conectado
           de forma confirmada; WhatsApp Business y la integración de email en el CRM también siguen
-          pendientes. No afirmar sincronización cloud, backup, entrega push ni SMS operativo sin
-          evidencia verificable.
+          pendientes. No afirmar entrega push ni SMS operativo sin evidencia verificable.
         </P>
         <P>
           <B>Último incidente de Vercel de esta continuidad:</B> deployment fallido
@@ -1074,6 +1081,11 @@ export function HowItWorksScreen() {
 
 
       <Section title="17. SUPABASE CRM AUTH + DATABASE — revisión y continuidad (2026-11-25)">
+        <P>
+          <B>Superseded for CRM cloud status:</B> this section records the state found on
+          2026-11-25, before Phase 1 was built. For the production connection, Auth and sync, read
+          section 19.
+        </P>
         <P>
           <B>Proyecto verificado:</B> Supabase CRM <B>mimgwleghecseoymgdug</B>, nombre CRM,
           organización Copiloto V7 CRM, región <B>us-east-2</B>, estado <B>ACTIVE_HEALTHY</B>.
@@ -1145,6 +1157,11 @@ export function HowItWorksScreen() {
 
       <Section title="18. CRM AUTH + TABLAS — resultado del paso 3 (2026-11-25)">
         <P>
+          <B>Superseded for CRM cloud status:</B> this section records the database step before
+          the application was connected. For the production connection, Auth and sync, read
+          section 19.
+        </P>
+        <P>
           <B>Base de datos aplicada:</B> migración Supabase
           <B>20261126024701_crm_auth_clients_reservations_rls</B>, nombre
           <B>crm_auth_clients_reservations_rls</B>, aplicada con resultado SUCCESS en el proyecto
@@ -1205,6 +1222,11 @@ export function HowItWorksScreen() {
 
       <Section title="18. PROGRESO REAL — tablas CRM creadas y Auth pendiente (2026-11-25)">
         <P>
+          <B>Superseded for CRM cloud status:</B> this section records the progress known at
+          that point on 2026-11-25. Auth is no longer pending; for the production connection,
+          read section 19.
+        </P>
+        <P>
           <B>Confirmación del propietario:</B> Miguel confirmó que
           <B>mimgwleghecseoymgdug</B> es el proyecto Supabase correcto. La conexión a Supabase
           está autorizada y el proyecto responde ACTIVE_HEALTHY. No se debe volver al proyecto
@@ -1256,6 +1278,45 @@ export function HowItWorksScreen() {
           deployment: <B>no creado / no aplicable</B>. Push notifications: sin cambios; no se
           realizó una nueva prueba push en esta sesión. La prueba local de iPhone previamente
           documentada sigue siendo la única prueba reportada; pruebas remotas pendientes.
+        </P>
+      </Section>
+
+      <Section title="19. CRM CLOUD — PHASE 1 IN PRODUCTION (2026-11-26)">
+        <P>
+          <B>Deployment record:</B> CRM Phase 1 was deployed to production on 2026-11-26 in commit
+          <B>67056180973bbc47a14bb9d18008c4df2a04da70</B> — “feat(crm): conectar CRM a su Supabase
+          exclusivo (Auth + sync)”. Vercel deployment <B>dpl_3hY3QqfDeU8uNRzerJzWprkJ5ktV</B> for the
+          <B>claris</B> project reached <B>READY</B> on the production target. That deployment went
+          out without this note; this section is its immediate follow-up notes record. From now on,
+          every deployment must carry its notes in this manual in the same deployment whenever
+          possible.
+        </P>
+        <P><B>What is connected:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>The CRM is connected to its own Supabase project, <B>mimgwleghecseoymgdug</B>, using <B>public.crm_clients</B> and <B>public.crm_reservations</B>. This is separate from the finance Supabase project <B>zrcnpmipdhpjdjkfrrgt</B>, which was not touched.</li>
+          <li>The CRM screen includes a <B>CRM CLOUD</B> panel for account creation, sign-in, password recovery and sign-out. The owner creates his own account with his email and a password he chooses, confirms the email, and then signs in. The session belongs to the CRM only; it is not a login wall for the whole app.</li>
+          <li>The server route <B>/api/crm/state</B> requires a verified session, forces the record owner from that session and returns cloud counts. Anonymous reads are denied by the CRM tables’ owner-only RLS. No CRM service-role key is used by this connection.</li>
+          <li>On sign-in, records whose ids already exist in the cloud remain controlled by the cloud version. Local-only clients and reservations upload with the same ids, without creating duplicates. Clients sync when the CRM is opened with a session; reservations sync when the Reservations tab is opened with a session.</li>
+          <li>Changes made while signed in continue to sync. <B>localStorage is never deleted</B>: it remains the on-device cache. Without a session, the CRM works locally exactly as before.</li>
+        </ul>
+        <P><B>Verification recorded for this deployment:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>A test Auth account was created and its email was confirmed; sign-in then succeeded. Invented test clients and a test reservation that existed only locally uploaded with the same ids, continuous changes also reached the cloud, and the state route and direct read-back agreed: 3 test clients and 1 test reservation.</li>
+          <li>Reloading produced the same id sets with no duplicates. Anonymous reads of both CRM tables were denied. No calls were made to the finance Supabase project during the verification.</li>
+          <li>After the production deployment, the app responded and <B>GET /api/crm/state</B> without a session returned <B>401</B>, confirming that the new route exists and its session gate is closed without sign-in.</li>
+          <li>The deployment does not create the owner’s real account for him. His remaining step is to create/sign in to his own account from the CRM CLOUD panel on his phone and visually confirm his real clients and reservations there.</li>
+        </ul>
+        <P><B>Still not built — do not describe these as connected:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>The SMS/WhatsApp message inbox with editable drafts and <B>Approve &amp; Send</B> is still design only. The CRM still cannot send messages to clients.</li>
+          <li>Automatic appointment/pickup reminders and scheduled background push are not built. Existing owner-push infrastructure is separate and is not proof that automatic reminders work.</li>
+          <li>Client photo attachments for pickups/flights are not built yet.</li>
+          <li>Complete client files with documents, appointments and tasks/activity are not built yet; the current client record still uses its existing fields, notes and follow-up date.</li>
+        </ul>
+        <P>
+          <B>Finance protection:</B> this Phase 1 deployment changed only the CRM connection files
+          listed in its production record. It did not change finance screens, finance data, Plaid or
+          the finance Supabase project.
         </P>
       </Section>
 
