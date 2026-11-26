@@ -130,7 +130,15 @@ export async function POST(req: Request) {
     if (Array.isArray(body.upsertMessages) && body.upsertMessages.length) {
       const rows = body.upsertMessages.map((m) => ({ ...messageToRow(m), user_id: userId, updated_at: now }))
       const { error } = await supabase.from("crm_messages").upsert(rows, { onConflict: "id" })
-      if (error) throw error
+      if (error) {
+        // Degradación pre-migración 20261126170000: sin la columna
+        // needs_follow_up y reintento — la marca de seguimiento queda en
+        // el dispositivo hasta que la migración se aplique, y la sync de
+        // mensajes NO se cae por eso.
+        const legacyRows = rows.map(({ needs_follow_up: _f, ...rest }) => rest)
+        const retry = await supabase.from("crm_messages").upsert(legacyRows, { onConflict: "id" })
+        if (retry.error) throw retry.error
+      }
     }
     if (Array.isArray(body.deleteMessageIds) && body.deleteMessageIds.length) {
       const { error } = await supabase.from("crm_messages").delete().eq("user_id", userId).in("id", body.deleteMessageIds)
