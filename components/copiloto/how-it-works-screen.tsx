@@ -819,6 +819,48 @@ export function HowItWorksScreen() {
         </P>
       </Section>
 
+      <Section title="13. CRM RESERVATIONS — AIRPORT FLIGHT TRACKING & ADDRESS NAVIGATION (2026-11-25)">
+        <P>
+          <B>Objetivo confirmado por el propietario:</B> documentar el alcance de las reservaciones
+          del CRM Copiloto V7. Esta sección registra requisitos acordados; <B>no significa que
+          estén implementados ni desplegados</B>.
+        </P>
+        <P><B>A. Direcciones de pickup y drop-off en la orden CRM:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>El flujo GPS de viajes que ya existe en Copiloto es independiente y no debe duplicarse ni modificarse por este requisito.</li>
+          <li>Dentro de cada reservación del CRM, mostrar las direcciones de pickup y drop-off que pertenecen a esa orden.</li>
+          <li>Los campos/datos de ambas direcciones deben seguir siendo editables por el usuario.</li>
+          <li>Agregar un botón pequeño de navegación en la esquina o junto a cada dirección. El botón de pickup abre el navegador/GPS con la dirección de recogida ya cargada; el botón de drop-off abre el navegador/GPS con la dirección de destino ya cargada.</li>
+          <li>La acción debe evitar copiar, volver a escribir o teclear manualmente la dirección en la aplicación de mapas. No reemplaza ni altera la dirección guardada en la orden.</li>
+          <li>Permitir abrir Apple Maps o Google Maps mediante enlaces de navegación compatibles con el dispositivo. Si se ofrecen ambas opciones, la elección debe ser clara y rápida.</li>
+          <li>La navegación se inicia únicamente cuando el usuario toca el botón; no iniciar GPS ni navegación automáticamente al abrir una reservación.</li>
+        </ul>
+        <P><B>B. Recogida normal frente a recogida en aeropuerto:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>Para una recogida en dirección normal, conservar el flujo habitual de pickup y drop-off; no pedir número de vuelo ni campos de aeropuerto.</li>
+          <li>Cuando el tipo de pickup sea aeropuerto, la reservación debe solicitar y guardar la información necesaria del vuelo, incluyendo aerolínea, número de vuelo, fecha y aeropuerto, además de la hora programada cuando esté disponible.</li>
+          <li>Incluir en la misma orden una acción <B>Track Flight</B> para consultar el vuelo y mostrar su estado, por ejemplo: a tiempo, retrasado, en vuelo, aterrizado o cancelado.</li>
+          <li>El seguimiento automático o las actualizaciones periódicas requieren seleccionar e integrar un proveedor de datos de vuelos. Hasta que exista integración y respuesta válida y reciente, no presentar estados como confirmados ni prometer actualización automática.</li>
+          <li>El registro de vuelo debe permanecer asociado a la reservación correspondiente. Considerar cambios de hora, fecha local, terminal y puerta cuando el proveedor disponga de esos datos.</li>
+        </ul>
+        <P><B>C. Límites y reglas de implementación:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>Este alcance corresponde al CRM y sus órdenes de reservación; no crear un segundo módulo genérico de pickup/drop-off ni duplicar el registro GPS de viajes existente.</li>
+          <li>Antes de programar, inspeccionar la estructura real de reservaciones y los campos actuales para integrar los botones sin perder ni sobrescribir datos existentes.</li>
+          <li>Probar que editar una dirección conserva el nuevo valor y que cada botón abre el destino correcto: pickup abre pickup y drop-off abre drop-off.</li>
+          <li>Probar por separado una reservación con dirección normal y otra con pickup de aeropuerto, incluyendo la acción Track Flight.</li>
+          <li>Investigar cobertura, frecuencia de actualización, costos y términos de un proveedor de vuelos antes de contratarlo o activar cargos. No realizar compras sin aprobación del propietario.</li>
+          <li>Los canales SMS y push tienen sus estados pendientes documentados en las secciones 10–12; no afirmar que alertas de vuelos o mensajes a clientes funcionan hasta implementar y probar cada canal.</li>
+        </ul>
+        <P>
+          <B>Estado al 2026-11-25:</B> requisitos y distinción funcional confirmados con el propietario.
+          No se ha implementado el formulario de reservaciones, el botón de navegación por dirección,
+          la integración de seguimiento de vuelos ni sus automatizaciones. Próximo paso: inspeccionar
+          el código CRM vigente y su modelo de reservaciones; documentar el diseño técnico antes de
+          modificarlo. Mantener los cambios aislados del módulo financiero.
+        </P>
+      </Section>
+
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
