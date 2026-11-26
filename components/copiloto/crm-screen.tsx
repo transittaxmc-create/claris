@@ -1252,6 +1252,16 @@ type CRMMessage = {
   approvedAt: string
   sentAt: string
   needsFollowUp: boolean
+  /** Cola de salida SMS (2026-11-26): estado real del despacho —
+   *  "" (nunca entró a la cola) | queued (aprobado, en cola, SIN enviar)
+   *  | sending (despachando desde el teléfono) | sent (despacho
+   *  confirmado) | failed (no salió, con motivo). El SMS por esta vía
+   *  NO confirma entrega al teléfono del cliente: no existe estado
+   *  "delivered" porque sería inventarlo. */
+  sendState: string
+  sendError: string
+  sendVia: string
+  dispatchedAt: string
   createdAt: string
   updatedAt: string
 }
@@ -1261,8 +1271,22 @@ const newMessage = (): CRMMessage => ({
   id: typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `msg-${Date.now()}`,
   clientId: "", reservationId: "", channel: "SMS", fromName: "", fromPhone: "",
   body: "", draftReply: "", status: "pending", approvedAt: "", sentAt: "", needsFollowUp: false,
+  sendState: "", sendError: "", sendVia: "", dispatchedAt: "",
   createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
 })
+
+/** Mensajes guardados antes de la cola de salida (2026-11-26) no traen
+ *  los campos de despacho: valen "sin cola" y la UI lo dice tal cual. */
+function normalizeMessage(raw: CRMMessage): CRMMessage {
+  return {
+    ...raw,
+    needsFollowUp: !!raw.needsFollowUp,
+    sendState: typeof raw.sendState === "string" ? raw.sendState : "",
+    sendError: typeof raw.sendError === "string" ? raw.sendError : "",
+    sendVia: typeof raw.sendVia === "string" ? raw.sendVia : "",
+    dispatchedAt: typeof raw.dispatchedAt === "string" ? raw.dispatchedAt : "",
+  }
+}
 
 /**
  * Bandeja de mensajes "Approve & Send" (diseño de Miguel, 2026-11-26).
@@ -1270,10 +1294,15 @@ const newMessage = (): CRMMessage => ({
  * EDITABLE. Nada sale solo: Miguel lo ve, lo edita si hace falta y toca
  * Approve & Send. Si está ocupado, lo minimiza y el pendiente NO se
  * pierde: el contador queda visible hasta resolverlo.
- * HONESTIDAD TÉCNICA: la app no tiene proveedor de SMS/WhatsApp saliente;
- * "Approve & Send" registra la aprobación y el estado. El envío real
- * ocurre por el canal aprobado de Miguel/Amani (su teléfono / ZapClaw con
- * su aprobación) y aquí se marca "sent" cuando ya salió.
+ * ENVÍO REAL — SMS (2026-11-26, corrección de canal de Miguel: esta
+ * bandeja es SMS/texto, NO WhatsApp). Una app web no puede mandar SMS:
+ * al aprobar, el mensaje entra a la COLA DE SALIDA (send_state =
+ * "queued", visible en la nube del CRM) y Amani lo despacha como texto
+ * desde el teléfono de Miguel — la aprobación en el CRM es la
+ * aprobación de envío. El resultado vuelve por /api/crm/send/dispatch
+ * y SOLO entonces el mensaje se marca "sent". El SMS no confirma
+ * entrega al teléfono del cliente: el indicador dice "sent from your
+ * phone — delivery not confirmed", jamás "delivered".
  */
 function CRMMessages({ clients, reservations, cloudSeed, cloudSeedNonce, onCloudSync, cloudPending, onMessagesChanged, findOrCreateClient, onCreateReservation }: {
   clients: Client[]
@@ -1296,9 +1325,10 @@ function CRMMessages({ clients, reservations, cloudSeed, cloudSeedNonce, onCloud
     try {
       const raw = localStorage.getItem(MESSAGES_STORE)
       const parsed = raw ? JSON.parse(raw) : []
-      // needsFollowUp nació con el deploy de los tres botones (2026-11-26):
-      // los mensajes viejos no traen el campo y valen "sin seguimiento".
-      if (Array.isArray(parsed)) setMessages((parsed as CRMMessage[]).map((m) => ({ ...m, needsFollowUp: !!m.needsFollowUp })))
+      // needsFollowUp nació con el deploy de los tres botones (2026-11-26)
+      // y los campos de entrega con el de envío real (mismo día): los
+      // mensajes viejos no los traen y se normalizan con valores honestos.
+      if (Array.isArray(parsed)) setMessages((parsed as CRMMessage[]).map(normalizeMessage))
     } catch {}
     setReady(true)
   }, [])
@@ -1327,7 +1357,7 @@ function CRMMessages({ clients, reservations, cloudSeed, cloudSeedNonce, onCloud
     const syncedBefore = readSyncedIds(SYNCED_MESSAGES_KEY)
     const deletedHere = [...syncedBefore].filter((id) => !localIds.has(id) && cloudIds.has(id))
     const localOnly = messages.filter((m) => !cloudIds.has(m.id) && !syncedBefore.has(m.id))
-    const merged = [...cloudSeed.filter((m) => !deletedHere.includes(m.id)), ...localOnly]
+    const merged = [...cloudSeed.filter((m) => !deletedHere.includes(m.id)).map(normalizeMessage), ...localOnly]
     setMessages(merged)
     lastSyncedIds.current = new Set(cloudIds)
     writeSyncedIds(SYNCED_MESSAGES_KEY, cloudIds)
@@ -1389,15 +1419,60 @@ function CRMMessages({ clients, reservations, cloudSeed, cloudSeedNonce, onCloud
     setSelectedId(saved.id)
   }
 
+  const [sendingId, setSendingId] = useState<string | null>(null)
+
+  function friendlySendError(code: string): string {
+    if (code === "unauthorized") return "Sign in to the CRM first — the outbox needs your CRM session. Nothing was queued."
+    if (code === "invalid_phone") return "This message has no valid phone number to send to. Nothing was queued."
+    if (code === "message_not_in_cloud") return "This message is not in the CRM cloud yet — the outbox works from the cloud, so give the sync a moment and try again. Nothing was queued."
+    if (code === "queue_unavailable" || code === "crm_cloud_not_configured") return "The CRM cloud did not answer. Nothing was queued — try again."
+    return "The message could not be put in the outbox. Nothing was sent — try again."
+  }
+
+  /** Entra a la COLA DE SALIDA SMS: la ruta del servidor valida la
+   *  sesión y el mensaje en la nube; la pantalla marca send_state =
+   *  "queued" y ese estado sube a la nube por la sync normal — esa es
+   *  la cola que Amani despacha desde el teléfono de Miguel. Entrar a
+   *  la cola NO es enviar: el estado "sent" solo lo pone el resultado
+   *  del despacho (/api/crm/send/dispatch). */
+  async function queueReply(m: CRMMessage) {
+    if (sendingId) return
+    patchMessage(m.id, { draftReply: m.draftReply })
+    setSendingId(m.id)
+    try {
+      const res = await fetch("/api/crm/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId: m.id, to: m.fromPhone, text: m.draftReply }),
+      })
+      const data = (await res.json().catch(() => null)) as { ok?: boolean; queued?: boolean; error?: string } | null
+      if (res.ok && data?.ok && data.queued) {
+        patchMessage(m.id, { status: "approved", sendState: "queued", sendError: "" })
+      } else {
+        patchMessage(m.id, { status: "approved", sendError: friendlySendError(String(data?.error || "")) })
+      }
+    } catch {
+      patchMessage(m.id, { status: "approved", sendError: "Could not reach the outbox service. Nothing was queued — try again." })
+    } finally {
+      setSendingId(null)
+    }
+  }
+
   function approveAndSend(m: CRMMessage) {
-    patchMessage(m.id, { draftReply: draftEdit, status: "approved", approvedAt: new Date().toISOString() })
+    const text = draftEdit.trim()
+    if (!text) return
+    const approved: CRMMessage = { ...m, draftReply: text, status: "approved", approvedAt: new Date().toISOString(), sendError: "" }
+    patchMessage(m.id, { draftReply: text, status: "approved", approvedAt: approved.approvedAt, sendError: "" })
+    void queueReply(approved)
   }
 
   /** Reenviar (orden de Miguel, 2026-11-26): el cliente dice "no lo
    *  recibí" — el mensaje ya enviado vuelve a pendiente con SU MISMO
-   *  borrador, listo para aprobar y enviar otra vez. */
+   *  borrador, listo para aprobar y entrar a la cola otra vez. El
+   *  rastro del despacho anterior se limpia: el nuevo envío tendrá su
+   *  propio estado y su propia hora de despacho. */
   function resendMessage(m: CRMMessage) {
-    patchMessage(m.id, { status: "pending", approvedAt: "", sentAt: "", draftReply: m.draftReply })
+    patchMessage(m.id, { status: "pending", approvedAt: "", sentAt: "", draftReply: m.draftReply, sendState: "", sendError: "", sendVia: "", dispatchedAt: "" })
   }
 
   const statusChip = (s: MessageStatus) => s === "pending"
@@ -1407,6 +1482,27 @@ function CRMMessages({ clients, reservations, cloudSeed, cloudSeedNonce, onCloud
       : s === "sent"
         ? "border-emerald-700/60 bg-emerald-950/50 text-emerald-300"
         : "border-neutral-700 bg-neutral-900 text-neutral-400"
+
+  /** Indicador de envío SMS — SOLO estados reales del despacho:
+   *  en cola (aún NO enviado) → despachando → enviado desde el teléfono
+   *  (el SMS no confirma entrega al cliente: se dice tal cual, nunca
+   *  "delivered"). Un "sent" de antes de la cola de salida no tiene
+   *  hora de despacho y se etiqueta como no confirmado. */
+  const deliveryChip = (m: CRMMessage): { label: string; cls: string } | null => {
+    if (m.status === "sent") {
+      if (!m.dispatchedAt) return { label: "SENT BEFORE REAL SENDING — NOT CONFIRMED", cls: "border-neutral-700 bg-neutral-900 text-neutral-400" }
+      return { label: "SENT FROM YOUR PHONE — DELIVERY NOT CONFIRMED", cls: "border-sky-700/60 bg-sky-950/50 text-sky-300" }
+    }
+    if (m.status === "approved") {
+      switch (m.sendState) {
+        case "queued": return { label: "IN OUTBOX — NOT SENT YET", cls: "border-amber-700/60 bg-amber-950/50 text-amber-300" }
+        case "sending": return { label: "SENDING FROM YOUR PHONE…", cls: "border-amber-700/60 bg-amber-950/50 text-amber-300" }
+        case "failed": return { label: "SEND FAILED — NOT SENT", cls: "border-rose-700/60 bg-rose-950/50 text-rose-300" }
+        default: return null
+      }
+    }
+    return null
+  }
 
   if (!ready) return <div className="py-8 text-center text-sm text-neutral-500">Loading messages…</div>
 
@@ -1445,6 +1541,7 @@ function CRMMessages({ clients, reservations, cloudSeed, cloudSeedNonce, onCloud
             <div className="min-w-0">
               <span className="inline-flex flex-wrap items-center gap-1.5">
                 <span className={"rounded-full border px-2.5 py-1 text-[10px] font-bold " + statusChip(current.status)}>{current.status.toUpperCase()}</span>
+                {(() => { const chip = deliveryChip(current); return chip ? <span className={"rounded-full border px-2.5 py-1 text-[10px] font-bold " + chip.cls}>{chip.label}</span> : null })()}
                 {current.needsFollowUp && <span className="inline-flex items-center gap-1 rounded-full border border-amber-700/60 bg-amber-950/50 px-2.5 py-1 text-[10px] font-bold text-amber-300"><Flag className="size-3" /> FOLLOW-UP</span>}
               </span>
               <h3 className="mt-2 text-xl font-extrabold text-white">{current.fromName || "Unknown sender"}</h3>
@@ -1484,26 +1581,35 @@ function CRMMessages({ clients, reservations, cloudSeed, cloudSeedNonce, onCloud
           </div>
 
           {current.status === "approved" && (
-            <p className="rounded-xl border border-amber-800/60 bg-amber-950/30 p-3 text-xs leading-relaxed text-amber-100">
-              Approved by you{current.approvedAt ? ` · ${new Date(current.approvedAt).toLocaleString()}` : ""}. The CRM does not send messages by itself — this reply goes out through your usual approved channel (your phone / ZapClaw, with your approval). When it has gone out, tap “Mark as sent”.
-            </p>
+            <div className="rounded-xl border border-amber-800/60 bg-amber-950/30 p-3">
+              <p className="text-xs leading-relaxed text-amber-100">
+                Approved by you{current.approvedAt ? ` · ${new Date(current.approvedAt).toLocaleString()}` : ""}.
+                {current.sendState === "queued" && " This reply is in the SMS outbox — it has NOT been sent yet. Amani sends it as a text from your phone, and the result will show here."}
+                {current.sendState === "sending" && " It is being sent from your phone right now…"}
+                {current.sendState === "failed" && " The last send attempt failed — it is still in the outbox to try again."}
+                {current.sendState !== "queued" && current.sendState !== "sending" && current.sendState !== "failed" && (sendingId === current.id ? " Putting it in the outbox…" : " Tap “Send from my phone” to put it in the SMS outbox: Amani sends it as a text from your phone, and it is only marked sent when that dispatch is confirmed.")}
+              </p>
+              {current.sendError && <p className="mt-2 rounded-lg border border-rose-800/60 bg-rose-950/40 p-2 text-xs leading-relaxed text-rose-200">{current.sendError}</p>}
+            </div>
           )}
           {current.status === "sent" && (
-            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-emerald-800/60 bg-emerald-950/30 p-3">
-              <p className="min-w-0 flex-1 text-xs text-emerald-100">Marked as sent{current.sentAt ? ` · ${new Date(current.sentAt).toLocaleString()}` : ""}.</p>
-              <button onClick={() => resendMessage(current)} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-2 text-xs font-extrabold text-black"><Undo2 className="size-3.5" /> Reenviar</button>
+            <div className="rounded-xl border border-emerald-800/60 bg-emerald-950/30 p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="min-w-0 flex-1 text-xs text-emerald-100">{current.dispatchedAt ? <>Sent as a text from your phone{current.sentAt ? ` · ${new Date(current.sentAt).toLocaleString()}` : ""}. Text messages do not confirm delivery to the client&apos;s phone — that is why the label says sent, never “delivered”.</> : <>Marked as sent{current.sentAt ? ` · ${new Date(current.sentAt).toLocaleString()}` : ""} — before the SMS outbox existed, so no dispatch was ever confirmed for this one.</>}</p>
+                <button onClick={() => resendMessage(current)} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-2 text-xs font-extrabold text-black"><Undo2 className="size-3.5" /> Reenviar</button>
+              </div>
             </div>
           )}
 
           <div className="flex flex-wrap gap-2">
-            {current.status === "pending" && <button onClick={() => approveAndSend(current)} disabled={!draftEdit.trim()} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-yellow-400 py-3 text-sm font-extrabold text-black disabled:opacity-40"><CheckCheck className="size-4" /> Approve &amp; Send</button>}
-            {current.status === "approved" && <button onClick={() => patchMessage(current.id, { status: "sent", sentAt: new Date().toISOString() })} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 text-sm font-extrabold text-black">Mark as sent</button>}
+            {current.status === "pending" && <button onClick={() => approveAndSend(current)} disabled={!draftEdit.trim() || sendingId === current.id} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-yellow-400 py-3 text-sm font-extrabold text-black disabled:opacity-40"><CheckCheck className="size-4" /> {sendingId === current.id ? "Queuing…" : "Approve & Send"}</button>}
+            {current.status === "approved" && current.sendState !== "queued" && current.sendState !== "sending" && <button onClick={() => void queueReply({ ...current, draftReply: draftEdit.trim() || current.draftReply })} disabled={sendingId === current.id || !(draftEdit.trim() || current.draftReply)} className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 text-sm font-extrabold text-black disabled:opacity-40">{sendingId === current.id ? "Queuing…" : "Send from my phone"}</button>}
             {current.status === "sent" && <button onClick={() => patchMessage(current.id, { needsFollowUp: !current.needsFollowUp })} className={"inline-flex items-center gap-2 rounded-xl border px-4 py-3 text-sm font-bold " + (current.needsFollowUp ? "border-amber-500/60 bg-amber-950/40 text-amber-200" : "border-neutral-700 text-neutral-200")}><Flag className="size-4" /> {current.needsFollowUp ? "Following up — tap to clear" : "Mark follow-up"}</button>}
             {(current.status === "pending" || current.status === "approved") && <button onClick={() => { if (window.confirm("Discard this message? It stays in the tray history as discarded.")) { patchMessage(current.id, { status: "discarded" }); setSelectedId(null) } }} className="rounded-xl border border-neutral-700 px-4 py-3 text-sm font-bold text-neutral-300">Discard</button>}
             <button onClick={() => setSelectedId(null)} className="rounded-xl border border-neutral-700 px-4 py-3 text-sm font-bold text-white">Minimize</button>
             <button onClick={() => removeMessage(current.id)} className="inline-flex items-center gap-2 rounded-xl border border-rose-900/70 px-4 py-3 text-sm font-bold text-rose-300"><Trash2 className="size-4" /> Delete</button>
           </div>
-          <p className="text-[11px] text-neutral-500">Minimize keeps the message pending — the counter on the Messages tab stays until you approve, send or discard it. Nothing is ever sent from here without your approval. Delete removes the message everywhere, including the CRM cloud — Discard only closes it and keeps it in the history. On a sent message, Reenviar puts it back to pending with the same draft, ready to approve and send again, and Mark follow-up flags it so it is not forgotten.</p>
+          <p className="text-[11px] text-neutral-500">Minimize keeps the message pending — the counter on the Messages tab stays until you approve, send or discard it. Nothing is ever sent from here without your approval: Approve &amp; Send puts the reply in the SMS outbox, Amani sends it as a text from your phone, and it is only marked sent when that dispatch is confirmed — queued is NOT sent, and a text message never claims “delivered”, because SMS does not confirm delivery to the client&apos;s phone. Delete removes the message everywhere, including the CRM cloud — Discard only closes it and keeps it in the history. On a sent message, Reenviar puts it back to pending with the same draft, ready to approve and send again, and Mark follow-up flags it so it is not forgotten.</p>
         </div>
       )}
 
@@ -1522,6 +1628,7 @@ function CRMMessages({ clients, reservations, cloudSeed, cloudSeedNonce, onCloud
               </span>
               <span className="flex shrink-0 flex-col items-end gap-1">
                 <span className={"rounded-full border px-2 py-1 text-[9px] font-bold " + statusChip(m.status)}>{m.status.toUpperCase()}</span>
+                {(() => { const chip = deliveryChip(m); return chip ? <span className={"rounded-full border px-2 py-1 text-[9px] font-bold " + chip.cls}>{chip.label}</span> : null })()}
                 {m.needsFollowUp && <span className="inline-flex items-center gap-1 rounded-full border border-amber-700/60 bg-amber-950/50 px-2 py-1 text-[9px] font-bold text-amber-300"><Flag className="size-3" /> FOLLOW-UP</span>}
               </span>
             </button>

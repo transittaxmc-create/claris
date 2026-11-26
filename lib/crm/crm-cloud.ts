@@ -243,10 +243,20 @@ export function rowToReservation(r: CrmReservationRow): CrmReservationLike {
 
 /**
  * Bandeja de mensajes "Approve & Send" (tabla public.crm_messages).
- * La app NO envía mensajes a clientes: guarda el texto entrante, el
- * borrador editable y el estado de aprobación de Miguel. "approved" =
- * Miguel aprobó el texto; "sent" = alguien registró que el envío real ya
- * ocurrió por el canal aprobado fuera de la app.
+ * Guarda el texto entrante, el borrador editable y el estado de
+ * aprobación de Miguel. "approved" = Miguel aprobó el texto y el
+ * mensaje entró a la COLA DE SALIDA SMS; "sent" = el despacho desde su
+ * teléfono quedó confirmado por la ruta /api/crm/send/dispatch —
+ * nunca se marca "sent" sin esa confirmación (corrección de canal de
+ * Miguel, 2026-11-26: esta bandeja es SMS/texto, NO WhatsApp).
+ * Los campos send_* (migración 20261126180000, preparada) guardan el
+ * estado real del despacho: send_state ("" | queued | sending | sent |
+ * failed), el motivo si falló, la vía ("phone") y cuándo se despachó.
+ * El SMS por esta vía NO confirma entrega al teléfono del cliente:
+ * no existe campo "delivered" porque sería inventarlo.
+ * Sin la migración, la ruta de estado degrada sin esas columnas y el
+ * estado del despacho queda en el dispositivo, como pasó con
+ * needs_follow_up.
  */
 export type CrmMessageRow = {
   id: string
@@ -261,6 +271,10 @@ export type CrmMessageRow = {
   approved_at: string | null
   sent_at: string | null
   needs_follow_up: boolean
+  send_state?: string
+  send_error?: string
+  send_via?: string
+  dispatched_at?: string | null
   created_at: string
   updated_at: string
 }
@@ -278,6 +292,10 @@ export type CrmMessageLike = {
   approvedAt: string
   sentAt: string
   needsFollowUp: boolean
+  sendState: string
+  sendError: string
+  sendVia: string
+  dispatchedAt: string
   createdAt: string
   updatedAt: string
 }
@@ -296,6 +314,10 @@ export function messageToRow(m: CrmMessageLike): CrmMessageRow {
     approved_at: m.approvedAt ? m.approvedAt : null,
     sent_at: m.sentAt ? m.sentAt : null,
     needs_follow_up: !!m.needsFollowUp,
+    send_state: m.sendState || "",
+    send_error: m.sendError || "",
+    send_via: m.sendVia || "",
+    dispatched_at: m.dispatchedAt ? m.dispatchedAt : null,
     created_at: m.createdAt || new Date().toISOString(),
     updated_at: m.updatedAt || new Date().toISOString(),
   }
@@ -315,6 +337,11 @@ export function rowToMessage(r: CrmMessageRow): CrmMessageLike {
     approvedAt: r.approved_at || "",
     sentAt: r.sent_at || "",
     needsFollowUp: !!r.needs_follow_up,
+    // Filas anteriores a la migración 20261126180000 no traen estas claves:
+    sendState: r.send_state || "",
+    sendError: r.send_error || "",
+    sendVia: r.send_via || "",
+    dispatchedAt: r.dispatched_at || "",
     createdAt: r.created_at || new Date().toISOString(),
     updatedAt: r.updated_at || new Date().toISOString(),
   }

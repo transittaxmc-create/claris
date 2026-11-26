@@ -131,13 +131,20 @@ export async function POST(req: Request) {
       const rows = body.upsertMessages.map((m) => ({ ...messageToRow(m), user_id: userId, updated_at: now }))
       const { error } = await supabase.from("crm_messages").upsert(rows, { onConflict: "id" })
       if (error) {
-        // Degradación pre-migración 20261126170000: sin la columna
-        // needs_follow_up y reintento — la marca de seguimiento queda en
-        // el dispositivo hasta que la migración se aplique, y la sync de
-        // mensajes NO se cae por eso.
-        const legacyRows = rows.map(({ needs_follow_up: _f, ...rest }) => rest)
-        const retry = await supabase.from("crm_messages").upsert(legacyRows, { onConflict: "id" })
-        if (retry.error) throw retry.error
+        // Degradación en cascada, la sync de mensajes NO se cae por una
+        // columna que aún no exista:
+        // 1) sin las columnas del despacho SMS (pre-migración
+        //    20261126180000): el estado de la cola de salida queda en el
+        //    dispositivo hasta que la migración se aplique.
+        const noDelivery = rows.map(({ send_state: _p, send_error: _s, send_via: _e, dispatched_at: _u, ...rest }) => rest)
+        const retry = await supabase.from("crm_messages").upsert(noDelivery, { onConflict: "id" })
+        if (retry.error) {
+          // 2) tampoco sin needs_follow_up (pre-migración 20261126170000):
+          //    la marca de seguimiento queda en el dispositivo.
+          const legacyRows = noDelivery.map(({ needs_follow_up: _f, ...rest }) => rest)
+          const retry2 = await supabase.from("crm_messages").upsert(legacyRows, { onConflict: "id" })
+          if (retry2.error) throw retry2.error
+        }
       }
     }
     if (Array.isArray(body.deleteMessageIds) && body.deleteMessageIds.length) {
