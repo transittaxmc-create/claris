@@ -114,7 +114,7 @@ export async function POST(request: Request) {
     const altitude = aircraft.alt_baro
     const onGround = typeof altitude === "string" && altitude.toLowerCase() === "ground"
     const fresh = seenPosition === null || seenPosition <= 120
-    const status = !fresh ? "stale" : onGround ? "on_ground" : "in_air"
+    const status = !fresh ? "stale" : onGround ? "on_ground" : typeof altitude === "number" && altitude > 0 ? "in_air" : "unknown"
 
     return NextResponse.json({
       ok: true,
