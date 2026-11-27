@@ -24,3 +24,14 @@ Authentication/authorization for this route, persistent storage, live Transport 
 
 ## Verification status
 Source has been committed to the feature branch. A Vercel Preview deployment was attempted but Vercel rejected it with HTTP 402 because the team exceeded its free daily deployment API limit (more than 100 deployments; retry after 24 hours). No deployment ID or Preview URL was created. The project's latest deployment is an older READY deployment and does not contain this branch. Build logs, browser rendering, mobile/desktop QA, and automated interaction tests remain pending. Production is unchanged.
+
+## Second implementation increment
+- Transport sample trip ledger with local add-trip interaction.
+- Taxes workflow overview (intake, documents, preparation).
+- Communications sample inbox with search and local read/unread toggle.
+- Client directory with local add-sample-client interaction.
+- Document metadata register with local mark-reviewed action.
+- Added GitHub Actions workflow `.github/workflows/copiloto-v7-preview-build.yml` to install locked pnpm dependencies, run the existing CRM push validation tests, and run `pnpm build`.
+
+## Verification update
+The GitHub commit workflow-runs lookup returned no workflow runs for the workflow commit. CI execution, tests and Next.js build are therefore NOT verified and no pass is claimed. Vercel Preview remains blocked by HTTP 402 daily deployment API quota; no Preview URL exists. All new interactions are local component state and non-persistent. No real data/provider/backend integration or production change.
