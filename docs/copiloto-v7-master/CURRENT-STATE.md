@@ -231,3 +231,10 @@
 - Correct distinction: the user's Muse authorization is confirmed by the user; this ChatGPT session does not currently expose a direct Muse/Amani connector/tool. This is a technical visibility/interface gap for our session, not a request for the user to re-authorize Muse.
 - A Vercel Agent Runs discovery for the connected island-city team returned no eve-framework agent projects in the last 30 days. This checks only Vercel eve observability and is not evidence that Muse is disconnected or inactive.
 - Next: inspect existing repo history/config and the precise outbox-to-Amani handoff; identify Muse's supported API/MCP/webhook/repository interface; then provide Muse a scoped Copiloto project/context brief and design the reciprocal handoff. Do not ask for reauthorization or credentials; do not change the phone, number, providers or send live messages.
+
+
+## 22. GitHub issue #85 — exact SMS bridge audit boundary — 2026-11-27
+- Located the existing open issue #85: https://github.com/transittaxmc-create/claris/issues/85. It is the canonical task for recovering Copiloto/Claris ↔ Muse/Amani SMS coordination.
+- Its audit comment confirms historical commit `daa6b578...` contains the queue and a callback, but no Amani worker/client, Muse connection, polling trigger, device authentication or webhook. The callback used a normal CRM session and is unsafe to reactivate without authenticated device/service proof.
+- User-confirmed historical SMS success means Muse/Amani ran externally or was configured outside this repo; it does not prove current runtime connectivity. Current code still queues only and dispatch returns 501.
+- Issue #85 is a tracking record, not a notification to Muse. GitHub can become a shared handoff channel only if Muse is configured to monitor/respond to the issue or repository. Do not claim direct agent contact until a response is observed.
