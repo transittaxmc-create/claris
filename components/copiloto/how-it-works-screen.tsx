@@ -48,7 +48,7 @@ export function HowItWorksScreen() {
           <li>§21 PRIORITY LIST — what is open, in plain language, updated with every deployment</li>
           <li>§22 APPLICATION INVENTORY &amp; ARCHITECTURE AUDIT — complete source map, integrations, database state, verified gaps and agent handoff (2026-11-27)</li>
           <li>§23 CRM COPILOT V7 — TECHNICAL AUDIT &amp; VERIFIED GAPS (2026-11-27)</li>
-          <li>§24 COPILOTO V7 — PHASE 1 BUILD FOUNDATION &amp; ARCHITECTURE (2026-11-27) · §25 V7 PREVIEW WORKSPACE — FIRST IMPLEMENTATION (2026-11-27) · §26 TRANSPORT OPERATIONS PREVIEW (2026-11-27) · §27 TAX PREPARATION PREVIEW (2026-11-27) · §28 WORK OPPORTUNITIES REVIEW PREVIEW (2026-11-27) · §29 SQUARE OPERATIONS PREVIEW (2026-11-27)</li>
+          <li>§24 COPILOTO V7 — PHASE 1 BUILD FOUNDATION &amp; ARCHITECTURE (2026-11-27) · §25 V7 PREVIEW WORKSPACE — FIRST IMPLEMENTATION (2026-11-27) · §26 TRANSPORT OPERATIONS PREVIEW (2026-11-27) · §27 TAX PREPARATION PREVIEW (2026-11-27) · §28 WORK OPPORTUNITIES REVIEW PREVIEW (2026-11-27) · §29 SQUARE OPERATIONS PREVIEW (2026-11-27) · §30 V7 VERIFICATION STATUS (2026-11-27) · §31 RELEASE READINESS & TRANSFER (2026-11-27)</li>
         </ul>
       </Section>
 
@@ -2050,6 +2050,15 @@ export function HowItWorksScreen() {
         <P><B>Control financiero:</B> Sandbox primero. Capturas, cobros, reembolsos y cambios financieros requerirán aprobación humana explícita. Documentos se organizarán mediante la bóveda privada de Copiloto, no en carpetas públicas.</P>
         <P><B>Verificación:</B> componente e216e2783f7decc70622971b404ce931bb981a6a e integración 7c50dea918814ca9ff39488c4b5326a9ee80d46c en feat/copiloto-v7-phase1-foundation. Sin credenciales, conexión ni pruebas Sandbox. Build, typecheck y QA visual pendientes. No hubo cambios de Supabase.</P>
         <P><B>Estado:</B> diseño de demostración implementado; integración real, scopes, webhooks y pruebas transaccionales pendientes. No usar para pagos reales. Informe: docs/copiloto-v7-punto-8-square-2026-11-27.md</P>
+      </Section>
+
+      <Section title="COPILOTO V7 — PUNTOS 9 Y 10: VERIFICATION & RELEASE READINESS (2026-11-27)">
+        <P><B>Pipeline añadido:</B> .github/workflows/copiloto-v7-verify.yml instala dependencias con lockfile, ejecuta TypeScript, test:crm-push y build de Next.js. El workflow no publica, no usa secretos y no toca bases de datos. Commit f145d112dbb4ca79df53237ea01b40a0974e3331.</P>
+        <P><B>Resultado de ejecución:</B> todavía no hay ejecución GitHub Actions confirmada para la rama. Los checks de Vercel están en failure por build-rate-limit del equipo; no son resultados de compilación ni pruebas V7. El deployment SUCCESS de Railway visto en esta sesión es de main, no de la rama de Copiloto V7.</P>
+        <P><B>Preview:</B> Railway temporal creado, pero la integración GitHub no ha confirmado acceso a la rama feature. No hay URL V7 pública validada. No usar el deployment de main como preview del V7.</P>
+        <P><B>Release bloqueado:</B> Vercel tiene límite diario de deployment; seguridad/base de datos sigue pendiente; build/typecheck/tests/QA visual no confirmados; integraciones Square, mensajería y documentos no conectadas. No merge a main ni producción sin aprobación explícita.</P>
+        <P><B>Transferencia:</B> terminar y probar la rama → revisar diff/PR → aprobación explícita de merge → esperar cuota de Vercel → Preview verificado → migraciones reconciliadas en entorno no productivo → aprobación separada para producción. Datos, mensajes y pagos reales siguen prohibidos durante desarrollo.</P>
+        <P><B>Estado:</B> puntos 9 y 10 documentados como pipeline y checklist, pero ambos permanecen abiertos hasta ejecutar y verificar las pruebas y cumplir los bloqueos. Informes: docs/copiloto-v7-punto-9-verificacion-integral-2026-11-27.md y docs/copiloto-v7-punto-10-release-readiness-2026-11-27.md</P>
       </Section>
 
       <p className="mt-6 text-center text-[10px] text-neutral-600">
