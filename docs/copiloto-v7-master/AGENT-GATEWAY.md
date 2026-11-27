@@ -11,7 +11,7 @@ Una conversación nueva de ChatGPT, Muse u otro agente debe recuperar el mismo e
 - Tablas: agent_identities, agent_tasks, agent_events, agent_messages, agent_approvals, agent_channel_states, agent_project_state; vista agent_latest_checkpoints.
 - RLS habilitado en tablas; sin grants/policies para anon ni authenticated; acceso solo al service_role utilizado por la Edge Function. No exponer estas tablas a clientes.
 - Supabase Edge Function agent-gateway ACTIVE, versión 3, autenticación propia x-agent-key; verify_jwt=false porque el handler exige y valida una credencial de máquina individual antes de cualquier lectura/escritura.
-- ChatGPT y Muse tienen identidades independientes. Cada clave contiene 256 bits aleatorios; solo su SHA-256 se guarda en agent_identities.key_hash. No se guarda la clave en Git. Son identidades de servicio/máquina, no usuarios humanos de Supabase Auth.
+- ChatGPT y Muse tienen identidades independientes. Cada clave contiene 256 bits aleatorios; solo su SHA-256 se guarda en agent_identities.key_hash. No se guarda la clave en Git; las claves actuales están en Supabase Vault con nombres copiloto_v7_chatgpt_agent_key y copiloto_v7_muse_agent_key. Son identidades de servicio/máquina, no usuarios humanos de Supabase Auth.
 - Operaciones: continuidad, status, tasks, inbox, crear/claim/heartbeat/completar tareas, append de eventos permitidos, enviar/ack mensajes entre agentes y solicitar aprobación humana.
 - Claim y heartbeat se ejecutan mediante RPC atómicas; el evento histórico es append-only; idempotency keys protegen eventos/tareas/mensajes.
 - agent_latest_checkpoints deriva el último agent.checkpoint.recorded de cada agente.

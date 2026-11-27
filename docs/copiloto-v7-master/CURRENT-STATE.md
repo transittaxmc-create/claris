@@ -273,3 +273,11 @@
 - El build de review con el script de typecheck falló; se revirtió el gate para restaurar el build normal con las suites CRM push y Agent Gateway y Next.js. El deployment del commit más reciente queda pendiente de verificación.
 - OpenAPI de Agent Gateway se añadió para facilitar configuración de ChatGPT Actions/custom connector; el conector no se instala automáticamente desde esta sesión.
 - Autenticación HTTP válida con ambos agentes sigue pendiente de verificación desde los runtimes seguros. No afirmar que ChatGPT/Muse ya han ejecutado el handshake real.
+
+
+## 26. Vault credentials and Railway review deployment — 2026-11-27
+- ChatGPT and Muse agent keys were rotated and stored in Supabase Vault as copiloto_v7_chatgpt_agent_key and copiloto_v7_muse_agent_key. The database stores only SHA-256 hashes. A database-side comparison confirmed each Vault secret hashes to the active identity's key_hash; raw values were not returned or committed.
+- The API documentation now provides SQL retrieval snippets for the owner to copy each value directly into its own runtime secret store. Do not paste either key into chat, GitHub or issues.
+- Railway review deployment 75cdda75-8cca-4d65-94bf-9447ac4967a8 is SUCCESS on commit 6b40691ded792c16a5f4320ceedff368aae0e62d. GET /api/agent-gateway/recovery and GET /api/agent-gateway/bridge?op=status both returned HTTP 401 without a key, confirming the proxy routes are live and protected.
+- Supabase Edge Function agent-gateway v4 is ACTIVE. Its no-key request returns HTTP 401. The endpoint rejects untrusted actor identity fields and agent self-attestation of provider channel delivery.
+- Successful authenticated HTTP calls from the ChatGPT and Muse runtimes remain pending because the credentials must be installed directly into their separate secure runtime settings. Fresh ChatGPT conversation recovery also requires a supported custom Action/connector to be configured.

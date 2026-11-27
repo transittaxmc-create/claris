@@ -54,3 +54,18 @@ Each machine key is 256-bit random material; the database stores only SHA-256. T
 
 ## Current limitation
 The REST API is deployed and authenticated at the handler level. Successful HTTP calls with both live agent keys and automatic fresh-session connector invocation still require E2E verification in the ChatGPT and Muse runtimes.
+
+## Secure credential retrieval (do not paste secrets into chat)
+The individual keys are stored in Supabase Vault under these names:
+- ChatGPT: copiloto_v7_chatgpt_agent_key
+- Muse: copiloto_v7_muse_agent_key
+
+In the trusted Supabase SQL Editor, retrieve each key directly into that agent's secret store using one query at a time:
+
+```sql
+select decrypted_secret
+from vault.decrypted_secrets
+where name = 'copiloto_v7_chatgpt_agent_key';
+```
+
+For Muse, use the name copiloto_v7_muse_agent_key instead. Copy the returned value directly into the corresponding runtime's secret manager or custom connector API-key field (header name x-agent-key). Do not paste the value into GitHub, this chat, issues, logs, or shared documents. The database stores only the SHA-256 hash in agent_identities. If a key is exposed, rotate that identity and update the Vault secret/hash together.

@@ -21,3 +21,10 @@ Use message.send with the recipient's exact agent ID. The receiving agent must r
 
 ## Important connection limitation
 This protocol works only when the runtime has the HTTPS tool/connector configured with its own key. A new ChatGPT conversation without a configured custom connector/tool cannot automatically read private Gateway data. Do not pretend otherwise; use the public repository documentation as fallback and request connector setup when needed.
+
+
+## Credential location
+Do not ask the user to paste credentials into a chat. The key is stored in Supabase Vault:
+- ChatGPT secret name: copiloto_v7_chatgpt_agent_key
+- Muse secret name: copiloto_v7_muse_agent_key
+Retrieve it only in the trusted Supabase SQL Editor and put it directly into the corresponding runtime secret manager. The public repository and this prompt contain names only, never key values.

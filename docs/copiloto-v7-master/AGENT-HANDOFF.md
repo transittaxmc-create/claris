@@ -244,3 +244,11 @@ Read first: docs/copiloto-v7-master/AGENT-GATEWAY.md, AGENT-GATEWAY-API.md, and 
 - Removed strict typecheck from the mandatory build so it cannot block the review deployment. Kept an optional typecheck script for a separate cleanup task. The normal build still runs CRM push tests, Agent Gateway tests and next build.
 - Current branch head after the build correction: 5f28be7c5421f3e2658aa52cda4b3f122855b822. Verify the Railway review deployment on this exact commit before calling it live.
 - Authenticated API E2E from ChatGPT and Muse is still pending; no production release.
+
+
+## Secure agent credentials and latest review deployment — 2026-11-27
+- ChatGPT and Muse machine keys are stored in Supabase Vault as copiloto_v7_chatgpt_agent_key and copiloto_v7_muse_agent_key. Only SHA-256 hashes are stored in agent_identities. Do not paste keys into chat or source control.
+- Retrieve each value in the trusted Supabase SQL Editor via vault.decrypted_secrets and copy directly to the matching agent secret store. See AGENT-GATEWAY-API.md.
+- Railway review deployment SUCCESS: 75cdda75-8cca-4d65-94bf-9447ac4967a8, commit 6b40691ded792c16a5f4320ceedff368aae0e62d. Both authenticated proxy routes returned 401 when called without a key, confirming they are present and protected.
+- Supabase Edge Function agent-gateway version 4 ACTIVE. Database-side hash comparison passed for both Vault secrets and active identity rows.
+- Still required for acceptance: configure the keys in ChatGPT Actions/custom connector and Muse's own runtime, then run authenticated status/continuity, reciprocal message send/ACK, and fresh-session recovery tests. No production release.
