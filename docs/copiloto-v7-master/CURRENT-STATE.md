@@ -78,3 +78,11 @@
 - UI: CRM acceso directo lazy; Today/Earnings/Money/Reports/More preservados.
 - Límite: screenshot/browser QA responsive e interacción visual no completados por falta de navegador. No marcar QA visual PASS.
 - Push remoto/app cerrada no verificado.
+
+## 9. Hito 2 — conciliación de migraciones (2026-11-27)
+- Proyecto confirmado ACTIVE_HEALTHY: mimgwleghecseoymgdug, us-east-2, PostgreSQL 17.12. No se consultó ni modificó la base financiera zrcnpmipdhpjdjkfrrgt.
+- Ledger Supabase: 20261126024701, 20261126033314, 20261126035245. Archivos exactos presentes en feature: 20261126024701 y 20261126120000, 20261126150000, 20261126170000, 20261126180000, 20261126190000. Los archivos 20261126033314_crm_reservations_owner_fk_index.sql y 20261126035245_crm_database_hardening_airport_validation.sql no existen en la rama; búsqueda de archivos/commits tampoco recuperó el original.
+- Efectos visibles en DB: índice crm_reservations_client_owner_idx; índice único crm_reservations_id_user_uidx (id,user_id); CHECK crm_reservations_airport_flight_required que exige flight_number cuando pickup_kind='airport'. Los efectos concuerdan con el propósito/nombre de las dos migraciones, pero no se puede certificar que el SQL original fuera idéntico.
+- Los seis scripts restantes fueron comparados con columnas/índices/constraints visibles; sus efectos están presentes. No se ejecutó DDL, no se reinsertó ledger, no se alteraron tablas/índices/policies/storage ni datos.
+- Hallazgos actuales del advisor: leaked-password protection disabled (WARN); dos FKs de crm_messages sin índice covering (INFO); cuatro policies de finance_sync_doc con auth.uid() re-evaluado por fila (WARN); duplicate unique indexes crm_clients_id_user_id_key y crm_clients_id_user_uidx (WARN); dos índices sin uso. Ningún índice se borró ni optimizó durante reconciliación.
+- Resultado: reconciliación de solo lectura completada; procedencia SQL histórica sigue bloqueando cualquier migración/DDL adicional. No confundir auditoría completada con schema completamente limpio.
