@@ -189,7 +189,7 @@ export function TripEditSheet({
                     : "border-neutral-700 text-neutral-400",
                 )}
               >
-                {s === "pending" ? "Pendiente" : "Matched"}
+                {s === "pending" ? "Pending" : "Matched"}
               </button>
             ))}
           </div>
@@ -317,7 +317,7 @@ export function TripEditSheet({
               />
               <MoneyInput
                 size="sm"
-                label="RECIBIDO"
+                label="RECEIVED"
                 value={received ?? 0}
                 onChange={(n) => setRecon({ received: round2(n), reconciledAt: new Date().toISOString() })}
               />
