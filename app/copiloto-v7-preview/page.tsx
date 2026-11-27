@@ -36,7 +36,7 @@ function Metric({ label, value, note, icon: Icon, positive }: { label: string; v
   return <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
     <div className="flex items-center justify-between"><span className="text-sm font-medium text-slate-500">{label}</span><span className="rounded-xl bg-slate-50 p-2 text-slate-600"><Icon size={18}/></span></div>
     <div className="mt-4 text-3xl font-semibold tracking-tight text-slate-900">{value}</div>
-    <div className={`mt-2 flex items-center gap-1 text-xs ${positive ? "text-emerald-700" : "text-slate-500"}`}>{positive && <ArrowUpRight size={14}/ >}{note}</div>
+    <div className={`mt-2 flex items-center gap-1 text-xs ${positive ? "text-emerald-700" : "text-slate-500"}`}>{positive && <ArrowUpRight size={14}/>}{note}</div>
   </div>
 }
 
