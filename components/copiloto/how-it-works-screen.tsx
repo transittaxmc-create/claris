@@ -46,6 +46,7 @@ export function HowItWorksScreen() {
         <P><B>Priorities</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
           <li>§21 PRIORITY LIST — what is open, in plain language, updated with every deployment</li>
+          <li>§22 APPLICATION INVENTORY &amp; ARCHITECTURE AUDIT — complete source map, integrations, database state, verified gaps and agent handoff (2026-11-27)</li>
         </ul>
       </Section>
 
@@ -1625,6 +1626,107 @@ export function HowItWorksScreen() {
           marks it done with its date), adds the new things Miguel asks for, and leaves the
           priority order as he left it. If something changes order, it changes here first.
         </P>
+      </Section>
+
+
+      <Section title="22. APPLICATION INVENTORY &amp; ARCHITECTURE AUDIT — VERIFIED 2026-11-27">
+        <P><B>Purpose and audit boundary:</B> this section is the whole-application map for Miguel and future agents. It records the code that exists on the official repository, the current production baseline, the live CRM Supabase schema, integrations, and what has and has not been verified. It supplements the operational procedures in §§1–21; it does not replace them.</P>
+        <P><B>Official source of truth:</B> GitHub repository <B>transittaxmc-create/claris</B>, default branch <B>main</B>. The audit snapshot began at commit <B>cc852d9a5f071d859d7ff5965674f39ce706191e</B> (2026-11-27, 01:38 UTC). The official Vercel project is <B>claris</B>, project ID <B>prj_EaOp8GqqgF0i4BBEp3CJSY8phcKW</B>, connected to that repository and branch. Do not substitute the separate legacy project claris-lime, any Copiloto V8 repository, or a newly created project.</P>
+        <P><B>Production baseline at the start of this audit:</B> Vercel deployment <B>dpl_AHXvXu4BeYEyXCU2hgbYkVXB42HL</B> was <B>READY</B> for production on main, commit cc852d9. Its commit message described a full English audit. This audit then found remaining Spanish interface labels and committed targeted English corrections to main. Therefore the READY status above verifies the pre-correction baseline only; agents MUST inspect the latest Vercel deployment after this documentation/code pass before claiming the corrections are live.</P>
+
+        <P><B>Repository inventory (GitHub recursive tree):</B> 404 tracked tree entries in total; 88 entries belong to generated .open-next build output, leaving 317 non-.open-next source/config/asset entries in this snapshot. The repository includes 34 Next.js API route handlers, 99 files under components/copiloto, 20 files under lib (including lib/crm), 21 scripts, 60 public assets, and six SQL migration files. The main source areas are app/, components/copiloto/, lib/, scripts/, public/, and supabase/migrations/. Generated .open-next output is not source of truth and must not be edited as application code.</P>
+
+        <P><B>Application shell and navigation:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li><B>Runtime:</B> Next.js 16.3.3, React 19, TypeScript 5.7.3, Tailwind CSS 4, Supabase JS/SSR, Vercel Analytics, Vercel Blob, Recharts, and Lucide icons. Package manager is pnpm 12.3.4. The package scripts include dev, build, Cloudflare build/preview/deploy and start; there is no package-level test or lint script.</li>
+          <li><B>Entry:</B> app/page.tsx renders components/copiloto/copiloto-app.tsx. That file is the main application orchestrator: navigation state, trip and expense state, shift/GPS/toll events, bank/finance synchronization, scanning, backup, and child-screen wiring.</li>
+          <li><B>Shell:</B> app/layout.tsx provides metadata, viewport and English document language; app/manifest.ts provides the PWA manifest; public/sw.js provides the service worker; app/globals.css contains global/mobile presentation rules.</li>
+          <li><B>Main navigation:</B> TODAY, EARNINGS, MONEY and REPORTS. The More menu contains CRM, TAX 2026, EXPENSES, CREDIT, SUMMARY, DASHBOARD, COPILOT AI, DATA &amp; BACKUP, ENVELOPES, TOLL AUDIT and HOW IT WORKS.</li>
+        </ul>
+
+        <P><B>Functional screen inventory:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li><B>TODAY / Entry:</B> components/copiloto/entry-screen.tsx — trip entry, platform, pickup/drop-off GPS, fare, cash, tips, tolls, fee, notes, shift timer, hourly rate, camera/dispatch scan and CRM message indicator.</li>
+          <li><B>EARNINGS / Register:</B> register-screen.tsx and trip-edit-sheet.tsx — trip history, platform grouping, gross/net, expected versus received, pending/matched/short/over states, edit, no-show/canceled outcomes, export/import and receivable updates.</li>
+          <li><B>Money / Finance:</B> finance-screen.tsx, cash-flow-register.tsx, cash-flow-store.ts, finance-store.ts, finance-sync.ts, finance-cloud.ts, finance-bridge.ts, dinero-forecast.ts, dinero-proyeccion.tsx and related projection components — account registers, actual bank balances, income/expense ledger, scheduled items, 90-day projections, matching, reconciliation, liabilities, weekly summaries and account controls.</li>
+          <li><B>Expenses:</B> expenses-screen.tsx, expense-register-form.tsx, receipt-scanner.tsx, receipts.ts, bill-payments.ts, liabilities.ts and related panels — paid receipts, unpaid bills, categories, business/personal classification, invoice references, scanning, duplicate prevention and recurring due dates.</li>
+          <li><B>Reports / Taxes:</B> reports-screen.tsx, mileage-report.tsx, schedule-c-draft.tsx, tax-2026-screen.tsx and tax-worksheet.tsx — trip and expense summaries, transfer fees, mileage log and Schedule C draft. Tax figures remain estimates and require professional review before filing.</li>
+          <li><B>Dashboard / production:</B> dash-screen.tsx, v1-dash/v1-dash-screen.tsx, hourly-production.tsx, hourly-strip.tsx and related modules — daily/weekly progress, shift-based hourly production and goals.</li>
+          <li><B>Tolls:</B> toll-detect.ts, toll-plazas-2026.ts, shift-tolls.ts, week-tolls.ts, ezpass-weekly.ts, toll-audit.ts and toll-audit-screen.tsx — GPS plaza detection, shift log, weekly statement comparison and reconciliation.</li>
+          <li><B>Data, backup and sync:</B> data-screen.tsx, storage.ts, backup.ts, lib/backup.ts, lib/sync.ts and lib/data-sync.ts — local persistence, IndexedDB recovery, export/import, full backup, two-phone encrypted trip sync and the newer authenticated finance document sync.</li>
+          <li><B>Other screens:</B> credit-screen.tsx and credit-store.ts; sobres-screen.tsx and sobres-store.ts; ai-screen.tsx and ai-daily-classification.ts; crm-screen.tsx and crm-notifications.tsx; how-it-works-screen.tsx. These are separate functional modules coordinated by copiloto-app.tsx.</li>
+        </ul>
+
+        <P><B>Persistence and data boundaries:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li><B>Device storage:</B> trip and expense records use localStorage plus IndexedDB backup/recovery. The app also keeps local finance keys, preferences, shift state, mileage, tombstones and CRM offline records. A deleted record must carry its tombstone through sync so it cannot reappear as a merge artifact.</li>
+          <li><B>Bank feed:</B> the existing Plaid feed and financial register source are not to be replaced or reconfigured as part of CRM work. The historical financial Supabase project is zrcnpmipdhpjdjkfrrgt; do not confuse it with the CRM project.</li>
+          <li><B>New two-phone finance sync:</B> app/api/data/publish and app/api/data/snapshot store one owner-scoped document in public.finance_sync_doc inside the CRM Supabase project. This is a separate table from crm_clients, crm_reservations and crm_messages. It uses the authenticated CRM session, owner_id RLS and the DATA_SYNC_KEY/BANK_PUBLISH_KEY request guard; it does not make the old financial Supabase project the CRM database.</li>
+          <li><B>Google Drive:</B> app/api/gdrive/* and Data screen support OAuth, upload, list/restore and disconnect. Runtime success still depends on the configured Google credentials and an actual device test.</li>
+          <li><B>Scanners:</B> receipt, balance, bank screenshot, toll statement and iOS scan-inbox routes live under app/api/scan-*. The scan inbox is a separate temporary intake path, not the finance ledger itself.</li>
+        </ul>
+
+        <P><B>API route inventory — 34 handlers:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li><B>AI:</B> /api/ai-chat.</li>
+          <li><B>Bank:</B> /api/bank/edit-tx, publish, refresh, snapshot and sync-request.</li>
+          <li><B>CRM:</B> /api/crm/state; /api/crm/flights/track; /api/crm/send and /api/crm/send/dispatch; /api/crm/push/config, subscribe, test and send.</li>
+          <li><B>Cross-device data:</B> /api/data/publish and /api/data/snapshot; /api/finance/state; /api/sync.</li>
+          <li><B>Google Drive:</B> /api/gdrive/auth, callback, disconnect, restore, status and upload.</li>
+          <li><B>Plaid:</B> /api/plaid/create-link-token, exchange and sync.</li>
+          <li><B>Scanning and version:</B> /api/receipt-image, /api/scan-balance, /api/scan-bank-shot, /api/scan-inbox, /api/scan-receipt, /api/scan-toll-statement and /api/version.</li>
+        </ul>
+
+        <P><B>CRM module — actual implementation map:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li><B>UI and orchestration:</B> components/copiloto/crm-screen.tsx owns client, reservation and message views, local persistence, session state, cloud reconciliation, account-number assignment, photo controls, message drafts, follow-up and reminder behavior. crm-notifications.tsx manages browser permission, service-worker registration and push subscription/test UI.</li>
+          <li><B>Supabase clients:</B> lib/crm/supabase-browser.ts and supabase-server.ts use only NEXT_PUBLIC_CRM_SUPABASE_URL and NEXT_PUBLIC_CRM_SUPABASE_PUBLISHABLE_KEY. There is no CRM service-role key in these clients. proxy.ts refreshes CRM session cookies; app/api/crm/state/route.ts validates server claims and derives user_id from the authenticated session, never from the request body.</li>
+          <li><B>Data mapping and helpers:</B> lib/crm/crm-cloud.ts maps app objects to database rows; parse-message.ts conservatively extracts reservation details from message text; geocode.ts checks street/house number/city using OpenStreetMap Nominatim; crm-photos.ts keeps a local copy and uploads photo bytes to private Storage with temporary signed URLs.</li>
+          <li><B>Message sending truth:</B> /api/crm/send validates and queues an approved message; it does not itself transmit an SMS over the carrier. The paired-phone dispatch process reports sending/sent/failed through /api/crm/send/dispatch. A sent state means the phone dispatched the text, not that the customer's device confirmed delivery. Never claim automatic SMS delivery or a delivered receipt that this channel cannot prove.</li>
+          <li><B>Flight tracking:</B> /api/crm/flights/track maps airline/flight number to an ICAO callsign and queries ADSB.lol. The app must still be tested with real flights; an HTTP READY deployment does not prove flight-provider coverage or correct airline mapping.</li>
+          <li><B>Push:</B> browser push code exists, including the service worker and VAPID endpoints. Subscription storage currently depends on Vercel Blob configuration. The manual's previously recorded blocker is the suspended Blob store and missing scheduled trigger; do not mark closed/production-ready until a real closed-app notification reaches the iPhone and the subscription store/trigger are verified.</li>
+        </ul>
+
+        <P><B>CRM Supabase — live state checked 2026-11-27:</B> project ref <B>mimgwleghecseoymgdug</B>, project name CRM, region us-east-2, status <B>ACTIVE_HEALTHY</B>, PostgreSQL 17.12.0.000. The database returned two Auth users (count only; no account identities exposed) and these public tables:</P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li><B>crm_clients — 7 rows:</B> id, user_id, name, company, phone, email, status, source, notes, next_contact, timestamps, account_number and photos.</li>
+          <li><B>crm_reservations — 2 rows:</B> owner/client references, passenger identity, service date/time, passenger count, status, standard/airport pickup, pickup/stop/drop-off addresses, airport/airline/flight/date/arrival/terminal/gate, notes and photos.</li>
+          <li><B>crm_messages — 1 row:</B> owner/client/reservation references, channel, sender, body, draft reply, status, approval/sent timestamps, needs_follow_up, send_state, send_error, send_via and dispatched_at.</li>
+          <li><B>finance_sync_doc — 1 row:</B> owner_id, JSON document and updated_at. This is the separate authenticated cross-device finance sync document, not a CRM client record.</li>
+          <li><B>RLS:</B> enabled on all four public tables. CRM clients, reservations and messages have SELECT/INSERT/UPDATE/DELETE policies scoped to auth.uid() = user_id. finance_sync_doc is scoped to owner_id = auth.uid().</li>
+          <li><B>Photo storage:</B> bucket crm-client-photos exists and is private. Four Storage policies restrict SELECT/INSERT/UPDATE/DELETE to the authenticated owner's first path segment.</li>
+          <li><B>Schema presence:</B> account_number, client/reservation photos, stop_address, needs_follow_up and all send_* columns were checked and are present. The CRM schema therefore contains the later phase fields described in §20.</li>
+        </ul>
+
+        <P><B>Migration ledger discrepancy — do not ignore:</B> the repository contains six SQL migration files, but Supabase's recorded schema_migrations list returned only three versions (20261126024701, 20261126033314 and 20261126035245). The live database nevertheless contains the account_number/photos/messages/follow-up/send/stop columns, the private photo bucket, and finance_sync_doc. This is consistent with later SQL having been applied through the Supabase SQL Editor without being recorded in the CLI migration ledger. Do not blindly re-run the SQL or assume it is missing. Before the next schema change, reconcile the migration ledger against the live schema and record exactly which scripts were applied and how.</P>
+
+        <P><B>Supabase advisor findings checked 2026-11-27:</B></P>
+        <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li><B>Security warning:</B> leaked-password protection is disabled in Supabase Auth. Review and enable it in Auth security settings after confirming the intended policy.</li>
+          <li><B>Performance warnings:</B> two crm_messages composite foreign keys lack covering indexes; finance_sync_doc RLS policies trigger an auth initialization-plan warning; crm_clients has duplicate unique indexes on (id, user_id).</li>
+          <li><B>Informational findings:</B> crm_messages_client_idx and crm_clients_user_followup_idx were reported unused at the time of the advisor scan. Do not remove indexes solely from this observation without checking workload and constraints.</li>
+          <li><B>Edge Functions:</B> Supabase returned zero Edge Functions for this project.</li>
+        </ul>
+
+        <P><B>English-language audit — corrections made during this pass:</B> the latest earlier commit claimed every visible string was English, but a targeted source review found remaining Spanish UI text. The audit corrected visible labels/statuses in data-screen.tsx, reconciliation-view.tsx, trip-edit-sheet.tsx, register-screen.tsx, reports-screen.tsx, schedule-c-draft.tsx, dash-screen.tsx, expenses-screen.tsx and mileage-report.tsx, and corrected the manual's CANCELADO terminology. Examples include CANCELAR, CONECTANDO, CONECTAR Y SINCRONIZAR, SINCRONIZAR AHORA, DESCONECTAR, EXPORTAR/IMPORTAR JSON, BLOQUEADO, Pendiente, RECIBIDO, ESPERADO, CANTIDAD, ENE–JUN/JUL–DIC, Aprobar todo, Todo cuadra and the CSV reconciliation headings. All corrected user-facing strings use consistent professional English.</P>
+        <P><B>Language limitation to track:</B> internal developer comments and the in-app AI instruction prompt in app/api/ai-chat/route.ts still contain Spanish. These are not all rendered as interface labels, but they are source-level documentation/instructions. If the requirement is that every code comment and internal AI prompt must also be English, that is a separate full source-language pass and must be completed without changing the AI's approval safeguards or accounting rules. Do not claim the entire source repository is English until that pass is complete.</P>
+
+        <P><B>Build and test evidence:</B> the package.json exposes no test/lint script. The repository contains 21 scripts, including focused Node checks for backup, bank CSV, cash flow, classification, dates, decisions, expenses, finance, money, platforms, production, reconciliation, schedules and sync. This audit inventoried those scripts but did not execute them in this GitHub-only inspection. The READY deployment recorded above is the production baseline before the new English corrections; wait for the post-audit Vercel build and inspect its logs before closing the work.</P>
+
+        <P><B>Agent continuation protocol — next actions in order:</B></P>
+        <ol className="mb-3 list-decimal space-y-1.5 pl-4 text-[12px] text-neutral-300">
+          <li>Check the newest main commit and newest production deployment for project claris. Confirm the build is READY and tied to the latest documentation/UI correction commit; if FAILED, read the actual build log before editing anything.</li>
+          <li>Run the available Node verification scripts in a safe project environment, then a production build. Record each command and pass/fail result; do not infer tests passed because a prior deployment was READY.</li>
+          <li>Finish the English audit, starting with the in-app AI system prompt and remaining source-level language. Preserve the user-approval gate, no-silent-write rule, accounting definitions, and existing business logic. Search again for Spanish interface literals and generated/exported text.</li>
+          <li>Reconcile the six repository SQL migration files with the three recorded Supabase migration entries and the live schema. Record the actual applied state; do not reapply DDL blindly.</li>
+          <li>Review the Auth leaked-password warning, duplicate indexes, missing composite foreign-key indexes and finance_sync_doc RLS performance warning. Propose minimal migrations/settings changes; do not weaken RLS or drop data/indexes without a reviewed plan.</li>
+          <li>Complete real-device CRM tests: sign-in/sign-up/password reset; client create/edit/status/account number; reservation create/edit, message auto-fill, required fields, address verification, optional stop and route links; photo upload/view/delete on both phones; message approval, actual paired-phone dispatch and failure/retry; follow-up persistence; reminders; and closed-app push.</li>
+          <li>Build and test live inbox refresh while the app remains open, and implement the special-fare marker/quote behavior in the client profile. Both remain open in §21.</li>
+          <li>Keep the fare-meter project in §21 as a separate priority. Do not mix its unbuilt UI with completed CRM capabilities.</li>
+          <li>Update this manual in the same deployment as every code/configuration change. Update the index only for genuinely new topics; update existing sections in place. At handoff, state exact commit, deployment status, database state, tests actually run, remaining blockers and the next single task.</li>
+        </ol>
+
+        <P><B>Non-negotiable preservation rules:</B> stay in transittaxmc-create/claris, branch main and Vercel project claris. Keep CRM data in Supabase mimgwleghecseoymgdug. Do not redirect CRM code to zrcnpmipdhpjdjkfrrgt, do not change the Plaid source or the existing finance/register logic while auditing CRM, do not create a second app/repository/project, do not expose secrets in code or documentation, and do not report a feature as verified unless its real behavior was tested. Preserve all user approval gates and the no-silent-modification rule.</P>
       </Section>
 
       <p className="mt-6 text-center text-[10px] text-neutral-600">
