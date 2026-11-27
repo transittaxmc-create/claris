@@ -289,3 +289,10 @@ Read first: docs/copiloto-v7-master/AGENT-GATEWAY.md, AGENT-GATEWAY-API.md, and 
 ## Typecheck evidence — latest exact source tree
 - Source HEAD checked: `32e5a4509de088c473a1fc3124f0737f96a6d5db`, GitHub Actions run 46081558172.
 - `pnpm exec tsc --noEmit`; Node v24.22.3; pnpm 12.3.4; TypeScript 5.7.3; exit 2; 76 diagnostics. 69 app/test + 7 Deno source typing diagnostics. The later continuity-register/How This Works edits are documentation-only and do not alter TypeScript source.
+
+
+## Credential handoff checkpoint — 2026-11-27
+- Amani Secure Vault card already exists (Issue #87 comment #14): connector `custom.copiloto-agent-gateway`, identity `claude/amani`, header `x-agent-key`. Miguel performs direct Supabase Vault → existing card deposit; no second channel and no key copied into chat/docs.
+- ChatGPT runtime is BLOCKED because this conversation has no supported persistent secret manager or custom-header injection for fresh conversations. Do not claim ChatGPT key configured; do not retrieve secrets into this session.
+- Authentication architecture is Miguel's decision. Leave deployed x-agent-key/SHA-256 code unchanged; do not rebuild Auth/JWT or merge.
+- Typecheck published in Issue #87 comment #15: run 46081558172, source HEAD 32e5a4509de088c473a1fc3124f0737f96a6d5db, `pnpm exec tsc --noEmit`, Node v24.22.3, pnpm 12.3.4, TypeScript 5.7.3, exit 2, 76 diagnostics.
