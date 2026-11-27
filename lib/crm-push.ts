@@ -102,7 +102,7 @@ export async function saveCrmPushSubscription(subscription: CrmPushSubscription,
     current.push({ ...subscription, userId })
   }
   await writeSubscriptions(current)
-  return current.length
+  return current.filter((item) => item.userId === userId).length
 }
 
 export async function removeCrmPushSubscription(endpoint: string, userId: string) {
