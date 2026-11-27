@@ -146,11 +146,11 @@ YOUR MISSION:
       },
       {
         role: "model",
-        parts: [{ text: "Entendido. Soy Claris AI Copiloto. Analizo tus viajes, gastos y reconciliación y te doy pasos claros. Nunca digo que no estoy programado." }],
+        parts: [{ text: "Understood. I am Claris AI Copilot. I analyze your trips, expenses, and reconciliation and provide clear next steps. I never say that I am not programmed to help." }],
       },
     ]
 
-    // Modo foto: la imagen va como inlineData con instrucción de extraer bill/gasto estructurado.
+    // Photo mode: the image is sent as inlineData with instructions to extract a structured bill/expense.
     if (imageMode) {
       const m = image.match(/^data:(image\/[a-z]+);base64,(.+)$/)
       if (m) {
@@ -163,14 +163,14 @@ YOUR MISSION:
             },
             {
               text:
-                `[MODO FOTO] Analiza esta imagen (recibo, factura o confirmación de pago). ` +
-                `Responde SOLO JSON válido con estas claves exactas:\n` +
-                `{ "reply": "confirmación breve en español", ` +
+                `[PHOTO MODE] Analyze this image (receipt, bill, or payment confirmation). ` +
+                `Respond with ONLY valid JSON using these exact keys:\n` +
+                `{ "reply": "brief confirmation in the language used by the user", ` +
                 `"schedules": [ { "kind": "expense", "description": "vendor", "category": "Phone|Fuel|Tolls|Food|Vehicle maintenance|Car leasing|Rent|Car wash|Insurance|Bank fees|Parking|Supplies|Other", ` +
                 `"amount": 0, "startDate": "YYYY-MM-DD", "frequency": "once", "nextDate": "YYYY-MM-DD", "active": true } ] }\n` +
-                `REGLAS: hoy es ${today}. Si la imagen muestra fecha futura de pago (ej. "Scheduled date"), usa esa fecha. ` +
-                `Si es confirmación de pago ya hecho, igual crea el schedule con frequency "once". No inventes montos. ` +
-                `Si no es un recibo/factura, devuelve { "reply": "no es un documento válido", "schedules": [] }.`,
+                `RULES: today is ${today}. If the image shows a future payment date (for example, "Scheduled date"), use that date. ` +
+                `If it is confirmation of a payment that has already been made, still create the schedule with frequency "once". Never invent amounts. ` +
+                `Si no es un recibo/factura, devuelve { "reply": "This is not a valid document", "schedules": [] }.`,
             },
           ],
         })
@@ -190,8 +190,8 @@ YOUR MISSION:
     }
 
     const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? ""
-    const bankMode = String(lastUser).trimStart().startsWith("[CONCILIACIÓN BANCARIA]")
-    const expenseMode = String(lastUser).trimStart().startsWith("[ANÁLISIS DE GASTOS]")
+    const bankMode = String(lastUser).trimStart().startsWith("[BANK RECONCILIATION]")
+    const expenseMode = String(lastUser).trimStart().startsWith("[EXPENSE ANALYSIS]")
     const scheduleMode = /\b(program|programa|programar|programe|programado|programada|schedule|scheduled|bill|factura|recibo|receipt|registra|registrar|agrega|agregar|añade|añadir|crea|crear|pago|payment)\b/i.test(String(lastUser))
     if (bankMode) {
       generationConfig = {
@@ -204,17 +204,17 @@ YOUR MISSION:
         parts: [
           {
             text:
-              `[FORMATO DE RESPUESTA OBLIGATORIO] Responde ÚNICAMENTE un objeto JSON válido con estas claves exactas:\n` +
+              `[REQUIRED RESPONSE FORMAT] Respond with ONLY one valid JSON object using these exact keys:\n` +
               `{\n` +
-              `  "reply": "texto breve en español con tu análisis",\n` +
-              `  "matches": [ { "tripId": "el id exacto del viaje de la lista", "bankAmount": 85.66, "note": "UBER PAYMENT" } ],\n` +
-              `  "differences": [ "descripciones cortas de descuadres o transacciones sin correspondencia" ]\n` +
+              `  "reply": "brief analysis in the language used by the user",\n` +
+              `  "matches": [ { "tripId": "the exact trip ID from the list", "bankAmount": 85.66, "note": "UBER PAYMENT" } ],\n` +
+              `  "differences": [ "short descriptions of discrepancies or unmatched transactions" ]\n` +
               `}\n` +
               `REGLAS:\n` +
-              `- matches SOLO para transacciones que coinciden con un viaje por monto (±1%) y fecha (±2 días). Usa el id exacto de la LISTA DE VIAJES RECIENTES.\n` +
-              `- bankAmount = el monto que el banco pagó.\n` +
-              `- differences: enumera lo que NO cuadra.\n` +
-              `- reply: resume en pocas líneas.`,
+              `- Only include matches for transactions that match a trip by amount (±1%) and date (±2 days). Use the exact ID from the RECENT TRIPS list.\n` +
+              `- bankAmount = the amount the bank paid.\n` +
+              `- differences: list every item that does NOT reconcile.\n` +
+              `- reply: summarize in a few lines.`,
           },
         ],
       })
@@ -229,9 +229,9 @@ YOUR MISSION:
       contents.push({
         role: "user",
         parts: [{ text:
-          `[ACCIÓN FINANCIERA OBLIGATORIA] El usuario quiere crear pagos o ingresos programados. Responde SOLO JSON válido con estas claves exactas:\n` +
+          `[ACCIÓN FINANCIERA OBLIGATORIA] El usuario quiere crear pagos o ingresos programados. Respond with ONLY valid JSON using these exact keys:\n` +
           `{ "reply": "confirmación breve", "schedules": [ { "kind": "expense" o "income", "description": "...", "category": "...", "amount": 0, "startDate": "YYYY-MM-DD", "frequency": "once"|"daily"|"weekly"|"monthly"|"annual", "nextDate": "YYYY-MM-DD", "active": true } ], "needsConfirmation": false }\n` +
-          `REGLAS: interpreta español natural. Usa la fecha actual ${new Date().toISOString().slice(0, 10)}. No inventes montos.`
+          `RULES: interpret natural-language input. Use the current date ${new Date().toISOString().slice(0, 10)}. Never invent amounts.`
         }],
       })
     }
@@ -247,9 +247,9 @@ YOUR MISSION:
         parts: [
           {
             text:
-              `[FORMATO DE RESPUESTA OBLIGATORIO] Responde ÚNICAMENTE un objeto JSON válido con estas claves exactas:\n` +
-              `{ "reply": "texto breve", "expenseUpdates": [ { "expenseId": "id", "category": "Gasolina / Combustible", "classification": "business" } ] }\n` +
-              `REGLAS: solo correcciones necesarias; classification business|personal.`,
+              `[REQUIRED RESPONSE FORMAT] Respond with ONLY one valid JSON object using these exact keys:\n` +
+              `{ "reply": "texto breve", "expenseUpdates": [ { "expenseId": "id", "category": "Fuel", "classification": "business" } ] }\n` +
+              `RULES: make only necessary corrections; classification must be business or personal.`,
           },
         ],
       })
@@ -288,7 +288,7 @@ YOUR MISSION:
     }
 
     const data = await response.json()
-    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "No se pudo generar respuesta."
+    const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "Could not generate a response."
 
     let reply = rawText
     let structured: {
