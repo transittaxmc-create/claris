@@ -107,3 +107,9 @@
 - Único bucket existente: crm-client-photos, privado, owner-folder policies; file_size_limit y allowed_mime_types NULL. Código crm-photos.ts solo gestiona fotos JPEG de cliente/reserva y signed URL temporal.
 - No existe bucket separado para documentos fiscales/civiles, tabla de documentos/versiones, hashes, OCR pipeline, retención, auditoría de descargas ni flujo de recuperación. No hay OCR/e-file integrado.
 - Resultado: etapa 5 NO CERRADA. Requiere etapa 3 (MFA/memberships), reconciliación de esquema, bucket privado independiente, MIME/tamaño allowlist, clasificación temporal OCR vs original final, versioning/hash, audit trail, retención y test de restore en segundo dispositivo. No se subieron ni modificaron archivos.
+
+## 13. Hito 6 — Taxes workflow (2026-11-27)
+- components/copiloto-v7-preview/tax-workspace.tsx tiene lista de casos seed, filtro/búsqueda, formulario local, cambios de status y checklist en useState. No fetch, Supabase, almacenamiento ni persistencia al refrescar.
+- No hay tablas tax_cases/tax_documents, bóveda fiscal, OCR, conexión con software tributario, e-file, firma, formularios reales ni workflow de revisión con auditoría.
+- Separación legal/operativa Taxes (Brakha Group Tax Services) vs Transport no está implementada en memberships/RLS; no usar datos fiscales reales.
+- Resultado: etapa 6 NO CERRADA. Demo UI local disponible; persistencia y seguridad bloqueadas por etapas 3 y 5. No se usaron SSN/ITIN, W-2/1099 ni documentos reales.
