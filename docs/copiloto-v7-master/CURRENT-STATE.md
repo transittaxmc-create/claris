@@ -250,3 +250,18 @@
 - Existing Railway review deployment before this change: SUCCESS on service copiloto-v7-preview, commit f8c559ff59ba09038bdb64d966e67d42e83a61a4. Gateway code commit c047840932e532a59dae500533cbb27bcc5ba195 deployed successfully to Railway review (deployment 5210f13e-8b62-44e7-8cf6-ffebbdcfd37f).
 - Verified in Railway build commit c047840932e532a59dae500533cbb27bcc5ba195: existing CRM push tests 4/4 passed; Agent Gateway tests 6/6 passed; Next.js production build compiled; Railway review deployment SUCCESS; GET /api/agent-gateway/continuity returned HTTP 200 and the read-only document package. The Next.js build configuration skips TypeScript type validation, so a separate tsc check remains pending.
 - No production deployment, main merge, environment-variable changes, database changes or external provider actions.
+
+
+## 24. Agent Gateway — persistent development backend (2026-11-27)
+- CRM Supabase project mimgwleghecseoymgdug is ACTIVE_HEALTHY (Postgres 17); legacy Finance project zrcnpmipdhpjdjkfrrgt was not touched.
+- Applied migrations: 20261127224018_copiloto_v7_agent_gateway_core and 20261127224752_copiloto_v7_agent_gateway_recovery_state.
+- Created six RLS-enabled coordination tables: agent_identities, agent_tasks, agent_events, agent_messages, agent_approvals, agent_channel_states; plus agent_project_state and view agent_latest_checkpoints.
+- Browser roles anon and authenticated have no SELECT privilege on the event store; service_role does. RLS is enabled and no browser policies exist by design.
+- ChatGPT and Muse have independent machine identities with 256-bit keys; only SHA-256 hashes are stored. Each has 10 scopes and explicit domain scopes. These are machine credentials, not human Supabase Auth accounts. Raw keys are issued once and must be stored in the respective agent secret store.
+- Supabase Edge Function agent-gateway ACTIVE, version 3, custom x-agent-key authentication; no key returns HTTP 401. Operations include continuity/status/tasks/inbox, event append, task create/claim/heartbeat/complete, internal message send/ack, and approval request.
+- Task claim and heartbeat are atomic Postgres RPC operations. Event rows are append-only. Checkpoints are projected from agent.checkpoint.recorded events. Idempotency keys are enforced for event/task/message creation.
+- Synthetic DB assertions passed for claim, heartbeat, completion, event persistence/immutability and internal message acknowledgement. One synthetic completed task, two events and one acknowledged message remain as test fixtures; no client data or external messages.
+- SMS/Amani and WhatsApp/ZapClaw remain independent not_connected / unknown states. Agent self-attestation of provider delivery is blocked.
+- Added authenticated Railway proxy routes /api/agent-gateway/bridge and /api/agent-gateway/recovery; Railway review variable CRM_AGENT_GATEWAY_URL points to the Supabase Edge Function. Deployment/build verification is pending.
+- Not yet verified: successful HTTP request using each real agent key, end-to-end cold-start recovery from a fresh ChatGPT conversation, direct Muse runtime connection, human approval UI, provider callbacks, rate limiting, and independent tsc --noEmit.
+- No production deployment, main merge, real communications, payment actions, or financial database changes.

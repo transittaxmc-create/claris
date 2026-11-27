@@ -224,3 +224,16 @@ Next exact action: review and explicitly approve/correct the proposed consolidat
 - Live GET https://copiloto-v7-preview-review.up.railway.app/api/agent-gateway/continuity returned HTTP 200 and the read-only versioned document package.
 - POST event storage remains intentionally disabled; event store and dedicated agent identities are not configured.
 - Next: review/approve the schema proposal in AGENT-GATEWAY.md. No DDL/migrations or production release.
+
+
+## Gateway persistent-backend checkpoint — 2026-11-27
+Read first: docs/copiloto-v7-master/AGENT-GATEWAY.md, AGENT-GATEWAY-API.md, and AGENT-RECOVERY-PROMPT.md.
+- Supabase CRM project: mimgwleghecseoymgdug; legacy Finance project zrcnpmipdhpjdjkfrrgt was not touched.
+- Migrations: 20261127224018_copiloto_v7_agent_gateway_core and 20261127224752_copiloto_v7_agent_gateway_recovery_state.
+- Supabase Edge Function agent-gateway version 3 is ACTIVE. No-key request returns 401. Individual ChatGPT/Muse machine identities exist; keys are SHA-256 hashed in the DB and raw credentials must be stored only in their respective secret stores.
+- RLS/grants: no anon or authenticated access to agent tables; service_role only. Do not add browser policies to these tables.
+- DB synthetic test passed for claim/heartbeat/complete, append-only event protection and agent message acknowledgement. The synthetic fixture rows are retained and clearly marked synthetic.
+- Railway review bridge routes were committed and CRM_AGENT_GATEWAY_URL set in review; verify latest deployment/build and GET /api/agent-gateway/recovery with a valid agent key.
+- Authenticated HTTP E2E has not yet been demonstrated for either agent. Do not call the Gateway fully accepted until ChatGPT and Muse each authenticate, recover the same checkpoint, exchange a message and verify its acknowledgement.
+- The first fresh-session action must be authenticated GET ?op=continuity; then read checkpoint, decisions, open tasks and independent channel states. No external action without explicit human approval.
+- Remaining: run authenticated E2E using agent secret stores; add rate limiting; independent TypeScript check; wire a ChatGPT custom connector/tool if the client supports it and configure Muse's actual runtime interface. No production release or live messages.

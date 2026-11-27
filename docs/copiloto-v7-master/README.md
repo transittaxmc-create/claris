@@ -7,6 +7,8 @@
 - [Instrucciones para el siguiente agente](./AGENT-HANDOFF.md)
 - [Registro de decisiones y requisitos del usuario](./DECISION-LOG.md)
 - [Agent Gateway y Registro Maestro de Continuidad](./AGENT-GATEWAY.md)
+- [API y credenciales de agentes](./AGENT-GATEWAY-API.md)
+- [Protocolo de recuperación en conversación nueva](./AGENT-RECOVERY-PROMPT.md)
 - [Snapshot versionado del Registro Maestro](./CONTINUITY-REGISTER.json)
 
 ## Regla de prioridad documental

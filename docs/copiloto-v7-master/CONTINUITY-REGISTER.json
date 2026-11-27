@@ -1,21 +1,23 @@
 {
-  "schema_version": "0.1.0",
+  "schema_version": "0.2.0",
   "project": "copiloto-v7",
-  "updated_at": "2026-11-27T17:28:00-05:00",
+  "updated_at": "2026-11-27T18:00:00-05:00",
   "source_branch": "feat/copiloto-v7-phase1-foundation",
-  "source_commit": "c047840932e532a59dae500533cbb27bcc5ba195",
+  "source_commit": "5b95896910525e94abe8280a42f9f8e7243b93bd",
   "environment": {
     "development": "in progress",
-    "railway_review": "SUCCESS on commit c047840932e532a59dae500533cbb27bcc5ba195; GET /api/agent-gateway/continuity returned HTTP 200",
+    "railway_review": "Deployment pending after authenticated proxy routes and CRM_AGENT_GATEWAY_URL configuration",
     "production": "not authorized"
   },
   "confirmed_state": {
-    "gateway": "read-only continuity endpoint deployed to review and verified HTTP 200; event write path intentionally disabled",
-    "event_store": "not configured; schema proposal pending approval",
-    "agent_identities": "not configured",
-    "task_queue": "not configured",
-    "sms_amani": "separate channel; no end-to-end dispatch confirmation",
-    "whatsapp_zapclaw": "separate channel; no end-to-end delivery confirmation"
+    "gateway": "Supabase Edge Function agent-gateway v3 active; authenticated machine identity lookup; persistent event/task/message/approval/channel/project state; Railway review proxy routes committed",
+    "event_store": "persistent Supabase tables active; append-only events; synthetic DB checks passed",
+    "agent_identities": "ChatGPT and Muse active machine identities; independent 256-bit credentials; SHA-256 hashes only in DB",
+    "task_queue": "task creation, atomic claim, heartbeat and completion endpoints implemented; synthetic DB test passed",
+    "sms_amani": "independent row seeded not_connected/unknown; no live dispatch",
+    "whatsapp_zapclaw": "independent row seeded not_connected/unknown; no live delivery",
+    "agent_communication": "internal agent messages with recipient acknowledgement implemented; synthetic DB acknowledgement passed",
+    "checkpoints": "latest checkpoints derived from agent.checkpoint.recorded events; no real agent checkpoint has been submitted yet"
   },
   "decisions": [
     {
@@ -33,48 +35,92 @@
   ],
   "tasks": [
     {
-      "id": "gateway-schema-approval",
-      "title": "Approve consolidated agent identity/task/event/approval/channel-state schema",
-      "owner": "Miguel",
-      "status": "blocked",
-      "blocker": "Schema proposal must be reviewed before DDL/migrations"
-    },
-    {
-      "id": "gateway-agent-auth",
-      "title": "Create dedicated Supabase Auth identities and least-privilege scopes",
-      "owner": "Implementation",
-      "status": "blocked",
-      "blocker": "Requires approved schema and Auth configuration"
-    },
-    {
-      "id": "gateway-event-store",
-      "title": "Implement persistent append-only events, task leases and idempotency",
-      "owner": "Implementation",
-      "status": "blocked",
-      "blocker": "Requires approved schema and isolated synthetic DB tests"
-    },
-    {
-      "id": "gateway-e2e",
-      "title": "Verify fresh-session recovery across ChatGPT and Muse",
+      "id": "gateway-authenticated-e2e",
+      "title": "Run authenticated HTTP tests with both machine credentials and verify identical continuity",
       "owner": "ChatGPT + Muse",
-      "status": "pending",
-      "blocker": "Agent identities and durable event store not active"
+      "status": "pending"
+    },
+    {
+      "id": "gateway-chatgpt-connector",
+      "title": "Configure a supported custom connector/tool for fresh ChatGPT conversations",
+      "owner": "Implementation",
+      "status": "pending"
+    },
+    {
+      "id": "gateway-muse-runtime",
+      "title": "Configure Muse runtime with its individual key and verify inbox/ACK",
+      "owner": "Muse",
+      "status": "pending"
+    },
+    {
+      "id": "gateway-rate-limit",
+      "title": "Add and verify per-agent rate limiting and credential rotation workflow",
+      "owner": "Implementation",
+      "status": "pending"
+    },
+    {
+      "id": "gateway-typescript",
+      "title": "Run standalone TypeScript validation and fix errors",
+      "owner": "Implementation",
+      "status": "pending"
     }
   ],
-  "next_authorized_action": "Review and approve/correct the consolidated schema in AGENT-GATEWAY.md; do not run DDL or production deployment.",
+  "next_authorized_action": "Verify Railway review deployment, configure each machine key in its own agent runtime, execute authenticated ChatGPT↔Muse E2E and fresh-session recovery; complete TypeScript check. No production release.",
   "checkpoint_rule": "Future agent checkpoints must be derived from persisted server-stamped events; this seed snapshot is not a dynamic checkpoint.",
-  "storage_mode": "repository-seed-only",
-  "event_log": [],
+  "storage_mode": "supabase-persistent-event-store",
+  "event_log": "Supabase public.agent_events; immutable to agents; repository JSON remains versioned seed/snapshot",
   "tests": {
     "crm_push": {
       "passed": 4,
       "failed": 0
     },
-    "agent_gateway": {
+    "agent_gateway_unit": {
       "passed": 6,
       "failed": 0
     },
-    "next_build": "compiled successfully",
-    "typescript": "Next.js build skipped type validation; standalone tsc check pending"
+    "database_synthetic": {
+      "status": "passed",
+      "checks": [
+        "atomic claim",
+        "heartbeat",
+        "task completion",
+        "message acknowledgement",
+        "event append-only",
+        "browser-role access denied"
+      ]
+    },
+    "unauthenticated_edge_function": {
+      "status": "passed",
+      "http_status": 401
+    },
+    "authenticated_http_e2e": {
+      "status": "pending"
+    },
+    "fresh_chatgpt_recovery": {
+      "status": "pending_connector_setup"
+    },
+    "muse_runtime_e2e": {
+      "status": "pending"
+    },
+    "typescript": "standalone tsc --noEmit pending",
+    "deployment": "Railway review deployment pending after proxy route commit"
+  },
+  "database": {
+    "project_ref": "mimgwleghecseoymgdug",
+    "engine": "PostgreSQL 17",
+    "migrations": [
+      "20261127224018_copiloto_v7_agent_gateway_core",
+      "20261127224752_copiloto_v7_agent_gateway_recovery_state"
+    ],
+    "tables": [
+      "agent_identities",
+      "agent_tasks",
+      "agent_events",
+      "agent_messages",
+      "agent_approvals",
+      "agent_channel_states",
+      "agent_project_state"
+    ],
+    "view": "agent_latest_checkpoints"
   }
 }

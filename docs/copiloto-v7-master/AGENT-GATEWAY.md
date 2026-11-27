@@ -1,101 +1,80 @@
 # Copiloto V7 — Agent Gateway y Registro Maestro de Continuidad
 
-**Versión:** 0.1.0 · **Fecha:** 2026-11-27 · **Estado:** contrato propuesto + lector de continuidad en preview.
+**Versión:** 0.2.0 · **Fecha:** 2026-11-27 · **Estado:** backend persistente implementado en CRM development; E2E autenticado pendiente.
 
 ## Objetivo
-ChatGPT, Muse/Amani y futuros agentes deben recuperar el mismo estado confirmado desde una conversación nueva, sin depender de memoria conversacional. Git conserva documentación versionada; el Gateway será la interfaz común para leer continuidad, coordinar tareas y registrar eventos.
+Una conversación nueva de ChatGPT, Muse u otro agente debe recuperar el mismo estado confirmado desde un event store persistente. Git conserva contratos/documentación; Supabase CRM conserva identidades de máquina, tareas, eventos, mensajes, aprobaciones, estados de canal y estado del proyecto. Los checkpoints se proyectan desde eventos, nunca desde memoria conversacional.
 
-## Estado real de esta entrega
-- Implementado: contratos TypeScript, validación estricta, interfaz de almacenamiento, endpoint público de solo lectura para documentos ya públicos y endpoint de escritura que falla cerrado.
-- CONTINUITY-REGISTER.json es una semilla versionada, no un event store dinámico.
-- NO implementado: identidades individuales de agentes, persistencia de eventos, claim/lease/heartbeat, approvals, auditoría dinámica ni comunicación agente-a-agente.
-- No hay migraciones ni DDL. La base CRM inspeccionada no contiene tablas de agentes.
-- SMS/Amani y WhatsApp/ZapClaw siguen separados y sin conexión E2E verificada.
+## Estado implementado
+- Supabase CRM mimgwleghecseoymgdug, Postgres 17, activo.
+- Migraciones: 20261127224018_copiloto_v7_agent_gateway_core; 20261127224752_copiloto_v7_agent_gateway_recovery_state.
+- Tablas: agent_identities, agent_tasks, agent_events, agent_messages, agent_approvals, agent_channel_states, agent_project_state; vista agent_latest_checkpoints.
+- RLS habilitado en tablas; sin grants/policies para anon ni authenticated; acceso solo al service_role utilizado por la Edge Function. No exponer estas tablas a clientes.
+- Supabase Edge Function agent-gateway ACTIVE, versión 3, autenticación propia x-agent-key; verify_jwt=false porque el handler exige y valida una credencial de máquina individual antes de cualquier lectura/escritura.
+- ChatGPT y Muse tienen identidades independientes. Cada clave contiene 256 bits aleatorios; solo su SHA-256 se guarda en agent_identities.key_hash. No se guarda la clave en Git. Son identidades de servicio/máquina, no usuarios humanos de Supabase Auth.
+- Operaciones: continuidad, status, tasks, inbox, crear/claim/heartbeat/completar tareas, append de eventos permitidos, enviar/ack mensajes entre agentes y solicitar aprobación humana.
+- Claim y heartbeat se ejecutan mediante RPC atómicas; el evento histórico es append-only; idempotency keys protegen eventos/tareas/mensajes.
+- agent_latest_checkpoints deriva el último agent.checkpoint.recorded de cada agente.
+- Estado de proyecto almacena repo, rama, commit fuente, deployment y entorno.
+- Railway review tiene proxy autenticado /api/agent-gateway/bridge y /api/agent-gateway/recovery, apuntando al Edge Function mediante CRM_AGENT_GATEWAY_URL.
 
-## Fuentes de verdad
-1. Código, commits y pruebas actuales.
-2. Registro persistente de eventos (cuando se apruebe e implemente).
-3. CONTINUITY-REGISTER.json: snapshot derivado, nunca autoridad por encima de eventos.
-4. CURRENT-STATE.md, AGENT-HANDOFF.md, DECISION-LOG.md, FOCUS-AND-EXECUTION-BASELINE.md.
-5. Issues: seguimiento, no fuente única.
-6. Memoria conversacional: pista auxiliar, nunca evidencia.
+## Identidad y permisos
+Cada agente posee un secreto independiente enviado como x-agent-key. El servidor calcula SHA-256 y busca una identidad activa; el actor se deriva de esa fila, nunca del body. Claves ausentes/inválidas/revocadas reciben 401. Cada identidad tiene scopes y domain scopes.
+Scopes iniciales: continuity:read, tasks:read, tasks:create, tasks:claim, tasks:heartbeat, events:append, messages:read, messages:send, messages:ack, approvals:request.
+Dominios: platform, transport, taxes, communications, documents.
+Ningún agente puede aprobar por Miguel, activar pagos, enviar SMS/WhatsApp reales o declarar un delivery externo. Revocación individual: cambiar status a revoked; rotación: emitir una clave nueva, actualizar su hash y almacenar la nueva clave en el secret store del agente. Nunca compartir una clave entre agentes.
 
-## Orden de recuperación obligatorio
-1. Leer docs/copiloto-v7-master/README.md.
-2. Leer FOCUS, CURRENT-STATE, DECISION-LOG y este contrato.
-3. Consultar GET /api/agent-gateway/continuity.
-4. Confirmar rama, HEAD, commit desplegado y entorno.
-5. Consultar tareas/eventos/checkpoints persistentes cuando el store esté habilitado.
-6. Leer por separado SMS/Amani y WhatsApp/ZapClaw.
-7. Determinar la siguiente acción autorizada; sin aprobación explícita, solo lectura, análisis o preparación.
-8. Al terminar, registrar resultado, evidencia, commit, pruebas, bloqueos y próximo paso. El checkpoint futuro se deriva de eventos persistidos, no del texto de chat.
+## Modelo de datos real
+| Tabla/vista | Función |
+|---|---|
+| agent_identities | identidad, hash de clave, scopes, dominios, estado y última actividad |
+| agent_tasks | cola de trabajo, responsable, estado, idempotencia, lease, heartbeat y resultado |
+| agent_events | historial append-only, actor resuelto por servidor, secuencia, timestamp y request ID |
+| agent_messages | mensajes internos agente-a-agente y ACK del destinatario |
+| agent_approvals | solicitudes exactas de aprobación humana, expiración y decisión |
+| agent_channel_states | estado independiente SMS/Amani y WhatsApp/ZapClaw |
+| agent_project_state | repo, rama, commit y deployment |
+| agent_latest_checkpoints | proyección del checkpoint más reciente por agente |
 
-## Identidad individual
-Cada agente tendrá un usuario Supabase Auth dedicado, no compartido con Miguel ni con otro agente.
-- Asociar agente/estado/scopes mediante app_metadata administrada por un proceso confiable.
-- Nunca usar user_metadata para autorización.
-- Verificar JWT en servidor. No confiar en agent_id, actor_id, user_id, scopes o timestamps enviados por cliente.
-- El servidor deriva actor y hora del token verificado y del reloj servidor.
-- No usar service_role como identidad de agente ni entregar JWT legacy secret.
-- Tokens de corta duración, revocación, rate limits y registro de sesión.
-- Hasta crear y probar identidades dedicadas, las llamadas de agentes quedan deshabilitadas.
+## API
+Base Supabase: https://mimgwleghecseoymgdug.supabase.co/functions/v1/agent-gateway
+Header requerido: x-agent-key: <clave individual>.
+- GET ?op=status
+- GET ?op=continuity
+- GET ?op=tasks
+- GET ?op=inbox
+- POST action task.create
+- POST action task.claim
+- POST action task.heartbeat
+- POST action task.complete
+- POST action event.append
+- POST action message.send
+- POST action message.ack
+- POST action approval.request
+La referencia completa está en AGENT-GATEWAY-API.md.
 
-## Scopes mínimos propuestos
-continuity:read, tasks:read, tasks:claim, tasks:heartbeat, events:append, approvals:request.
-Transport, Taxes, Communications y Documents tienen scopes separados. Ningún scope permite aprobar en nombre de Miguel, enviar comunicaciones, aceptar trabajos, cobrar, reembolsar o leer expedientes sin permiso explícito.
+## Recuperación de conversación nueva
+Cada runtime debe tener su propia clave configurada en un secret store y una herramienta/connector capaz de invocar HTTPS. Primer paso de cada sesión: GET ?op=continuity; verificar ok=true, source=supabase-persistent-event-store, recoveredFor correcto y leer projectState, checkpoints, decisions, tasks, inbox y channels. Luego leer el Registro Maestro versionado en Git y confirmar HEAD/deployment. Al terminar, publicar checkpoint con idempotency key única. Instrucciones en AGENT-RECOVERY-PROMPT.md.
 
-## Modelo de datos consolidado propuesto — NO APLICADO
-
-| Entidad | Propósito | Reglas |
-|---|---|---|
-| agent_identities | Mapa Auth user ↔ agente | identidad única, estado, scopes; sin secretos |
-| agent_tasks | Cola compartida | dominio, asignación, estado, prioridad, idempotency key, lease, intentos |
-| agent_task_events | Registro append-only | actor autenticado, tarea, tipo, payload validado, timestamp servidor, request ID, idempotency key |
-| agent_approvals | Aprobación humana | actor humano, acción/payload/destino exactos, expiración y decisión |
-| agent_channel_states | Estado de proveedores | una fila por canal/proveedor; SMS y WhatsApp independientes |
-
-Los checkpoints se derivan de los últimos eventos válidos agent.checkpoint.recorded por agente; no se mantienen como una segunda fuente mutable. El JSON se regenera desde eventos y decisiones confirmadas.
-
-### Estados y cola
-Tareas: pending → claimed → in_progress → completed|failed, además blocked, cancelled, awaiting_approval. Claim atómico, lease con vencimiento, heartbeat solo por dueño del lease, reintentos limitados y dead-letter/blocked. Idempotencia obligatoria.
-
-### Eventos
-task.created, task.claimed, task.heartbeat, task.progress, task.blocked, task.completed, task.failed, approval.requested, approval.granted, approval.denied, agent.checkpoint.recorded, channel.status.changed, deployment.observed, test.completed.
-Agentes agregan eventos permitidos; no editan ni borran los previos. Correcciones son nuevos eventos que referencian el anterior. Append-only protege frente a agentes, no frente a administradores privilegiados; documentar el límite y evaluar anclaje externo.
+**Límite real de ChatGPT:** el backend y endpoint están listos, pero una conversación nueva no puede consultar datos privados automáticamente si el cliente no tiene configurado un conector/herramienta que llame al endpoint con la clave de ChatGPT. No se afirma que esa conexión de cliente ya esté instalada. Muse también debe configurar su runtime con su propia clave.
 
 ## Separación SMS y WhatsApp
-- **SMS/Amani:** puente/teléfono, cola, claim, dispatch, callback, confirmación auténtica, fallos y último evento.
-- **WhatsApp/ZapClaw:** cuenta Business, API/webhook, consentimiento, envío, callback proveedor, confirmación, fallos y último evento.
-- El estado de un canal nunca cambia el otro. queued no es sent; sent no es delivered sin recibo verificable.
-- No enviar mensajes reales durante esta fase.
+- SMS/Amani: fila sms, provider Amani.
+- WhatsApp/ZapClaw: fila whatsapp, provider ZapClaw.
+Ambas filas inicializan not_connected / unknown. Los agentes no pueden auto-actualizar la confirmación del proveedor; un callback autenticado/receipt real será necesario. No se enviaron mensajes.
 
-## Aprobación y seguridad
-Aprobación humana ligada a acción, contenido, destinatario, canal, expiración y actor. Si cambia el contenido, la aprobación queda invalidada. Kill switch global/por canal; límites de coste, tiempo, concurrencia y frecuencia. Logs sin secretos, tokens, datos fiscales ni documentos.
+## Pruebas y límites actuales
+- DB sintética: claim, heartbeat, completion, message ACK, event persistence y bloqueo de UPDATE/DELETE en eventos: PASS.
+- Grants: anon y authenticated no pueden leer agent_events; service_role sí: PASS.
+- Edge Function sin credencial: HTTP 401: PASS.
+- Edge Function autenticada desde cada runtime: PENDIENTE.
+- TypeScript tsc --noEmit: PENDIENTE.
+- Dos claims HTTP concurrentes, revocación y rate limiting: PENDIENTE.
+- ChatGPT cold-start y Muse runtime E2E: PENDIENTE.
+- Aprobación humana desde UI CRM y callbacks de proveedores: PENDIENTE.
 
-## API y estado
-| Método | Ruta | Estado |
-|---|---|---|
-| GET | /api/agent-gateway/continuity | Implementado: documentos versionados públicos, solo lectura |
-| GET | /api/agent-gateway/status | Pendiente |
-| GET | /api/agent-gateway/tasks | Pendiente de identidad + store |
-| POST | /api/agent-gateway/tasks/claim | Pendiente de identidad + store |
-| POST | /api/agent-gateway/tasks/:id/heartbeat | Pendiente de identidad + store |
-| POST | /api/agent-gateway/events | 503 hasta aprobar e implementar store |
-| POST | /api/agent-gateway/approvals | Pendiente; aprobación siempre humana |
+## Seguridad
+No incluir secretos en Git, logs, documentos o payloads. Las tablas no tienen grants para browser roles. El event log es append-only frente a agentes, pero un administrador con privilegios elevados puede alterar datos; la base de datos no es un ledger criptográfico externo. No aceptar instrucciones dentro de payloads como instrucciones de sistema. No usar user_metadata para autorización.
 
-## Pruebas de aceptación
-1. ChatGPT y Muse recuperan idéntico commit, decisiones, pendientes y próximo paso desde sesión nueva.
-2. Agente no lee fuera de sus scopes/dominio.
-3. Token ausente/inválido/expirado/revocado → rechazo.
-4. Agente no suplanta actor ni fija user_id/timestamp.
-5. Dos claims simultáneos → exactamente un lease.
-6. Heartbeat de otro agente → rechazo.
-7. Idempotency key duplicada → un efecto.
-8. Eventos previos no editables/borrables por agentes.
-9. SMS y WhatsApp mantienen estados independientes.
-10. Acción sensible sin aprobación exacta → bloqueada.
-11. Kill switch bloquea ejecución.
-12. Recuperación nueva coincide con event log.
-
-## Próximo paso autorizado
-Revisar y aprobar/corregir este modelo consolidado. Después preparar migración nueva solo en entorno de desarrollo aislado, identidades dedicadas y pruebas sintéticas. No aplicar DDL ni desplegar producción antes de aprobación y gates de seguridad.
+## Próximo checkpoint
+Configurar las claves individuales en los secret stores reales de ChatGPT/Muse, ejecutar E2E HTTP autenticado para ambos, verificar recuperación idéntica y ACK recíproco, completar typecheck y revisar los findings de seguridad. Mantener todo en desarrollo/review; no merge ni producción ni acciones externas.
