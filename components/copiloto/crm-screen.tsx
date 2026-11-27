@@ -1704,10 +1704,10 @@ function CRMMessages({ clients, reservations, cloudSeed, cloudSeedNonce, onCloud
             <div className="rounded-xl border border-amber-800/60 bg-amber-950/30 p-3">
               <p className="text-xs leading-relaxed text-amber-100">
                 Approved by you{current.approvedAt ? ` · ${new Date(current.approvedAt).toLocaleString()}` : ""}.
-                {current.sendState === "queued" && " This reply is in the SMS outbox — it has NOT been sent yet. Amani sends it as a text from your phone, and the result will show here."}
-                {current.sendState === "sending" && " It is being sent from your phone right now…"}
-                {current.sendState === "failed" && " The last send attempt failed — it is still in the outbox to try again."}
-                {current.sendState !== "queued" && current.sendState !== "sending" && current.sendState !== "failed" && (sendingId === current.id ? " Putting it in the outbox…" : " Tap “Send from my phone” to put it in the SMS outbox: Amani sends it as a text from your phone, and it is only marked sent when that dispatch is confirmed.")}
+                {current.sendState === "queued" && " This reply is approved and saved in the CRM outbox. It has NOT been sent. No SMS provider or phone bridge is connected yet."}
+                {current.sendState === "sending" && " A dispatch status was recorded, but actual SMS transmission is not verified."}
+                {current.sendState === "failed" && " The reply could not be saved in the outbox. Nothing was sent — try again."}
+                {current.sendState !== "queued" && current.sendState !== "sending" && current.sendState !== "failed" && (sendingId === current.id ? " Saving to the CRM outbox…" : " Approve and queue this reply in the CRM. This does NOT send an SMS.")}
               </p>
               {current.sendError && <p className="mt-2 rounded-lg border border-rose-800/60 bg-rose-950/40 p-2 text-xs leading-relaxed text-rose-200">{current.sendError}</p>}
             </div>
