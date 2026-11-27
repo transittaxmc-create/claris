@@ -196,3 +196,7 @@ The user confirmed that Muse's test delivered an actual SMS from the business nu
 - This is a documentation checkpoint only. No application code, credentials, phone settings, providers, database or deployment were changed in this checkpoint.
 
 Next session must resume from the exact checkpoint above, then inspect Muse/Amani's authorized interface and paired-phone bridge before implementing anything.
+
+
+## Resume point — agent coordination and Gemini instructions — 2026-11-27
+User clarified that the goal is not merely SMS wiring: Muse should be able to understand Copiloto's current project/workspace state through an authorized integration, and Gemini's instructions should be restructured so Gemini can assist Copiloto V7 across its business modules. Read docs/copiloto-v7-master/AGENT-INSTRUCTION-ARCHITECTURE.md first. The document is a design proposal, not an implemented integration. Continue by identifying Muse's real authorized interface and Amani's phone-side queue consumer, then map V7 module scopes/RLS to a server-side context/tool layer. Do not guess APIs, overwrite legacy Finance instructions, expose secrets, send live messages, change providers/numbers, deploy production or merge main.
