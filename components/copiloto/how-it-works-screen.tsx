@@ -48,7 +48,7 @@ export function HowItWorksScreen() {
           <li>§21 PRIORITY LIST — what is open, in plain language, updated with every deployment</li>
           <li>§22 APPLICATION INVENTORY &amp; ARCHITECTURE AUDIT — complete source map, integrations, database state, verified gaps and agent handoff (2026-11-27)</li>
           <li>§23 CRM COPILOT V7 — TECHNICAL AUDIT &amp; VERIFIED GAPS (2026-11-27)</li>
-          <li>§24 COPILOTO V7 — PHASE 1 BUILD FOUNDATION &amp; ARCHITECTURE (2026-11-27) · §25 V7 PREVIEW WORKSPACE — FIRST IMPLEMENTATION (2026-11-27)</li>
+          <li>§24 COPILOTO V7 — PHASE 1 BUILD FOUNDATION &amp; ARCHITECTURE (2026-11-27) · §25 V7 PREVIEW WORKSPACE — FIRST IMPLEMENTATION (2026-11-27) · §26 TRANSPORT OPERATIONS PREVIEW (2026-11-27)</li>
         </ul>
       </Section>
 
@@ -2014,6 +2014,15 @@ export function HowItWorksScreen() {
         <P><B>Backend pendiente:</B> ampliar el modelo canónico para mensajes originales, eventos, adjuntos, consentimiento/opt-out, webhooks autenticados, idempotencia, outbox, auditoría y estados del proveedor. Preservar el mensaje original separado del análisis IA. Reconciliar migraciones antes de tocar esquema.</P>
         <P><B>Verificación:</B> cambios guardados en rama feat/copiloto-v7-phase1-foundation. No hubo deployment, cambios de Supabase ni comunicaciones reales. No se ejecutó build/test ni QA visual; ambos siguen pendientes.</P>
         <P><B>Estado:</B> interfaz de demostración implementada y documentada; Centro de Comunicaciones conectado y operativo todavía pendiente. Informe: docs/copiloto-v7-punto-4-centro-comunicaciones-2026-11-27.md</P>
+      </Section>
+
+      <Section title="COPILOTO V7 — PUNTO 5: TRANSPORT OPERATIONS (2026-11-27)">
+        <P><B>Preview implementado:</B> se creó components/copiloto-v7-preview/transport-workspace.tsx y se integró en app/copiloto-v7-preview/page.tsx. Incluye tablero de viajes, búsqueda/filtro por estado, alta local de solicitudes sintéticas, vehículo, ruta, pickup, fecha/hora, tarifa, peajes, otros gastos, neto estimado y cambio de estado.</P>
+        <P><B>Flujo operativo propuesto:</B> recibir solicitud → validar disponibilidad/vehículo → aprobación humana → seguimiento del viaje → cierre y conciliación. No se confirma ni despacha automáticamente.</P>
+        <P><B>Conectividad pendiente:</B> el módulo sigue siendo local y de demostración. No está conectado a CRM/reservations, conductores/vehículos, mapas, GPS, proveedor de peajes, Square, pagos ni comunicaciones. Las cifras no representan operaciones reales.</P>
+        <P><B>Seguridad:</B> no introducir nombres reales, teléfonos, direcciones de clientes ni datos de pago. No se ejecutaron migraciones ni se modificó Supabase.</P>
+        <P><B>Verificación:</B> commits ceadffa502215c8a65b6cfa1150c412d42b0d81c y 557759ef7aa4ae863f4820a6a669db23d2ce15f6 en feat/copiloto-v7-phase1-foundation. Build, tests y QA visual todavía pendientes. No hay deployment validado de esta rama.</P>
+        <P><B>Estado:</B> interfaz de demostración de Transport implementada y documentada; integraciones y pruebas reales pendientes. No habilitar con clientes.</P>
       </Section>
 
       <p className="mt-6 text-center text-[10px] text-neutral-600">
