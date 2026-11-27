@@ -93,7 +93,7 @@ function ReconciliationPanel({ summary, groups }: { summary: ReconSummary; group
           <span className="text-sm font-extrabold text-neutral-200">{money(summary.expected)}</span>
         </div>
         <div className="flex flex-col gap-0.5">
-          <span className="text-[9px] font-bold text-neutral-500">RECIBIDO</span>
+          <span className="text-[9px] font-bold text-neutral-500">RECEIVED</span>
           <span className="text-sm font-extrabold text-neutral-200">{money(summary.received)}</span>
         </div>
         <div className="flex flex-col gap-0.5">
@@ -117,7 +117,7 @@ function ReconciliationPanel({ summary, groups }: { summary: ReconSummary; group
         )}
         {summary.okCount > 0 && (
           <span className={cn("rounded-full border px-2 py-0.5 text-[9px] font-bold", RECON_TONE.ok.border, RECON_TONE.ok.text)}>
-            {summary.okCount} cuadran
+            {summary.okCount} match
           </span>
         )}
       </div>
