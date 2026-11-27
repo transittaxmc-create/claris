@@ -224,3 +224,10 @@
 - Gemini's new instructions are proposed as layered, versioned policy + Copiloto mission + shared principles + authorized module profile + minimal task context + tool contracts + response contract. Do not overwrite the legacy Finance prompt until the V7 profile and regression strategy are reviewed.
 - This is design/documentation only. No app code, credentials, phone settings, providers, database schema, real communications or deployment were changed.
 - Next: identify Muse's actual authorized integration surface; recover Amani's paired-phone queue consumer/auth/callback; map V7 module permissions and RLS to scoped context/tools; then implement the versioned prompt builder and Gemini adapter in the development branch with synthetic security tests.
+
+
+## 21. User clarification — Muse authorization and Amani ownership — 2026-11-27
+- User clarified Muse is already fully authorized in their environment for GitHub, Vercel, WhatsApp and phone/SMS; Amani is part of Muse, not a separate SMS provider. The earlier real SMS path was Muse/Amani consuming the Copiloto message outbox/queue and using the paired phone to send to the user's second device/number.
+- Correct distinction: the user's Muse authorization is confirmed by the user; this ChatGPT session does not currently expose a direct Muse/Amani connector/tool. This is a technical visibility/interface gap for our session, not a request for the user to re-authorize Muse.
+- A Vercel Agent Runs discovery for the connected island-city team returned no eve-framework agent projects in the last 30 days. This checks only Vercel eve observability and is not evidence that Muse is disconnected or inactive.
+- Next: inspect existing repo history/config and the precise outbox-to-Amani handoff; identify Muse's supported API/MCP/webhook/repository interface; then provide Muse a scoped Copiloto project/context brief and design the reciprocal handoff. Do not ask for reauthorization or credentials; do not change the phone, number, providers or send live messages.
