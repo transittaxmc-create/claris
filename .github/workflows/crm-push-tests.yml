@@ -4,6 +4,12 @@ on:
   pull_request:
     paths:
       - "lib/crm/push-validation.ts"
+      - "lib/crm-push.ts"
+      - "lib/crm/push-auth.ts"
+      - "app/api/crm/push/subscribe/route.ts"
+      - "app/api/crm/push/test/route.ts"
+      - "app/api/crm/send/dispatch/route.ts"
+      - "components/copiloto/crm-screen.tsx"
       - "tests/crm-push-validation.test.ts"
       - "package.json"
       - ".github/workflows/crm-push-tests.yml"
