@@ -1994,6 +1994,18 @@ export function HowItWorksScreen() {
         <P><B>Seguridad y deployment:</B> auditoría read-only; no se aplicó DDL, no se cambiaron usuarios/configuración, no se enviaron mensajes ni pagos y no hubo deployment. No usar datos reales hasta cerrar brechas y completar pruebas.</P>
       </Section>
 
+
+      <Section title="COPILOTO V7 — RECONCILIACIÓN DE MIGRACIONES Y PREPARACIÓN DE PROTECCIONES (2026-11-27)">
+        <P><B>Auditoría read-only:</B> Supabase registra tres versiones (20261126024701, 20261126033314, 20261126035245). La rama contiene seis SQL: 20261126024701, 20261126120000, 20261126150000, 20261126170000, 20261126180000 y 20261126190000. Solo coincide el primer archivo con el ledger.</P>
+        <P><B>Efectos confirmados en el esquema activo:</B> las cinco migraciones sin entrada en el ledger tienen columnas/tablas/bucket correspondientes presentes: account_number/photos/crm_messages/crm-client-photos, finance_sync_doc, needs_follow_up, send_state/send_error/send_via/dispatched_at y stop_address. También existen crm_reservations_client_owner_idx y crm_reservations_airport_flight_required, coherentes con el propósito de las dos versiones registradas cuyos archivos faltan en la rama. Esto prueba presencia de efectos, no el SQL/procedimiento original.</P>
+        <P><B>Decisión:</B> no repetir scripts, no insertar manualmente ledger entries y no ejecutar DDL. Recuperar SQL exacto de 20261126033314 y 20261126035245 desde Git/copia verificable; reconstruir la procedencia de los otros cinco cambios y comparar definiciones antes de cualquier nueva migración.</P>
+        <P><B>Storage:</B> crm-client-photos es privado y sus cuatro políticas limitan SELECT/INSERT/UPDATE/DELETE a la carpeta del usuario autenticado. El bucket no tiene límites de tamaño ni allowlist MIME. No reutilizarlo como vault fiscal.</P>
+        <P><B>Protecciones preparadas:</B> Transport y Taxes tendrán aislamiento por unidad además del propietario; Documents tendrá bóveda privada separada por unidad/cliente/expediente, URLs firmadas breves, validación MIME/tamaño, versiones, retención, auditoría y recuperación. Autorización por membresías controladas por servidor; no usar user_metadata editable.</P>
+        <P><B>Pruebas obligatorias:</B> usuarios sintéticos A/B, aislamiento Transport/Taxes, permisos Documents, operaciones Storage, endpoints sin sesión/expirada, MFA, recuperación/revocación, backups/restore y Advisors.</P>
+        <P><B>Estado:</B> revisión de esquema/ledger/RLS/Storage completada en modo read-only; historial divergente confirmado; diseño de protecciones preparado, no implementado ni probado. No se alteró base de datos, Auth, Storage ni producción. Punto 3 sigue abierto.</P>
+        <P><B>Informe:</B> docs/copiloto-v7-reconciliacion-migraciones-y-protecciones-2026-11-27.md</P>
+      </Section>
+
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
