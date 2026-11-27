@@ -1,16 +1,16 @@
 {
   "schema_version": "0.2.0",
   "project": "copiloto-v7",
-  "updated_at": "2026-11-27T22:58:05Z",
+  "updated_at": "2026-11-27T18:30:00-05:00",
   "source_branch": "feat/copiloto-v7-phase1-foundation",
-  "source_commit": "6b40691ded792c16a5f4320ceedff368aae0e62d",
+  "source_commit": "39e669992b1df9a11b258bf1cf7870eb233512bd",
   "environment": {
     "development": "in progress",
-    "railway_review": "SUCCESS: deployment 75cdda75-8cca-4d65-94bf-9447ac4967a8 on 6b40691ded792c16a5f4320ceedff368aae0e62d; no staged changes; unauthenticated recovery and bridge routes both return HTTP 401 as expected",
+    "railway_review": "SUCCESS deployment d80b2339-c9eb-4ffd-9c13-01591d46135b on commit 39e669992b1df9a11b258bf1cf7870eb233512bd; public docs 200; private recovery and Supabase Edge Function unauthenticated requests 401",
     "production": "not authorized"
   },
   "confirmed_state": {
-    "gateway": "Supabase Edge Function agent-gateway v3 active; authenticated machine identity lookup; persistent event/task/message/approval/channel/project state; synthetic DB tests passed; Railway Review bridge and recovery proxy routes deployed; unauthenticated requests rejected with HTTP 401. Authenticated runtime E2E remains unverified.",
+    "gateway": "Supabase Edge Function v4 ACTIVE; Railway review deployment verified; public documentation endpoint 200; private recovery proxy requires individual agent key",
     "event_store": "persistent Supabase tables active; append-only events; synthetic DB checks passed",
     "agent_identities": "ChatGPT and Muse active machine identities; independent 256-bit credentials stored in Supabase Vault; SHA-256 hashes match active identity records",
     "task_queue": "task creation, atomic claim, heartbeat and completion endpoints implemented; synthetic DB test passed",
@@ -66,7 +66,7 @@
       "status": "pending"
     }
   ],
-  "next_authorized_action": "Copy each Vault secret directly into its respective secure runtime; configure ChatGPT Action/connector and Muse runtime; execute authenticated reciprocal E2E. No production release.",
+  "next_authorized_action": "Configure each Vault secret in its matching runtime, install ChatGPT custom Action/connector and Muse tool, then perform authenticated reciprocal E2E. Do not deploy production.",
   "checkpoint_rule": "Future agent checkpoints must be derived from persisted server-stamped events; this seed snapshot is not a dynamic checkpoint.",
   "storage_mode": "supabase-persistent-event-store",
   "event_log": "Supabase public.agent_events; immutable to agents; repository JSON remains versioned seed/snapshot",
@@ -104,14 +104,14 @@
       "status": "pending_muse_secret_setup"
     },
     "typescript": "tsc --noEmit attempted; failed on pre-existing Claris finance/driver model type mismatches and .ts test imports; excluded from mandatory build",
-    "deployment": "Railway review SUCCESS on commit 6b40691ded792c16a5f4320ceedff368aae0e62d",
+    "deployment": "SUCCESS deployment d80b2339-c9eb-4ffd-9c13-01591d46135b on 39e669992b1df9a11b258bf1cf7870eb233512bd",
     "unauthenticated_railway_proxy": {
       "status": "passed",
-      "routes": [
-        "/api/agent-gateway/recovery",
-        "/api/agent-gateway/bridge?op=status"
-      ],
       "http_status": 401
+    },
+    "public_docs_endpoint": {
+      "status": "passed",
+      "http_status": 200
     }
   },
   "database": {

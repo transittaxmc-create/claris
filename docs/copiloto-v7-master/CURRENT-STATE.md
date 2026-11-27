@@ -290,3 +290,12 @@
 - Pendiente bloqueante del Gateway: ejecutar GET continuity/status autenticado con las claves individuales sin exponerlas, demostrar ChatGPT→Gateway y Muse→Gateway, completar message.send + inbox + ACK HTTP entre ambos runtimes y probar recuperación real desde una conversación nueva. No se ha demostrado conexión automática del runtime ChatGPT ni de Muse.
 - Pendiente técnico general: typecheck independiente, visual QA responsive, auditoría de seguridad restante y cierre de etapas de producto. SMS/Amani y WhatsApp/ZapClaw siguen estados independientes not_connected/unknown. Sin envío externo.
 - Alcance del deploy: Railway Review únicamente. No merge a main, no Vercel production, no clientes/datos reales, mensajes reales ni pagos.
+
+
+## 27. Final review verification — 2026-11-27
+- Final Railway review deployment: SUCCESS, deployment d80b2339-c9eb-4ffd-9c13-01591d46135b, source commit 39e669992b1df9a11b258bf1cf7870eb233512bd.
+- Live public GET /api/agent-gateway/continuity returned HTTP 200 and correctly reports access=public-documentation-only, eventStore=private-supabase-agent-gateway, writeOperations=authenticated-only, plus the Edge Function base URL. It returns versioned docs only, not private task/event data.
+- Live GET /api/agent-gateway/recovery without a key returned HTTP 401 agent_authentication_required. Direct Supabase Edge Function GET without a key returned HTTP 401 agent_authentication_failed.
+- Vault secret/hash checks passed for both ChatGPT and Muse; raw keys remain in Vault only. Retrieve them directly into their respective runtime secret stores as documented.
+- Remaining external acceptance gates: authenticated request from ChatGPT and Muse, reciprocal message ACK, fresh-chat ChatGPT Action/connector setup, Muse runtime configuration. These require the two agent runtimes to load their separate Vault secrets; not claimed complete.
+- No production deployment, main merge, real customer data, external communications or payment action.

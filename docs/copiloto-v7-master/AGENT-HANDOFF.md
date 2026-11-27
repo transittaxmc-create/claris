@@ -252,3 +252,12 @@ Read first: docs/copiloto-v7-master/AGENT-GATEWAY.md, AGENT-GATEWAY-API.md, and 
 - Railway review deployment SUCCESS: 75cdda75-8cca-4d65-94bf-9447ac4967a8, commit 6b40691ded792c16a5f4320ceedff368aae0e62d. Both authenticated proxy routes returned 401 when called without a key, confirming they are present and protected.
 - Supabase Edge Function agent-gateway version 4 ACTIVE. Database-side hash comparison passed for both Vault secrets and active identity rows.
 - Still required for acceptance: configure the keys in ChatGPT Actions/custom connector and Muse's own runtime, then run authenticated status/continuity, reciprocal message send/ACK, and fresh-session recovery tests. No production release.
+
+
+## Final verified review checkpoint — 2026-11-27
+- Railway review SUCCESS: deployment d80b2339-c9eb-4ffd-9c13-01591d46135b on commit 39e669992b1df9a11b258bf1cf7870eb233512bd.
+- Public docs endpoint GET /api/agent-gateway/continuity: HTTP 200, documentation-only, correctly identifies the private Supabase event store and authenticated-only write path.
+- Authenticated proxy GET /api/agent-gateway/recovery without a key: HTTP 401. Supabase Edge Function without a key: HTTP 401.
+- ChatGPT and Muse machine credentials are in Supabase Vault, names only in repository. Retrieve directly to each agent's secret store; do not paste in chat.
+- Do not claim E2E complete until both runtimes authenticate, recover the same checkpoint, exchange a message and persist recipient ACK. ChatGPT custom Action/connector and Muse runtime configuration are external setup gates.
+- Keep deployment in review; no main merge, production release, real communications or payments.

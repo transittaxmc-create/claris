@@ -2191,6 +2191,7 @@ export function HowItWorksScreen() {
         <P><B>Persistent operations:</B> continuity read, task create/claim/heartbeat/complete, append-only events, checkpoint projection, internal agent messages and recipient acknowledgements, approval requests. Claim/heartbeat use atomic database functions and leases.</P>
         <P><B>Verified:</B> DB synthetic claim/heartbeat/complete, message acknowledgement and event immutability; browser roles cannot read agent event tables; unauthenticated Edge Function request returns 401. Authenticated HTTP E2E and independent TypeScript check remain open.</P>
         <P><B>Cold-start recovery:</B> call the authenticated continuity operation at the beginning of each new agent session. Configure the agent's individual key and tool/connector using AGENT-GATEWAY-API.md and AGENT-RECOVERY-PROMPT.md. A new ChatGPT conversation without that connector/tool cannot silently access private records.</P>
+        <P><B>Final review proof:</B> deployment d80b2339-c9eb-4ffd-9c13-01591d46135b on commit 39e6699 reached SUCCESS; public docs endpoint returned 200; recovery proxy and Supabase Edge Function rejected unauthenticated calls with 401. Agent runtime authenticated E2E remains pending key installation.</P>
         <P><B>Channel boundary:</B> SMS/Amani and WhatsApp/ZapClaw are separate records and remain not_connected/unknown. No external send or delivery claim is enabled.</P>
       </Section>
       <Section title="36. AGENT GATEWAY — Railway Review verification checkpoint (2026-11-27)">
