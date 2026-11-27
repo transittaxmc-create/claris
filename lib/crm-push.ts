@@ -232,7 +232,9 @@ export async function sendCrmPushToAll(payload: {
   url?: string
   tag?: string
 }) {
-  const subscriptions = (await readSubscriptions()).filter((item) => typeof item.userId === "string" && item.userId.length > 0)
+  const allSubscriptions = await readSubscriptions()
+  const subscriptions = allSubscriptions.filter((item) => typeof item.userId === "string" && item.userId.length > 0)
+  const unownedLegacy = allSubscriptions.filter((item) => !item.userId)
   const keep: StoredCrmPushSubscription[] = []
   let sent = 0
   let failed = 0
@@ -248,7 +250,7 @@ export async function sendCrmPushToAll(payload: {
       failed += 1
     }
   }
-  if (keep.length !== subscriptions.length) await writeSubscriptions(keep)
+  if (keep.length !== subscriptions.length) await writeSubscriptions([...unownedLegacy, ...keep])
   return { registered: subscriptions.length, sent, failed, removedExpired: subscriptions.length - keep.length }
 }
 
