@@ -169,3 +169,11 @@
 - Próxima acción: cerrar QA visual real de las rutas Preview y Go en escritorio/iPhone; luego continuar con recuperación de procedencia SQL de `20261126033314` y `20261126035245` y diseño MFA/memberships/RLS/Storage. No ejecutar DDL mientras falte el SQL/procedencia. Después entregar Clients + Transport + Communications persistente, con datos sintéticos.
 - Restricciones intactas: feature branch solamente; no merge a `main`, no Vercel production, no datos reales, no comunicaciones/pagos reales; no tocar Supabase financiero/Plaid `zrcnpmipdhpjdjkfrrgt`.
 - Esta sesión solo revisó y consolidó continuidad; no se hicieron pruebas push remotas. Push registration/delivery remota sigue **no verificada**.
+
+
+## 16. Corrección de proveedor SMS — 2026-11-27
+- Corrección explícita del usuario: **NO se está usando Twilio y NO debe configurarse Twilio para Copiloto V7**. El proveedor correcto que el usuario identifica es **ZapClaw** (escrito con “Claw”, no “Cloud”). Esta decisión prevalece sobre la sección histórica que proponía “Twilio primero”.
+- Estado técnico confirmado en el código inspeccionado: `POST /api/crm/send` no contacta a ningún carrier y solo encola; `POST /api/crm/send/dispatch` devuelve `501 phone_dispatch_not_connected`. En Railway review, el estado documentado más reciente para `/api/crm/send` es `503 crm_cloud_not_configured`. No hay evidencia de SMS entrante/saliente operativo desde Copiloto.
+- ZapClaw todavía NO está verificado ni conectado al CRM. Antes de programar el adaptador, confirmar la documentación/API/webhooks oficiales de ZapClaw, el mecanismo de autenticación, estados/callbacks, límites y compatibilidad con el número/cuenta existente. No asumir que una API de SMS existe ni que ZapClaw es intercambiable con Twilio.
+- No pedir ni copiar tokens al chat. La credencial previamente expuesta se considera comprometida; rotarla desde el panel oficial del proveedor antes de cualquier uso y guardarla únicamente como secreto en el entorno autorizado, después de verificar dependencias.
+- Próximo paso: investigar ZapClaw (no Twilio), mapear capacidades reales y diseñar envío/recepción, callbacks, opt-out STOP/HELP, consentimiento, idempotencia, auditoría y aprobación humana. Mantener pruebas sintéticas/sandbox; no enviar mensajes reales ni cambiar números/cuentas sin autorización expresa.
