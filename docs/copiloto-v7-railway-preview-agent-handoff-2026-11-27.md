@@ -38,15 +38,15 @@ Test desktop and iPhone responsive UI, main navigation, Communications local dra
 Synthetic data only. Do not add production Supabase secrets, real customer data, live messaging/payment credentials or production database mutations. No live messages, automatic acceptance, tax filing, Square transactions, or production deployment. Never merge to main without explicit user approval.
 
 ## Honest status
-Points 4–8 have demo UI, not verified production integrations. Point 3 security/database reconciliation remains open. Points 9–10 remain open. V7 Railway deployment is SUCCESS and runtime Ready; temporary URL exists. However, page/browser verification and visual QA remain unverified; TypeScript validation was skipped and dedicated tests/typecheck are pending. Push registration and notification tests are not verified. No production change, no merge.
+Points 4–8 have demo UI, not verified production integrations. Point 3 security/database reconciliation remains open. Points 9–10 remain open. V7 Railway deployment is SUCCESS and runtime Ready; temporary URL exists. However, page/browser visual QA remains unverified. A clean feature-branch clone using Corepack pnpm 12.3.4 and frozen lockfile install ran `pnpm run test:crm-push`: **4/4 passed**. `pnpm exec tsc --noEmit` **failed with 66 errors** across legacy app/API files and the test import extension; do not attribute all errors to V7 without comparing `main`, and do not suppress them. Next build skipped type validation. Push registration and notification tests are not verified. No production change, no merge.
 
 ## Next agent sequence
 1. Read §32 in Copiloto → How This Works and docs for points 9–10.
 2. Inspect current branch HEAD and latest GitHub Actions run.
 3. Authorization is now resolved; confirm Railway source remains attached to exact feature branch.
 4. Deployment is SUCCESS and SHA is verified; open https://copiloto-v7-preview-review.up.railway.app in a real browser and confirm page rendering/navigation.
-5. Run `pnpm run test:crm-push` and `pnpm exec tsc --noEmit`; fix failures on branch and document each result.
-6. Complete desktop/iPhone visual QA, capture evidence and document any defects.
+5. Test result: `pnpm run test:crm-push` passed 4/4. Typecheck result: `pnpm exec tsc --noEmit` failed with 66 errors. First compare the same typecheck on `main` to establish baseline; then classify errors introduced by the feature branch versus existing app debt. Fix only with careful regression coverage; never disable strict checks to make green.
+6. Complete desktop/iPhone visual QA, capture evidence and document any defects. HTTP probe to preview returned 200 and page HTML title includes Copiloto V7; visual screenshot/browser interaction remains pending because no browser binary was available in the review desktop.
 7. Complete desktop/iPhone QA and capture evidence.
 8. Update §32 and docs with commit/deployment state, URL, push registration status and notification test status.
 9. Prepare PR/review; wait for explicit merge approval.
