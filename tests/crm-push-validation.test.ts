@@ -52,6 +52,6 @@ test("rejects insecure, credentialed, and nonstandard-port endpoints", () => {
 test("rejects malformed subscriptions and invalid key encodings", () => {
   assert.equal(isValidCrmPushSubscription(null), false)
   assert.equal(isValidCrmPushSubscription([]), false)
-  assert.equal(isValidCrmPushSubscription({ ...validSubscription("https://fcm.googleapis.com/push"), keys: { p256dh: "x".repeat(90), auth: "y".repeat(20) } }), false)
+  assert.equal(isValidCrmPushSubscription({ ...validSubscription("https://fcm.googleapis.com/push"), keys: { p256dh: "!".repeat(90), auth: "B".repeat(22) } }), false)
   assert.equal(isValidCrmPushSubscription({ ...validSubscription("https://fcm.googleapis.com/push"), expirationTime: Number.NaN }), false)
 })
