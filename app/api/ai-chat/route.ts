@@ -210,7 +210,7 @@ YOUR MISSION:
               `  "matches": [ { "tripId": "the exact trip ID from the list", "bankAmount": 85.66, "note": "UBER PAYMENT" } ],\n` +
               `  "differences": [ "short descriptions of discrepancies or unmatched transactions" ]\n` +
               `}\n` +
-              `REGLAS:\n` +
+              `RULES:\n` +
               `- Only include matches for transactions that match a trip by amount (±1%) and date (±2 days). Use the exact ID from the RECENT TRIPS list.\n` +
               `- bankAmount = the amount the bank paid.\n` +
               `- differences: list every item that does NOT reconcile.\n` +
@@ -229,8 +229,8 @@ YOUR MISSION:
       contents.push({
         role: "user",
         parts: [{ text:
-          `[ACCIÓN FINANCIERA OBLIGATORIA] El usuario quiere crear pagos o ingresos programados. Respond with ONLY valid JSON using these exact keys:\n` +
-          `{ "reply": "confirmación breve", "schedules": [ { "kind": "expense" o "income", "description": "...", "category": "...", "amount": 0, "startDate": "YYYY-MM-DD", "frequency": "once"|"daily"|"weekly"|"monthly"|"annual", "nextDate": "YYYY-MM-DD", "active": true } ], "needsConfirmation": false }\n` +
+          `[REQUIRED FINANCIAL ACTION] The user wants to create scheduled payments or income. Respond with ONLY valid JSON using these exact keys:\n` +
+          `{ "reply": "brief confirmation in the language used by the user", "schedules": [ { "kind": "expense" or "income", "description": "...", "category": "...", "amount": 0, "startDate": "YYYY-MM-DD", "frequency": "once"|"daily"|"weekly"|"monthly"|"annual", "nextDate": "YYYY-MM-DD", "active": true } ], "needsConfirmation": false }\n` +
           `RULES: interpret natural-language input. Use the current date ${new Date().toISOString().slice(0, 10)}. Never invent amounts.`
         }],
       })
@@ -339,7 +339,7 @@ YOUR MISSION:
       }
     }
 
-    console.log(`[ai-chat] Respondido con éxito en ${Date.now() - start}ms`)
+    console.log(`[ai-chat] Response generated successfully in ${Date.now() - start}ms`)
 
     return NextResponse.json({
       success: true,
