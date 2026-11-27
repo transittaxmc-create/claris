@@ -2215,6 +2215,10 @@ export function HowItWorksScreen() {
         <P><B>Breakdown:</B> 69 existing application/test diagnostics plus 7 Deno Edge Function source diagnostics because the root tsconfig includes the Deno runtime file. The historical 65/66 discrepancy is still unresolved; no errors were suppressed.</P>
         <P><B>Schema source:</B> recovered catalog baseline includes the append-only event trigger and function; source SQL was reconstructed and versioned, not applied to Supabase.</P>
       </Section>
+      <Section title="40. LATEST SOURCE TREE TYPECHECK — 2026-11-27">
+        <P><B>Source HEAD:</B> 32e5a4509de088c473a1fc3124f0737f96a6d5db. GitHub Actions run 46081558172; pnpm exec tsc --noEmit; Node v24.22.3, pnpm 12.3.4, TypeScript 5.7.3; exit code 2; 76 diagnostics.</P>
+        <P><B>Breakdown:</B> 69 app/test diagnostics plus 7 Deno Edge Function source typing diagnostics. Historical 65/66 discrepancy remains unresolved. Later continuity documentation edits do not change TypeScript source.</P>
+      </Section>
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>

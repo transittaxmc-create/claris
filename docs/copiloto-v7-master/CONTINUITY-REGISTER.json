@@ -1,9 +1,9 @@
 {
   "schema_version": "0.2.0",
   "project": "copiloto-v7",
-  "updated_at": "2026-11-27T23:17:30Z",
+  "updated_at": "2026-11-27T23:18:30Z",
   "source_branch": "feat/copiloto-v7-phase1-foundation",
-  "source_commit": "32c379124708a67278c565b37cd05c4deadf7aa5",
+  "source_commit": "32e5a4509de088c473a1fc3124f0737f96a6d5db",
   "environment": {
     "development": "in progress",
     "railway_review": "SUCCESS deployment 423f5d02-3547-47f0-8557-f4e64829df52 on commit 9867adf543e07b7624d2d1b5c378e8b3c65edfb3; public continuity endpoint 200 reports eventStore=private-supabase-agent-gateway and writeOperations=authenticated-only; unauthenticated recovery and bridge return 401.",
@@ -67,7 +67,7 @@
       "result": "76 diagnostics on current checked commit 32c379124708a67278c565b37cd05c4deadf7aa5; exit 2; 69 app/test + 7 Deno-source"
     }
   ],
-  "next_authorized_action": "Resolve TypeScript baseline and Deno/app compiler separation; then rotate credentials only after a secure handoff channel and runtime secret-store targets are specified; then authenticated ChatGPT/Muse continuity and reciprocal message/inbox/ACK tests. No production or external channels.",
+  "next_authorized_action": "Resolve TypeScript baseline and Deno/app compiler separation; then rotate credentials only after architecture reconciliation (Supabase Auth/JWT versus deployed x-agent-key) and secure handoff/runtime secret stores are specified; then authenticated reciprocal E2E. No production or external channels.",
   "checkpoint_rule": "Future agent checkpoints must be derived from persisted server-stamped events; this seed snapshot is not a dynamic checkpoint.",
   "storage_mode": "supabase-persistent-event-store",
   "event_log": "Supabase public.agent_events; immutable to agents; repository JSON remains versioned seed/snapshot",
@@ -168,15 +168,15 @@
     "fresh_conversation_recovery": "PENDING",
     "independent_typescript_check": {
       "status": "FAIL",
-      "commit": "32c379124708a67278c565b37cd05c4deadf7aa5",
-      "workflow_run": 46081404731,
+      "commit": "32e5a4509de088c473a1fc3124f0737f96a6d5db",
+      "workflow_run": 46081558172,
       "command": "pnpm exec tsc --noEmit",
-      "node": "24",
+      "node": "v24.22.3",
       "pnpm": "12.3.4",
       "typescript": "5.7.3",
       "exit_code": 2,
       "diagnostic_count": 76,
-      "comparison": "69 pre-existing app/test diagnostics plus 7 Deno Edge Function diagnostics from the recovered source included in root tsconfig",
+      "comparison": "69 existing app/test diagnostics plus 7 Deno Edge Function diagnostics from the recovered source included in root tsconfig",
       "historical_65_66_divergence": "NOT RESOLVED"
     },
     "public_continuity_endpoint": {

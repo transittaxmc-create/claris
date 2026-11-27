@@ -93,3 +93,7 @@ The deployed Edge Function v4 source and the live catalog definitions are being 
 
 ## Current HEAD checkpoint — 2026-11-27
 The deployed Supabase Edge Function v4 source and catalog-reconstructed migration baselines are versioned in the repository. The recovered schema includes the event append-only trigger `agent_events_no_update` and trigger function `agent_events_reject_mutation`. Independent CI typecheck on current HEAD `32c379124708a67278c565b37cd05c4deadf7aa5` failed with 76 diagnostics (69 app/test and 7 Deno source context); command `pnpm exec tsc --noEmit`, Node 24, pnpm 12.3.4, TypeScript 5.7.3, exit 2. No production deploy or external channel actions.
+
+
+## Latest typecheck evidence
+Source tree commit `32e5a4509de088c473a1fc3124f0737f96a6d5db` was independently checked by GitHub Actions run 46081558172: `pnpm exec tsc --noEmit`, Node v24.22.3, pnpm 12.3.4, TypeScript 5.7.3, exit code 2, 76 diagnostics (69 app/test + 7 Deno source typing diagnostics). The 65/66 discrepancy remains unresolved.

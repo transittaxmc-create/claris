@@ -323,3 +323,9 @@
 - Command: `pnpm exec tsc --noEmit`; Node 24; pnpm 12.3.4; TypeScript 5.7.3; install `pnpm install --frozen-lockfile`; process exit code 2.
 - Exact diagnostic count: **76**. Same count as prior run 46081202819 on 7ae8ae5. 69 diagnostics are the existing app/test errors; 7 are Deno Edge Function errors caused by the root tsconfig including `supabase/functions/agent-gateway/index.ts` (Deno global and npm: import typing/inferred any). No diagnostics were suppressed. Historical 65/66 discrepancy remains unresolved.
 - The core migration reconstruction now includes the `agent_events_reject_mutation()` trigger function and `agent_events_no_update` trigger recovered from live catalog.
+
+
+## 23. Typecheck verification on source HEAD 32e5a450 (2026-11-27)
+- GitHub Actions run 46081558172 checked exact source HEAD `32e5a4509de088c473a1fc3124f0737f96a6d5db` after the master docs checkpoint.
+- Command `pnpm exec tsc --noEmit`; Node `v24.22.3`; pnpm `12.3.4`; TypeScript `5.7.3`; exit code 2; exactly **76** diagnostics.
+- 69 application/test diagnostics remain from the earlier set; 7 additional diagnostics are Deno runtime/type-resolution issues because the root tsconfig includes `supabase/functions/agent-gateway/index.ts`. The historic 65/66 divergence is not resolved. This is the latest exact source-tree check; subsequent changes in this record are documentation-only.

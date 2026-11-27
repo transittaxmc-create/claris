@@ -284,3 +284,8 @@ Read first: docs/copiloto-v7-master/AGENT-GATEWAY.md, AGENT-GATEWAY-API.md, and 
 - Independent typecheck on this exact HEAD: GitHub Actions run 46081404731; `pnpm exec tsc --noEmit`; Node 24 / pnpm 12.3.4 / TypeScript 5.7.3; exit 2; 76 diagnostics (69 app/test + 7 Deno-source diagnostics). Historical 65/66 issue remains unresolved.
 - Railway Review endpoint remains confirmed on deployment 423f5d02/commit 9867adf; public continuity 200 reports private persistent event store and authenticated-only writes; recovery/bridge anonymous requests 401.
 - Credential rotation and authenticated E2E remain blocked pending secure channel designation and supported runtime secret configuration. No real SMS/WhatsApp, no production.
+
+
+## Typecheck evidence — latest exact source tree
+- Source HEAD checked: `32e5a4509de088c473a1fc3124f0737f96a6d5db`, GitHub Actions run 46081558172.
+- `pnpm exec tsc --noEmit`; Node v24.22.3; pnpm 12.3.4; TypeScript 5.7.3; exit 2; 76 diagnostics. 69 app/test + 7 Deno source typing diagnostics. The later continuity-register/How This Works edits are documentation-only and do not alter TypeScript source.
