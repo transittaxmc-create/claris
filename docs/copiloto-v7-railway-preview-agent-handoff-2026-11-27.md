@@ -23,13 +23,13 @@ Use Railway only as a temporary V7 review environment. Preserve original Claris 
 ## Verified current Railway state
 **Authorization resolved:** Miguel confirmed GitHub authorization was completed. Railway `connect_service_source` now succeeds. Service source is repo `transittaxmc-create/claris`, branch `feat/copiloto-v7-phase1-foundation`, follows branch (commitSha null). The earlier **User does not have access to the repo** error is resolved.
 
-**Current V7 deployment:** `6c2ac0c8-725b-489c-ae86-a654bea2c3fd`, branch `feat/copiloto-v7-phase1-foundation`, commit `faf2350ffcc3e4e5166fa4f64d1d12671d09924a`. Last observed status: **BUILDING**. The older `db880409-f594-4692-b106-35dbe7ba4380` SUCCESS on `main` remains historical and is not the V7 preview. No URL/domains yet.
+**Current V7 deployment:** `6c2ac0c8-725b-489c-ae86-a654bea2c3fd`, branch `feat/copiloto-v7-phase1-foundation`, commit `faf2350ffcc3e4e5166fa4f64d1d12671d09924a`. Railway now reports **SUCCESS** in `iad`; runtime log confirms `next start` and `Ready` on port 8080. Temporary Railway domain: https://copiloto-v7-preview-review.up.railway.app (target port 8080). The older `db880409-f594-4692-b106-35dbe7ba4380` SUCCESS on `main` remains historical and is not the V7 preview.
 
 ## Required unblock
 Grant Railway's GitHub App access to repository `transittaxmc-create/claris` in GitHub Settings → Applications → Installed GitHub Apps / Railway, or reconnect correct GitHub integration. Then connect Railway service to exact branch `feat/copiloto-v7-phase1-foundation`. Verify service source branch and deployment commit SHA before calling it V7.
 
 ## Build/test plan
-Branch package.json declares pnpm@12.3.4, Next.js 16.3.3, React 19. Railway Railpack detected Node 26.13.1/pnpm 12.3.4 and ran `pnpm install --frozen-lockfile --prefer-offline`, `pnpm run build`, with start command `pnpm run start`. Logs confirm install completed, Next.js production compilation succeeded and static generation completed 10/10. Next explicitly said **Skipping validation of types**; this is not a TypeScript pass. Deployment remains BUILDING at last check; no runtime/deploy logs, URL or domains. Run `pnpm run test:crm-push` and `pnpm exec tsc --noEmit` independently after deployment settles, then verify runtime health. Never claim success without status/log evidence.
+Branch package.json declares pnpm@12.3.4, Next.js 16.3.3, React 19. Railway Railpack detected Node 26.13.1/pnpm 12.3.4 and ran `pnpm install --frozen-lockfile --prefer-offline`, `pnpm run build`, with start command `pnpm run start`. Logs confirm install completed, Next.js production compilation succeeded, static generation completed 10/10, image exported, container booted, and Next.js reported Ready on port 8080. Railway deployment status is SUCCESS. Next explicitly said **Skipping validation of types**; this is not a TypeScript pass. `pnpm run test:crm-push` and `pnpm exec tsc --noEmit` remain pending. Domain exists, but browser fetch was inaccessible to the web preview tool and Railway HTTP logs showed no requests, so page rendering/visual QA remain unverified. Never claim success without status/log evidence.
 
 ## Visual QA after a real V7 deployment
 Test desktop and iPhone responsive UI, main navigation, Communications local draft and NOT SENT approval state, Transport sample records, Taxes checklist, Work Opportunities classifications/missing data/no send, Square demo-only sections, reload, console/network errors, overflow and basic accessibility. Capture evidence and defects.
@@ -38,15 +38,15 @@ Test desktop and iPhone responsive UI, main navigation, Communications local dra
 Synthetic data only. Do not add production Supabase secrets, real customer data, live messaging/payment credentials or production database mutations. No live messages, automatic acceptance, tax filing, Square transactions, or production deployment. Never merge to main without explicit user approval.
 
 ## Honest status
-Points 4–8 have demo UI, not verified production integrations. Point 3 security/database reconciliation remains open. Points 9–10 remain open. V7 branch deployment is BUILDING (not READY/SUCCESS); Next compilation/static generation succeeded, but types were skipped and dedicated tests/typecheck are pending. No V7 URL, runtime health, visual QA, push registration or notification test verified. No production change, no merge.
+Points 4–8 have demo UI, not verified production integrations. Point 3 security/database reconciliation remains open. Points 9–10 remain open. V7 Railway deployment is SUCCESS and runtime Ready; temporary URL exists. However, page/browser verification and visual QA remain unverified; TypeScript validation was skipped and dedicated tests/typecheck are pending. Push registration and notification tests are not verified. No production change, no merge.
 
 ## Next agent sequence
 1. Read §32 in Copiloto → How This Works and docs for points 9–10.
 2. Inspect current branch HEAD and latest GitHub Actions run.
 3. Authorization is now resolved; confirm Railway source remains attached to exact feature branch.
-4. Recheck deployment `6c2ac0c8-725b-489c-ae86-a654bea2c3fd` until terminal status and verify deployed SHA.
+4. Deployment is SUCCESS and SHA is verified; open https://copiloto-v7-preview-review.up.railway.app in a real browser and confirm page rendering/navigation.
 5. Run `pnpm run test:crm-push` and `pnpm exec tsc --noEmit`; fix failures on branch and document each result.
-6. After successful deploy and safe config, generate and verify temporary URL.
+6. Complete desktop/iPhone visual QA, capture evidence and document any defects.
 7. Complete desktop/iPhone QA and capture evidence.
 8. Update §32 and docs with commit/deployment state, URL, push registration status and notification test status.
 9. Prepare PR/review; wait for explicit merge approval.
