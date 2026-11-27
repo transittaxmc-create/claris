@@ -23,4 +23,4 @@ The new route is isolated from `app/page.tsx`, which continues to render the exi
 Authentication/authorization for this route, persistent storage, live Transport and Taxes workflows, real CRM/client/document data, message connectors, OCR, notifications, opportunity ingestion/parser/scoring, audit persistence, and provider integrations.
 
 ## Verification status
-Source has been committed to the feature branch. A build, Vercel Preview deployment, browser rendering, mobile/desktop QA, and automated interaction tests remain pending until verified. Production is unchanged.
+Source has been committed to the feature branch. A Vercel Preview deployment was attempted but Vercel rejected it with HTTP 402 because the team exceeded its free daily deployment API limit (more than 100 deployments; retry after 24 hours). No deployment ID or Preview URL was created. The project's latest deployment is an older READY deployment and does not contain this branch. Build logs, browser rendering, mobile/desktop QA, and automated interaction tests remain pending. Production is unchanged.
