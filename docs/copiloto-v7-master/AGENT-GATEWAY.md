@@ -97,3 +97,9 @@ The deployed Supabase Edge Function v4 source and catalog-reconstructed migratio
 
 ## Latest typecheck evidence
 Source tree commit `32e5a4509de088c473a1fc3124f0737f96a6d5db` was independently checked by GitHub Actions run 46081558172: `pnpm exec tsc --noEmit`, Node v24.22.3, pnpm 12.3.4, TypeScript 5.7.3, exit code 2, 76 diagnostics (69 app/test + 7 Deno source typing diagnostics). The 65/66 discrepancy remains unresolved.
+
+
+## Secure credential handoff and runtime readiness — 2026-11-27
+- Amani Secure Vault card is already created per Issue #87 comment #14. Miguel retrieves the Muse secret from `vault.decrypted_secrets` using the query in `AGENT-GATEWAY-API.md` and deposits it directly into the existing card. Never create another card or expose the value in chat/docs/logs.
+- ChatGPT side is not configured: the current conversation runtime has no supported persistent secret store or private custom-header injection for subsequent conversations. Authenticated ChatGPT continuity remains BLOCKED until a supported connector/runtime integration exists.
+- No secret rotation, no key retrieval, no authentication rebuild. The Auth+JWT versus machine-key+hash decision belongs to Miguel.
