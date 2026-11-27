@@ -119,3 +119,10 @@
 - No existe ingestión WhatsApp conectada. WhatsApp Personal/grupos no se pueden leer por API oficial; ZapClaw Coexistence no lee grupos personales. No scraping de WhatsApp Web. Captura viable para demo: compartir/reenviar/manual capture con consentimiento y revisión humana.
 - Evaluación de oportunidad todavía no está conectada a datos reales ni motor de rentabilidad; demo no verifica disponibilidad, deadhead, tolls, combustible, tiempo, fare ni margen real.
 - Resultado: etapa 7 NO CERRADA. Diseño local disponible; falta intake manual seguro y almacenamiento con audit trail, clasificador y evaluación de rentabilidad con datos sintéticos, y conectores oficiales donde soportados. No se envió ni aceptó ninguna oferta.
+
+## 15. Hito 8 — Integraciones SMS/WhatsApp/email/push (2026-11-27)
+- Railway review no tiene CRM Supabase URL/key ni credenciales de Twilio/WhatsApp/email/push. /api/crm/push/config devuelve enabled=false, publicKey=null.
+- POST /api/crm/send devuelve 503 crm_cloud_not_configured en preview; el código solo crea/valida outbox queued y no contacta carrier. POST /api/crm/send/dispatch devuelve 501 phone_dispatch_not_connected. No hay SMS enviado.
+- WhatsApp Business API/Coexistence no verificada ni conectada. WhatsApp Personal/grupos no se pueden leer mediante API oficial; no scraping. Email no conectado. ZapClaw no verificado y token previo comprometido requiere rotación antes de cualquier uso.
+- Push routes existen pero no VAPID/secret config; no hay registro remoto ni delivery test ni app-closed proof. Tests locales de validación 4/4 no demuestran envío remoto.
+- Resultado: etapa 8 NO CERRADA. Falta credenciales/proveedores, webhooks autenticados, persistencia de subscriptions, consentimiento/opt-out, pruebas Sandbox/test numbers, idempotencia, logs y aprobación humana. No se enviaron mensajes ni notificaciones.
