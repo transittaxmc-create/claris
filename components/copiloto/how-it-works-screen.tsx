@@ -1949,6 +1949,15 @@ export function HowItWorksScreen() {
         <P><B>Verification state:</B> source code has been written to the feature branch. TypeScript/Next.js build, Vercel Preview deployment, browser rendering, responsive-device QA and automated interaction tests are still pending until independently verified. No production deployment or database change was made.</P>
         <P><B>Next step:</B> run a Preview deployment from this exact branch, inspect build logs and route availability, then perform visual and interaction QA. Retry only after Vercel's 24-hour limit window and record the deployment URL and exact READY/BUILDING/FAILED state only after Vercel confirms it.</P>
       </Section>
+\n
+      <Section title="26. COPILOTO V7 — INTERACTIVE WORKSPACE MODULES & BUILD CHECK (2026-11-27)">
+        <P><B>Implemented in preview source:</B> Transport now has a sample trip ledger and local add-trip interaction; Taxes has an illustrative intake/documents/preparation workflow summary; Communications has a searchable sample inbox and local read/unread state; Clients has a local sample directory and add-sample-client interaction; Documents has a metadata-only sample register and local mark-reviewed action. Work Opportunities already has a sample queue and local follow-up marker. All these changes remain isolated to the preview route.</P>
+        <P><B>Data boundary:</B> all interactions are in browser component state and are not persisted. No Supabase/CRM connection, real customer/tax data, document upload, messaging provider, SMS/WhatsApp dispatch, payment provider or production record is accessed. No message can be sent and no trip/job is accepted.</P>
+        <P><B>CI attempt:</B> added <B>.github/workflows/copiloto-v7-preview-build.yml</B> to install the locked pnpm dependencies, run the existing synthetic CRM push validation test and run the Next.js production build on pushes to this branch. GitHub's commit workflow-runs lookup returned no workflow runs for the workflow commit; therefore CI has not been observed running and no test/build pass is claimed.</P>
+        <P><B>Preview state:</B> Vercel Preview creation remains blocked by the team's HTTP 402 free daily deployment API quota response (retry after 24 hours). No V7 Preview URL or deployment ID exists yet. Existing production deployment is unchanged.</P>
+        <P><B>Files added/changed in this step:</B> <B>app/copiloto-v7-preview/page.tsx</B>; <B>.github/workflows/copiloto-v7-preview-build.yml</B>; this manual and the V7 preview workspace document. Feature branch only.</P>
+        <P><B>Next:</B> verify the CI workflow actually starts and capture its real job result; resolve compile/test errors if any; then retry Vercel Preview after quota reset and complete browser/mobile QA. Only after this shell is validated should persistent, authenticated backend workflows be implemented.</P>
+      </Section>
 \n      <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
