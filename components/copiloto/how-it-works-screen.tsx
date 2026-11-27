@@ -1540,7 +1540,8 @@ export function HowItWorksScreen() {
           must NOT bypass registration or pretend that persistence succeeded. The hardening
           branch now validates trusted provider hostnames, blocks redirects, binds each saved
           subscription to the authenticated CRM owner, and only permits that owner to test or
-          remove their registered device. No live push was sent during this audit; physical
+          remove their registered device. Legacy unowned entries are preserved in the encrypted
+          store but are excluded from broadcasts until safely re-registered by an owner. No live push was sent during this audit; physical
           delivery remains unverified until the Blob store works and a clearly labeled test is
           explicitly run on the owner's device.
         </P>
