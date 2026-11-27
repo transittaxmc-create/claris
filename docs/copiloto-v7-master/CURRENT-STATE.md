@@ -329,3 +329,11 @@
 - GitHub Actions run 46081558172 checked exact source HEAD `32e5a4509de088c473a1fc3124f0737f96a6d5db` after the master docs checkpoint.
 - Command `pnpm exec tsc --noEmit`; Node `v24.22.3`; pnpm `12.3.4`; TypeScript `5.7.3`; exit code 2; exactly **76** diagnostics.
 - 69 application/test diagnostics remain from the earlier set; 7 additional diagnostics are Deno runtime/type-resolution issues because the root tsconfig includes `supabase/functions/agent-gateway/index.ts`. The historic 65/66 divergence is not resolved. This is the latest exact source-tree check; subsequent changes in this record are documentation-only.
+
+
+## 25. Amani Secure Vault card and ChatGPT runtime gate — 2026-11-27
+- Issue #87 comment #14 confirms the Amani Secure Vault intake card already exists under connector `custom.copiloto-agent-gateway`, for identity `claude/amani` and header `x-agent-key`. Do not create another channel. Miguel will retrieve `copiloto_v7_muse_agent_key` directly from the CRM Supabase Vault using the query in `AGENT-GATEWAY-API.md`, then deposit it directly into that existing card. No secret was retrieved, copied, or displayed in this session.
+- No credential was re-issued. Do not extract secret values into chat, logs, repository, or documents.
+- ChatGPT runtime is BLOCKED: this conversation runtime has no supported persistent secret store or mechanism to inject a private `x-agent-key` header into subsequent/fresh conversations. Do not claim the ChatGPT key is configured. A supported ChatGPT connector/runtime credential path is still required.
+- Authentication architecture remains Miguel's decision. The deployed machine-key + SHA-256 implementation is not silently converted to or declared equivalent to Supabase Auth + JWT. No auth rebuild is authorized here.
+- No production, main merge, DDL, real messages, SMS, WhatsApp, or payments.
