@@ -29,8 +29,8 @@ Actúa como responsable técnico (tech lead). No reinicies el trabajo ni vuelvas
 - Railway preview SUCCESS: deployment 6c2ac0c8-725b-489c-ae86-a654bea2c3fd, commit faf2350ffcc3e4e5166fa4f64d1d12671d09924a; URL https://copiloto-v7-preview-review.up.railway.app.
 - pnpm run test:crm-push: 4/4 PASS.
 - Typecheck: 66 errores en feature y 66 idénticos en main; cero diagnósticos adicionales feature, pero typecheck global falla.
-- / y /copiloto-v7-preview HTTP 200 por curl; screenshot/browser QA pendiente.
-- UI V7 es DEMO/local state; no conectada a CRM DB.
+- / y /copiloto-v7-preview HTTP 200 por curl; screenshot/browser QA pendiente. El último cambio de navegación no está desplegado en Railway aún.
+- UI V7 es DEMO/local state; no conectada a CRM DB. CRM se añadió a navegación inferior y se carga lazy desde la app anfitriona; tests 4/4 y build local PASS tras este cambio, typecheck permanece con 66 errores de baseline. Falta desplegar el commit nuevo y validar visualmente.
 - Push remote/app-closed no verificado; Twilio/WhatsApp/Square/email/e-file no conectados.
 - Punto 3 DB/security reconciliation abierto.
 
