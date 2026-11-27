@@ -25,7 +25,12 @@ export async function POST(request: Request) {
   if (!isValidCrmPushSubscription(body.subscription)) {
     return NextResponse.json({ error: "invalid_subscription" }, { status: 400 })
   }
-  const registered = await getCrmPushSubscription(userId, body.subscription.endpoint)
+  let registered
+  try {
+    registered = await getCrmPushSubscription(userId, body.subscription.endpoint)
+  } catch {
+    return NextResponse.json({ error: "subscription_store_unavailable" }, { status: 503 })
+  }
   if (!registered) {
     return NextResponse.json({ error: "subscription_not_registered_for_user" }, { status: 404 })
   }
