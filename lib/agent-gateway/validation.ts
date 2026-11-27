@@ -1,4 +1,5 @@
-import { AGENT_EVENT_TYPES, type AgentCheckpoint, type AgentEventInput, type AgentEventRecord, type AgentId } from "./contracts"
+import { AGENT_EVENT_TYPES } from "./constants.js"
+import type { AgentCheckpoint, AgentEventInput, AgentEventRecord, AgentId } from "./contracts"
 
 const FORBIDDEN_CALLER_FIELDS = new Set([
   "actorAgentId", "actorAuthUserId", "actorId", "userId", "ownerId", "createdAt", "sequence", "projectId",
