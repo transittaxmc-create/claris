@@ -132,3 +132,12 @@
 - No hay conexión de cuenta Square ni Sandbox credentials/webhook verification. Plugin Directory search no devolvió conector Square disponible en esta sesión; Stripe/Shopify no sustituyen Square.
 - No se creó invoice, customer, payment ni se movió dinero. No hay acción real conectada.
 - Resultado: etapa 9 NO CERRADA. Diseño/demo disponible; falta Sandbox app credentials, OAuth scopes, webhook signature verification, idempotency, read-only sync inicial y pruebas de customers/invoices/payment links/compatible actions con dinero simulado. Mantener Square como sistema de registro y Copiloto como cockpit, sin inventar compatibilidad.
+
+
+## 17. Hito de experiencia móvil — Copiloto Go (2026-11-27)
+- Se creó la ruta aislada /copiloto-v7-go en app/copiloto-v7-go/page.tsx como prototipo mobile-first de operaciones rápidas, sin sustituir /copiloto-v7-preview ni la app Claris actual.
+- Enfoque móvil: Today, Inbox, Trips, Clients y More; acceso prioritario a Quick trip entry con pickup, destination, fare y cliente opcional; mensajes agrupados por canal/área con borrador y aprobación simulada; búsqueda y alta de contactos de muestra; oportunidad de trabajo con revisión y borrador sin envío.
+- En escritorio el mismo prototipo muestra panel lateral Field Workflow con la secuencia mensaje → cliente → viaje/oportunidad → aprobación → historial. Diseño negro/amarillo alineado con Claris; navegación inferior compacta en móvil.
+- Todas las interacciones son React state local con datos sintéticos. La acción Save trip y Add client NO persisten en Supabase ni sobreviven reload; approve draft NO envía mensajes; no hay geolocalización/GPS real, proveedor de mensajería ni Square conectado. Etiquetas de demo visibles.
+- Commit de creación: d9be60e07dd3ad649825c6c40f15c0fed1490e23. Aún no hay build/TypeScript/browser QA de este nuevo archivo ni deployment Railway confirmado. No marcar como funcionalidad de producción ni QA aprobado.
+- Siguiente: revisar build y tipos, desplegar solo a Railway review si el servicio sigue vinculado a la feature branch, abrir ruta en teléfono y escritorio, probar flujo; después conectar con APIs/backend una vez cerrados bloqueos Stage 2/3 y persistencia segura. Mantener main y producción intactos.
