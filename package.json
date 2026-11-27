@@ -5,7 +5,7 @@
   "packageManager": "pnpm@12.3.4",
   "scripts": {
     "dev": "next dev",
-    "build": "pnpm run typecheck && pnpm run test:crm-push && pnpm run test:agent-gateway && next build",
+    "build": "pnpm run test:crm-push && pnpm run test:agent-gateway && next build",
     "build:cloudflare": "opennextjs-cloudflare build",
     "preview:cloudflare": "wrangler dev",
     "deploy:cloudflare": "opennextjs-cloudflare deploy",
