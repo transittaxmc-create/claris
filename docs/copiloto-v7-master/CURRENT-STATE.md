@@ -8,7 +8,7 @@
 - Repo transittaxmc-create/claris; default branch main; visibilidad actual PUBLIC.
 - Feature branch feat/copiloto-v7-phase1-foundation.
 - Railway project copiloto-v7-temporal ID a27e9703-8ee8-4650-ac57-c966a7301ca1; environment review ID 6b472376-3905-42d1-9e5b-58321f8caf12; service copiloto-v7-preview ID cd3e119a-0a24-4412-adc0-a0ae56f1e893.
-- Deployment V7 6c2ac0c8-725b-489c-ae86-a654bea2c3fd, SUCCESS, branch feature, commit faf2350ffcc3e4e5166fa4f64d1d12671d09924a, región iad.
+- Deployment V7 inicial 6c2ac0c8-725b-489c-ae86-a654bea2c3fd, SUCCESS, commit faf2350ffcc3e4e5166fa4f64d1d12671d09924a, región iad. Tras añadir el acceso directo CRM/lazy loading se disparó un deployment nuevo 6a948e27-3a11-4f60-97ca-918914c55056, commit b0aa463601a55fd3c5d12a11b28a9eeb63a1f59e, rama feature; último estado consultado BUILDING, sin URL ni región confirmada. El build local de ese código ya pasó.
 - Preview: https://copiloto-v7-preview-review.up.railway.app, target port 8080.
 - Runtime Next.js 16.3.3 Ready en puerto 8080.
 - Curl: / y /copiloto-v7-preview HTTP 200. HTML incluye Communications, Transport, Taxes, Work Opportunities, Square y meta viewport móvil.
