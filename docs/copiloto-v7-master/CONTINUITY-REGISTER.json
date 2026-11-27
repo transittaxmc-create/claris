@@ -1,7 +1,7 @@
 {
   "schema_version": "0.2.0",
   "project": "copiloto-v7",
-  "updated_at": "2026-11-27T23:18:30Z",
+  "updated_at": "2026-11-27T23:23:00Z",
   "source_branch": "feat/copiloto-v7-phase1-foundation",
   "source_commit": "32e5a4509de088c473a1fc3124f0737f96a6d5db",
   "environment": {
@@ -67,7 +67,7 @@
       "result": "76 diagnostics on current checked commit 32c379124708a67278c565b37cd05c4deadf7aa5; exit 2; 69 app/test + 7 Deno-source"
     }
   ],
-  "next_authorized_action": "Resolve TypeScript baseline and Deno/app compiler separation; then rotate credentials only after architecture reconciliation (Supabase Auth/JWT versus deployed x-agent-key) and secure handoff/runtime secret stores are specified; then authenticated reciprocal E2E. No production or external channels.",
+  "next_authorized_action": "Miguel deposits the existing Muse key into Amani Secure Vault card; provide a supported persistent ChatGPT runtime connector/secret injection path; then test authenticated continuity and message/inbox/ACK and cold-start recovery. Keep Auth-vs-key/hash decision with Miguel. No production, SMS, WhatsApp or real messages.",
   "checkpoint_rule": "Future agent checkpoints must be derived from persisted server-stamped events; this seed snapshot is not a dynamic checkpoint.",
   "storage_mode": "supabase-persistent-event-store",
   "event_log": "Supabase public.agent_events; immutable to agents; repository JSON remains versioned seed/snapshot",
@@ -162,10 +162,10 @@
         }
       ]
     },
-    "authenticated_chatgpt_runtime": "PENDING",
-    "authenticated_muse_runtime": "PENDING",
-    "cross_agent_http_ack": "PENDING",
-    "fresh_conversation_recovery": "PENDING",
+    "authenticated_chatgpt_runtime": "BLOCKED_RUNTIME_CREDENTIAL_INJECTION_UNAVAILABLE",
+    "authenticated_muse_runtime": "PENDING_MIGUEL_SECURE_VAULT_DEPOSIT",
+    "cross_agent_http_ack": "PENDING_BOTH_RUNTIME_CREDENTIALS",
+    "fresh_conversation_recovery": "PENDING_AUTHENTICATED_RUNTIME_CONNECTOR",
     "independent_typescript_check": {
       "status": "FAIL",
       "commit": "32e5a4509de088c473a1fc3124f0737f96a6d5db",
@@ -198,6 +198,24 @@
       ],
       "includes": "7 gateway tables, 48 constraints, indexes, 2 RPCs, checkpoint view, RLS, event append-only trigger",
       "source": "read-only live catalog reconstruction; not original SQL authoring text; not applied"
+    },
+    "amani_secure_vault_card": {
+      "status": "CREATED_AWAITING_MIGUEL_DEPOSIT",
+      "connector": "custom.copiloto-agent-gateway",
+      "agent": "claude/amani",
+      "header": "x-agent-key",
+      "source_secret_name": "copiloto_v7_muse_agent_key",
+      "evidence": "Issue #87 comment #14",
+      "secret_value_accessed": false
+    },
+    "chatgpt_runtime_secret_injection": {
+      "status": "BLOCKED",
+      "reason": "Current ChatGPT conversation runtime exposes no supported persistent secret store or custom x-agent-key header injection for future/fresh conversations.",
+      "credential_reissued": false,
+      "secret_value_accessed": false
     }
+  },
+  "architecture_decision": {
+    "authentication": "PENDING_MIGUEL_DECISION: deployed per-agent x-agent-key + SHA-256 hash remains unchanged; approved Auth + JWT design is not silently replaced; no auth rebuild until Miguel decides."
   }
 }
