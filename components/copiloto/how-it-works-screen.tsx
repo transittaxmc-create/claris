@@ -2151,6 +2151,16 @@ export function HowItWorksScreen() {
         <P><B>Límites:</B> sin clientes reales, mensajes reales, pagos reales, cambios de número/proveedor/permisos/credenciales, DDL, merge a main ni despliegue de producción. No usar Twilio como sustituto. La última preview Railway está SUCCESS en commit f8c559f; el HEAD documental actual 32e6822 no está confirmado en esa deployment.</P>
       </Section>
 
+      <Section title="COPILOTO V7 — §36: CONTINUITY CHECKPOINT · GEMINI + MUSE + AMANI (2026-11-27 15:57 ET)">
+        <P><B>Reanudación solicitada:</B> continuar la investigación interrumpida sobre la coordinación de Copiloto V7, Muse, Gemini y Amani, especialmente el flujo de SMS y WhatsApp. No reiniciar el inventario general ni volver a preguntar decisiones ya documentadas.</P>
+        <P><B>Revisión de continuidad:</B> se releyeron los documentos maestros y el estado de integración existente. Este hito registra el punto exacto de reanudación; no afirma que las integraciones estén terminadas ni que se haya implementado código nuevo.</P>
+        <P><B>Gemini:</B> la ruta /api/ai-chat pertenece al Copilot financiero legacy y no está integrada en el CRM V7. Usa GEMINI_API_KEY || OPENAI_API_KEY mientras llama al endpoint de Google Gemini; no se debe aceptar una clave OpenAI como credencial Gemini.</P>
+        <P><B>Muse/Amani/SMS:</B> existe una prueba real histórica confirmada por el usuario mediante el Samsung pareado y Amani. El repositorio contiene la cola cloud y el callback, pero no el agente Android Amani ni su consumidor externo. El dispatch CRM actual sigue devolviendo 501 phone_dispatch_not_connected; la prueba histórica no confirma conectividad actual.</P>
+        <P><B>Canales:</B> no usar Twilio. Mantener SMS/Amani separado de WhatsApp Business/ZapClaw. ZapClaw es candidato para WhatsApp Business, no proveedor SMS tradicional. No migrar ni cambiar números/cuentas.</P>
+        <P><B>Siguiente paso exacto:</B> recuperar el contrato autorizado Muse↔Amani y verificar en el Samsung pareado el mecanismo de cola/polling, autenticación, callback y logs. Definir el rol server-side de Gemini y sus herramientas permitidas; después establecer instrucciones comunes, permisos separados Transport/Taxes/Communications, aprobación humana, auditoría e idempotencia.</P>
+        <P><B>Alcance de este checkpoint:</B> solo documentación y recuperación de continuidad. No se modificó código funcional, credenciales, teléfono, proveedor, base de datos ni deployment. No se enviaron mensajes reales ni se usaron datos de clientes.</P>
+      </Section>
+
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
