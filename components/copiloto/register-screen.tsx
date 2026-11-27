@@ -117,7 +117,7 @@ function ReconciliationPanel({ summary, groups }: { summary: ReconSummary; group
         )}
         {summary.okCount > 0 && (
           <span className={cn("rounded-full border px-2 py-0.5 text-[9px] font-bold", RECON_TONE.ok.border, RECON_TONE.ok.text)}>
-            {summary.okCount} match
+            {summary.okCount} matched
           </span>
         )}
       </div>
@@ -206,7 +206,7 @@ function TripCard({
                   : "border-green-400/60 text-green-400",
               )}
             >
-              {trip.status === "pending" ? "Pendiente" : "Matched"}
+              {trip.status === "pending" ? "Pending" : "Matched"}
             </span>
           ) : (
             <>
@@ -623,7 +623,7 @@ export function RegisterScreen({
                   onClick={() => fileInputRef.current?.click()}
                   className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900/50 py-3 text-xs font-bold text-neutral-300"
                 >
-                  <Upload className="size-4" /> IMPORTAR JSON
+                  <Upload className="size-4" /> IMPORT JSON
                 </button>
                 <button
                   type="button"
@@ -633,7 +633,7 @@ export function RegisterScreen({
                   }}
                   className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-neutral-800 bg-neutral-900/50 py-3 text-xs font-bold text-neutral-300"
                 >
-                  <Download className="size-4" /> EXPORTAR JSON
+                  <Download className="size-4" /> EXPORT JSON
                 </button>
               </div>
               <button
