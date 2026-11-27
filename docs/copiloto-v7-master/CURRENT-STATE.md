@@ -126,3 +126,9 @@
 - WhatsApp Business API/Coexistence no verificada ni conectada. WhatsApp Personal/grupos no se pueden leer mediante API oficial; no scraping. Email no conectado. ZapClaw no verificado y token previo comprometido requiere rotación antes de cualquier uso.
 - Push routes existen pero no VAPID/secret config; no hay registro remoto ni delivery test ni app-closed proof. Tests locales de validación 4/4 no demuestran envío remoto.
 - Resultado: etapa 8 NO CERRADA. Falta credenciales/proveedores, webhooks autenticados, persistencia de subscriptions, consentimiento/opt-out, pruebas Sandbox/test numbers, idempotencia, logs y aprobación humana. No se enviaron mensajes ni notificaciones.
+
+## 16. Hito 9 — Square Sandbox (2026-11-27)
+- components/copiloto-v7-preview/square-workspace.tsx muestra pestañas/listados seed con estado local; no llamadas fetch, OAuth, SDK/API ni persistencia. No existen rutas Square ni env vars Square en Railway review.
+- No hay conexión de cuenta Square ni Sandbox credentials/webhook verification. Plugin Directory search no devolvió conector Square disponible en esta sesión; Stripe/Shopify no sustituyen Square.
+- No se creó invoice, customer, payment ni se movió dinero. No hay acción real conectada.
+- Resultado: etapa 9 NO CERRADA. Diseño/demo disponible; falta Sandbox app credentials, OAuth scopes, webhook signature verification, idempotency, read-only sync inicial y pruebas de customers/invoices/payment links/compatible actions con dinero simulado. Mantener Square como sistema de registro y Copiloto como cockpit, sin inventar compatibilidad.
