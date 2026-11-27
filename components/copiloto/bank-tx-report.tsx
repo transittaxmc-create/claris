@@ -297,7 +297,7 @@ export function BankTxReport() {
   return (
     <section className="rounded-2xl border border-neutral-800 bg-neutral-900/40 p-3">
       <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold tracking-wide text-white">
-        REPORTE SEMANAL
+        WEEKLY REPORT
         {!loading && (
           <span className="ml-auto text-[10px] font-normal text-neutral-500">
             {pendingCount} week{pendingCount === 1 ? "" : "s"} to review
@@ -305,7 +305,7 @@ export function BankTxReport() {
         )}
       </p>
 
-      {loading && <p className="py-4 text-center text-xs text-neutral-500">Trayendo movimientos…</p>}
+      {loading && <p className="py-4 text-center text-xs text-neutral-500">Fetching movements…</p>}
       {error && !loading && (
         <p className="py-4 text-center text-xs text-rose-400">Couldn't fetch the bank. Check the connection.</p>
       )}

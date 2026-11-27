@@ -671,7 +671,7 @@ export function CopilotoApp() {
         )
       } else {
         setSyncTone("error")
-        setSyncMessage(`No se pudo sincronizar: ${result.message}`)
+        setSyncMessage(`Could not sync: ${result.message}`)
       }
       setSyncing(false)
       syncInFlight.current = false
@@ -911,7 +911,7 @@ export function CopilotoApp() {
   if (!hydrated) {
     return (
       <div className="flex h-[100dvh] items-center justify-center bg-black text-neutral-500">
-        Cargando…
+        Loading…
       </div>
     )
   }
@@ -949,7 +949,7 @@ export function CopilotoApp() {
       )}
       {saveState === "saved" && (
         <div className="flex items-center gap-1.5 border-b border-emerald-800/50 bg-emerald-950/40 px-3 py-1 text-[10px] text-emerald-300">
-          <Check className="size-3" /> Guardado
+          <Check className="size-3" /> Saved
         </div>
       )}
       {saveState === "error" && (

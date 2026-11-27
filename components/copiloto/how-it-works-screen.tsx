@@ -45,7 +45,7 @@ export function HowItWorksScreen() {
         </ul>
         <P><B>Priorities</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>§21 LISTA DE PRIORIDADES — the open priorities, in plain language, updated with every deployment</li>
+          <li>§21 PRIORITY LIST — what is open, in plain language, updated with every deployment</li>
         </ul>
       </Section>
 
@@ -104,7 +104,7 @@ export function HowItWorksScreen() {
             <B>DASHBOARD:</B> the gold button in TODAY's header opens the hub — the day's money
             line from Projections (out today / earned today / shortfall, or the next outgoing
             with its date), the <B>HOURLY</B> card (moved here from EARNINGS) and the{" "}
-            <B>E-ZPASS · RESUMEN</B> card (today/shift, week, year, plus what is payable and the
+            <B>E-ZPASS · SUMMARY</B> card (today/shift, week, year, plus what is payable and the
             TOLL AUDIT reconciliation). Starting a <B>NEW SHIFT</B> zeroes the shift counters
             (dashboard earnings, E-ZPass today, miles) — a closed shift's figures keep showing
             until the next START; week and year stay calendar-based and the register is never
@@ -263,7 +263,7 @@ export function HowItWorksScreen() {
             that has rows shows its band.
           </li>
           <li>
-            <B>POR PAGAR · LIABILITIES:</B> every recurrent bill carries its own liability
+            <B>PAYABLES · LIABILITIES:</B> every recurrent bill carries its own liability
             account. Categorizing a bank payment with that bill's category writes the payment
             into the bill and subtracts from what it owes — a paid bill stays paid, and each
             account keeps its annual record (total paid and number of payments).
@@ -316,203 +316,203 @@ export function HowItWorksScreen() {
       {/* ───────────────────────────────────────────────────────────── */}
       <Section title="8. DATA & BACKUP — where data lives and how to switch phones">
         <P>
-          <B>Implementado: 2026-11-13 · Autor: Miguel / Copiloto V7</B>
+          <B>Implemented: 2026-11-13 · Author: Miguel / Copiloto V7</B>
         </P>
 
         <P>
-          <B>Dónde vive cada dato:</B>
+          <B>Where each datum lives:</B>
         </P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
           <li>
-            <B>Viajes (trips):</B> en este teléfono — localStorage{" "}
+            <B>Trips:</B> on this phone — localStorage{" "}
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">ic_tip_tracker</code>{" "}
-            + copia en IndexedDB. Si el navegador borra caché, IndexedDB devuelve los viajes al
-            abrir la app.
+            + a copy in IndexedDB. If the browser clears the cache, IndexedDB returns the trips when
+            the app opens.
           </li>
           <li>
-            <B>Gastos (expenses):</B>{" "}
+            <B>Expenses:</B>{" "}
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">ic_expenses</code>{" "}
-            (localStorage) + copia IndexedDB.
+            (localStorage) + IndexedDB copy.
           </li>
           <li>
-            <B>Ledger / proyecciones / recurrentes:</B>{" "}
+            <B>Ledger / projections / recurrings:</B>{" "}
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">claris_cash_flow_entries</code>{" "}
             ·{" "}
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">claris_scheduled_entries</code>{" "}
             (localStorage).
           </li>
           <li>
-            <B>Fotos de recibos y statements:</B> servidor Vercel Blob (almacén de archivos de
-            Vercel). Se suben vía{" "}
+            <B>Receipt and statement photos:</B> Vercel Blob server (Vercel's file
+            store). They are uploaded via{" "}
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">/api/receipt-image</code>{" "}
-            al escanear. El ID de cada imagen queda guardado dentro de{" "}
+            when scanning. Each image's ID is stored inside{" "}
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">claris_receipts_v1</code>.
-            Para auditoría del IRS, las fotos se pueden subir también a Google Drive (ver paso 3
-            abajo).
+            For an IRS audit, the photos can also be uploaded to Google Drive (see step 3
+            below).
           </li>
           <li>
-            <B>Respaldos completos (backup JSON):</B> Google Drive del usuario — carpeta{" "}
+            <B>Full backups (backup JSON):</B> the user's Google Drive — folder{" "}
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">
               Copiloto_Auditoria_Recibos
             </code>
-            . El archivo incluye TODOS los datos de la app: trips, expenses, ledger, cuentas,
-            configuración.
+            . The file includes ALL the app's data: trips, expenses, ledger, accounts,
+            configuration.
           </li>
           <li>
-            <B>Sync entre teléfonos (código privado):</B> Vercel Blob — archivo cifrado{" "}
+            <B>Sync between phones (private code):</B> Vercel Blob — encrypted file{" "}
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">
               claris-sync-&lt;hash&gt;.enc
             </code>
-            . El servidor solo ve el hash y texto cifrado; nunca ve los datos en claro.
+            . The server only sees the hash and ciphertext; it never sees the data in clear.
           </li>
           <li>
-            <B>Sync AUTOMÁTICO entre los dos teléfonos (2026-11-26):</B> sin código — al abrir
-            Copiloto, cada teléfono baja lo del otro y publica lo suyo, fusionado por ítem (gana
-            la versión más nueva; lo borrado viaja como lápida y NO resucita). Cubre viajes,
-            gastos y DINERO (ledger + recurrentes). Transporte: Supabase — tabla propia{" "}
+            <B>AUTOMATIC sync between the two phones (2026-11-26):</B> no code — when Copiloto
+            opens, each phone downloads the other's data and publishes its own, merged per item (the
+            newest version wins; deleted items travel as a tombstone and do NOT resurrect). It covers trips,
+            expenses and MONEY (ledger + recurrings). Transport: Supabase — its own table{" "}
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">
               finance_sync_doc
             </code>{" "}
-            del proyecto del CRM, con la sesión de Miguel y RLS por dueño (sin service key);
-            rutas{" "}
+            in the CRM project, with Miguel's session and RLS per owner (no service key);
+            routes{" "}
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">
               /api/data/publish
             </code>{" "}
-            y{" "}
+            and{" "}
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">
               /api/data/snapshot
             </code>{" "}
-            con la llave de publicación de siempre. Orden de Miguel (2026-11-26): NO esperar a
-            Vercel — el Blob quedó suspendido y el proyecto financiero congelado (402), por eso el
-            transporte vive en Supabase. Si un teléfono no tiene sesión del CRM abierta o la nube
-            no responde, el sync queda dormido y NO toca ningún dato local. SUBIR/RESTAURAR sigue
-            intacto como respaldo manual.
+            with the usual publish key. Miguel's order (2026-11-26): do NOT wait for
+            Vercel — the Blob was suspended and the finance project frozen (402), so the
+            transport lives in Supabase. If a phone has no CRM session open or the cloud
+            does not answer, the sync stays asleep and does NOT touch any local data. UPLOAD/RESTORE stays
+            intact as a manual backup.
           </li>
           <li>
-            <B>Banco (Plaid):</B> Vercel Blob — snapshot en{" "}
+            <B>Bank (Plaid):</B> Vercel Blob — snapshot in{" "}
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">bank-snapshot.json</code>.
-            Se refresca automáticamente cada 5 minutos en la app.
+            It refreshes automatically every 5 minutes in the app.
           </li>
           <li>
-            <B>Tokens Google Drive:</B> Vercel Blob —{" "}
+            <B>Google Drive tokens:</B> Vercel Blob —{" "}
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">gdrive-tokens.json</code>
-            . Solo el servidor los lee; el teléfono solo ve si está conectado o no.
+            . Only the server reads them; the phone only sees whether it is connected or not.
           </li>
         </ul>
 
         <P>
-          <B>Procedimiento para cambiar de teléfono (paso a paso):</B>
+          <B>Procedure to switch phones (step by step):</B>
         </P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
           <li>
-            <B>Paso 1 — Conectar Google Drive (solo la primera vez):</B> ir a DATA → BACKUP →
-            sección PHONE TRANSFER. Presionar <B>Conectar Drive →</B> (botón gris pequeño arriba a
-            la derecha). Google pide permiso para "ver y administrar solo los archivos que creó esta
-            app". Aceptar. La app regresa y el botón cambia a{" "}
-            <B>✓ Drive · desconectar</B>.
+            <B>Step 1 — Connect Google Drive (first time only):</B> go to DATA → BACKUP →
+            PHONE TRANSFER section. Tap <B>Connect Drive →</B> (small grey button at the top
+            right). Google asks permission to "see and manage only the files this
+            app created". Accept. The app returns and the button changes to{" "}
+            <B>✓ Drive · disconnect</B>.
           </li>
           <li>
-            <B>Paso 2 — SUBIR a Drive:</B> presionar <B>SUBIR A DRIVE</B>. La app construye el
-            respaldo completo y lo sube directamente a Google Drive sin descargar nada al teléfono.
-            El archivo queda en la carpeta{" "}
+            <B>Step 2 — UPLOAD to Drive:</B> tap <B>UPLOAD TO DRIVE</B>. The app builds the
+            full backup and uploads it directly to Google Drive without downloading anything to the phone.
+            The file stays in the folder{" "}
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">
               Copiloto_Auditoria_Recibos
             </code>{" "}
-            con nombre{" "}
+            with name{" "}
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">
               copiloto-respaldo-YYYY-MM-DD.json
             </code>
-            . Si ya existe un archivo con el mismo nombre, se sobreescribe.
+            . If a file with the same name already exists, it is overwritten.
           </li>
           <li>
-            <B>Paso 3 — En el otro teléfono, abrir la app y conectar Drive:</B> igual que el paso
-            1. Usar la misma cuenta de Google.
+            <B>Step 3 — On the other phone, open the app and connect Drive:</B> same as step
+            1. Use the same Google account.
           </li>
           <li>
-            <B>Paso 4 — RESTAURAR desde Drive:</B> presionar <B>RESTAURAR DRIVE</B>. La app lista
-            los respaldos disponibles en la carpeta. Elegir el archivo deseado (el más reciente
-            aparece primero). Se muestra un resumen: fecha, # entradas, # gastos, # viajes. Presionar{" "}
-            <B>SÍ, RESTAURAR</B> para confirmar. La app se recarga y queda idéntica al teléfono
-            original.
+            <B>Step 4 — RESTORE from Drive:</B> tap <B>RESTORE DRIVE</B>. The app lists
+            the available backups in the folder. Choose the desired file (the most recent
+            appears first). A summary is shown: date, # entries, # expenses, # trips. Tap{" "}
+            <B>YES, RESTORE</B> to confirm. The app reloads and ends up identical to the original
+            phone.
           </li>
           <li>
-            <B>Sin Drive conectado:</B> el botón SUBIR descarga el archivo JSON al teléfono (igual
-            que antes). El botón RESTAURAR pide elegir un archivo local. Ambos modos siguen
-            funcionando.
+            <B>Without Drive connected:</B> the UPLOAD button downloads the JSON file to the phone (same
+            as before). The RESTORE button asks to choose a local file. Both modes keep
+            working.
           </li>
         </ul>
 
         <P>
-          <B>Procedimiento para fotos de recibos y statements (auditoría IRS):</B>
+          <B>Procedure for receipt and statement photos (IRS audit):</B>
         </P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
           <li>
-            Escanear recibo o statement con la cámara desde EXPENSES → botón de cámara. La foto se
-            sube a Vercel Blob automáticamente y la IA extrae monto, fecha, vendor.
+            Scan a receipt or statement with the camera from EXPENSES → camera button. The photo is
+            uploaded to Vercel Blob automatically and the AI extracts amount, date, vendor.
           </li>
           <li>
-            Para tenerlas en Google Drive (recomendado para auditoría): subir el respaldo completo
-            con SUBIR A DRIVE — el backup JSON contiene los IDs de todas las imágenes, que están en
-            el servidor Vercel Blob. Las fotos en sí se pueden descargar desde DOWNLOAD ALL (FULL
-            BACKUP) o desde el registro de gastos.
+            To have them in Google Drive (recommended for audit): upload the full backup
+            with UPLOAD TO DRIVE — the backup JSON contains the IDs of all the images, which are on
+            the Vercel Blob server. The photos themselves can be downloaded from DOWNLOAD ALL (FULL
+            BACKUP) or from the expense register.
           </li>
           <li>
-            <B>Carpeta en Drive:</B>{" "}
+            <B>Folder in Drive:</B>{" "}
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">
               Copiloto_Auditoria_Recibos
             </code>{" "}
-            — nombre diseñado para identificar de inmediato que es documentación de auditoría.
+            — a name designed to immediately identify that it is audit documentation.
           </li>
         </ul>
 
         <P>
-          <B>Rutas API nuevas (implementadas 2026-11-13):</B>
+          <B>New API routes (implemented 2026-11-13):</B>
         </P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
           <li>
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">GET /api/gdrive/status</code>{" "}
-            → si Drive está conectado.
+            → whether Drive is connected.
           </li>
           <li>
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">GET /api/gdrive/auth</code>{" "}
-            → inicia el flujo OAuth2 de Google.
+            → starts the Google OAuth2 flow.
           </li>
           <li>
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">GET /api/gdrive/callback</code>{" "}
-            → Google redirige aquí tras autorizar; guarda tokens en Vercel Blob.
+            → Google redirects here after authorizing; saves tokens in Vercel Blob.
           </li>
           <li>
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">POST /api/gdrive/upload</code>{" "}
-            → sube un archivo a la carpeta de Drive.
+            → uploads a file to the Drive folder.
           </li>
           <li>
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">GET /api/gdrive/restore</code>{" "}
-            → lista o descarga respaldos de Drive.
+            → lists or downloads Drive backups.
           </li>
           <li>
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">DELETE /api/gdrive/disconnect</code>{" "}
-            → borra los tokens (desconecta Drive).
+            → deletes the tokens (disconnects Drive).
           </li>
           <li>
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">
               GET/POST/DELETE /api/sync
             </code>{" "}
-            → sync entre teléfonos. <B>Reparado 2026-11-13</B>: antes usaba Supabase (quota
-            agotada); ahora usa Vercel Blob.
+            → sync between phones. <B>Fixed 2026-11-13</B>: it previously used Supabase (quota
+            exhausted); now it uses Vercel Blob.
           </li>
         </ul>
 
         <P>
-          <B>Variables de entorno requeridas en Vercel (para Google Drive):</B>
+          <B>Environment variables required in Vercel (for Google Drive):</B>
         </P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
           <li>
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">GOOGLE_CLIENT_ID</code>{" "}
-            — de Google Cloud Console, proyecto OAuth2.
+            — from Google Cloud Console, OAuth2 project.
           </li>
           <li>
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">GOOGLE_CLIENT_SECRET</code>{" "}
-            — mismo proyecto.
+            — same project.
           </li>
           <li>
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">GOOGLE_REDIRECT_URI</code>{" "}
@@ -520,15 +520,15 @@ export function HowItWorksScreen() {
           </li>
           <li>
             <code className="rounded bg-neutral-800 px-1 text-[11px] text-yellow-300">BLOB_READ_WRITE_TOKEN</code>{" "}
-            — Vercel Blob (ya configurado; lo usan también bank snapshot y receipt images).
+            — Vercel Blob (already configured; also used by bank snapshot and receipt images).
           </li>
         </ul>
 
         <P>
-          <B>Notas de seguridad:</B> el backup JSON no está cifrado (es un archivo privado en tu
-          Drive personal). El sync entre teléfonos SÍ está cifrado con AES-GCM-256 derivado de tu
-          código privado — el servidor nunca ve los datos en claro. Los tokens de Drive se guardan
-          en Vercel Blob con nombre no-adivinable y solo el servidor los lee.
+          <B>Security notes:</B> the backup JSON is not encrypted (it is a private file in your
+          personal Drive). The sync between phones IS encrypted with AES-GCM-256 derived from your
+          private code — the server never sees the data in clear. The Drive tokens are stored
+          in Vercel Blob with an unguessable name and only the server reads them.
         </P>
       </Section>
 
@@ -573,11 +573,11 @@ export function HowItWorksScreen() {
       </Section>
 
 
-      <Section title="11. CRM COPILOTO V7 — CONTINUIDAD OFICIAL DEL PROYECTO">
+      <Section title="11. CRM COPILOTO V7 — OFFICIAL PROJECT CONTINUITY">
         <P>
-          <B>Actualizado: 2026-11-26 · Documento de referencia para Miguel y todos los agentes.</B>
-          Esta sección es la fuente de continuidad del CRM. Leerla completa antes de investigar,
-          modificar código, bases de datos, permisos o despliegues. No asumir ni inventar estados.
+          <B>Updated: 2026-11-26 · Reference document for Miguel and all agents.</B>
+          This section is the CRM's continuity source. Read it fully before researching,
+          modifying code, databases, permissions or deployments. Do not assume or invent states.
         </P>
 
         <P>
@@ -588,858 +588,856 @@ export function HowItWorksScreen() {
           dated history for the other features they discuss.
         </P>
 
-        <P><B>Identidad y ubicación del módulo:</B></P>
+        <P><B>Module identity and location:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>Nombre canónico: <B>CRM Copiloto V7</B>. “B7” fue una confusión al dictar/escribir; usar V7.</li>
-          <li>El CRM es un módulo dentro de Copiloto V7 / aplicación Claris; no crear una aplicación separada.</li>
-          <li>Repositorio identificado: <B>transittaxmc-create/claris</B>. Archivo principal de interfaz: <B>components/copiloto/crm-screen.tsx</B>.</li>
-          <li>Acceso del usuario: abrir <B>More → Client management → CRM</B>. CRM permanece dentro de More; NO agregarlo como icono nuevo al menú inferior ni alterar las opciones existentes.</li>
-          <li>Este registro oficial está en <B>More → Help → How it works</B>, en el archivo <B>components/copiloto/how-it-works-screen.tsx</B>.</li>
+          <li>Canonical name: <B>CRM Copiloto V7</B>. “B7” was a dictation/writing confusion; use V7.</li>
+          <li>The CRM is a module inside Copiloto V7 / the Claris application; do not create a separate application.</li>
+          <li>Identified repository: <B>transittaxmc-create/claris</B>. Main interface file: <B>components/copiloto/crm-screen.tsx</B>.</li>
+          <li>User access: open <B>More → Client management → CRM</B>. The CRM stays inside More; do NOT add it as a new icon to the bottom menu or alter the existing options.</li>
+          <li>This official record is in <B>More → Help → How it works</B>, in the file <B>components/copiloto/how-it-works-screen.tsx</B>.</li>
         </ul>
 
-        <P><B>Expediente maestro — conversación inicial, visión y alcance acordado:</B></P>
+        <P><B>Master file — initial conversation, agreed vision and scope:</B></P>
         <P>
-          El punto de partida del 2026-11-25 fue añadir una función CRM a la aplicación Claris
-          que ya existe y guardar allí la información de clientes. La decisión del propietario
-          fue continuar dentro de esa misma aplicación y repositorio: NO crear otra aplicación,
-          otro repositorio ni un sistema paralelo. El nombre correcto es <B>Copiloto V7 CRM</B>.
-          Este CRM debe desarrollarse como módulo propio, sin interferir con el producto financiero
-          que ya funciona en Claris.
+          The starting point on 2026-11-25 was to add a CRM function to the Claris application
+          that already exists and store client information there. The owner's decision
+          was to continue inside that same application and repository: do NOT create another application,
+          another repository or a parallel system. The correct name is <B>Copiloto V7 CRM</B>.
+          This CRM must be developed as its own module, without interfering with the financial product
+          that already works in Claris.
         </P>
         <P>
-          La visión inicial recuperada contempla una gestión centralizada de clientes y contactos,
-          expedientes/casos, servicios, documentos, citas, tareas, actividades e historial. Las
-          entidades de negocio que se propusieron para estructurar esa base fueron perfiles,
-          organizaciones, membresías, clientes, contactos, servicios, trabajos de transporte,
-          casos de impuestos, documentos, citas, tareas y registros de actividad. <B>Importante:</B>
-          esa lista fue una propuesta de estructura; no significa que esas tablas ya estén creadas
-          en Supabase. Verificar el esquema real antes de afirmar que existe.
+          The recovered initial vision contemplates centralized management of clients and contacts,
+          files/cases, services, documents, appointments, tasks, activities and history. The
+          business entities proposed to structure that base were profiles,
+          organizations, memberships, clients, contacts, services, transportation jobs,
+          tax cases, documents, appointments, tasks and activity records. <B>Important:</B>
+          that list was a structure proposal; it does not mean those tables are already created
+          in Supabase. Verify the real schema before claiming it exists.
         </P>
         <P>
-          La experiencia prevista debe permitir conocer quién es cada cliente, cómo contactarlo,
-          qué servicio o asunto tiene, qué se habló, qué documentos faltan, cuál es la próxima
-          acción y cuándo hay que volver a contactarlo. El historial debe dar continuidad a cada
-          relación y evitar perder conversaciones o seguimientos. Las funciones de expedientes,
-          documentos, citas, tareas y actividad forman parte del alcance a desarrollar; la primera
-          pantalla CRM actual todavía no implementa todo ese alcance.
+          The planned experience must make it possible to know who each client is, how to contact them,
+          what service or matter they have, what was discussed, what documents are missing, what the next
+          action is and when to contact them again. The history must give continuity to each
+          relationship and avoid losing conversations or follow-ups. The files,
+          documents, appointments, tasks and activity functions are part of the scope to develop; the first
+          current CRM screen does not yet implement all of that scope.
         </P>
 
-        <P><B>Canales de comunicación e integraciones — registrar como alcance pendiente:</B></P>
+        <P><B>Communication channels and integrations — record as pending scope:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li><B>Llamadas y email:</B> la versión actual ya permite abrir el marcador del teléfono mediante tel: y el correo mediante mailto: desde la ficha del cliente. No confundir estas acciones con una central telefónica o un sistema de email integrado.</li>
-          <li><B>SMS / mensajes de texto:</B> debe contemplarse como canal de comunicación del CRM para conversaciones y seguimiento con clientes. No hay proveedor, número remitente, credenciales, API ni flujo de envío/recepción verificados en el proyecto al 2026-11-25. No afirmar que SMS está conectado.</li>
-          <li><B>WhatsApp Business:</B> debe contemplarse como integración de mensajería empresarial, separada del WhatsApp personal. Deben investigarse y definirse la cuenta/Business Portfolio de Meta, número empresarial, verificación, proveedor/API oficial, plantillas cuando correspondan, consentimiento del cliente, recepción de respuestas y registro de la conversación en el historial. No hay proveedor, cuenta, número, credenciales ni conexión confirmados todavía.</li>
-          <li><B>Historial unificado:</B> objetivo de diseño: que llamadas registradas, emails, SMS y mensajes de WhatsApp que se integren queden asociados al contacto/cliente y a su actividad, con fecha, canal, dirección (entrante/saliente) y resultado. Esta es una especificación de producto pendiente de implementación, no una capacidad actual.</li>
-          <li><B>Automatizaciones:</B> planificar recordatorios y tareas de seguimiento relacionados con fechas de contacto, citas, documentos pendientes y tareas vencidas. Definir reglas, horarios, zona horaria, preferencias y consentimiento antes de activar envíos automáticos.</li>
-          <li><B>Notificaciones:</B> ya existe una primera versión local documentada abajo: prueba manual en este dispositivo y aviso de seguimientos vencidos/al día cuando se abre el CRM. Esto NO equivale todavía a recordatorios automáticos de citas ni a push remoto programado con la app cerrada.</li>
-          <li><B>Proveedores:</B> no seleccionar ni inventar Twilio, Meta Cloud API u otro proveedor como decisión tomada. Investigar opciones y costos cuando llegue el momento; documentar la decisión y sus credenciales como variables secretas de servidor, nunca en el cliente.</li>
+          <li><B>Calls and email:</B> the current version already allows opening the phone dialer through tel: and email through mailto: from the client record. Do not confuse these actions with a phone switchboard or an integrated email system.</li>
+          <li><B>SMS / text messages:</B> must be contemplated as a CRM communication channel for conversations and follow-up with clients. There is no provider, sending number, credentials, API or verified send/receive flow in the project as of 2026-11-25. Do not claim SMS is connected.</li>
+          <li><B>WhatsApp Business:</B> must be contemplated as a business messaging integration, separate from personal WhatsApp. The Meta account/Business Portfolio, business number, verification, official provider/API, templates when applicable, client consent, reply reception and conversation recording in the history must be researched and defined. There is no confirmed provider, account, number, credentials or connection yet.</li>
+          <li><B>Unified history:</B> design objective: that registered calls, emails, SMS and WhatsApp messages that get integrated stay associated with the contact/client and their activity, with date, channel, direction (inbound/outbound) and result. This is a product specification pending implementation, not a current capability.</li>
+          <li><B>Automations:</B> plan reminders and follow-up tasks related to contact dates, appointments, pending documents and overdue tasks. Define rules, times, time zone, preferences and consent before activating automatic sends.</li>
+          <li><B>Notifications:</B> a first local version documented below already exists: manual test on this device and notice of overdue/today follow-ups when the CRM is opened. This does NOT yet equal automatic appointment reminders or scheduled remote push with the app closed.</li>
+          <li><B>Providers:</B> do not select or invent Twilio, Meta Cloud API or another provider as a decision taken. Research options and costs when the time comes; document the decision and its credentials as server secret variables, never on the client.</li>
         </ul>
 
-        <P><B>Mapa de ubicaciones, proyectos y enlaces de referencia:</B></P>
+        <P><B>Map of locations, projects and reference links:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li><B>Aplicación existente:</B> <a className="text-yellow-300 underline" href="https://claris-lime.vercel.app/" target="_blank" rel="noreferrer">https://claris-lime.vercel.app/</a> — URL de Claris compartida previamente por el propietario. No asumir que este dominio recibe automáticamente cada despliegue del proyecto Vercel llamado claris.</li>
-          <li><B>GitHub — repositorio:</B> <a className="text-yellow-300 underline" href="https://github.com/transittaxmc-create/claris" target="_blank" rel="noreferrer">https://github.com/transittaxmc-create/claris</a> — propietario/organización <B>transittaxmc-create</B>, repositorio <B>claris</B>, rama de producción observada <B>main</B>.</li>
+          <li><B>Existing application:</B> <a className="text-yellow-300 underline" href="https://claris-lime.vercel.app/" target="_blank" rel="noreferrer">https://claris-lime.vercel.app/</a> — Claris URL previously shared by the owner. Do not assume this domain automatically receives every deployment of the Vercel project called claris.</li>
+          <li><B>GitHub — repository:</B> <a className="text-yellow-300 underline" href="https://github.com/transittaxmc-create/claris" target="_blank" rel="noreferrer">https://github.com/transittaxmc-create/claris</a> — owner/organization <B>transittaxmc-create</B>, repository <B>claris</B>, observed production branch <B>main</B>.</li>
           <li><B>CRM UI:</B> <a className="text-yellow-300 underline" href="https://github.com/transittaxmc-create/claris/blob/main/components/copiloto/crm-screen.tsx" target="_blank" rel="noreferrer">components/copiloto/crm-screen.tsx</a>.</li>
-          <li><B>Este manual / continuidad:</B> <a className="text-yellow-300 underline" href="https://github.com/transittaxmc-create/claris/blob/main/components/copiloto/how-it-works-screen.tsx" target="_blank" rel="noreferrer">components/copiloto/how-it-works-screen.tsx</a>.</li>
-          <li><B>Componente contenedor:</B> <B>CopilotoApp</B> dentro de la aplicación Next.js 16. La entrada del CRM debe seguir la navegación ya acordada <B>More → Client management → CRM</B>.</li>
-          <li><B>Vercel — proyecto desplegado en esta sesión:</B> <a className="text-yellow-300 underline" href="https://vercel.com/island-city/claris" target="_blank" rel="noreferrer">https://vercel.com/island-city/claris</a> — nombre <B>claris</B>, ID <B>prj_EaOp8GqqgF0i4BBEp3CJSY8phcKW</B>, conectado al repositorio GitHub anterior.</li>
-          <li><B>Último despliegue de producción registrado:</B> <a className="text-yellow-300 underline" href="https://claris-lime.vercel.app/" target="_blank" rel="noreferrer">https://claris-lime.vercel.app/</a> — alias del proyecto Vercel <B>claris</B>; deployment <B>dpl_DyeTiM8ricAkko4eREZSVJPG51nT</B>, estado READY; commit <B>21a0a86230ffca0b9675194c36ab2f86c80d28c6</B>. Preview: <a className="text-yellow-300 underline" href="https://claris-9g25myvvb-island-city.vercel.app" target="_blank" rel="noreferrer">claris-9g25myvvb-island-city.vercel.app</a>.</li>
-          <li><B>Otro proyecto Vercel:</B> <B>claris-lime</B> es un proyecto separado en Vercel conectado al mismo repositorio. No se debe decir que este último despliegue actualizó claris-lime; verificar el proyecto y su último deployment antes de publicar allí o cambiar dominios.</li>
-          <li><B>Supabase exclusivo CRM:</B> Project ID <B>mimgwleghecseoymgdug</B>; URL de proyecto <a className="text-yellow-300 underline" href="https://mimgwleghecseoymgdug.supabase.co" target="_blank" rel="noreferrer">https://mimgwleghecseoymgdug.supabase.co</a>. Acceso directo al dashboard: <a className="text-yellow-300 underline" href="https://supabase.com/dashboard/project/mimgwleghecseoymgdug" target="_blank" rel="noreferrer">abrir proyecto CRM</a>. This is the CRM-only Supabase project used by the production CRM CLOUD connection described in section 19.</li>
-          <li><B>Supabase financiero (NO usar para CRM):</B> Project ID <B>zrcnpmipdhpjdjkfrrgt</B>. Pertenece a Claris / Island City Transit y debe permanecer aislado.</li>
+          <li><B>This manual / continuity:</B> <a className="text-yellow-300 underline" href="https://github.com/transittaxmc-create/claris/blob/main/components/copiloto/how-it-works-screen.tsx" target="_blank" rel="noreferrer">components/copiloto/how-it-works-screen.tsx</a>.</li>
+          <li><B>Container component:</B> <B>CopilotoApp</B> inside the Next.js 16 application. The CRM entry must follow the already agreed navigation <B>More → Client management → CRM</B>.</li>
+          <li><B>Vercel — project deployed in this session:</B> <a className="text-yellow-300 underline" href="https://vercel.com/island-city/claris" target="_blank" rel="noreferrer">https://vercel.com/island-city/claris</a> — name <B>claris</B>, ID <B>prj_EaOp8GqqgF0i4BBEp3CJSY8phcKW</B>, connected to the GitHub repository above.</li>
+          <li><B>Last registered production deployment:</B> <a className="text-yellow-300 underline" href="https://claris-lime.vercel.app/" target="_blank" rel="noreferrer">https://claris-lime.vercel.app/</a> — alias of the Vercel project <B>claris</B>; deployment <B>dpl_DyeTiM8ricAkko4eREZSVJPG51nT</B>, status READY; commit <B>21a0a86230ffca0b9675194c36ab2f86c80d28c6</B>. Preview: <a className="text-yellow-300 underline" href="https://claris-9g25myvvb-island-city.vercel.app" target="_blank" rel="noreferrer">claris-9g25myvvb-island-city.vercel.app</a>.</li>
+          <li><B>Other Vercel project:</B> <B>claris-lime</B> is a separate project in Vercel connected to the same repository. It must not be said that the last deployment updated claris-lime; verify the project and its last deployment before publishing there or changing domains.</li>
+          <li><B>CRM-exclusive Supabase:</B> Project ID <B>mimgwleghecseoymgdug</B>; project URL <a className="text-yellow-300 underline" href="https://mimgwleghecseoymgdug.supabase.co" target="_blank" rel="noreferrer">https://mimgwleghecseoymgdug.supabase.co</a>. Direct dashboard access: <a className="text-yellow-300 underline" href="https://supabase.com/dashboard/project/mimgwleghecseoymgdug" target="_blank" rel="noreferrer">open CRM project</a>. This is the CRM-only Supabase project used by the production CRM CLOUD connection described in section 19.</li>
+          <li><B>Finance Supabase (do NOT use for CRM):</B> Project ID <B>zrcnpmipdhpjdjkfrrgt</B>. It belongs to Claris / Island City Transit and must remain isolated.</li>
         </ul>
 
-        <P><B>Modelo operativo personal — propietario único y aprobación humana:</B></P>
+        <P><B>Personal operating model — single owner and human approval:</B></P>
         <P>
-          Este CRM está pensado principalmente para Miguel como operador individual de su cartera
-          de clientes, no para una empresa grande con cientos de empleados. La primera versión debe
-          priorizar sencillez, rapidez en el teléfono, bajo costo operativo, privacidad y control
-          directo. Preparar roles y permisos para crecer más adelante, pero no introducir complejidad
-          empresarial innecesaria en la experiencia inicial.
+          This CRM is designed mainly for Miguel as the individual operator of his client
+          portfolio, not for a large company with hundreds of employees. The first version must
+          prioritize simplicity, speed on the phone, low operating cost, privacy and direct
+          control. Prepare roles and permissions to grow later, but do not introduce unnecessary
+          enterprise complexity into the initial experience.
         </P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li><B>Bandeja unificada:</B> objetivo de recibir en una sola ficha los mensajes entrantes por SMS y WhatsApp Business y, cuando se integre, email. Mostrar cliente, canal, fecha, conversación e historial.</li>
-          <li><B>Asistente de respuesta:</B> al entrar un mensaje, la IA puede resumirlo y preparar un borrador de respuesta usando el historial y los datos permitidos del cliente. Miguel revisa, edita y pulsa <B>APROBAR Y ENVIAR</B>. Por defecto, la IA NO envía respuestas externas automáticamente. La aprobación humana es obligatoria salvo que Miguel autorice más adelante automatizaciones específicas y limitadas.</li>
-          <li><B>Notificación al propietario:</B> avisar a Miguel de nueva conversación, cita próxima, nuevo pedido/solicitud, documento recibido y seguimiento vencido. La notificación debe abrir directamente la ficha o conversación correspondiente.</li>
-          <li><B>Notificación al cliente:</B> confirmaciones y recordatorios por el canal que el cliente haya elegido y autorizado. Mantener separados los avisos internos al propietario y los mensajes externos al cliente.</li>
-          <li><B>Citas:</B> al crear o cambiar una cita, guardar fecha, hora, zona horaria, cliente, servicio, ubicación y estado. Programar recordatorio interno a Miguel; ofrecer confirmación/recordatorio al cliente solo si existe consentimiento y canal habilitado. Manejar cancelación y reprogramación.</li>
-          <li><B>Seguimientos:</B> cada cliente puede tener próxima acción, fecha/hora, responsable (inicialmente Miguel), prioridad y estado. El CRM debe crear avisos antes del vencimiento y mostrar una lista de tareas de hoy/atrasadas.</li>
-          <li><B>Registro de consentimiento:</B> guardar por contacto y por canal si autorizó SMS, WhatsApp y email; fecha/hora, método y alcance (transaccional/servicio o marketing), además de bajas y preferencias. No asumir que tener el teléfono o haber escrito una vez equivale a aceptar campañas promocionales.</li>
-          <li><B>Broadcast/campañas:</B> permitir seleccionar un grupo de clientes y preparar una campaña, pero validar consentimiento por canal, exclusiones, bajas, límites y contenido antes de enviar. Incluir vista previa, destinatarios, conteo, prueba a Miguel y confirmación final. Nunca enviar a toda la libreta por defecto.</li>
+          <li><B>Unified inbox:</B> objective of receiving in a single record the incoming messages by SMS and WhatsApp Business and, when integrated, email. Show client, channel, date, conversation and history.</li>
+          <li><B>Reply assistant:</B> when a message arrives, the AI can summarize it and prepare a reply draft using the client's history and permitted data. Miguel reviews, edits and taps <B>APPROVE &amp; SEND</B>. By default, the AI does NOT send external replies automatically. Human approval is mandatory unless Miguel later authorizes specific, limited automations.</li>
+          <li><B>Owner notification:</B> notify Miguel of a new conversation, upcoming appointment, new order/request, received document and overdue follow-up. The notification must open the corresponding record or conversation directly.</li>
+          <li><B>Client notification:</B> confirmations and reminders through the channel the client chose and authorized. Keep internal owner notices and external client messages separate.</li>
+          <li><B>Appointments:</B> when creating or changing an appointment, save date, time, time zone, client, service, location and status. Schedule an internal reminder to Miguel; offer confirmation/reminder to the client only if consent and an enabled channel exist. Handle cancellation and rescheduling.</li>
+          <li><B>Follow-ups:</B> each client can have a next action, date/time, owner (initially Miguel), priority and status. The CRM must create notices before the due date and show a list of today's/overdue tasks.</li>
+          <li><B>Consent record:</B> save per contact and per channel whether they authorized SMS, WhatsApp and email; date/time, method and scope (transactional/service or marketing), plus opt-outs and preferences. Do not assume that having the phone number or having written once equals accepting promotional campaigns.</li>
+          <li><B>Broadcast/campaigns:</B> allow selecting a group of clients and preparing a campaign, but validate consent per channel, exclusions, opt-outs, limits and content before sending. Include preview, recipients, count, a test to Miguel and final confirmation. Never send to the whole address book by default.</li>
         </ul>
 
-        <P><B>Tarjeta digital y QR — requisito funcional:</B></P>
+        <P><B>Digital card and QR — functional requirement:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>Crear una tarjeta digital profesional de Miguel/negocio con nombre, marca/logo, servicios, teléfono, email, sitio web y botones de contacto. Debe verse bien en móvil y poder compartirse por SMS, WhatsApp o email.</li>
-          <li>Generar un enlace público seguro y un QR que abra esa tarjeta. Ofrecer acciones para compartir el enlace/QR y para que el cliente guarde el contacto como vCard (.vcf).</li>
-          <li>Permitir escanear un QR o tarjeta de otra persona para iniciar la creación de un contacto, mostrar los datos detectados y pedir confirmación antes de guardarlos. Evitar duplicados y no importar datos silenciosamente.</li>
-          <li>Definir qué datos de la tarjeta son públicos y permitir actualizarla sin cambiar el QR/enlace. No exponer notas privadas ni datos del CRM en la tarjeta pública.</li>
+          <li>Create a professional digital card for Miguel/the business with name, brand/logo, services, phone, email, website and contact buttons. It must look good on mobile and be shareable by SMS, WhatsApp or email.</li>
+          <li>Generate a secure public link and a QR that opens that card. Offer actions to share the link/QR and for the client to save the contact as a vCard (.vcf).</li>
+          <li>Allow scanning another person's QR or card to start creating a contact, show the detected data and ask for confirmation before saving it. Avoid duplicates and do not import data silently.</li>
+          <li>Define which card data is public and allow updating it without changing the QR/link. Do not expose private notes or CRM data on the public card.</li>
         </ul>
 
-        <P><B>Pedidos, servicios, pagos y rutas — flujo conectado a revisar:</B></P>
+        <P><B>Orders, services, payments and routes — connected flow to review:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>El propietario indicó que existe otro trabajo/proyecto iniciado, aún incompleto, relacionado con recibir solicitudes/órdenes, pagos y cálculo de rutas. Antes de crear una segunda función, localizar y auditar ese trabajo existente en el repositorio y en el historial.</li>
-          <li>Flujo objetivo: cliente envía solicitud/orden → CRM crea registro pendiente → confirmación de recepción al cliente (si el canal está autorizado) → aviso a Miguel → Miguel revisa y llama/prepara cotización → calcula ruta/precio según reglas existentes → envía propuesta → registra aceptación/pago → actualiza el estado del trabajo → seguimiento y cierre.</li>
-          <li>La confirmación inicial debe decir que la solicitud fue recibida, no que el servicio está confirmado ni pagado. Estados separados: recibido, en revisión, cotizado, esperando aprobación, aprobado, pago pendiente, pagado, programado, en progreso, completado y cancelado, ajustados al proyecto existente.</li>
-          <li>Integrar pagos solo después de identificar el proveedor y el módulo ya comenzado. No guardar números completos de tarjetas ni datos sensibles de pago en tablas CRM; usar checkout/tokenización del proveedor. No tocar funciones financieras personales de Claris.</li>
-          <li>El cálculo de ruta, distancia, tiempo y precio debe reutilizar el proyecto existente si corresponde. No inventar tarifas ni duplicar un motor de rutas sin auditar primero los archivos y reglas existentes.</li>
+          <li>The owner indicated there is another work/project started, still incomplete, related to receiving requests/orders, payments and route calculation. Before creating a second function, locate and audit that existing work in the repository and in the history.</li>
+          <li>Target flow: client sends request/order → CRM creates a pending record → receipt confirmation to the client (if the channel is authorized) → notice to Miguel → Miguel reviews and calls/prepares a quote → calculates route/price per the existing rules → sends proposal → records acceptance/payment → updates the job status → follow-up and closing.</li>
+          <li>The initial confirmation must say the request was received, not that the service is confirmed or paid. Separate states: received, in review, quoted, awaiting approval, approved, payment pending, paid, scheduled, in progress, completed and cancelled, adjusted to the existing project.</li>
+          <li>Integrate payments only after identifying the provider and the module already started. Do not store full card numbers or sensitive payment data in CRM tables; use the provider's checkout/tokenization. Do not touch Claris's personal finance functions.</li>
+          <li>Route, distance, time and price calculation must reuse the existing project if applicable. Do not invent fares or duplicate a route engine without first auditing the existing files and rules.</li>
         </ul>
 
-        <P><B>Arquitectura de notificaciones — definición de producto:</B></P>
+        <P><B>Notification architecture — product definition:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li><B>Push al propietario:</B> web push desde servidor mediante suscripción del dispositivo, permiso explícito, service worker y claves/credenciales guardadas solo en servidor. Cada notificación debe incluir tipo de evento, registro relacionado, fecha y enlace interno. Guardar varias suscripciones si Miguel usa más de un dispositivo.</li>
-          <li><B>iPhone:</B> para recibir Web Push de esta aplicación web en iOS/iPadOS, el usuario debe añadir la web app a la pantalla de inicio y aceptar las notificaciones; Apple documenta Web Push para web apps añadidas a Home Screen desde iOS 16.4. Probar en el iPhone real. No prometer entrega si el usuario no instala/autoriza o el sistema bloquea avisos.</li>
-          <li><B>Programación:</B> citas y seguimientos requieren trabajos programados del lado servidor y zona horaria correcta; no depender de que la página esté abierta o de timers del navegador. Evitar avisos duplicados con claves idempotentes y permitir posponer/completar.</li>
-          <li><B>Canales independientes:</B> push es para el propietario/app; SMS, WhatsApp y email son canales externos para el cliente. Un fallo de un canal no debe borrar el evento ni impedir que aparezca en la bandeja CRM.</li>
-          <li><B>Auditoría:</B> registrar evento creado, destinatario, canal, consentimiento comprobado, mensaje aprobado, proveedor, ID de envío, estado/entrega/fallo y baja. Proteger datos personales y no guardar tokens en el frontend.</li>
+          <li><B>Push to the owner:</B> web push from the server through device subscription, explicit permission, service worker and keys/credentials stored only on the server. Each notification must include event type, related record, date and internal link. Save several subscriptions if Miguel uses more than one device.</li>
+          <li><B>iPhone:</B> to receive Web Push from this web application on iOS/iPadOS, the user must add the web app to the home screen and accept notifications; Apple documents Web Push for web apps added to the Home Screen since iOS 16.4. Test on the real iPhone. Do not promise delivery if the user does not install/authorize or the system blocks notices.</li>
+          <li><B>Scheduling:</B> appointments and follow-ups require server-side scheduled jobs and the correct time zone; do not depend on the page being open or on browser timers. Avoid duplicate notices with idempotent keys and allow snoozing/completing.</li>
+          <li><B>Independent channels:</B> push is for the owner/app; SMS, WhatsApp and email are external channels for the client. A failure of one channel must not delete the event or prevent it from appearing in the CRM inbox.</li>
+          <li><B>Audit:</B> record event created, recipient, channel, verified consent, approved message, provider, send ID, status/delivery/failure and opt-out. Protect personal data and do not store tokens in the frontend.</li>
         </ul>
 
-        <P><B>Reglas prácticas de mensajería en EE. UU. — validar antes de activar campañas:</B></P>
+        <P><B>Practical US messaging rules — validate before activating campaigns:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>Para SMS de aplicación a personas en números estadounidenses mediante número local de 10 dígitos, los proveedores/carreadores exigen registro A2P 10DLC. La marca y campaña, propósito, muestras y proceso verificable de consentimiento deben configurarse antes de enviar tráfico productivo. Ver guía oficial: https://www.twilio.com/docs/messaging/compliance/a2p-10dlc.</li>
-          <li>Guardar y respetar STOP/UNSUBSCRIBE y otras bajas; no volver a enviar campañas a quien se dio de baja. Mantener identificación del remitente y mecanismo HELP/STOP según el canal/proveedor. La mensajería de servicio y marketing debe etiquetarse por separado y revisarse según las reglas aplicables.</li>
-          <li>WhatsApp Business Platform requiere configurar la cuenta empresarial, número, permisos y plantillas aprobadas cuando corresponda; revisar las reglas actuales de Meta antes de programar envíos fuera de la ventana permitida. No confundir WhatsApp Business App con acceso API para integrarlo al CRM.</li>
-          <li>Email también debe registrar preferencias, bajas y rebotes; separar mensajes de servicio de promociones y mantener identificación/remitente y enlaces de baja para comunicaciones comerciales según la normativa aplicable.</li>
-          <li>La aplicación debe bloquear el envío si falta consentimiento requerido, el canal está dado de baja o el destinatario no es elegible. Un broadcast siempre requiere revisión de destinatarios y aprobación final de Miguel.</li>
+          <li>For application-to-person SMS to US numbers through a local 10-digit number, providers/carriers require A2P 10DLC registration. The brand and campaign, purpose, samples and verifiable consent process must be configured before sending production traffic. See the official guide: https://www.twilio.com/docs/messaging/compliance/a2p-10dlc.</li>
+          <li>Save and respect STOP/UNSUBSCRIBE and other opt-outs; do not send campaigns again to anyone who opted out. Keep sender identification and a HELP/STOP mechanism per channel/provider. Service and marketing messaging must be labeled separately and reviewed under the applicable rules.</li>
+          <li>WhatsApp Business Platform requires configuring the business account, number, permissions and approved templates when applicable; review Meta's current rules before programming sends outside the permitted window. Do not confuse WhatsApp Business App with API access to integrate it into the CRM.</li>
+          <li>Email must also record preferences, opt-outs and bounces; separate service messages from promotions and keep identification/sender and opt-out links for commercial communications under the applicable regulations.</li>
+          <li>The application must block sending if required consent is missing, the channel is opted out or the recipient is not eligible. A broadcast always requires recipient review and Miguel's final approval.</li>
         </ul>
 
 
-        <P><B>Registro de implementación local — PWA y avisos del propietario (2026-11-25):</B></P>
+        <P><B>Local implementation record — PWA and owner notices (2026-11-25):</B></P>
         <P>
-          Esta actualización supersede el estado anterior que indicaba que todavía no existían
-          manifest ni service worker. Se está construyendo primero la base local, sin esperar la
-          autorización del Supabase CRM. La información de clientes sigue guardándose en la clave
-          existente <B>claris_crm_clients_v1</B>; esta actualización no migra, borra ni reemplaza
-          esos datos y no modifica el módulo financiero.
+          This update supersedes the previous state that indicated there were still no
+          manifest or service worker. The local base is being built first, without waiting for the
+          CRM Supabase authorization. Client information keeps being stored in the existing
+          key <B>claris_crm_clients_v1</B>; this update does not migrate, delete or replace
+          those data and does not modify the finance module.
         </P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li><B>Manifest:</B> se añade <B>app/manifest.ts</B>, publicado por Next.js como <B>/manifest.webmanifest</B>, con nombre Copiloto V7, modo standalone, color de tema y punto de inicio raíz. app/layout.tsx declara el manifest y conserva la configuración Apple existente.</li>
-          <li><B>Service worker:</B> se añade <B>public/sw.js</B> con instalación/activación, recepción de eventos push, presentación de notificaciones y acción al pulsar para abrir la ruta indicada. El worker es infraestructura de cliente; por sí solo no envía notificaciones ni programa citas.</li>
-          <li><B>Panel en CRM:</B> <B>components/copiloto/crm-notifications.tsx</B> registra el worker, muestra el estado del soporte/permiso, solicita permiso únicamente después de pulsar el botón del usuario y permite enviar una notificación de prueba local. Se integra en <B>components/copiloto/crm-screen.tsx</B>.</li>
-          <li><B>Alcance real de esta fase:</B> registro del service worker y notificación de prueba requieren navegador compatible y permiso concedido. Además, al abrir el CRM, si hay fechas nextContact vencidas o de hoy, se presenta un aviso local agrupado como máximo una vez al día. Esta comprobación solo corre cuando el CRM está abierto; no es un programador en segundo plano. En iPhone, Web Push requiere instalar Copiloto en la pantalla de inicio y conceder permiso desde la web app instalada. No se ha probado todavía en el iPhone físico.</li>
-          <li><B>Push remoto aún pendiente:</B> no hay todavía suscripción Push persistida en servidor, claves VAPID, endpoint de envío, cron/job de citas ni proveedor de entrega. Por eso no se promete aviso con la aplicación cerrada para eventos reales hasta completar esa fase backend. Los eventos de cita/seguimiento tampoco se crean en esta etapa.</li>
-          <li><B>Seguridad y límites:</B> el navegador no contiene secretos; no se instala SDK ni se accede a Supabase; no se envían SMS, WhatsApp ni email. La IA no envía mensajes externos. Los datos CRM existentes permanecen en el almacenamiento local.</li>
-          <li><B>Archivos cambiados en este avance:</B> <B>app/manifest.ts</B> (nuevo), <B>public/sw.js</B> (nuevo), <B>components/copiloto/crm-notifications.tsx</B> (nuevo), <B>app/layout.tsx</B>, <B>components/copiloto/crm-screen.tsx</B> y este manual.</li>
-          <li><B>Publicación de esta fase:</B> commit <B>67f2cb32ff4f8dd43cf01fb2dae8d2db4017fb02</B>, deployment Vercel del proyecto <B>claris</B> en estado <B>READY</B>; alias de producción incluye <B>https://claris-lime.vercel.app</B>. El build reportó compilación exitosa y generó la ruta <B>/manifest.webmanifest</B>. El proyecto Vercel separado llamado <B>claris-lime</B> no tiene Git conectado y no es el deployment que sirve ese alias; su intento independiente falló al aprovisionar recursos, por lo que no se considera fuente de producción.</li>
-          <li><B>Verificación externa pendiente:</B> el build de producción confirmó compilación y generación de la ruta manifest, pero las herramientas de lectura HTTP no pudieron inspeccionar los endpoints publicados. Confirmar en el navegador del iPhone que <B>/manifest.webmanifest</B> y <B>/sw.js</B> responden, activar permiso y pulsar el test. La entrega push remota y los avisos con app cerrada siguen pendientes de VAPID, persistencia de suscripciones y un job backend.</li>
+          <li><B>Manifest:</B> <B>app/manifest.ts</B> is added, published by Next.js as <B>/manifest.webmanifest</B>, with name Copiloto V7, standalone mode, theme color and root start point. app/layout.tsx declares the manifest and keeps the existing Apple configuration.</li>
+          <li><B>Service worker:</B> <B>public/sw.js</B> is added with install/activation, push event reception, notification display and tap action to open the indicated route. The worker is client infrastructure; by itself it does not send notifications or schedule appointments.</li>
+          <li><B>CRM panel:</B> <B>components/copiloto/crm-notifications.tsx</B> registers the worker, shows the support/permission state, requests permission only after the user taps the button and allows sending a local test notification. It is integrated in <B>components/copiloto/crm-screen.tsx</B>.</li>
+          <li><B>Real scope of this phase:</B> service worker registration and test notification require a compatible browser and granted permission. Also, when the CRM is opened, if there are nextContact dates overdue or today, a grouped local notice is presented at most once a day. This check only runs when the CRM is open; it is not a background scheduler. On iPhone, Web Push requires installing Copiloto on the home screen and granting permission from the installed web app. It has not yet been tested on the physical iPhone.</li>
+          <li><B>Remote push still pending:</B> there is still no server-persisted Push subscription, VAPID keys, send endpoint, appointment cron/job or delivery provider. Therefore no notice with the application closed is promised for real events until that backend phase is completed. Appointment/follow-up events are not created at this stage either.</li>
+          <li><B>Security and limits:</B> the browser contains no secrets; no SDK is installed and Supabase is not accessed; no SMS, WhatsApp or email are sent. The AI does not send external messages. Existing CRM data remains in local storage.</li>
+          <li><B>Files changed in this advance:</B> <B>app/manifest.ts</B> (new), <B>public/sw.js</B> (new), <B>components/copiloto/crm-notifications.tsx</B> (new), <B>app/layout.tsx</B>, <B>components/copiloto/crm-screen.tsx</B> and this manual.</li>
+          <li><B>Publication of this phase:</B> commit <B>67f2cb32ff4f8dd43cf01fb2dae8d2db4017fb02</B>, Vercel deployment of the <B>claris</B> project in <B>READY</B> state; production alias includes <B>https://claris-lime.vercel.app</B>. The build reported successful compilation and generated the <B>/manifest.webmanifest</B> route. The separate Vercel project called <B>claris-lime</B> has no Git connected and is not the deployment serving that alias; its independent attempt failed while provisioning resources, so it is not considered a production source.</li>
+          <li><B>External verification pending:</B> the production build confirmed compilation and generation of the manifest route, but the HTTP reading tools could not inspect the published endpoints. Confirm in the iPhone browser that <B>/manifest.webmanifest</B> and <B>/sw.js</B> answer, activate permission and tap the test. Remote push delivery and notices with the app closed remain pending VAPID, subscription persistence and a backend job.</li>
 
         </ul>
 
-        <P><B>Stack y configuración que deben verificarse antes de continuar:</B></P>
+        <P><B>Stack and configuration to verify before continuing:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>Aplicación: Next.js 16, React y componente principal <B>CopilotoApp</B>, en el repositorio <B>transittaxmc-create/claris</B>.</li>
+          <li>Application: Next.js 16, React and main component <B>CopilotoApp</B>, in the repository <B>transittaxmc-create/claris</B>.</li>
           <li><B>Supabase client stack:</B> <B>@supabase/supabase-js</B> and <B>@supabase/ssr</B> are installed and locked. The CRM uses browser/server Supabase clients and <B>proxy.ts</B> to refresh the CRM session; do not reinstall or duplicate them.</li>
           <li><B>CRM cloud variables:</B> Vercel uses <B>NEXT_PUBLIC_CRM_SUPABASE_URL</B> and <B>NEXT_PUBLIC_CRM_SUPABASE_PUBLISHABLE_KEY</B> for the CRM-only project <B>mimgwleghecseoymgdug</B>. No CRM service-role key is used in the browser or by the CRM state route. Never copy the finance project credentials or expose secret keys to the browser.</li>
           <li><B>CRM Supabase access:</B> verified for Phase 1. The production app connects only to the CRM project <B>mimgwleghecseoymgdug</B>; the finance project remains separate and untouched.</li>
         </ul>
 
-        <P><B>Estado de decisiones — confirmado, propuesto y pendiente:</B></P>
+        <P><B>Decision state — confirmed, proposed and pending:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li><B>Confirmado por el propietario:</B> CRM dentro de Claris existente; nombre V7; Supabase separado para CRM; finanzas y Plaid intactos; acceso por More → Client management → CRM; no añadir opción al menú inferior.</li>
-          <li><B>Implementado y verificado en código:</B> pantalla inicial de clientes con alta/edición/eliminación, búsqueda, filtros, estados, notas, fecha de seguimiento, botones tel: y mailto:, almacenamiento local en <B>claris_crm_clients_v1</B>, panel <B>CRM CLOUD</B>, Auth y sincronización con el Supabase exclusivo del CRM.</li>
-          <li><B>Propuesto, no confirmado como creado:</B> expansión relacional futura con perfiles, organizaciones, membresías, contactos, servicios, trabajos de transporte, casos de impuestos, documentos, citas, tareas y actividad. Las tablas actuales de clientes/reservaciones, Auth y RLS sí están creadas y conectadas.</li>
+          <li><B>Confirmed by the owner:</B> CRM inside the existing Claris; name V7; separate Supabase for CRM; finance and Plaid intact; access through More → Client management → CRM; do not add an option to the bottom menu.</li>
+          <li><B>Implemented and verified in code:</B> initial clients screen with create/edit/delete, search, filters, statuses, notes, follow-up date, tel: and mailto: buttons, local storage in <B>claris_crm_clients_v1</B>, <B>CRM CLOUD</B> panel, Auth and sync with the CRM's exclusive Supabase.</li>
+          <li><B>Proposed, not confirmed as created:</B> future relational expansion with profiles, organizations, memberships, contacts, services, transportation jobs, tax cases, documents, appointments, tasks and activity. The current clients/reservations tables, Auth and RLS are created and connected.</li>
           <li><B>Still pending:</B> the owner’s own account sign-in and visual confirmation on his phone; complete client files/documents/appointments/tasks; SMS and WhatsApp Business; automatic reminders; and a background push test. CRM cloud access, Auth, RLS and the idempotent upload of local clients/reservations are no longer pending for Phase 1.</li>
-          <li><B>No decidido / no recuperado:</B> proveedor de SMS, proveedor/API de WhatsApp, número empresarial, cuentas/credenciales de Meta, costos, plantillas, reglas de campañas y consentimiento detallado. No solicitar de nuevo al propietario información que ya aparezca en chats o enlaces; primero revisar el historial y las cuentas conectadas disponibles.</li>
+          <li><B>Not decided / not recovered:</B> SMS provider, WhatsApp provider/API, business number, Meta accounts/credentials, costs, templates, campaign rules and detailed consent. Do not ask the owner again for information that already appears in chats or links; first review the history and the available connected accounts.</li>
         </ul>
 
-        <P><B>Objetivo y alcance:</B></P>
+        <P><B>Objective and scope:</B></P>
         <P>
-          Construir un CRM profesional para organizar clientes y prospectos, contactos,
-          conversaciones, notas, seguimiento, citas, documentos y tareas. El CRM debe ser un
-          módulo independiente en sus datos y permisos, aunque comparta la aplicación y su
-          navegación. Mantener la experiencia ligera: no leer ni cargar registros del CRM hasta
-          que el usuario abra el módulo. La pantalla se monta cuando tab === CRM; no afirmar que
-          existe división de bundle/code-splitting sin verificarla.
+          Build a professional CRM to organize clients and prospects, contacts,
+          conversations, notes, follow-up, appointments, documents and tasks. The CRM must be an
+          independent module in its data and permissions, even though it shares the application and its
+          navigation. Keep the experience light: do not read or load CRM records until
+          the user opens the module. The screen mounts when tab === CRM; do not claim that
+          bundle division/code-splitting exists without verifying it.
         </P>
 
-        <P><B>Lo que existe actualmente — verificado en el código:</B></P>
+        <P><B>What currently exists — verified in the code:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li><B>components/copiloto/crm-screen.tsx</B> implementa alta, edición y eliminación de clientes; búsqueda por nombre, empresa, teléfono y correo; filtros y contadores.</li>
-          <li>Campos actuales: nombre, empresa, teléfono, email, estado, origen, notas/historial de interacción, próxima fecha de contacto y fecha de creación.</li>
-          <li>Estados actuales: Lead, Active, Follow-up e Inactive. Orígenes: Referral, Website, Social media, Returning client, Walk-in y Other.</li>
-          <li>Acciones disponibles: llamar por teléfono, enviar email, abrir detalle, editar y eliminar cliente.</li>
+          <li><B>components/copiloto/crm-screen.tsx</B> implements client create, edit and delete; search by name, company, phone and email; filters and counters.</li>
+          <li>Current fields: name, company, phone, email, status, source, notes/interaction history, next contact date and creation date.</li>
+          <li>Current statuses: Lead, Active, Follow-up and Inactive. Sources: Referral, Website, Social media, Returning client, Walk-in and Other.</li>
+          <li>Available actions: call by phone, send email, open detail, edit and delete client.</li>
           <li><B>Local cache:</B> clients still use <B>claris_crm_clients_v1</B> in localStorage as the on-device cache. The cloud connection never deletes localStorage.</li>
           <li><B>CRM CLOUD:</B> with an active session, clients sync with the CRM-only Supabase project. Local-only clients upload with the same ids; when the same id exists in both places, the cloud version controls. Without a session, the CRM remains fully local.</li>
         </ul>
 
-        <P><B>Supabase — separación obligatoria:</B></P>
+        <P><B>Supabase — mandatory separation:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>Proyecto Supabase destinado exclusivamente al CRM V7, según la información del propietario: <B>mimgwleghecseoymgdug</B>. Debe verificarse el acceso y la identidad del proyecto antes de ejecutar cambios.</li>
-          <li>Proyecto financiero Claris / Island City Transit: <B>zrcnpmipdhpjdjkfrrgt</B>. Es distinto y NO debe utilizarse para guardar datos CRM.</li>
+          <li>Supabase project destined exclusively to CRM V7, per the owner's information: <B>mimgwleghecseoymgdug</B>. Access and project identity must be verified before running changes.</li>
+          <li>Claris / Island City Transit finance project: <B>zrcnpmipdhpjdjkfrrgt</B>. It is different and must NOT be used to store CRM data.</li>
           <li><B>Current status:</B> CRM Supabase access and the production connection are verified. The earlier 2026-11-25 access problem is superseded by section 19.</li>
-          <li>Las tablas CRM independientes <B>public.crm_clients</B> y <B>public.crm_reservations</B>, sus relaciones e índices, Auth y las políticas RLS por propietario ya están creadas y conectadas. No recrearlas ni duplicarlas.</li>
-          <li>La subida desde localStorage es idempotente: los registros solo locales suben con los mismos ids y localStorage se conserva como caché. Verificar conteos al conectar la cuenta real del propietario; no borrar registros locales.</li>
+          <li>The independent CRM tables <B>public.crm_clients</B> and <B>public.crm_reservations</B>, their relations and indexes, Auth and the per-owner RLS policies are already created and connected. Do not recreate or duplicate them.</li>
+          <li>The upload from localStorage is idempotent: local-only records upload with the same ids and localStorage is kept as cache. Verify counts when connecting the owner's real account; do not delete local records.</li>
         </ul>
 
-        <P><B>INFORME DE NOTIFICACIONES Y MENSAJERÍA — actualizado 2026-11-25:</B></P>
+        <P><B>NOTIFICATIONS AND MESSAGING REPORT — updated 2026-11-25:</B></P>
         <P>
-          Esta sección registra tanto la implementación técnica de push al propietario como el flujo
-          de trabajo acordado para centralizar mensajes de clientes. Diferenciar siempre lo que ya
-          existe en código de lo que todavía requiere prueba física, calendario o proveedor externo.
+          This section records both the technical push-to-owner implementation and the agreed
+          workflow to centralize client messages. Always differentiate what already
+          exists in code from what still requires a physical test, calendar or external provider.
         </P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li><B>Base PWA y permiso:</B> <B>app/manifest.ts</B> define Copiloto V7 como web app instalable; <B>app/layout.tsx</B> declara el manifest y metadatos Apple; <B>public/sw.js</B> registra instalación/activación, recepción push y clic de notificación. En iPhone se debe añadir Copiloto a Home Screen, abrir la app instalada y conceder permiso desde una acción del propietario.</li>
-          <li><B>Prueba local conservada:</B> <B>components/copiloto/crm-notifications.tsx</B> mantiene una prueba local mediante <B>showNotification</B>. Esto solo prueba la notificación generada en el dispositivo; no demuestra entrega remota.</li>
-          <li><B>Push remoto implementado en código:</B> <B>lib/crm-push.ts</B> genera VAPID JWT ES256 y cifra el contenido Web Push con AES-128-GCM conforme al formato <B>aes128gcm</B>. No se añadió dependencia npm; usa <B>node:crypto</B> y el paquete <B>@vercel/blob</B> que ya estaba instalado.</li>
-          <li><B>Suscripciones:</B> <B>POST /api/crm/push/subscribe</B> guarda la suscripción del dispositivo; <B>DELETE</B> permite eliminarla. El archivo de suscripciones se cifra con AES-256-GCM antes de guardarse en Vercel Blob. El documento Blob es público por la modalidad de almacenamiento existente, pero contiene solo datos cifrados; la clave de cifrado permanece como variable secreta del servidor. Límite actual: 10 dispositivos.</li>
-          <li><B>Configuración pública:</B> <B>GET /api/crm/push/config</B> entrega únicamente la clave VAPID pública y el estado de configuración; nunca expone la clave VAPID privada ni la clave de cifrado.</li>
-          <li><B>Prueba push remota:</B> <B>POST /api/crm/push/test</B> envía una notificación desde el servidor directamente a la suscripción del dispositivo que solicita la prueba. La respuesta HTTP positiva confirma aceptación del servicio push, pero la entrega final debe verificarse viendo el aviso en el iPhone real.</li>
-          <li><B>Envío backend confiable:</B> <B>POST /api/crm/push/send</B> envía a las suscripciones registradas y exige <B>Authorization: Bearer</B> con <B>CRM_PUSH_SEND_SECRET</B>. Este endpoint es para futuras automatizaciones/webhooks; no se debe colocar ese secreto en el navegador.</li>
-          <li><B>Variables Vercel creadas para el proyecto correcto:</B> <B>CRM_PUSH_VAPID_PUBLIC_KEY</B>, <B>CRM_PUSH_VAPID_PRIVATE_KEY</B>, <B>CRM_PUSH_STORE_SECRET</B>, <B>CRM_PUSH_SUBJECT</B> y <B>CRM_PUSH_SEND_SECRET</B>. Se configuraron en Production, Preview y Development. Los valores privados no se copian a este manual ni a GitHub. <B>BLOB_READ_WRITE_TOKEN</B> ya existía y se reutiliza. No se cambió Supabase ni se utilizó el Supabase financiero.</li>
-          <li><B>Interfaz CRM:</B> <B>components/copiloto/crm-notifications.tsx</B> registra el service worker, solicita permiso solo tras pulsar el botón, crea/recupera la suscripción PushManager, la registra en el servidor y ofrece botones separados para prueba remota y prueba local. Si ya existe una suscripción en el teléfono, intenta sincronizarla con el servidor al abrir el CRM.</li>
-          <li><B>Protección de rutas:</B> los endpoints de suscripción y prueba verifican que el origen de la petición sea el mismo sitio. La prueba remota envía solo a la suscripción que la solicita, no a todos los dispositivos. El envío general exige el secreto de backend. Las suscripciones se cifran en reposo.</li>
-          <li><B>Estado de verificación — actualizado 2026-11-25:</B> Miguel confirmó prueba física LOCAL exitosa en su iPhone: activó <B>Enable Testing</B>, pulsó <B>Local Test</B> y recibió la notificación del dispositivo. Esto verifica que el service worker / showNotification puede mostrar una notificación local en ese iPhone. <B>No confundir con prueba remota:</B> la entrega remota servidor → Push Service → iPhone todavía requiere confirmación explícita independiente; tampoco demuestra aún notificaciones automáticas de citas, mensajes o tareas.</li>
-          <li><B>iPhone y banner persistente:</B> iOS controla la presentación y duración de las notificaciones. Una PWA no puede dibujar un banner/burbuja flotante permanente encima de otra aplicación ni mantener una luz propia fuera de Claris. <B>requireInteraction</B> se solicita donde el sistema lo admita, pero iOS puede ignorarlo. Cerrar/descartar una notificación del sistema no debe significar que el futuro mensaje CRM quede resuelto; la bandeja persistente y su contador deben vivir dentro del CRM.</li>
-          <li><B>Seguimientos existentes:</B> <B>components/copiloto/crm-screen.tsx</B> revisa <B>claris_crm_clients_v1</B> al abrir/montar el CRM y avisa de clientes no inactivos cuya fecha <B>nextContact</B> sea hoy o anterior, como máximo una vez al día con <B>claris_crm_followup_notice_v1</B>. Esta revisión no corre en segundo plano mientras CRM está cerrado.</li>
-          <li><B>Citas y viajes:</B> todavía no existe un modelo de citas/eventos conectado a push, un calendario CRM terminado, un job/cron programado ni recordatorio automático 30 minutos antes de una recogida. El endpoint de envío ya sirve como base segura, pero no hay programación ni reglas de cita implementadas.</li>
+          <li><B>PWA base and permission:</B> <B>app/manifest.ts</B> defines Copiloto V7 as an installable web app; <B>app/layout.tsx</B> declares the manifest and Apple metadata; <B>public/sw.js</B> registers install/activation, push reception and notification click. On iPhone, Copiloto must be added to the Home Screen, the installed app opened and permission granted from an owner action.</li>
+          <li><B>Local test kept:</B> <B>components/copiloto/crm-notifications.tsx</B> keeps a local test through <B>showNotification</B>. This only tests the notification generated on the device; it does not prove remote delivery.</li>
+          <li><B>Remote push implemented in code:</B> <B>lib/crm-push.ts</B> generates an ES256 VAPID JWT and encrypts the Web Push content with AES-128-GCM in the <B>aes128gcm</B> format. No npm dependency was added; it uses <B>node:crypto</B> and the <B>@vercel/blob</B> package that was already installed.</li>
+          <li><B>Subscriptions:</B> <B>POST /api/crm/push/subscribe</B> saves the device subscription; <B>DELETE</B> allows removing it. The subscriptions file is encrypted with AES-256-GCM before being saved in Vercel Blob. The Blob document is public under the existing storage mode, but it contains only encrypted data; the encryption key remains a server secret variable. Current limit: 10 devices.</li>
+          <li><B>Public configuration:</B> <B>GET /api/crm/push/config</B> delivers only the public VAPID key and the configuration state; it never exposes the private VAPID key or the encryption key.</li>
+          <li><B>Remote push test:</B> <B>POST /api/crm/push/test</B> sends a notification from the server directly to the subscription of the device requesting the test. A positive HTTP response confirms acceptance by the push service, but final delivery must be verified by seeing the notice on the real iPhone.</li>
+          <li><B>Reliable backend sending:</B> <B>POST /api/crm/push/send</B> sends to the registered subscriptions and requires <B>Authorization: Bearer</B> with <B>CRM_PUSH_SEND_SECRET</B>. This endpoint is for future automations/webhooks; that secret must not be placed in the browser.</li>
+          <li><B>Vercel variables created for the correct project:</B> <B>CRM_PUSH_VAPID_PUBLIC_KEY</B>, <B>CRM_PUSH_VAPID_PRIVATE_KEY</B>, <B>CRM_PUSH_STORE_SECRET</B>, <B>CRM_PUSH_SUBJECT</B> and <B>CRM_PUSH_SEND_SECRET</B>. They were configured in Production, Preview and Development. The private values are not copied into this manual or GitHub. <B>BLOB_READ_WRITE_TOKEN</B> already existed and is reused. Supabase was not changed and the finance Supabase was not used.</li>
+          <li><B>CRM interface:</B> <B>components/copiloto/crm-notifications.tsx</B> registers the service worker, requests permission only after a button tap, creates/recovers the PushManager subscription, registers it on the server and offers separate buttons for remote test and local test. If a subscription already exists on the phone, it tries to sync it with the server when the CRM is opened.</li>
+          <li><B>Route protection:</B> the subscription and test endpoints verify that the request origin is the same site. The remote test sends only to the subscription that requests it, not to all devices. General sending requires the backend secret. Subscriptions are encrypted at rest.</li>
+          <li><B>Verification state — updated 2026-11-25:</B> Miguel confirmed a successful physical LOCAL test on his iPhone: he activated <B>Enable Testing</B>, tapped <B>Local Test</B> and received the device notification. This verifies that the service worker / showNotification can show a local notification on that iPhone. <B>Do not confuse with a remote test:</B> remote delivery server → Push Service → iPhone still requires independent explicit confirmation; it also does not yet prove automatic notifications for appointments, messages or tasks.</li>
+          <li><B>iPhone and persistent banner:</B> iOS controls the presentation and duration of notifications. A PWA cannot draw a permanent floating banner/bubble on top of another application or keep its own light outside Claris. <B>requireInteraction</B> is requested where the system admits it, but iOS may ignore it. Closing/dismissing a system notification must not mean the future CRM message is resolved; the persistent inbox and its counter must live inside the CRM.</li>
+          <li><B>Existing follow-ups:</B> <B>components/copiloto/crm-screen.tsx</B> checks <B>claris_crm_clients_v1</B> when the CRM opens/mounts and notifies of non-inactive clients whose <B>nextContact</B> date is today or earlier, at most once a day with <B>claris_crm_followup_notice_v1</B>. This check does not run in the background while the CRM is closed.</li>
+          <li><B>Appointments and trips:</B> there is still no appointment/event model connected to push, no finished CRM calendar, no scheduled job/cron and no automatic reminder 30 minutes before a pickup. The send endpoint already serves as a secure base, but no scheduling or appointment rules are implemented.</li>
         </ul>
 
-        <P><B>Registro de prueba en dispositivo — 2026-11-25:</B></P>
+        <P><B>Device test record — 2026-11-25:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li><B>Acción realizada por Miguel:</B> activó el control <B>Enable Testing</B> y ejecutó <B>Local Test</B> desde la pantalla de notificaciones del CRM.</li>
-          <li><B>Resultado reportado:</B> la notificación apareció y fue recibida en el iPhone físico. Resultado: <B>LOCAL TEST = PASS (confirmado por el propietario)</B>.</li>
-          <li><B>Alcance:</B> prueba local del dispositivo; no es evidencia de entrega remota ni de disparadores automáticos por citas. No registrar como prueba remota aprobada.</li>
-          <li><B>Próxima validación:</B> ejecutar y confirmar por separado <B>Remote Push Test</B>; después probar un evento real de cita con la app cerrada y verificar hora, destinatario, enlace al registro y ausencia de duplicados.</li>
+          <li><B>Action performed by Miguel:</B> he activated the <B>Enable Testing</B> control and ran <B>Local Test</B> from the CRM notifications screen.</li>
+          <li><B>Reported result:</B> the notification appeared and was received on the physical iPhone. Result: <B>LOCAL TEST = PASS (confirmed by the owner)</B>.</li>
+          <li><B>Scope:</B> local device test; it is not evidence of remote delivery or automatic triggers by appointments. Do not record as an approved remote test.</li>
+          <li><B>Next validation:</B> run and confirm <B>Remote Push Test</B> separately; then test a real appointment event with the app closed and verify time, recipient, link to the record and absence of duplicates.</li>
         </ul>
 
-        <P><B>Flujo de trabajo de mensajes — requisitos confirmados por el propietario:</B></P>
+        <P><B>Message workflow — requirements confirmed by the owner:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li><B>Bandeja única:</B> el objetivo es centralizar mensajes entrantes de SMS y WhatsApp Business dentro del CRM, para que Miguel no tenga que revisar distintas aplicaciones mientras trabaja con otra plataforma. Cada mensaje debe crear una conversación/pendiente asociado al cliente, con canal, remitente, fecha/hora, mensaje original y estado.</li>
-          <li><B>No perder pendientes:</B> descartar o cerrar el banner/notificación del iPhone nunca debe borrar ni resolver el mensaje. El mensaje debe permanecer en una bandeja del CRM con contador visible hasta que Miguel lo responda o lo cierre explícitamente.</li>
-          <li><B>Alerta durante otra app:</B> cuando llega un mensaje, el servidor debe enviar push incluso si Claris está cerrada. La notificación del sistema puede verse sobre la aplicación de trabajo; iOS decide si aparece como banner, cuánto dura y si queda en Notification Center. No prometer un overlay flotante persistente por encima de todas las apps.</li>
-          <li><B>Respuesta con aprobación:</B> el CRM puede preparar un borrador, pero nunca enviarlo sin que Miguel pulse <B>Approve &amp; Send</B>. Debe poder editarlo, posponerlo, ignorarlo temporalmente o elegir llamar al cliente.</li>
-          <li><B>Confirmación de reservación:</B> el borrador debe explicar con precisión qué queda confirmado: fecha/día, hora, dirección de recogida, destino si fue proporcionado y tipo de servicio. Si falta un dato esencial, avisar y solicitar aclaración; no confirmar una reserva incompleta ni inventar detalles.</li>
-          <li><B>Acción alternativa:</B> permitir llamar al cliente directamente. Si Miguel marca la llamada como realizada, registrar la acción y resultado en el historial, sin enviar un SMS/WhatsApp automático.</li>
-          <li><B>Estados mínimos:</B> pendiente, en revisión, esperando datos del cliente, borrador listo, enviado (con ID/estado del proveedor cuando exista), llamada realizada y cerrado/cancelado. Solo marcar enviado después de que el proveedor acepte el envío; la entrega/lectura se registra solo si el proveedor la informa.</li>
-          <li><B>Recordatorios de pendientes:</B> ordenar por urgencia/antigüedad y permitir avisos posteriores configurables. Cerrar la alerta no cambia el estado del mensaje. Añadir modo “Estoy manejando” para no exigir interacción con el teléfono durante un viaje.</li>
-          <li><B>Indicador discreto:</B> dentro del CRM debe existir un contador/indicador de mensajes pendientes y una lista que sobreviva al cierre de la aplicación. El badge del icono o recordatorios adicionales solo se usarán si iOS y la PWA lo soportan realmente; no asumir que existe un punto flotante universal.</li>
-          <li><B>Privacidad de SMS:</B> los SMS que llegan a la aplicación personal Mensajes del iPhone no se pueden importar automáticamente a una PWA web. Para centralizarlos se necesitará un número/canal de negocio y un proveedor/API de SMS con webhooks. WhatsApp requiere WhatsApp Business Platform/API; la aplicación personal WhatsApp no se conecta automáticamente al CRM.</li>
-          <li><B>Proveedores no decididos:</B> no está seleccionado Twilio, otro proveedor SMS ni proveedor WhatsApp. Investigar opciones, costos, número empresarial, configuración de Meta, consentimientos y reglas aplicables antes de activar mensajes reales.</li>
-          <li><B>Separación de canales:</B> push es el aviso privado para Miguel; SMS/WhatsApp son conversaciones externas con el cliente. El push no envía una respuesta al cliente. La respuesta solo sale después de aprobación explícita.</li>
+          <li><B>Single inbox:</B> the objective is to centralize incoming SMS and WhatsApp Business messages inside the CRM, so Miguel does not have to check different applications while working with another platform. Each message must create a conversation/pending item associated with the client, with channel, sender, date/time, original message and status.</li>
+          <li><B>Never lose pending items:</B> dismissing or closing the iPhone banner/notification must never delete or resolve the message. The message must remain in a CRM inbox with a visible counter until Miguel answers it or explicitly closes it.</li>
+          <li><B>Alert during another app:</B> when a message arrives, the server must send push even if Claris is closed. The system notification may be seen over the work application; iOS decides whether it appears as a banner, how long it lasts and whether it stays in Notification Center. Do not promise a persistent floating overlay on top of all apps.</li>
+          <li><B>Reply with approval:</B> the CRM can prepare a draft, but never send it without Miguel tapping <B>Approve &amp; Send</B>. He must be able to edit it, postpone it, temporarily ignore it or choose to call the client.</li>
+          <li><B>Reservation confirmation:</B> the draft must explain precisely what is confirmed: date/day, time, pickup address, destination if provided and service type. If an essential datum is missing, warn and request clarification; do not confirm an incomplete reservation or invent details.</li>
+          <li><B>Alternative action:</B> allow calling the client directly. If Miguel marks the call as made, record the action and result in the history, without sending an automatic SMS/WhatsApp.</li>
+          <li><B>Minimum states:</B> pending, in review, waiting for client data, draft ready, sent (with provider ID/status when it exists), call made and closed/cancelled. Only mark sent after the provider accepts the send; delivery/read is recorded only if the provider reports it.</li>
+          <li><B>Pending reminders:</B> order by urgency/age and allow configurable later notices. Closing the alert does not change the message's state. Add an “I am driving” mode so no phone interaction is required during a trip.</li>
+          <li><B>Discreet indicator:</B> inside the CRM there must be a counter/indicator of pending messages and a list that survives the app closing. The icon badge or additional reminders will only be used if iOS and the PWA really support them; do not assume a universal floating dot exists.</li>
+          <li><B>SMS privacy:</B> SMS arriving in the iPhone's personal Messages app cannot be automatically imported into a web PWA. To centralize them, a business number/channel and an SMS provider/API with webhooks will be needed. WhatsApp requires WhatsApp Business Platform/API; the personal WhatsApp app does not automatically connect to the CRM.</li>
+          <li><B>Providers not decided:</B> Twilio, another SMS provider or a WhatsApp provider is not selected. Research options, costs, business number, Meta configuration, consents and applicable rules before activating real messages.</li>
+          <li><B>Channel separation:</B> push is the private notice for Miguel; SMS/WhatsApp are external conversations with the client. Push does not send a reply to the client. The reply only goes out after explicit approval.</li>
         </ul>
 
-        <P><B>Próximos pasos, en este orden:</B></P>
+        <P><B>Next steps, in this order:</B></P>
         <ol className="mb-3 list-decimal space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>Publicar el código push y este manual juntos; revisar que Vercel termine el build de producción en estado READY.</li>
-          <li><B>LOCAL TEST completado el 2026-11-25:</B> Enable Testing → Local Test; Miguel confirmó que recibió la notificación en su iPhone. No repetir esta prueba como pendiente.</li>
-          <li><B>Pendiente:</B> confirmar Remote Push Test en el iPhone físico y registrar el resultado por separado.</li>
-          <li>Si la prueba remota falla, revisar respuesta HTTP, runtime logs, suscripción, permiso y claves VAPID sin exponer secretos; no marcar push como terminado hasta recibir confirmación visual en el iPhone.</li>
-          <li>Después, crear el modelo de eventos/citas, recordatorios configurables (por ejemplo 30 minutos antes), cola y programación del servidor con zona horaria, deduplicación e idempotencia; conectar clic de push al registro relacionado.</li>
-          <li>Elegir y configurar proveedor SMS y WhatsApp Business oficial; implementar webhooks entrantes y salida con consentimiento, STOP/HELP, reglas de plantillas y registro de estados.</li>
-          <li>Construir la bandeja unificada persistente, borradores editables, aprobación antes de enviar, confirmación detallada de recogida, opción de llamar, modo “Estoy manejando”, contador y recordatorios de pendientes.</li>
+          <li>Publish the push code and this manual together; check that Vercel finishes the production build in READY state.</li>
+          <li><B>LOCAL TEST completed on 2026-11-25:</B> Enable Testing → Local Test; Miguel confirmed he received the notification on his iPhone. Do not repeat this test as pending.</li>
+          <li><B>Pending:</B> confirm the Remote Push Test on the physical iPhone and record the result separately.</li>
+          <li>If the remote test fails, review HTTP response, runtime logs, subscription, permission and VAPID keys without exposing secrets; do not mark push as finished until visual confirmation is received on the iPhone.</li>
+          <li>Afterwards, create the events/appointments model, configurable reminders (for example 30 minutes before), server queue and scheduling with time zone, deduplication and idempotency; connect the push click to the related record.</li>
+          <li>Choose and configure an SMS provider and official WhatsApp Business; implement inbound webhooks and outbound with consent, STOP/HELP, template rules and state records.</li>
+          <li>Build the unified persistent inbox, editable drafts, approval before sending, detailed pickup confirmation, call option, “I am driving” mode, counter and pending reminders.</li>
         </ol>
-        <P><B>Protección del módulo financiero — regla crítica para todos los agentes:</B></P>
+        <P><B>Finance module protection — critical rule for all agents:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>El CRM no debe modificar pantallas, lógica, tablas, credenciales, variables de entorno ni datos del módulo financiero.</li>
-          <li>No tocar Plaid, balances, transacciones bancarias, proyecciones, ledger, gastos, ingresos, sincronización bancaria ni reglas de conciliación para desarrollar CRM.</li>
-          <li>No cambiar el esquema ni las credenciales de <B>zrcnpmipdhpjdjkfrrgt</B> como parte del trabajo CRM. Usar exclusivamente el proyecto CRM autorizado.</li>
-          <li>No ejecutar reset, truncate, borrados masivos, migraciones generales ni cambios de configuración compartida sin autorización explícita y respaldo verificado.</li>
-          <li>Preferir cambios pequeños y aislados en archivos CRM. Revisar el diff para confirmar que no se modificaron módulos financieros o navegación no relacionada.</li>
+          <li>The CRM must not modify screens, logic, tables, credentials, environment variables or data of the finance module.</li>
+          <li>Do not touch Plaid, balances, bank transactions, projections, ledger, expenses, income, bank sync or reconciliation rules to develop the CRM.</li>
+          <li>Do not change the schema or credentials of <B>zrcnpmipdhpjdjkfrrgt</B> as part of CRM work. Use exclusively the authorized CRM project.</li>
+          <li>Do not run reset, truncate, mass deletes, general migrations or shared configuration changes without explicit authorization and a verified backup.</li>
+          <li>Prefer small, isolated changes in CRM files. Review the diff to confirm that finance modules or unrelated navigation were not modified.</li>
         </ul>
 
-        <P><B>Próximos pasos, en este orden:</B></P>
+        <P><B>Next steps, in this order:</B></P>
         <ol className="mb-3 list-decimal space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>Confirmar en el teléfono del propietario su cuenta real del panel CRM CLOUD y los conteos tras la primera sincronización; seguir usando solo el Supabase CRM <B>mimgwleghecseoymgdug</B>, nunca el financiero.</li>
-          <li>Inspeccionar el código y el estado real del proyecto; documentar lo que ya existe antes de cambiarlo.</li>
-          <li>Preservar el esquema CRM, Auth y RLS ya creados y conectados; no recrearlos ni duplicarlos.</li>
-          <li>Probar con la cuenta real del propietario altas, ediciones, búsquedas, permisos y persistencia entre dispositivos, preservando siempre los datos locales.</li>
-          <li>Diseñar e implementar push notifications para los eventos acordados, y probar entrega con la aplicación cerrada en dispositivos compatibles y con permiso concedido.</li>
-          <li>Verificar el resultado en la aplicación real y actualizar esta sección con fecha, archivos cambiados, pruebas, resultados y siguiente tarea.</li>
+          <li>Confirm on the owner's phone his real CRM CLOUD panel account and the counts after the first sync; keep using only the CRM Supabase <B>mimgwleghecseoymgdug</B>, never the finance one.</li>
+          <li>Inspect the code and the project's real state; document what already exists before changing it.</li>
+          <li>Preserve the CRM schema, Auth and RLS already created and connected; do not recreate or duplicate them.</li>
+          <li>Test with the owner's real account creates, edits, searches, permissions and persistence across devices, always preserving the local data.</li>
+          <li>Design and implement push notifications for the agreed events, and test delivery with the application closed on compatible devices with permission granted.</li>
+          <li>Verify the result in the real application and update this section with date, files changed, tests, results and next task.</li>
         </ol>
 
-        <P><B>Protocolo obligatorio para el siguiente agente:</B></P>
+        <P><B>Mandatory protocol for the next agent:</B></P>
         <P>
-          Antes de actuar, leer esta sección y revisar el código actual. Continuar desde el estado
-          verificado, no desde suposiciones ni desde mensajes aislados. No reconstruir el CRM,
-          no duplicar funciones existentes, no mover CRM fuera de More, no cambiar el menú inferior
-          y no tocar el módulo financiero. Si un acceso o estado no puede verificarse, detener ese
-          cambio y documentar el bloqueo. Después de cada sesión, actualizar esta sección con trabajo completado, pruebas reales, pendientes y el punto exacto para continuar. Al cerrar cada tarea o deployment, confirmar expresamente al propietario si la documentación quedó actualizada, si el resultado de notificaciones quedó registrado y cuál es el estado real del deployment. No afirmar que algo fue documentado o desplegado sin verificarlo.
+          Before acting, read this section and review the current code. Continue from the verified
+          state, not from assumptions or isolated messages. Do not rebuild the CRM,
+          do not duplicate existing functions, do not move the CRM out of More, do not change the bottom menu
+          and do not touch the finance module. If an access or state cannot be verified, stop that
+          change and document the block. After each session, update this section with completed work, real tests, pending items and the exact point to continue. When closing each task or deployment, expressly confirm to the owner whether the documentation was updated, whether the notification result was recorded and what the real deployment state is. Do not claim something was documented or deployed without verifying it.
         </P>
       </Section>
 
 
-      <Section title="10. TWILIO SMS — continuidad y seguridad (2026-11-25)">
+      <Section title="10. TWILIO SMS — continuity and security (2026-11-25)">
         <P>
-          <B>Objetivo confirmado por Miguel:</B> conectar primero SMS con Twilio al CRM Copiloto V7;
-          después evaluar e integrar WhatsApp Business. El CRM es para una operación pequeña y personal,
-          por lo que la primera versión debe ser sencilla, segura y fácil de operar desde el iPhone.
+          <B>Objective confirmed by Miguel:</B> first connect SMS with Twilio to CRM Copiloto V7;
+          afterwards evaluate and integrate WhatsApp Business. The CRM is for a small, personal operation,
+          so the first version must be simple, secure and easy to operate from the iPhone.
         </P>
-        <P><B>Estado real al cierre de esta sesión:</B></P>
+        <P><B>Real state at the close of this session:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>La cuenta Twilio ya fue creada por el propietario y se identificó su Account SID. No guardar el SID completo ni secretos en esta documentación.</li>
-          <li>El propietario compartió accidentalmente un Auth Token en el chat. Tratar ese token como expuesto y no volver a copiarlo, mostrarlo, incluirlo en código, GitHub, documentación ni mensajes.</li>
-          <li>La revisión previa de variables de entorno de Vercel no encontró variables TWILIO_* ni una integración SMS de Twilio en el código. Por tanto, <B>Twilio todavía NO está conectado al CRM</B>; no se ha confirmado envío ni recepción de SMS desde Copiloto.</li>
-          <li>Se aclaró que los comandos de terminal <B>export</B> no son necesarios para que Miguel los ejecute desde el iPhone. La integración se configurará por el backend y variables secretas de Vercel.</li>
-          <li>Se indicó abrir <B>https://console.twilio.com/</B> y navegar a <B>Account → API keys &amp; tokens → Auth Tokens</B>. El siguiente paso de seguridad es solicitar <B>Request a secondary token</B>. Miguel no debe pegar ni enviar ese token en el chat.</li>
-          <li>Después de crear el token secundario, no promoverlo todavía hasta confirmar si existe otra aplicación o servicio que utilice la credencial Twilio actual. Al promover el nuevo token, el anterior deja de funcionar; primero hay que actualizar y probar todas las integraciones que dependan de él.</li>
-          <li>La rotación del Auth Token no cancela ni cierra la cuenta Twilio. Es un cambio de credencial API. Activar MFA/2FA y revisar Usage, Messaging Logs y Billing para detectar actividad o cargos desconocidos.</li>
-          <li>Guardar credenciales únicamente en Vercel Environment Variables del proyecto correcto, nunca en el frontend, repositorio, capturas ni chat. Variables previstas: <B>TWILIO_ACCOUNT_SID</B> y <B>TWILIO_AUTH_TOKEN</B>; los valores no deben aparecer en documentación. Evaluar API Key restringida para producción cuando corresponda.</li>
+          <li>The Twilio account was already created by the owner and its Account SID was identified. Do not save the full SID or secrets in this documentation.</li>
+          <li>The owner accidentally shared an Auth Token in the chat. Treat that token as exposed and never copy it again, show it, or include it in code, GitHub, documentation or messages.</li>
+          <li>The previous review of Vercel environment variables found no TWILIO_* variables and no Twilio SMS integration in the code. Therefore, <B>Twilio is still NOT connected to the CRM</B>; no SMS sending or receiving from Copiloto has been confirmed.</li>
+          <li>It was clarified that terminal <B>export</B> commands are not needed for Miguel to run from the iPhone. The integration will be configured through the backend and Vercel secret variables.</li>
+          <li>He was told to open <B>https://console.twilio.com/</B> and navigate to <B>Account → API keys &amp; tokens → Auth Tokens</B>. The next security step is to request <B>Request a secondary token</B>. Miguel must not paste or send that token in the chat.</li>
+          <li>After creating the secondary token, do not promote it yet until confirming whether another application or service uses the current Twilio credential. When the new token is promoted, the old one stops working; first update and test every integration that depends on it.</li>
+          <li>Rotating the Auth Token does not cancel or close the Twilio account. It is an API credential change. Activate MFA/2FA and review Usage, Messaging Logs and Billing to detect unknown activity or charges.</li>
+          <li>Store credentials only in Vercel Environment Variables of the correct project, never in the frontend, repository, screenshots or chat. Planned variables: <B>TWILIO_ACCOUNT_SID</B> and <B>TWILIO_AUTH_TOKEN</B>; the values must not appear in documentation. Evaluate a restricted API Key for production when applicable.</li>
         </ul>
-        <P><B>Prueba acordada — primero Twilio, después CRM:</B></P>
+        <P><B>Agreed test — first Twilio, then CRM:</B></P>
         <ol className="mb-3 list-decimal space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>Desde Safari en el iPhone, entrar a Twilio Console y localizar <B>Messaging → Try out SMS</B> (la etiqueta puede variar según la consola).</li>
-          <li>Realizar una prueba controlada desde la herramienta de prueba de Twilio al teléfono propio, siguiendo las restricciones de verificación que muestre Twilio. No considerar esto todavía una integración CRM.</li>
-          <li>Una vez que la prueba de Twilio funcione, implementar en el backend de Copiloto V7 el envío y recepción mediante endpoints/webhooks seguros; persistir conversaciones, mensajes y estados del proveedor.</li>
-          <li>Configurar un número de negocio y comprobar requisitos de registro de mensajería comercial en EE. UU., incluido A2P 10DLC si se usa un número local de 10 dígitos para tráfico sujeto a ese requisito.</li>
-          <li>Probar SMS saliente, SMS entrante, estados de entrega/error, asociación con el cliente correcto, consentimiento, STOP/HELP y prevención de duplicados. No enviar campañas reales antes de verificar cumplimiento y consentimiento.</li>
-          <li>Crear una bandeja de mensajes persistente en el CRM. Las notificaciones push son avisos privados para Miguel; SMS/WhatsApp son canales externos con clientes. Cerrar un banner no debe borrar ni resolver un mensaje.</li>
-          <li>Los borradores generados por el CRM siempre requieren revisión y aprobación explícita de Miguel antes de enviar. No confirmar una reserva si faltan datos esenciales.</li>
+          <li>From Safari on the iPhone, enter the Twilio Console and locate <B>Messaging → Try out SMS</B> (the label may vary by console).</li>
+          <li>Run a controlled test from Twilio's test tool to his own phone, following the verification restrictions Twilio shows. Do not consider this a CRM integration yet.</li>
+          <li>Once the Twilio test works, implement in the Copiloto V7 backend sending and receiving through secure endpoints/webhooks; persist conversations, messages and provider states.</li>
+          <li>Configure a business number and check US commercial messaging registration requirements, including A2P 10DLC if a local 10-digit number is used for traffic subject to that requirement.</li>
+          <li>Test outbound SMS, inbound SMS, delivery/error states, association with the correct client, consent, STOP/HELP and duplicate prevention. Do not send real campaigns before verifying compliance and consent.</li>
+          <li>Create a persistent message inbox in the CRM. Push notifications are private notices for Miguel; SMS/WhatsApp are external channels with clients. Closing a banner must not delete or resolve a message.</li>
+          <li>Drafts generated by the CRM always require Miguel's review and explicit approval before sending. Do not confirm a reservation if essential data is missing.</li>
         </ol>
-        <P><B>WhatsApp — decisión y límite de seguridad:</B></P>
+        <P><B>WhatsApp — decision and safety limit:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>Miguel utiliza actualmente WhatsApp Business App en su iPhone y quiere conservar ese número y su uso normal. <B>No migrar, desconectar ni registrar ese número en la API</B> sin explicar primero las consecuencias y recibir autorización expresa.</li>
-          <li>Para una primera prueba futura, evaluar Twilio WhatsApp Sandbox con un número de prueba. Investigar coexistencia entre WhatsApp Business App y WhatsApp Business Platform antes de proponer una migración del número real.</li>
-          <li>WhatsApp se aborda después de que SMS esté integrado y probado. Respetar consentimiento, plantillas aprobadas y reglas de la plataforma.</li>
+          <li>Miguel currently uses WhatsApp Business App on his iPhone and wants to keep that number and its normal use. <B>Do not migrate, disconnect or register that number in the API</B> without first explaining the consequences and receiving express authorization.</li>
+          <li>For a first future test, evaluate the Twilio WhatsApp Sandbox with a test number. Research coexistence between WhatsApp Business App and WhatsApp Business Platform before proposing a migration of the real number.</li>
+          <li>WhatsApp is addressed after SMS is integrated and tested. Respect consent, approved templates and platform rules.</li>
         </ul>
-        <P><B>Estado de pruebas y próximo punto exacto de continuación:</B></P>
+        <P><B>Test state and exact next continuation point:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li><B>Twilio Console:</B> cuenta creada; todavía no se ha completado en esta sesión la solicitud del token secundario ni una prueba SMS.</li>
-          <li><B>Rotación de credencial:</B> pendiente; no declarar resuelta hasta crear el token nuevo, actualizar cualquier integración que lo use y promoverlo de forma segura. No solicitar el secreto al propietario.</li>
-          <li><B>Prueba SMS de Twilio:</B> pendiente; todavía no hay resultado PASS reportado.</li>
-          <li><B>Integración SMS en CRM:</B> pendiente de implementación y pruebas; no hay evidencia de conexión activa.</li>
-          <li><B>WhatsApp:</B> pendiente, sin migración del número personal de WhatsApp Business App.</li>
-          <li><B>Push:</B> conservar el estado de la sección anterior: prueba LOCAL en iPhone confirmada; prueba REMOTE y disparadores automáticos de citas siguen pendientes y deben informarse por separado.</li>
-          <li><B>Próxima acción al retomar:</B> guiar a Miguel desde Safari, paso a paso, a la pantalla de Auth Tokens para solicitar el secondary token sin compartirlo; después comprobar si usa Twilio en otra aplicación. Luego volver a Twilio Console para la prueba SMS. No pedirle comandos de terminal.</li>
+          <li><B>Twilio Console:</B> account created; the secondary token request and an SMS test have not yet been completed in this session.</li>
+          <li><B>Credential rotation:</B> pending; do not declare it resolved until the new token is created, every integration that uses it is updated and it is promoted safely. Do not ask the owner for the secret.</li>
+          <li><B>Twilio SMS test:</B> pending; no PASS result reported yet.</li>
+          <li><B>SMS integration in CRM:</B> pending implementation and tests; no evidence of an active connection.</li>
+          <li><B>WhatsApp:</B> pending, with no migration of the personal WhatsApp Business App number.</li>
+          <li><B>Push:</B> keep the previous section's state: LOCAL iPhone test confirmed; REMOTE test and automatic appointment triggers remain pending and must be reported separately.</li>
+          <li><B>Next action when resuming:</B> guide Miguel from Safari, step by step, to the Auth Tokens screen to request the secondary token without sharing it; then check whether he uses Twilio in another application. Then return to the Twilio Console for the SMS test. Do not ask him for terminal commands.</li>
         </ul>
         <P>
-          <B>Regla de cierre:</B> solo marcar Twilio como conectado cuando existan credenciales seguras en
-          Vercel, endpoints/webhooks implementados, un deployment correcto y pruebas reales de SMS
-          entrante y saliente registradas. Actualizar esta sección junto con cada cambio de código.
+          <B>Closing rule:</B> only mark Twilio as connected when secure credentials exist in
+          Vercel, endpoints/webhooks are implemented, a correct deployment exists and real tests of inbound
+          and outbound SMS are recorded. Update this section together with each code change.
         </P>
       </Section>
 
-      <Section title="11. AUDITORÍA DE CONTINUIDAD — 2026-11-25">
+      <Section title="11. CONTINUITY AUDIT — 2026-11-25">
         <P>
-          <B>Objetivo:</B> dejar un punto de recuperación verificable para que la siguiente sesión
-          continúe desde el estado real del repositorio, sin reconstruir ni repetir trabajo.
+          <B>Objective:</B> leave a verifiable recovery point so the next session
+          continues from the repository's real state, without rebuilding or repeating work.
         </P>
-        <P><B>Identidad y respaldo de código verificados:</B></P>
+        <P><B>Verified identity and code backup:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>Repositorio canónico: <B>transittaxmc-create/claris</B>; rama de producción: <B>main</B>; proyecto Vercel: <B>claris</B> (Next.js), ID <B>prj_EaOp8GqqgF0i4BBEp3CJSY8phcKW</B>.</li>
-          <li>Último commit revisado antes de esta actualización: <B>e29fca99fd45e317742bd90297da1167ea90b9d8</B> — “Docs: documentar continuidad Twilio SMS y seguridad CRM”. La revisión de estado combinado de GitHub devolvió check Vercel = success.</li>
-          <li>Deployment de producción correspondiente: <B>dpl_E5knNR2e6rgLmkNSMPtktcb8PpfW</B>, commit <B>e29fca99</B>, estado <B>READY</B>; alias de producción incluye <B>https://claris-lime.vercel.app</B>.</li>
-          <li>La auditoría confirmó que los archivos CRM y push existen en <B>main</B>: <B>components/copiloto/crm-screen.tsx</B>, <B>components/copiloto/crm-notifications.tsx</B>, <B>lib/crm-push.ts</B> y las rutas <B>/api/crm/push/config</B>, <B>/subscribe</B>, <B>/test</B> y <B>/send</B>.</li>
-          <li>La actualización de esta sección es documentación solamente; no cambia lógica del CRM, finanzas, Supabase ni credenciales. El commit/deployment que resulte de esta actualización debe verificarse y añadirse a este registro.</li>
+          <li>Canonical repository: <B>transittaxmc-create/claris</B>; production branch: <B>main</B>; Vercel project: <B>claris</B> (Next.js), ID <B>prj_EaOp8GqqgF0i4BBEp3CJSY8phcKW</B>.</li>
+          <li>Last commit reviewed before this update: <B>e29fca99fd45e317742bd90297da1167ea90b9d8</B> — “Docs: document Twilio SMS continuity and CRM security”. The GitHub combined status check returned Vercel check = success.</li>
+          <li>Corresponding production deployment: <B>dpl_E5knNR2e6rgLmkNSMPtktcb8PpfW</B>, commit <B>e29fca99</B>, status <B>READY</B>; production alias includes <B>https://claris-lime.vercel.app</B>.</li>
+          <li>The audit confirmed that the CRM and push files exist in <B>main</B>: <B>components/copiloto/crm-screen.tsx</B>, <B>components/copiloto/crm-notifications.tsx</B>, <B>lib/crm-push.ts</B> and the routes <B>/api/crm/push/config</B>, <B>/subscribe</B>, <B>/test</B> and <B>/send</B>.</li>
+          <li>This section's update is documentation only; it does not change CRM logic, finance, Supabase or credentials. The commit/deployment resulting from this update must be verified and added to this record.</li>
         </ul>
-        <P><B>Push — inventario de configuración y pruebas:</B></P>
+        <P><B>Push — configuration and test inventory:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>La inspección de nombres de variables Vercel encontró <B>CRM_PUSH_VAPID_PUBLIC_KEY</B>, <B>CRM_PUSH_VAPID_PRIVATE_KEY</B>, <B>CRM_PUSH_STORE_SECRET</B>, <B>CRM_PUSH_SEND_SECRET</B> y <B>CRM_PUSH_SUBJECT</B>, dirigidas a Production, Preview y Development. Los valores secretos no se leyeron ni se copiaron.</li>
-          <li><B>LOCAL TEST = PASS</B>, confirmado por Miguel en el iPhone físico el 2026-11-25.</li>
-          <li><B>REMOTE PUSH TEST = PENDIENTE</B>: todavía falta que Miguel confirme que el aviso enviado por el servidor apareció físicamente en el iPhone. La existencia de la ruta y de las variables no prueba la entrega.</li>
-          <li>Recordatorios automáticos de citas, eventos programados, cron/cola y prueba con app cerrada = <B>PENDIENTES</B>.</li>
+          <li>The Vercel variable-name inspection found <B>CRM_PUSH_VAPID_PUBLIC_KEY</B>, <B>CRM_PUSH_VAPID_PRIVATE_KEY</B>, <B>CRM_PUSH_STORE_SECRET</B>, <B>CRM_PUSH_SEND_SECRET</B> and <B>CRM_PUSH_SUBJECT</B>, targeted at Production, Preview and Development. The secret values were neither read nor copied.</li>
+          <li><B>LOCAL TEST = PASS</B>, confirmed by Miguel on the physical iPhone on 2026-11-25.</li>
+          <li><B>REMOTE PUSH TEST = PENDING</B>: Miguel still has to confirm that the server-sent notice physically appeared on the iPhone. The existence of the route and the variables does not prove delivery.</li>
+          <li>Automatic appointment reminders, scheduled events, cron/queue and test with the app closed = <B>PENDING</B>.</li>
         </ul>
-        <P><B>CRM, persistencia y Supabase:</B></P>
+        <P><B>CRM, persistence and Supabase:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>El CRM actual usa <B>claris_crm_clients_v1</B> en localStorage del dispositivo. La auditoría no encontró evidencia de persistencia cloud CRM habilitada; no asumir sincronización entre teléfonos.</li>
-          <li>El proyecto Supabase CRM esperado es <B>mimgwleghecseoymgdug</B>; el Supabase financiero es <B>zrcnpmipdhpjdjkfrrgt</B> y está prohibido reutilizarlo para CRM.</li>
-          <li>La consulta directa de acceso al proyecto CRM devolvió falta de permisos durante esta auditoría. Estado: <B>acceso y proyecto destino aún no verificados</B>; no ejecutar migraciones ni SQL hasta recuperar autorización y comprobar el project ref.</li>
-          <li>Se encontraron variables de entorno con nombres SUPABASE_* en Vercel, pero sus valores no se inspeccionaron. Por tanto, <B>no está verificado a qué proyecto apuntan</B>. Antes de usarlas, confirmar el destino sin mostrar secretos y evitar cualquier conexión accidental al proyecto financiero.</li>
+          <li>The current CRM uses <B>claris_crm_clients_v1</B> in the device's localStorage. The audit found no evidence of enabled CRM cloud persistence; do not assume sync between phones.</li>
+          <li>The expected CRM Supabase project is <B>mimgwleghecseoymgdug</B>; the finance Supabase is <B>zrcnpmipdhpjdjkfrrgt</B> and reusing it for the CRM is forbidden.</li>
+          <li>The direct access query to the CRM project returned a lack of permissions during this audit. Status: <B>access and target project not yet verified</B>; do not run migrations or SQL until authorization is recovered and the project ref is checked.</li>
+          <li>Environment variables with SUPABASE_* names were found in Vercel, but their values were not inspected. Therefore, <B>which project they point to is not verified</B>. Before using them, confirm the target without showing secrets and avoid any accidental connection to the finance project.</li>
         </ul>
-        <P><B>Twilio SMS y WhatsApp:</B></P>
+        <P><B>Twilio SMS and WhatsApp:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>La inspección de variables Vercel no encontró ninguna variable <B>TWILIO_*</B>. El código revisado tampoco contiene una integración SMS de Twilio confirmada. Twilio no está conectado al CRM.</li>
-          <li>La cuenta Twilio existe, pero el Auth Token compartido anteriormente debe tratarse como expuesto. No volver a copiarlo ni pedirlo por chat. Solicitar un secondary token y comprobar primero si otro servicio usa la credencial actual; no promover/rotar hasta planificar la actualización segura de todas las dependencias.</li>
-          <li>Prueba de SMS desde Twilio Console, endpoints/webhooks SMS, SMS entrante/saliente y estados de entrega = <B>PENDIENTES</B>. WhatsApp Business API también está pendiente; no migrar ni desconectar el número actual de WhatsApp Business App sin autorización expresa.</li>
+          <li>The Vercel variable inspection found no <B>TWILIO_*</B> variable. The reviewed code also contains no confirmed Twilio SMS integration. Twilio is not connected to the CRM.</li>
+          <li>The Twilio account exists, but the Auth Token shared earlier must be treated as exposed. Do not copy it again or ask for it by chat. Request a secondary token and first check whether another service uses the current credential; do not promote/rotate until the safe update of all dependencies is planned.</li>
+          <li>SMS test from the Twilio Console, SMS endpoints/webhooks, inbound/outbound SMS and delivery states = <B>PENDING</B>. WhatsApp Business API is also pending; do not migrate or disconnect the current WhatsApp Business App number without express authorization.</li>
         </ul>
-        <P><B>Orden de continuación para el siguiente chat:</B></P>
+        <P><B>Continuation order for the next chat:</B></P>
         <ol className="mb-3 list-decimal space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>Leer primero las secciones 8, 10 y 11 de este manual y verificar el último commit de <B>main</B> y el último deployment real de Vercel; no asumir que el SHA anterior sigue siendo el último después de esta actualización.</li>
-          <li>Completar <B>Remote Push Test</B> desde el iPhone y registrar PASS/FAIL según evidencia física; si falla, revisar endpoint, permiso, suscripción, VAPID y logs sin revelar secretos.</li>
-          <li>Guiar a Miguel en Safari para solicitar el secondary token de Twilio; antes de promoverlo, confirmar si la credencial anterior se usa en otro sistema. Después ejecutar la prueba controlada de SMS en Twilio Console.</li>
-          <li>Recuperar autorización del proyecto Supabase CRM, confirmar el project ref <B>mimgwleghecseoymgdug</B> y verificar de forma segura el destino de las variables Vercel. No tocar el Supabase financiero.</li>
-          <li>Diseñar persistencia cloud CRM/Auth/RLS y migración desde localStorage solo después de contar con acceso, esquema revisado y backup de datos locales. No borrar ni sobrescribir registros existentes.</li>
-          <li>Luego implementar automatizaciones de citas y la bandeja persistente de mensajes; probar cada flujo en el iPhone antes de marcarlo terminado.</li>
+          <li>First read sections 8, 10 and 11 of this manual and verify the last <B>main</B> commit and the last real Vercel deployment; do not assume the previous SHA is still the latest after this update.</li>
+          <li>Complete the <B>Remote Push Test</B> from the iPhone and record PASS/FAIL based on physical evidence; if it fails, review endpoint, permission, subscription, VAPID and logs without revealing secrets.</li>
+          <li>Guide Miguel in Safari to request the Twilio secondary token; before promoting it, confirm whether the previous credential is used in another system. Then run the controlled SMS test in the Twilio Console.</li>
+          <li>Recover authorization for the CRM Supabase project, confirm project ref <B>mimgwleghecseoymgdug</B> and safely verify the target of the Vercel variables. Do not touch the finance Supabase.</li>
+          <li>Design CRM cloud persistence/Auth/RLS and migration from localStorage only after having access, a reviewed schema and a backup of the local data. Do not delete or overwrite existing records.</li>
+          <li>Then implement appointment automations and the persistent message inbox; test each flow on the iPhone before marking it finished.</li>
         </ol>
         <P>
-          <B>Regla de respaldo y cierre:</B> GitHub <B>main</B> conserva el código y la documentación
-          versionados; un deployment READY confirma la publicación del código, pero no es un backup
-          de los datos de clientes del dispositivo. No declarar backup de datos CRM hasta probar una
-          exportación/restauración o persistencia cloud con conteos verificados. Al final de cada sesión,
-          actualizar este manual con fecha, commit, deployment (READY/BUILDING/FAILED), archivos
-          modificados, pruebas PASS/FAIL/PENDIENTES, bloqueos y el siguiente paso exacto. Confirmar
-          expresamente al propietario que la documentación quedó actualizada o indicar que no se pudo.
+          <B>Backup and closing rule:</B> GitHub <B>main</B> keeps the versioned code and documentation;
+          a READY deployment confirms the code's publication, but it is not a backup
+          of the device's client data. Do not declare a CRM data backup until an
+          export/restore or cloud persistence with verified counts is tested. At the end of each session,
+          update this manual with date, commit, deployment (READY/BUILDING/FAILED), files
+          modified, tests PASS/FAIL/PENDING, blocks and the exact next step. Expressly
+          confirm to the owner that the documentation was updated or state that it could not be.
         </P>
       </Section>
 
-      <Section title="12. PRUEBA TÉCNICA DE PRODUCCIÓN — 2026-11-25/26">
+      <Section title="12. PRODUCTION TECHNICAL TEST — 2026-11-25/26">
         <P>
-          <B>Deployment:</B> el commit <B>4f47fda0989afb5b9581c0007c92122910b31c7d</B>
-          quedó publicado en producción en el deployment <B>dpl_7Np1m8P125YmC4JEwq1xsudE9knZ</B>,
-          estado final <B>READY</B>. El alias <B>https://claris-lime.vercel.app</B> está asociado
-          a ese deployment. Esta publicación contiene la auditoría documental de la sección 11.
+          <B>Deployment:</B> commit <B>4f47fda0989afb5b9581c0007c92122910b31c7d</B>
+          was published to production in deployment <B>dpl_7Np1m8P125YmC4JEwq1xsudE9knZ</B>,
+          final status <B>READY</B>. The alias <B>https://claris-lime.vercel.app</B> is associated
+          with that deployment. This publication contains the section 11 documentation audit.
         </P>
-        <P><B>Comprobaciones HTTP realizadas desde el deployment publicado:</B></P>
+        <P><B>HTTP checks run from the published deployment:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li><B>PASS:</B> página principal responde HTTP 200 y entrega la aplicación Copiloto V7.</li>
-          <li><B>PASS:</B> <B>/api/crm/push/config</B> responde HTTP 200 y devuelve <B>enabled=true</B> con clave pública VAPID presente. No se copiaron claves privadas ni secretos.</li>
-          <li><B>PASS:</B> <B>/sw.js</B> responde HTTP 200 y contiene los manejadores de eventos <B>push</B> y <B>notificationclick</B>.</li>
-          <li><B>NO VERIFICADO:</B> entrega remota de extremo a extremo al iPhone. La prueba requiere una suscripción push real generada y registrada desde el dispositivo de Miguel; no se debe enviar una prueba con una suscripción inventada ni marcarla como PASS por el simple hecho de que el servidor esté configurado.</li>
-          <li><B>PENDIENTE:</B> Miguel debe abrir Copiloto desde el icono instalado en la pantalla de inicio del iPhone, entrar al panel de notificaciones del CRM y pulsar <B>Send remote push test</B> si el dispositivo ya aparece registrado. Si no está registrado, pulsar primero <B>Enable remote push</B> y aceptar el permiso. Confirmar si el aviso “Copiloto CRM — prueba push” aparece físicamente.</li>
+          <li><B>PASS:</B> the main page answers HTTP 200 and delivers the Copiloto V7 application.</li>
+          <li><B>PASS:</B> <B>/api/crm/push/config</B> answers HTTP 200 and returns <B>enabled=true</B> with a public VAPID key present. No private keys or secrets were copied.</li>
+          <li><B>PASS:</B> <B>/sw.js</B> answers HTTP 200 and contains the <B>push</B> and <B>notificationclick</B> event handlers.</li>
+          <li><B>NOT VERIFIED:</B> end-to-end remote delivery to the iPhone. The test requires a real push subscription generated and registered from Miguel's device; a test must not be sent with an invented subscription or marked PASS just because the server is configured.</li>
+          <li><B>PENDING:</B> Miguel must open Copiloto from the installed home-screen icon on the iPhone, enter the CRM notifications panel and tap <B>Send remote push test</B> if the device already appears registered. If it is not registered, first tap <B>Enable remote push</B> and accept the permission. Confirm whether the “Copiloto CRM — push test” notice physically appears.</li>
         </ul>
         <P>
-          <B>Resultado global:</B> infraestructura y endpoints de configuración de push disponibles;
-          prueba local previamente confirmada PASS; prueba remota física aún pendiente; automatizaciones
-          de citas y pruebas con la app cerrada siguen pendientes. No declarar el sistema de notificaciones
-          completamente operativo hasta confirmar la recepción en el iPhone y probar los disparadores automáticos.
+          <B>Overall result:</B> push configuration infrastructure and endpoints available;
+          local test previously confirmed PASS; physical remote test still pending; appointment
+          automations and tests with the app closed remain pending. Do not declare the notification system
+          fully operational until reception on the iPhone is confirmed and the automatic triggers are tested.
         </P>
         <P>
-          <B>Nota de observabilidad:</B> la consulta de logs de runtime de 24 horas no fue aceptada por
-          la retención del plan Hobby; una consulta de los últimos 30 minutos no devolvió registros.
-          Esto no equivale a una prueba de ausencia de errores ni sustituye la prueba funcional del dispositivo.
+          <B>Observability note:</B> the 24-hour runtime log query was not accepted by
+          the Hobby plan's retention; a query of the last 30 minutes returned no records.
+          This is not proof of an absence of errors and does not replace the device's functional test.
         </P>
       </Section>
 
       <Section title="13. CRM RESERVATIONS — AIRPORT FLIGHT TRACKING & ADDRESS NAVIGATION (2026-11-25)">
         <P>
-          <B>Objetivo confirmado por el propietario:</B> documentar el alcance de las reservaciones
-          del CRM Copiloto V7. Esta sección registra requisitos acordados; <B>no significa que
-          estén implementados ni desplegados</B>.
+          <B>Objective confirmed by the owner:</B> document the scope of the CRM Copiloto V7
+          reservations. This section records agreed requirements; <B>it does not mean they
+          are implemented or deployed</B>.
         </P>
-        <P><B>A. Direcciones de pickup y drop-off en la orden CRM:</B></P>
+        <P><B>A. Pickup and drop-off addresses in the CRM order:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>El flujo GPS de viajes que ya existe en Copiloto es independiente y no debe duplicarse ni modificarse por este requisito.</li>
-          <li>Dentro de cada reservación del CRM, mostrar las direcciones de pickup y drop-off que pertenecen a esa orden.</li>
-          <li>La dirección original guardada en la orden se muestra sin cambios por defecto. Solo se edita manualmente si aparece una modificación o corrección; no se obliga a editar ni se cambia automáticamente. Si no hay cambios, permanece intacta. El botón de navegación siempre utiliza la dirección vigente que esté guardada en la orden.</li>
-          <li>Agregar un botón pequeño de navegación en la esquina o junto a cada dirección. El botón de pickup abre el navegador/GPS con la dirección de recogida ya cargada; el botón de drop-off abre el navegador/GPS con la dirección de destino ya cargada.</li>
-          <li>La acción debe evitar copiar, volver a escribir o teclear manualmente la dirección en la aplicación de mapas. No reemplaza ni altera la dirección guardada en la orden.</li>
-          <li>Permitir abrir Apple Maps o Google Maps mediante enlaces de navegación compatibles con el dispositivo. Si se ofrecen ambas opciones, la elección debe ser clara y rápida.</li>
-          <li>La navegación se inicia únicamente cuando el usuario toca el botón; no iniciar GPS ni navegación automáticamente al abrir una reservación.</li>
+          <li>The trip GPS flow that already exists in Copiloto is independent and must not be duplicated or modified by this requirement.</li>
+          <li>Inside each CRM reservation, show the pickup and drop-off addresses that belong to that order.</li>
+          <li>The original address saved in the order is shown unchanged by default. It is only edited manually if a change or correction appears; editing is never forced and it never changes automatically. If there are no changes, it stays intact. The navigation button always uses the current address saved in the order.</li>
+          <li>Add a small navigation button in the corner or beside each address. The pickup button opens the browser/GPS with the pickup address already loaded; the drop-off button opens the browser/GPS with the destination address already loaded.</li>
+          <li>The action must avoid copying, rewriting or manually typing the address in the maps app. It does not replace or alter the address saved in the order.</li>
+          <li>Allow opening Apple Maps or Google Maps through device-compatible navigation links. If both options are offered, the choice must be clear and fast.</li>
+          <li>Navigation starts only when the user taps the button; never start GPS or navigation automatically when opening a reservation.</li>
         </ul>
-        <P><B>B. Recogida normal frente a recogida en aeropuerto:</B></P>
+        <P><B>B. Normal pickup versus airport pickup:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>Para una recogida en dirección normal, conservar el flujo habitual de pickup y drop-off; no pedir número de vuelo ni campos de aeropuerto.</li>
-          <li>Cuando el tipo de pickup sea aeropuerto, la reservación debe solicitar y guardar la información necesaria del vuelo, incluyendo aerolínea, número de vuelo, fecha y aeropuerto, además de la hora programada cuando esté disponible.</li>
-          <li>Incluir en la misma orden una acción <B>Track Flight</B> para consultar el vuelo y mostrar su estado, por ejemplo: a tiempo, retrasado, en vuelo, aterrizado o cancelado.</li>
-          <li>El seguimiento automático o las actualizaciones periódicas requieren seleccionar e integrar un proveedor de datos de vuelos. Hasta que exista integración y respuesta válida y reciente, no presentar estados como confirmados ni prometer actualización automática.</li>
-          <li>El registro de vuelo debe permanecer asociado a la reservación correspondiente. Considerar cambios de hora, fecha local, terminal y puerta cuando el proveedor disponga de esos datos.</li>
+          <li>For a normal address pickup, keep the usual pickup and drop-off flow; do not ask for a flight number or airport fields.</li>
+          <li>When the pickup type is airport, the reservation must request and save the necessary flight information, including airline, flight number, date and airport, plus the scheduled time when available.</li>
+          <li>Include in the same order a <B>Track Flight</B> action to look up the flight and show its status, for example: on time, delayed, in flight, landed or cancelled.</li>
+          <li>Automatic tracking or periodic updates require selecting and integrating a flight data provider. Until an integration with a valid, recent response exists, do not present statuses as confirmed or promise automatic updates.</li>
+          <li>The flight record must stay associated with the corresponding reservation. Consider changes of time, local date, terminal and gate when the provider has that data.</li>
         </ul>
-        <P><B>C. Límites y reglas de implementación:</B></P>
+        <P><B>C. Implementation limits and rules:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>Este alcance corresponde al CRM y sus órdenes de reservación; no crear un segundo módulo genérico de pickup/drop-off ni duplicar el registro GPS de viajes existente.</li>
-          <li>Antes de programar, inspeccionar la estructura real de reservaciones y los campos actuales para integrar los botones sin perder ni sobrescribir datos existentes.</li>
-          <li>Probar que editar una dirección conserva el nuevo valor y que cada botón abre el destino correcto: pickup abre pickup y drop-off abre drop-off.</li>
-          <li>Probar por separado una reservación con dirección normal y otra con pickup de aeropuerto, incluyendo la acción Track Flight.</li>
-          <li>Investigar cobertura, frecuencia de actualización, costos y términos de un proveedor de vuelos antes de contratarlo o activar cargos. No realizar compras sin aprobación del propietario.</li>
-          <li>Los canales SMS y push tienen sus estados pendientes documentados en las secciones 10–12; no afirmar que alertas de vuelos o mensajes a clientes funcionan hasta implementar y probar cada canal.</li>
+          <li>This scope belongs to the CRM and its reservation orders; do not create a second generic pickup/drop-off module or duplicate the existing trip GPS record.</li>
+          <li>Before programming, inspect the real reservation structure and current fields to integrate the buttons without losing or overwriting existing data.</li>
+          <li>Test that editing an address keeps the new value and that each button opens the correct destination: pickup opens pickup and drop-off opens drop-off.</li>
+          <li>Test separately a reservation with a normal address and one with an airport pickup, including the Track Flight action.</li>
+          <li>Research coverage, update frequency, costs and terms of a flight provider before contracting it or activating charges. Make no purchases without the owner's approval.</li>
+          <li>The SMS and push channels have their pending states documented in sections 10–12; do not claim that flight alerts or client messages work until each channel is implemented and tested.</li>
         </ul>
         <P>
-          <B>Implementación inicial — 2026-11-25:</B> se añadió una pestaña <B>Reservations</B> dentro
-          del CRM, separada de la pestaña Clients y del GPS de viajes existente. El componente está
-          en <B>components/copiloto/crm-screen.tsx</B>. Permite crear, consultar, editar y eliminar
-          reservaciones; asociarlas a un cliente existente o registrar al pasajero directamente;
-          guardar fecha/hora del servicio, pasajeros, estado, pickup, drop-off y notas.
+          <B>Initial implementation — 2026-11-25:</B> a <B>Reservations</B> tab was added inside
+          the CRM, separate from the Clients tab and from the existing trip GPS. The component is
+          in <B>components/copiloto/crm-screen.tsx</B>. It allows creating, viewing, editing and deleting
+          reservations; associating them with an existing client or registering the passenger directly;
+          saving service date/time, passengers, status, pickup, drop-off and notes.
         </P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li><B>Direcciones:</B> pickup y drop-off originales se muestran sin cambios. Solo se modifican al editar y guardar expresamente la reservación. En el detalle hay enlaces separados a Apple Maps y Google Maps para cada dirección; la navegación solo comienza cuando el propietario toca el enlace.</li>
-          <li><B>Recogida normal:</B> no muestra ni exige campos de vuelo.</li>
-          <li><B>Recogida de aeropuerto:</B> habilita aeropuerto/código, aerolínea, número de vuelo, fecha del vuelo, hora programada de llegada, terminal y puerta. Exige aeropuerto, número y fecha para guardar.</li>
-          <li><B>Aeropuertos preconfigurados:</B> JFK, LGA, EWR, ISP (Long Island MacArthur), BDL (Bradley International, Connecticut), HVN (Tweed New Haven, Connecticut) y HPN (Westchester County, zona cercana de NY). Se conserva opción de aeropuerto manual.</li>
-          <li><B>Track Flight:</B> ahora realiza una consulta manual al endpoint server-side de ADSB.lol (<B>app/api/crm/flights/track/route.ts</B>) y busca el callsign ICAO correspondiente al número de vuelo y aerolínea. Si detecta el avión, presenta en vuelo, señal en tierra o última posición no reciente, con posición, altitud, velocidad y rumbo cuando están disponibles. FlightAware queda como enlace externo alternativo.</li>
-          <li><B>Almacenamiento actual:</B> reservaciones usan localStorage con clave <B>claris_crm_reservations_v1</B> como caché del dispositivo. Con sesión activa en CRM CLOUD, también se sincronizan con el Supabase exclusivo del CRM; la subida de reservaciones ocurre al abrir la pestaña Reservations con la sesión activa.</li>
-          <li><B>Base CRM:</B> el proyecto <B>mimgwleghecseoymgdug</B> está verificado y conectado para clientes y reservaciones. No se creó una base nueva ni se tocó el proyecto financiero <B>zrcnpmipdhpjdjkfrrgt</B>.</li>
-          <li><B>Proveedor gratuito elegido (25-nov-2026):</B> ADSB.lol API, base https://api.adsb.lol/v2, sin API key ni cuenta para el nivel anónimo; 500 solicitudes/día por IP sin clave. Tiene búsqueda de aeronaves por callsign. Su API declara licencia ODbL 1.0. La ODbL permite expresamente uso comercial; requiere atribución en uso público y share-alike si se publica una base de datos adaptada. Se muestra atribución visible en el CRM. ADSB.lol advierte que los datos se entregan “as is” y no garantiza precisión, puntualidad, integridad ni disponibilidad. Fuentes oficiales: https://www.adsb.lol/docs/open-data/api ; https://www.adsb.lol/docs/privacy-license ; https://opendatacommons.org/licenses/odbl/1-0/ ; https://opendatacommons.org/licenses/odbl/summary/.</li>
-          <li><B>Implementación ADSB.lol:</B> integración manual bajo demanda, sin API key, cuenta ni mensualidad. El CRM convierte aerolínea/número de vuelo a callsign ICAO para las aerolíneas comunes y consulta solo al pulsar Track Flight; se evita el polling automático. La API no ofrece por sí sola horarios programados, confirmación de demora/cancelación, puerta, terminal ni disponibilidad del pasajero. Un resultado sin señal no significa cancelación. Se conserva FlightAware como enlace externo. La consulta está limitada por el proveedor (500/día/IP sin clave) y usa caché breve de 15 segundos.</li>
-          <li><B>Build de integración gratuita:</B> el commit <B>0ce3125ba9fab8dca5c69693863cb24e42c6db26</B> obtuvo deployment Vercel <B>dpl_Fxaior9uKQ2TFJMP1YxhapvhNPn7</B>, estado <B>READY</B>, alias de producción https://claris-lime.vercel.app. El build compiló correctamente y el inventario de rutas confirmó <B>/api/crm/flights/track</B>. El proyecto mantiene <B>typescript.ignoreBuildErrors=true</B>, por lo que Vercel omite validación TypeScript; el estado READY no sustituye pruebas de ejecución. La documentación de esta integración fue actualizada en GitHub; el deployment de esa última actualización se verificará después del commit documental.</li>
-          <li><B>Pruebas pendientes tras integración ADSB.lol:</B> no se ha ejecutado una consulta real de vuelo desde el iPhone ni se ha confirmado cobertura/identificación para los vuelos del propietario. En el dispositivo probar una reservación de prueba, elegir uno de los aeropuertos preconfigurados, introducir aerolínea y número de vuelo, pulsar Track Flight y registrar si devuelve avión/posición o “sin señal”. Repetir con las aerolíneas habituales y revisar mapeo de callsign. También probar alta/edición/reapertura, direcciones y enlaces Apple/Google Maps, pickup normal y fallback FlightAware. El build READY solo confirma compilación y despliegue, no el resultado del proveedor externo.</li>
+          <li><B>Addresses:</B> original pickup and drop-off are shown unchanged. They are only modified when the reservation is expressly edited and saved. In the detail there are separate links to Apple Maps and Google Maps for each address; navigation only starts when the owner taps the link.</li>
+          <li><B>Normal pickup:</B> does not show or require flight fields.</li>
+          <li><B>Airport pickup:</B> enables airport/code, airline, flight number, flight date, scheduled arrival time, terminal and gate. Requires airport, number and date to save.</li>
+          <li><B>Preconfigured airports:</B> JFK, LGA, EWR, ISP (Long Island MacArthur), BDL (Bradley International, Connecticut), HVN (Tweed New Haven, Connecticut) and HPN (Westchester County, nearby NY area). A manual airport option is kept.</li>
+          <li><B>Track Flight:</B> now runs a manual lookup to the server-side ADSB.lol endpoint (<B>app/api/crm/flights/track/route.ts</B>) and searches for the ICAO callsign corresponding to the flight number and airline. If it detects the aircraft, it shows in flight, ground signal or last position not recent, with position, altitude, speed and heading when available. FlightAware remains as an alternative external link.</li>
+          <li><B>Current storage:</B> reservations use localStorage with key <B>claris_crm_reservations_v1</B> as the device cache. With an active CRM CLOUD session, they also sync with the CRM's exclusive Supabase; reservations upload when the Reservations tab is opened with the session active.</li>
+          <li><B>CRM base:</B> project <B>mimgwleghecseoymgdug</B> is verified and connected for clients and reservations. No new database was created and the finance project <B>zrcnpmipdhpjdjkfrrgt</B> was not touched.</li>
+          <li><B>Free provider chosen (2026-11-25):</B> ADSB.lol API, base https://api.adsb.lol/v2, no API key or account for the anonymous tier; 500 requests/day per IP without a key. It has aircraft search by callsign. Its API declares an ODbL 1.0 license. The ODbL expressly allows commercial use; it requires attribution in public use and share-alike if an adapted database is published. Visible attribution is shown in the CRM. ADSB.lol warns that the data is provided “as is” and does not guarantee accuracy, punctuality, completeness or availability. Official sources: https://www.adsb.lol/docs/open-data/api ; https://www.adsb.lol/docs/privacy-license ; https://opendatacommons.org/licenses/odbl/1-0/ ; https://opendatacommons.org/licenses/odbl/summary/.</li>
+          <li><B>ADSB.lol implementation:</B> manual on-demand integration, no API key, account or monthly fee. The CRM converts airline/flight number to an ICAO callsign for the common airlines and queries only when Track Flight is tapped; automatic polling is avoided. The API does not by itself offer scheduled times, delay/cancellation confirmation, gate, terminal or passenger availability. A no-signal result does not mean cancellation. FlightAware is kept as an external link. The lookup is limited by the provider (500/day/IP without a key) and uses a brief 15-second cache.</li>
+          <li><B>Free integration build:</B> commit <B>0ce3125ba9fab8dca5c69693863cb24e42c6db26</B> obtained Vercel deployment <B>dpl_Fxaior9uKQ2TFJMP1YxhapvhNPn7</B>, status <B>READY</B>, production alias https://claris-lime.vercel.app. The build compiled correctly and the route inventory confirmed <B>/api/crm/flights/track</B>. The project keeps <B>typescript.ignoreBuildErrors=true</B>, so Vercel skips TypeScript validation; the READY status does not replace runtime tests. The documentation of this integration was updated on GitHub; the deployment of that last update will be verified after the documentation commit.</li>
+          <li><B>Pending tests after the ADSB.lol integration:</B> no real flight lookup has been run from the iPhone and coverage/identification for the owner's flights has not been confirmed. On the device, test a test reservation, choose one of the preconfigured airports, enter airline and flight number, tap Track Flight and record whether it returns aircraft/position or “no signal”. Repeat with the usual airlines and review callsign mapping. Also test create/edit/reopen, addresses and Apple/Google Maps links, normal pickup and the FlightAware fallback. A READY build only confirms compilation and deployment, not the external provider's result.</li>
         </ul>
         <P>
-          <B>Estado de fase:</B> interfaz de reservaciones, navegación y consulta manual de posición ADS-B gratuita implementadas en código. Pendiente: verificar físicamente en iPhone que la API responda con vuelos reales de las aerolíneas usadas, validar mapeos de callsign y cobertura en los aeropuertos listados. La consulta no confirma demoras/cancelaciones ni reemplaza información de aerolínea/aeropuerto. La persistencia cloud de clientes/reservaciones ya está en producción según la sección 19; las alertas automáticas continúan pendientes porque no existe un feed de eventos programado conectado. No alterar ni duplicar el GPS de viajes; mantener cambios aislados del módulo financiero.
+          <B>Phase status:</B> reservation interface, navigation and free manual ADS-B position lookup implemented in code. Pending: physically verify on iPhone that the API answers with real flights of the airlines used, validate callsign mappings and coverage at the listed airports. The lookup does not confirm delays/cancellations and does not replace airline/airport information. Cloud persistence of clients/reservations is already in production per section 19; automatic alerts remain pending because there is no connected scheduled event feed. Do not alter or duplicate the trip GPS; keep changes isolated from the finance module.
         </P>
       </Section>
 
 
-      <Section title="14. PLAN DE COMUNICACIONES Y COPILOT — EMAIL, SMS, MENSAJERÍA Y AVISOS (2026-11-25/26)">
+      <Section title="14. COMMUNICATIONS & COPILOT PLAN — EMAIL, SMS, MESSAGING AND NOTICES (2026-11-25/26)">
         <P>
-          <B>Objetivo:</B> completar en el CRM Copiloto V7 una bandeja de comunicaciones para el negocio
-          personal de transporte, conectada al perfil del cliente y a sus reservaciones. Esta sección
-          registra el alcance y el estado real; no significa que los canales estén conectados ni que
-          los flujos estén implementados.
+          <B>Objective:</B> complete in CRM Copiloto V7 a communications inbox for the personal
+          transportation business, connected to the client profile and their reservations. This section
+          records the scope and the real state; it does not mean the channels are connected or that
+          the flows are implemented.
         </P>
-        <P><B>A. Regla central de control humano:</B></P>
+        <P><B>A. Central human-control rule:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>Los mensajes entrantes de clientes deben poder consultarse en una bandeja del CRM, con historial por cliente y conversación, canal, fecha y estado.</li>
-          <li>Copilot puede resumir el mensaje, consultar el contexto permitido del cliente/reservación y preparar una respuesta sugerida.</li>
-          <li><B>Copilot nunca envía por su cuenta:</B> todo borrador debe quedar visible para revisión y solo se envía después de aprobación expresa del propietario.</li>
-          <li>El usuario puede responder inmediatamente o preparar un mensaje para una fecha/hora futura; los mensajes programados deben mostrar estado, hora local, zona horaria, opción de cancelar y registro de resultado.</li>
-          <li>Los mensajes entrantes son contenido externo no confiable. Nunca deben poder cambiar instrucciones internas, acceder a secretos ni ordenar a Copilot ejecutar acciones sin autorización.</li>
+          <li>Incoming client messages must be viewable in a CRM inbox, with history per client and conversation, channel, date and status.</li>
+          <li>Copilot can summarize the message, check the permitted context of the client/reservation and prepare a suggested reply.</li>
+          <li><B>Copilot never sends on its own:</B> every draft must stay visible for review and is only sent after the owner's express approval.</li>
+          <li>The user can reply immediately or prepare a message for a future date/time; scheduled messages must show status, local time, time zone, a cancel option and a result record.</li>
+          <li>Incoming messages are untrusted external content. They must never be able to change internal instructions, access secrets or order Copilot to execute actions without authorization.</li>
         </ul>
         <P><B>B. Email:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>Alcance deseado: recibir y mostrar emails, asociarlos al cliente cuando sea posible, leer el hilo, preparar borrador con Copilot, responder tras aprobación y programar envíos.</li>
-          <li>La conexión Gmail que pueda estar disponible dentro de ChatGPT no equivale a una integración dentro de la aplicación CRM. El CRM necesita su propia autorización OAuth y almacenamiento seguro de tokens, o un proveedor de correo configurado para la aplicación.</li>
-          <li>Evaluar Gmail API para una bandeja bidireccional vinculada a la cuenta del propietario. SendGrid puede servir para correo transaccional/saliente, pero por sí solo no reemplaza una bandeja Gmail completa de entrada y respuesta.</li>
-          <li>Registrar entregas, rebotes y errores; respetar preferencias, bajas y reglas aplicables a mensajes promocionales.</li>
+          <li>Desired scope: receive and show emails, associate them with the client when possible, read the thread, prepare a draft with Copilot, reply after approval and schedule sends.</li>
+          <li>A Gmail connection that may be available inside ChatGPT is not an integration inside the CRM application. The CRM needs its own OAuth authorization and secure token storage, or an email provider configured for the application.</li>
+          <li>Evaluate the Gmail API for a two-way inbox linked to the owner's account. SendGrid can serve for transactional/outbound mail, but by itself it does not replace a full Gmail inbox for incoming mail and replies.</li>
+          <li>Record deliveries, bounces and errors; respect preferences, unsubscribes and the rules applicable to promotional messages.</li>
         </ul>
-        <P><B>C. SMS y mensajería:</B></P>
+        <P><B>C. SMS and messaging:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>La ruta acordada para SMS del CRM es Twilio. Se requiere un remitente/número apto, credenciales seguras en Vercel, endpoints de entrada/salida, webhook de mensajes entrantes, validación de firma, status callbacks y persistencia del historial.</li>
-          <li>La bandeja debe permitir leer SMS entrantes, responder con borrador de Copilot sujeto a aprobación y programar mensajes salientes.</li>
-          <li>Para tráfico SMS de EE. UU. desde números locales, revisar y completar A2P 10DLC o la verificación que corresponda al tipo de remitente antes de producción. Configurar consentimiento, horarios permitidos, STOP/HELP y supresión de destinatarios; separar mensajes transaccionales de campañas promocionales.</li>
-          <li>Programación: decidir si se utiliza programación nativa del proveedor cuando aplique o una cola/cron propio para horarios, reintentos, cancelación y trazabilidad. No depender de que el iPhone o el navegador permanezcan abiertos.</li>
-          <li><B>Límite del iPhone:</B> el CRM no puede leer libremente la bandeja nativa de Mensajes/SMS del iPhone ni responder como si fuera esa aplicación. Solo recibirá mensajes enviados al número/remitente conectado al proveedor (por ejemplo, Twilio), o datos que el usuario comparta mediante un mecanismo autorizado. No prometer acceso a los SMS personales existentes.</li>
+          <li>The agreed route for CRM SMS is Twilio. It requires a suitable sender/number, secure credentials in Vercel, inbound/outbound endpoints, an incoming-message webhook, signature validation, status callbacks and history persistence.</li>
+          <li>The inbox must allow reading incoming SMS, replying with a Copilot draft subject to approval and scheduling outbound messages.</li>
+          <li>For US SMS traffic from local numbers, review and complete A2P 10DLC or the verification that corresponds to the sender type before production. Configure consent, permitted hours, STOP/HELP and recipient suppression; separate transactional messages from promotional campaigns.</li>
+          <li>Scheduling: decide whether to use the provider's native scheduling when applicable or an own queue/cron for times, retries, cancellation and traceability. Do not depend on the iPhone or the browser staying open.</li>
+          <li><B>iPhone limit:</B> the CRM cannot freely read the iPhone's native Messages/SMS inbox or reply as if it were that app. It will only receive messages sent to the number/sender connected to the provider (for example, Twilio), or data the user shares through an authorized mechanism. Do not promise access to existing personal SMS.</li>
         </ul>
         <P><B>D. WhatsApp Business:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>WhatsApp se mantiene como canal separado, con API/webhooks y reglas de ventana de atención y plantillas aprobadas.</li>
-          <li>El propietario quiere conservar su número actual en WhatsApp Business App. No migrarlo, desconectarlo ni registrarlo en WhatsApp Business Platform/Twilio sin explicar primero consecuencias y recibir autorización expresa.</li>
-          <li>Primero completar y probar SMS; después evaluar Sandbox y la compatibilidad/coexistencia del número real.</li>
+          <li>WhatsApp stays a separate channel, with API/webhooks and customer-care window rules and approved templates.</li>
+          <li>The owner wants to keep his current number in the WhatsApp Business App. Do not migrate it, disconnect it or register it in WhatsApp Business Platform/Twilio without first explaining the consequences and receiving express authorization.</li>
+          <li>First complete and test SMS; afterwards evaluate the Sandbox and the compatibility/coexistence of the real number.</li>
         </ul>
-        <P><B>E. Copilot y notificaciones internas:</B></P>
+        <P><B>E. Copilot and internal notifications:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>Copilot debe ayudar a priorizar mensajes, resumir conversaciones, redactar respuestas, identificar solicitudes de reservación, proponer seguimientos y preparar recordatorios.</li>
-          <li>Notificaciones privadas para el propietario: nueva reservación, cambio/cancelación, mensaje entrante, respuesta pendiente, seguimiento vencido, vuelo con cambio relevante y error de entrega.</li>
-          <li>Las notificaciones push internas no son lo mismo que SMS/email/WhatsApp enviados a clientes. Cerrar un aviso no debe borrar ni resolver el mensaje o tarea original.</li>
-          <li>La programación debe ejecutarse en servidor/cola con zona horaria explícita, idempotencia, reintentos y registro de resultado; no depender de efectos locales al abrir el CRM.</li>
+          <li>Copilot must help prioritize messages, summarize conversations, draft replies, identify reservation requests, propose follow-ups and prepare reminders.</li>
+          <li>Private notifications for the owner: new reservation, change/cancellation, incoming message, pending reply, overdue follow-up, flight with a relevant change and delivery error.</li>
+          <li>Internal push notifications are not the same as SMS/email/WhatsApp sent to clients. Closing a notice must not delete or resolve the original message or task.</li>
+          <li>Scheduling must run on a server/queue with an explicit time zone, idempotency, retries and a result record; it must not depend on local effects when opening the CRM.</li>
         </ul>
-        <P><B>F. Estado verificado al 2026-11-25/26:</B></P>
+        <P><B>F. Verified state at 2026-11-25/26:</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li><B>CRM actual:</B> components/copiloto/crm-screen.tsx contiene pestañas Clients y Reservations. Clientes y reservaciones conservan su caché en localStorage y, con sesión activa, se sincronizan con el Supabase exclusivo del CRM. Todavía no hay bandeja de conversaciones.</li>
-          <li><B>Push:</B> existen componentes/rutas de push. La prueba local en iPhone fue confirmada por el propietario. La prueba remota física, los recordatorios automáticos programados y las pruebas con la app cerrada siguen pendientes.</li>
-          <li><B>Twilio SMS:</B> cuenta creada, pero la auditoría previa no encontró variables TWILIO_* en Vercel ni integración SMS confirmada en el CRM. No conectado; pruebas entrantes/salientes pendientes.</li>
-          <li><B>Credencial Twilio:</B> un Auth Token compartido anteriormente debe tratarse como expuesto. No volver a pedirlo ni copiarlo en el chat. Antes de rotarlo, comprobar dependencias; usar una API Key apropiada para producción y actualizarla de forma segura.</li>
-          <li><B>Email:</B> no se ha verificado una conexión de correo dentro del CRM. Un conector Gmail de ChatGPT, si está disponible, no prueba que la aplicación tenga acceso Gmail.</li>
-          <li><B>WhatsApp:</B> API pendiente; no se ha autorizado migrar el número actual de WhatsApp Business App.</li>
-          <li><B>Copilot:</B> no está confirmada una bandeja bidireccional ni generación de borradores conectada a conversaciones reales. Mantener aprobación humana obligatoria.</li>
+          <li><B>Current CRM:</B> components/copiloto/crm-screen.tsx contains Clients and Reservations tabs. Clients and reservations keep their cache in localStorage and, with an active session, sync with the CRM's exclusive Supabase. There is still no conversation inbox.</li>
+          <li><B>Push:</B> push components/routes exist. The local iPhone test was confirmed by the owner. The physical remote test, automatic scheduled reminders and tests with the app closed are still pending.</li>
+          <li><B>Twilio SMS:</B> account created, but the previous audit found no TWILIO_* variables in Vercel and no confirmed SMS integration in the CRM. Not connected; inbound/outbound tests pending.</li>
+          <li><B>Twilio credential:</B> an Auth Token shared earlier must be treated as exposed. Do not ask for it again or copy it into the chat. Before rotating it, check dependencies; use an appropriate API Key for production and update it securely.</li>
+          <li><B>Email:</B> no email connection inside the CRM has been verified. A ChatGPT Gmail connector, if available, does not prove the application has Gmail access.</li>
+          <li><B>WhatsApp:</B> API pending; migrating the current WhatsApp Business App number has not been authorized.</li>
+          <li><B>Copilot:</B> no two-way inbox or draft generation connected to real conversations is confirmed. Keep human approval mandatory.</li>
         </ul>
-        <P><B>G. Orden de ejecución recomendado:</B></P>
+        <P><B>G. Recommended execution order:</B></P>
         <ol className="mb-3 list-decimal space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li>Revisar el modelo actual del CRM y completar el diseño de reservaciones: pickup/drop-off, edición solo si hay cambios, navegación bajo acción del usuario, pickup normal o aeropuerto y Track Flight con proveedor sujeto a aprobación.</li>
-          <li>Mantener la conexión cloud segura ya creada para clientes y reservaciones antes de almacenar conversaciones o trabajos programados; conservar los datos locales y verificar conteos. No tocar el Supabase financiero zrcnpmipdhpjdjkfrrgt.</li>
-          <li>Completar push remoto y disparadores automáticos internos; verificar físicamente en el iPhone.</li>
-          <li>Completar la base SMS de Twilio: credenciales seguras, cumplimiento, webhook entrante, respuesta aprobada, status callback, historial y scheduling; probar entrada y salida reales.</li>
-          <li>Integrar email bidireccional con la cuenta/proveedor autorizado, borradores, aprobación, respuesta y scheduling; probar entrada, salida y entrega.</li>
-          <li>Incorporar Copilot a la bandeja multicanal, siempre con borrador y aprobación antes de enviar; probar controles y protección frente a instrucciones maliciosas dentro de mensajes recibidos.</li>
-          <li>Después evaluar WhatsApp Sandbox y, por separado, la ruta segura para el número actual. No activar campañas masivas sin consentimiento y controles de baja.</li>
-          <li>Probar cada canal en iPhone y registrar resultados PASS/FAIL/PENDIENTE, incluyendo entrega, respuesta, cancelación de mensajes programados y comportamiento con la app cerrada.</li>
+          <li>Review the current CRM model and complete the reservation design: pickup/drop-off, editing only if there are changes, navigation under user action, normal or airport pickup and Track Flight with a provider subject to approval.</li>
+          <li>Keep the secure cloud connection already created for clients and reservations before storing conversations or scheduled jobs; keep the local data and verify counts. Do not touch the finance Supabase zrcnpmipdhpjdjkfrrgt.</li>
+          <li>Complete remote push and internal automatic triggers; verify physically on the iPhone.</li>
+          <li>Complete the Twilio SMS base: secure credentials, compliance, incoming webhook, approved reply, status callback, history and scheduling; test real inbound and outbound.</li>
+          <li>Integrate two-way email with the authorized account/provider, drafts, approval, reply and scheduling; test inbound, outbound and delivery.</li>
+          <li>Bring Copilot into the multichannel inbox, always with a draft and approval before sending; test controls and protection against malicious instructions inside received messages.</li>
+          <li>Afterwards evaluate the WhatsApp Sandbox and, separately, the safe route for the current number. Do not activate mass campaigns without consent and opt-out controls.</li>
+          <li>Test each channel on iPhone and record results PASS/FAIL/PENDING, including delivery, reply, cancellation of scheduled messages and behavior with the app closed.</li>
         </ol>
         <P>
-          <B>Regla de cierre:</B> cada etapa debe actualizar este manual con fecha, archivos/servicios
-          modificados, commit, deployment real (READY/BUILDING/FAILED), configuración confirmada sin
-          exponer secretos, pruebas y bloqueos. Un deployment READY no prueba entrega de mensajes ni
-          respaldo de datos. No marcar un canal como operativo hasta completar pruebas reales de
-          extremo a extremo.
+          <B>Closing rule:</B> each stage must update this manual with date, files/services
+          modified, commit, real deployment (READY/BUILDING/FAILED), confirmed configuration without
+          exposing secrets, tests and blocks. A READY deployment does not prove message delivery or
+          data backup. Do not mark a channel as operational until real end-to-end tests are complete.
         </P>
       </Section>
 
-      <Section title="15. INCIDENTE DE BUILD VERCEL — IMPORT CRM CON SALTO DE LÍNEA INVÁLIDO (2026-11-25/26)">
+      <Section title="15. VERCEL BUILD INCIDENT — CRM IMPORT WITH INVALID LINE BREAK (2026-11-25/26)">
         <P>
-          <B>Incidente:</B> el deployment de producción <B>dpl_CapqAWw6DZxVyff5PHbBKiEYZ3pr</B>,
-          asociado al commit <B>b42e6fde48ea94785fa9eb9c056a21e331c0cd9d</B> ("Fix CRM integration
-          formatting and routing"), falló durante <B>pnpm run build</B>. El log de Turbopack señaló
-          <B>components/copiloto/copiloto-app.tsx:18:47</B> con el error <B>Expected unicode escape</B>.
+          <B>Incident:</B> the production deployment <B>dpl_CapqAWw6DZxVyff5PHbBKiEYZ3pr</B>,
+          associated with commit <B>b42e6fde48ea94785fa9eb9c056a21e331c0cd9d</B> ("Fix CRM integration
+          formatting and routing"), failed during <B>pnpm run build</B>. The Turbopack log pointed to
+          <B>components/copiloto/copiloto-app.tsx:18:47</B> with the error <B>Expected unicode escape</B>.
         </P>
         <P>
-          <B>Causa raíz:</B> la línea de import de CreditScreen contenía los caracteres literales
-          <B>\\n</B> antes del import de CRMScreen, en vez de un salto de línea real. El parser
-          interpretó la secuencia como un escape inválido y detuvo la compilación. No fue un fallo
-          de Supabase, dependencias ni del servicio de Vercel.
+          <B>Root cause:</B> the CreditScreen import line contained the literal characters
+          <B>\\n</B> before the CRMScreen import, instead of a real line break. The parser
+          interpreted the sequence as an invalid escape and stopped the compilation. It was not a
+          failure of Supabase, dependencies or the Vercel service.
         </P>
         <P>
-          <B>Verificación de corrección:</B> se inspeccionó el mismo archivo en el commit fallido
-          y en la rama <B>main</B>. En el commit fallido los imports estaban unidos por la secuencia
-          literal; en <B>main</B> los imports ya están separados correctamente, cada uno en su propia
-          línea. No se repitió ni duplicó el cambio porque ya estaba aplicado en el código actual.
+          <B>Fix verification:</B> the same file was inspected in the failed commit
+          and in the <B>main</B> branch. In the failed commit the imports were joined by the literal
+          sequence; in <B>main</B> the imports are already separated correctly, each on its own
+          line. The change was not repeated or duplicated because it was already applied in the current code.
         </P>
         <P>
-          <B>Estado de producción verificado:</B> la rama main apunta al commit
+          <B>Verified production state:</B> the main branch points to commit
           <B>c130f2456f3c5645f41c6909fdc63c4f237559f8</B> ("docs(crm): record ADS-B live tracking
-          deployment and test plan"). Vercel reportó el deployment
-          <B>dpl_MTs2ZT9XhLNGBtBhw4bnbDkW9XPm</B> en estado <B>READY</B>, target production,
-          con alias de producción del proyecto Claris. Esto confirma que el deployment más reciente
-          terminó correctamente; no cambia el estado histórico del deployment fallido.
+          deployment and test plan"). Vercel reported deployment
+          <B>dpl_MTs2ZT9XhLNGBtBhw4bnbDkW9XPm</B> in <B>READY</B> state, target production,
+          with the Claris project's production alias. This confirms the most recent deployment
+          finished correctly; it does not change the historical state of the failed deployment.
         </P>
         <P>
-          <B>Alcance y pruebas:</B> esta revisión fue de lectura y verificación; no se modificó
-          lógica del CRM, no se registraron nuevas suscripciones push y no se realizaron nuevas
-          pruebas físicas de notificación. La prueba remota push, los recordatorios automáticos y
-          las pruebas con la app cerrada continúan pendientes según las secciones anteriores.
-          No se modificó el módulo financiero.
+          <B>Scope and tests:</B> this review was read and verification only; no CRM logic was
+          modified, no new push subscriptions were registered and no new physical notification
+          tests were run. The remote push test, automatic reminders and
+          tests with the app closed remain pending per the previous sections.
+          The finance module was not modified.
         </P>
         <P>
-          <B>Regla para incidentes de build:</B> conservar el ID del deployment, commit, primer
-          error del log, archivo/línea, causa raíz, commit que contiene la corrección y estado del
-          deployment posterior. No lanzar un nuevo build si la corrección ya está en main y existe
-          un deployment de producción READY que incluye ese código.
+          <B>Rule for build incidents:</B> keep the deployment ID, commit, first
+          log error, file/line, root cause, commit containing the fix and the state of the
+          later deployment. Do not launch a new build if the fix is already in main and a
+          production deployment READY including that code exists.
         </P>
       </Section>
 
-      <Section title="16. RECUPERACIÓN DEL CHAT ANTERIOR Y HANDOFF ENTRE CHATS (2026-11-25/26)">
+      <Section title="16. PREVIOUS CHAT RECOVERY & HANDOFF BETWEEN CHATS (2026-11-25/26)">
         <P>
-          <B>Motivo de esta actualización:</B> el chat anterior alcanzó su límite y el trabajo continúa
-          en una conversación nueva. El propietario pidió recuperar el contexto previo y documentar
-          la continuidad aquí, sin reiniciar el proyecto ni perder acuerdos. Esta sección complementa
-          las secciones 11 a 15; no las reemplaza ni borra su historial.
+          <B>Reason for this update:</B> the previous chat reached its limit and the work continues
+          in a new conversation. The owner asked to recover the previous context and document
+          the continuity here, without restarting the project or losing agreements. This section complements
+          sections 11 to 15; it does not replace them or erase their history.
         </P>
         <P>
-          <B>Continuidad histórica recuperada:</B> los chats previos establecieron que CRM Copiloto V7
-          es un módulo personal y ligero dentro de Claris, no una aplicación independiente ni un CRM
-          empresarial para cientos de usuarios. La navegación acordada es More → Client management → CRM.
-          Mantener el menú inferior existente. Separar claramente el trabajo de Transporte/CRM del
-          módulo financiero y de Plaid. El propietario pidió que decisiones, archivos, enlaces,
-          arquitectura, pruebas y pendientes se documenten en este manual al terminar cada fase.
+          <B>Historical continuity recovered:</B> the previous chats established that CRM Copiloto V7
+          is a personal, lightweight module inside Claris, not an independent application or an enterprise
+          CRM for hundreds of users. The agreed navigation is More → Client management → CRM.
+          Keep the existing bottom menu. Clearly separate the Transportation/CRM work from the
+          finance module and from Plaid. The owner asked that decisions, files, links,
+          architecture, tests and pending items be documented in this manual at the end of each phase.
         </P>
         <P>
-          <B>Historial de continuidad:</B> commits documentales anteriores identificados en los chats
-          recuperados: <B>eb71faa8fa99fa63dfb83efd2ac12d61aafa5646</B> (visión, alcance y arquitectura
-          inicial del CRM, canales y reglas de aislamiento) y <B>e29fca99fd45e317742bd90297da1167ea90b9d8</B>
-          (continuidad de Twilio, seguridad del token expuesto, mensajería y pruebas pendientes).
-          El manual actual contiene además las secciones de auditoría, push, reservas/vuelos,
-          comunicaciones y el incidente de build descrito arriba.
+          <B>Continuity history:</B> previous documentation commits identified in the recovered
+          chats: <B>eb71faa8fa99fa63dfb83efd2ac12d61aafa5646</B> (vision, scope and initial CRM
+          architecture, channels and isolation rules) and <B>e29fca99fd45e317742bd90297da1167ea90b9d8</B>
+          (Twilio continuity, exposed-token security, messaging and pending tests).
+          The current manual also contains the sections on audit, push, reservations/flights,
+          communications and the build incident described above.
         </P>
         <P>
-          <B>Decisión de reservaciones reafirmada en el chat anterior:</B> toda reservación debe
-          mostrar pickup y drop-off. Si el pickup es una dirección normal, se usan los campos
-          habituales y no se exige número de vuelo. Si el pickup es un aeropuerto, se solicitan
-          los datos de vuelo pertinentes, incluido número de vuelo y aerolínea cuando corresponda.
-          La ficha debe permitir abrir el seguimiento desde el mismo número de vuelo mediante una
-          acción Track Flight. La dirección guardada se conserva y solo se edita cuando el usuario
-          informa un cambio/corrección; navegar debe usar la dirección vigente guardada.
+          <B>Reservation decision reaffirmed in the previous chat:</B> every reservation must
+          show pickup and drop-off. If the pickup is a normal address, the usual fields are used
+          and no flight number is required. If the pickup is an airport, the relevant flight
+          details are requested, including flight number and airline when applicable.
+          The record must allow opening the tracking from the same flight number through a
+          Track Flight action. The saved address is kept and only edited when the user
+          reports a change/correction; navigation must use the current saved address.
         </P>
         <P>
-          <B>Límite de seguimiento de vuelos:</B> la idea de consultar si el vuelo ya aterrizó debe
-          mostrarse como información de seguimiento, no como garantía de que el pasajero está listo.
-          La integración ADSB.lol descrita en la sección 13 detecta señales ADS-B/callsign y estados
-          técnicos limitados; no confirma por sí sola aterrizaje comercial, cancelación, retraso
-          oficial, puerta, terminal ni disponibilidad del pasajero. No añadir tracking automático,
-          ETA ni notificaciones de cambio sin proveedor/eventos adecuados, evaluación de cobertura
-          y pruebas reales. Mantener la consulta manual actual hasta completar esa validación.
+          <B>Flight-tracking limit:</B> the idea of checking whether the flight has already landed must
+          be shown as tracking information, not as a guarantee that the passenger is ready.
+          The ADSB.lol integration described in section 13 detects ADS-B signals/callsign and limited
+          technical states; it does not by itself confirm a commercial landing, cancellation, official
+          delay, gate, terminal or passenger availability. Do not add automatic tracking,
+          ETA or change notifications without a proper provider/events, coverage evaluation
+          and real tests. Keep the current manual lookup until that validation is complete.
         </P>
         <P>
-          <B>Notificaciones y operación:</B> el propietario quiere que, inicialmente, Copiloto
-          notifique al propio operador sobre citas/appointments y tareas; más adelante podrá evaluarse
-          broadcast o mensajes a clientes. Los avisos al cliente requieren canal conectado, consentimiento
-          y reglas de aprobación. Los mensajes generados por IA deben permanecer como borradores hasta
-          que el propietario los revise y apruebe explícitamente. Push, SMS, email y WhatsApp son
-          canales independientes; no inferir que uno funciona porque otro esté configurado.
+          <B>Notifications and operation:</B> the owner wants Copiloto, initially, to
+          notify the operator himself about appointments and tasks; later, broadcast or client
+          messages may be evaluated. Client notices require a connected channel, consent
+          and approval rules. AI-generated messages must remain drafts until
+          the owner reviews and explicitly approves them. Push, SMS, email and WhatsApp are
+          independent channels; do not infer that one works because another is configured.
         </P>
         <P>
-          <B>Estado real actualizado por la sección 19:</B> CRM de clientes/reservaciones conserva
-          la caché local del navegador y, con sesión activa, se sincroniza con su proyecto Supabase
-          exclusivo <B>mimgwleghecseoymgdug</B>; el proyecto financiero
-          <B>zrcnpmipdhpjdjkfrrgt</B> está excluido y no fue tocado. Push tiene infraestructura/endpoints y variables
-          documentados, pero la entrega remota al iPhone, notificaciones con la app cerrada y
-          recordatorios programados de citas siguen pendientes de pruebas. Twilio no está conectado
-          de forma confirmada; WhatsApp Business y la integración de email en el CRM también siguen
-          pendientes. No afirmar entrega push ni SMS operativo sin evidencia verificable.
+          <B>Real state updated by section 19:</B> the clients/reservations CRM keeps
+          the browser's local cache and, with an active session, syncs with its exclusive Supabase
+          project <B>mimgwleghecseoymgdug</B>; the finance project
+          <B>zrcnpmipdhpjdjkfrrgt</B> is excluded and was not touched. Push has documented infrastructure/endpoints and variables,
+          but remote delivery to the iPhone, notifications with the app closed and
+          scheduled appointment reminders are still pending tests. Twilio is not connected
+          in a confirmed way; WhatsApp Business and email integration in the CRM are also still
+          pending. Do not claim push delivery or working SMS without verifiable evidence.
         </P>
         <P>
-          <B>Último incidente de Vercel de esta continuidad:</B> deployment fallido
-          <B>dpl_CapqAWw6DZxVyff5PHbBKiEYZ3pr</B>, commit <B>b42e6fd</B>, por secuencia literal
-          \\n en el import de <B>components/copiloto/copiloto-app.tsx</B>. La inspección posterior
-          verificó que la rama main ya contenía los imports separados. Se añadió el registro del
-          incidente en la sección 15. Después se añadió esta sección 16 al manual en el commit
-          <B>a205bf3b64c8759e3be178ceff21c677fadd6db1</B>; el deployment de producción
-          <B>dpl_EvqM4SEXgX5kFczLhJGYW6YJ2jsX</B> fue verificado como <B>READY</B>.
+          <B>Latest Vercel incident of this continuity:</B> failed deployment
+          <B>dpl_CapqAWw6DZxVyff5PHbBKiEYZ3pr</B>, commit <B>b42e6fd</B>, due to the literal sequence
+          \\n in the import of <B>components/copiloto/copiloto-app.tsx</B>. The later inspection
+          verified that the main branch already contained the separated imports. The incident record
+          was added in section 15. Afterwards this section 16 was added to the manual in commit
+          <B>a205bf3b64c8759e3be178ceff21c677fadd6db1</B>; the production deployment
+          <B>dpl_EvqM4SEXgX5kFczLhJGYW6YJ2jsX</B> was verified as <B>READY</B>.
         </P>
         <P>
-          <B>Regla obligatoria para el siguiente chat:</B> empezar leyendo este manual y revisando
-          GitHub main, los archivos reales y el último deployment Vercel. Continuar desde el estado
-          documentado; no pedir al propietario que repita decisiones ya registradas. Después de cada
-          cambio o deployment, actualizar este manual con commit/ID/estado real, indicar si push fue
-          registrado y separar claramente pruebas completadas de pruebas pendientes. No tocar el
-          módulo financiero ni el Supabase financiero.
+          <B>Mandatory rule for the next chat:</B> start by reading this manual and reviewing
+          GitHub main, the real files and the latest Vercel deployment. Continue from the documented
+          state; do not ask the owner to repeat decisions already recorded. After each
+          change or deployment, update this manual with the real commit/ID/status, indicate whether push was
+          recorded and clearly separate completed tests from pending tests. Do not touch the
+          finance module or the finance Supabase.
         </P>
       </Section>
 
 
-      <Section title="17. SUPABASE CRM AUTH + DATABASE — revisión y continuidad (2026-11-25)">
+      <Section title="17. SUPABASE CRM AUTH + DATABASE — review and continuity (2026-11-25)">
         <P>
           <B>Superseded for CRM cloud status:</B> this section records the state found on
           2026-11-25, before Phase 1 was built. For the production connection, Auth and sync, read
           section 19.
         </P>
         <P>
-          <B>Proyecto verificado:</B> Supabase CRM <B>mimgwleghecseoymgdug</B>, nombre CRM,
-          organización Copiloto V7 CRM, región <B>us-east-2</B>, estado <B>ACTIVE_HEALTHY</B>.
-          La autorización ya permite consultar proyecto, URL de API y clave pública. Este proyecto
-          es exclusivo del CRM. No usar el Supabase financiero <B>zrcnpmipdhpjdjkfrrgt</B>.
+          <B>Project verified:</B> Supabase CRM <B>mimgwleghecseoymgdug</B>, name CRM,
+          organization Copiloto V7 CRM, region <B>us-east-2</B>, status <B>ACTIVE_HEALTHY</B>.
+          The authorization already allows querying the project, API URL and public key. This project
+          is exclusive to the CRM. Do not use the finance Supabase <B>zrcnpmipdhpjdjkfrrgt</B>.
         </P>
         <P>
-          <B>Estado real de Supabase al revisar:</B> servicio Auth disponible en el proyecto;
-          <B>0 usuarios</B> registrados; <B>0 tablas de aplicación en public</B>; lista de
-          migraciones de aplicación vacía. No se creó todavía ningún usuario, tabla, política,
-          registro ni migración. Auth no está conectado a la interfaz ni se han configurado
-          rutas protegidas.
+          <B>Real state of Supabase at review:</B> Auth service available in the project;
+          <B>0 users</B> registered; <B>0 application tables in public</B>; application
+          migration list empty. No user, table, policy, record or migration had been created yet.
+          Auth is not connected to the interface and no protected routes have been configured.
         </P>
         <P>
-          <B>Auditoría de seguridad:</B> el advisor reporta la función
-          <B>public.rls_auto_enable()</B> como SECURITY DEFINER ejecutable por anon y
-          authenticated. La inspección SQL confirma que es una función asociada al event trigger
-          <B>ensure_rls</B>, habilitado, y que su cuerpo activa RLS automáticamente al crear tablas
-          en public. No se modificó ni eliminó esta función ni el trigger. Revisar cuidadosamente
-          el aviso antes de cambios de permisos; toda tabla CRM nueva debe tener políticas RLS
-          explícitas de propiedad.
+          <B>Security audit:</B> the advisor reports the function
+          <B>public.rls_auto_enable()</B> as SECURITY DEFINER executable by anon and
+          authenticated. The SQL inspection confirms it is a function associated with the event trigger
+          <B>ensure_rls</B>, enabled, and that its body automatically enables RLS when tables are
+          created in public. This function and the trigger were neither modified nor deleted. Review
+          the warning carefully before permission changes; every new CRM table must have explicit
+          RLS ownership policies.
         </P>
         <P>
-          <B>Estado real del código en GitHub main:</B> repositorio
+          <B>Real state of the code on GitHub main:</B> repository
           <B>transittaxmc-create/claris</B>; Next.js <B>16.3.3</B>, React 19, pnpm
-          <B>12.3.4</B>. <B>package.json</B> y <B>pnpm-lock.yaml</B> no incluyen
-          <B>@supabase/supabase-js</B> ni <B>@supabase/ssr</B>. No existe <B>proxy.ts</B> ni
-          <B>middleware.ts</B>. app/page.tsx renderiza CopilotoApp como cliente y no hay
-          autenticación server-side ni guard de rutas. No se cambió ningún archivo de aplicación
-          durante esta auditoría.
+          <B>12.3.4</B>. <B>package.json</B> and <B>pnpm-lock.yaml</B> do not include
+          <B>@supabase/supabase-js</B> or <B>@supabase/ssr</B>. There is no <B>proxy.ts</B> or
+          <B>middleware.ts</B>. app/page.tsx renders CopilotoApp as a client and there is no
+          server-side authentication or route guard. No application file was changed
+          during this audit.
         </P>
         <P>
-          <B>Modelo CRM actual observado:</B> components/copiloto/crm-screen.tsx guarda clientes
-          en localStorage <B>claris_crm_clients_v1</B> y reservaciones en
-          <B>claris_crm_reservations_v1</B>. Clientes incluyen name, company, phone, email,
-          status, source, notes, nextContact y createdAt. Reservaciones incluyen clientId,
+          <B>Current CRM model observed:</B> components/copiloto/crm-screen.tsx stores clients
+          in localStorage <B>claris_crm_clients_v1</B> and reservations in
+          <B>claris_crm_reservations_v1</B>. Clients include name, company, phone, email,
+          status, source, notes, nextContact and createdAt. Reservations include clientId,
           passengerName/Phone, serviceDate, pickupTime, passengers, status, pickupKind,
           pickupAddress, dropoffAddress, airport, airline, flightNumber, flightDate,
-          scheduledArrival, terminal, gate, notes, createdAt y updatedAt. Los datos locales
-          no se borraron ni migraron; se deben preservar y sincronizar después de establecer
-          Auth y el esquema.
+          scheduledArrival, terminal, gate, notes, createdAt and updatedAt. The local data
+          was neither deleted nor migrated; it must be preserved and synced after establishing
+          Auth and the schema.
         </P>
-        <P><B>Plan de continuación confirmado:</B></P>
+        <P><B>Confirmed continuation plan:</B></P>
         <ol className="mb-3 list-decimal space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li><B>Paso 2 — Auth:</B> instalar y fijar versiones compatibles de @supabase/supabase-js y @supabase/ssr; crear clientes browser/server; usar proxy.ts para refrescar cookies en Next.js 16; implementar registro, login, logout, recuperación de contraseña y verificación de sesión con getClaims() en el servidor; proteger la aplicación sin alterar el flujo del módulo financiero. Las variables públicas NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY deben configurarse en el proyecto Vercel correcto. Nunca poner service_role/secret key en el navegador ni en Git.</li>
-          <li><B>Paso 3 — Tablas y RLS:</B> diseñar tablas para perfiles, clientes y reservaciones basadas en los campos que realmente usa la interfaz; relacionar auth.users mediante UUID y client_id; crear índices, restricciones y políticas SELECT/INSERT/UPDATE/DELETE con auth.uid() = user_id. No crear todavía entidades futuras (casos fiscales, documentos, tareas, etc.) sin definir primero sus campos y flujos.</li>
-          <li>Conectar CRM a la nube en una fase posterior y hacer migración idempotente de los dos almacenes locales, sin borrar localStorage hasta comprobar conteos y contenido en Supabase. Probar usuario autorizado, acceso cruzado denegado, altas, ediciones, borrados, búsqueda y persistencia entre dispositivos.</li>
+          <li><B>Step 2 — Auth:</B> install and pin compatible versions of @supabase/supabase-js and @supabase/ssr; create browser/server clients; use proxy.ts to refresh cookies in Next.js 16; implement register, login, logout, password recovery and session verification with getClaims() on the server; protect the application without altering the finance module's flow. The public variables NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY must be configured in the correct Vercel project. Never put a service_role/secret key in the browser or in Git.</li>
+          <li><B>Step 3 — Tables and RLS:</B> design tables for profiles, clients and reservations based on the fields the interface actually uses; relate auth.users through UUID and client_id; create indexes, constraints and SELECT/INSERT/UPDATE/DELETE policies with auth.uid() = user_id. Do not yet create future entities (tax cases, documents, tasks, etc.) without first defining their fields and flows.</li>
+          <li>Connect the CRM to the cloud in a later phase and run an idempotent migration of the two local stores, without deleting localStorage until counts and content are verified in Supabase. Test authorized user, denied cross-access, creates, edits, deletes, search and persistence across devices.</li>
         </ol>
         <P>
-          <B>Estado de Vercel:</B> el intento de consultar deployments mediante la integración autorizada
-          devolvió <B>403 Forbidden</B>; por tanto el estado actual READY/BUILDING/FAILED no está
-          verificado en esta revisión. No afirmar que hubo deployment ni que la aplicación fue
-          probada en producción. La actualización de este manual es documentación en GitHub; el
-          resultado de su build debe verificarse por separado.
+          <B>Vercel status:</B> the attempt to query deployments through the authorized integration
+          returned <B>403 Forbidden</B>; therefore the current READY/BUILDING/FAILED status is not
+          verified in this review. Do not claim there was a deployment or that the application was
+          tested in production. This manual update is documentation on GitHub; its
+          build result must be verified separately.
         </P>
         <P>
-          <B>Notificaciones:</B> la prueba local en iPhone permanece confirmada previamente por
-          Miguel. Esta revisión no realizó ni registró una prueba push nueva; la prueba remota y
-          automatizaciones siguen pendientes.
+          <B>Notifications:</B> the local iPhone test remains previously confirmed by
+          Miguel. This review did not run or record a new push test; the remote test and
+          automations are still pending.
         </P>
         <P>
-          <B>Regla de seguridad y continuidad:</B> no tocar el módulo financiero, Plaid, balances,
-          proyecciones ni el proyecto Supabase financiero. No exponer secretos en chat o código.
-          No borrar datos locales ni crear cuentas de prueba sin autorización. Documentar cada
-          cambio, resultado de build, estado de deployment y pruebas de push por separado.
+          <B>Security and continuity rule:</B> do not touch the finance module, Plaid, balances,
+          projections or the finance Supabase project. Do not expose secrets in chat or code.
+          Do not delete local data or create test accounts without authorization. Document each
+          change, build result, deployment status and push test separately.
         </P>
       </Section>
 
 
-      <Section title="18. CRM AUTH + TABLAS — resultado del paso 3 (2026-11-25)">
+      <Section title="18. CRM AUTH + TABLES — step 3 result (2026-11-25)">
         <P>
           <B>Superseded for CRM cloud status:</B> this section records the database step before
           the application was connected. For the production connection, Auth and sync, read
           section 19.
         </P>
         <P>
-          <B>Base de datos aplicada:</B> migración Supabase
-          <B>20261126024701_crm_auth_clients_reservations_rls</B>, nombre
-          <B>crm_auth_clients_reservations_rls</B>, aplicada con resultado SUCCESS en el proyecto
-          <B>mimgwleghecseoymgdug</B>. El archivo SQL correspondiente quedó guardado en el
-          repositorio: <B>supabase/migrations/20261126024701_crm_auth_clients_reservations_rls.sql</B>.
+          <B>Database applied:</B> Supabase migration
+          <B>20261126024701_crm_auth_clients_reservations_rls</B>, name
+          <B>crm_auth_clients_reservations_rls</B>, applied with result SUCCESS in the project
+          <B>mimgwleghecseoymgdug</B>. The corresponding SQL file was saved in the
+          repository: <B>supabase/migrations/20261126024701_crm_auth_clients_reservations_rls.sql</B>.
         </P>
         <P>
-          <B>Tablas creadas y verificadas:</B> public.crm_clients y public.crm_reservations.
-          Ambas tienen RLS habilitado, referencia a auth.users mediante user_id, índices para
-          búsquedas/fechas y políticas explícitas SELECT, INSERT, UPDATE y DELETE para el usuario
-          propietario. Las reservaciones validan además que el cliente relacionado pertenezca al
-          mismo usuario. Al borrar un cliente, client_id de sus reservaciones se establece en NULL;
-          las reservaciones no se borran por cascada.
+          <B>Tables created and verified:</B> public.crm_clients and public.crm_reservations.
+          Both have RLS enabled, a reference to auth.users through user_id, indexes for
+          searches/dates and explicit SELECT, INSERT, UPDATE and DELETE policies for the owner
+          user. Reservations also validate that the related client belongs to the same user.
+          When a client is deleted, the client_id of their reservations is set to NULL;
+          reservations are not deleted by cascade.
         </P>
         <P>
-          <B>Verificación posterior:</B> list_tables confirmó las dos tablas y RLS enabled=true;
-          pg_policies confirmó las ocho políticas (cuatro por tabla); advisor de seguridad devolvió
-          <B>0 hallazgos</B> después de revocar EXECUTE público/anon/authenticated sobre
-          public.rls_auto_enable(). Se conservó el event trigger ensure_rls habilitado. Las tablas
-          están vacías (0 filas) y auth.users continúa con 0 usuarios. No se cargaron datos de
-          localStorage ni se crearon usuarios de prueba.
+          <B>Verification afterwards:</B> list_tables confirmed both tables and RLS enabled=true;
+          pg_policies confirmed the eight policies (four per table); the security advisor returned
+          <B>0 findings</B> after revoking public/anon/authenticated EXECUTE on
+          public.rls_auto_enable(). The ensure_rls event trigger was kept enabled. The tables
+          are empty (0 rows) and auth.users still has 0 users. No localStorage data was loaded
+          and no test users were created.
         </P>
         <P>
-          <B>Paso 3 — COMPLETADO:</B> estructura inicial de clientes y reservaciones y controles RLS
-          creados y verificados. Esto no significa que la interfaz CRM ya esté conectada a las
-          tablas; esa integración y la migración segura de los datos del teléfono son tareas
-          posteriores.
+          <B>Step 3 — COMPLETED:</B> initial structure of clients and reservations and RLS
+          controls created and verified. This does not mean the CRM interface is already
+          connected to the tables; that integration and the safe migration of the phone's data
+          are later tasks.
         </P>
         <P>
-          <B>Paso 2 — Auth de la aplicación — PENDIENTE:</B> la infraestructura Auth de Supabase
-          existe, pero todavía no se implementaron registro, login, logout, recuperación de
-          contraseña, clientes SSR/browser, proxy.ts ni protección server-side con getClaims().
-          package.json y pnpm-lock.yaml siguen sin los paquetes Supabase. No afirmar que el usuario
-          puede iniciar sesión ni que las rutas ya están protegidas.
+          <B>Step 2 — Application Auth — PENDING:</B> the Supabase Auth infrastructure
+          exists, but register, login, logout, password recovery, SSR/browser clients, proxy.ts
+          and server-side protection with getClaims() were not yet implemented.
+          package.json and pnpm-lock.yaml still have no Supabase packages. Do not claim that the
+          user can sign in or that the routes are already protected.
         </P>
         <P>
-          <B>Bloqueo de herramientas:</B> la integración Vercel devolvió 403 Forbidden tanto al
-          consultar deployments como al intentar crear un sandbox de trabajo; no se pudo usar el
-          CLI fallback desde las herramientas disponibles. Por eso no se ejecutó build ni se pudo
-          verificar el deployment disparado por los commits. Para completar Auth con instalación
-          reproducible y validar build/deployment, se necesita recuperar acceso autorizado al
-          proyecto Vercel <B>claris</B>. No cambiar de proyecto ni usar el proyecto Vercel separado
-          <B>claris-lime</B> por error.
+          <B>Tool block:</B> the Vercel integration returned 403 Forbidden both when querying
+          deployments and when trying to create a work sandbox; the fallback CLI could not be
+          used from the available tools. Because of that, no build was run and the deployment
+          triggered by the commits could not be verified. To complete Auth with a reproducible
+          install and validate build/deployment, authorized access to the Vercel project
+          <B>claris</B> must be recovered. Do not switch projects or use the separate Vercel
+          project <B>claris-lime</B> by mistake.
         </P>
         <P>
-          <B>Commits de documentación y migración:</B> manual actualizado en el commit
-          <B>84b026c28bcd52cf69080d082a20ef6ebcff141d</B>; archivo de migración SQL añadido en
-          <B>0a29323b3371594b7534bad828fea71adeae3cc9</B>. Estos commits registran la documentación
-          y el SQL, no equivalen a un deployment READY.
+          <B>Documentation and migration commits:</B> manual updated in commit
+          <B>84b026c28bcd52cf69080d082a20ef6ebcff141d</B>; migration SQL file added in
+          <B>0a29323b3371594b7534bad828fea71adeae3cc9</B>. These commits record the documentation
+          and the SQL; they are not a READY deployment.
         </P>
         <P>
-          <B>Notificaciones:</B> no se realizó prueba push en esta etapa. La prueba local en iPhone
-          confirmada anteriormente sigue siendo LOCAL TEST = PASS; Remote Push Test y
-          automatizaciones siguen pendientes.
+          <B>Notifications:</B> no push test was run at this stage. The previously confirmed
+          local iPhone test remains LOCAL TEST = PASS; the Remote Push Test and
+          automations are still pending.
         </P>
       </Section>
 
 
-      <Section title="18. PROGRESO REAL — tablas CRM creadas y Auth pendiente (2026-11-25)">
+      <Section title="18. REAL PROGRESS — CRM tables created, Auth pending (2026-11-25)">
         <P>
           <B>Superseded for CRM cloud status:</B> this section records the progress known at
           that point on 2026-11-25. Auth is no longer pending; for the production connection,
           read section 19.
         </P>
         <P>
-          <B>Confirmación del propietario:</B> Miguel confirmó que
-          <B>mimgwleghecseoymgdug</B> es el proyecto Supabase correcto. La conexión a Supabase
-          está autorizada y el proyecto responde ACTIVE_HEALTHY. No se debe volver al proyecto
-          financiero ni crear otro proyecto.
+          <B>Owner confirmation:</B> Miguel confirmed that
+          <B>mimgwleghecseoymgdug</B> is the correct Supabase project. The Supabase
+          connection is authorized and the project answers ACTIVE_HEALTHY. Do not go back to
+          the finance project or create another project.
         </P>
         <P>
-          <B>Paso 3 — primera migración aplicada:</B> migración
-          <B>20261126024701_crm_auth_clients_reservations_rls</B> aplicada correctamente.
-          Se crearon <B>public.crm_clients</B> y <B>public.crm_reservations</B>, ambas con
-          RLS habilitado, claves foráneas a auth.users, índices y restricciones de estado/cantidad.
-          Las dos tablas tienen 0 filas; no se migraron ni eliminaron los datos existentes de
-          localStorage. Se instalaron ocho políticas (SELECT/INSERT/UPDATE/DELETE por tabla)
-          limitadas a <B>auth.uid() = user_id</B>; las reservaciones también verifican que el
-          client_id pertenezca al mismo usuario. Se revocó EXECUTE de public.rls_auto_enable()
-          para PUBLIC, anon y authenticated; el event trigger ensure_rls sigue habilitado.
+          <B>Step 3 — first migration applied:</B> migration
+          <B>20261126024701_crm_auth_clients_reservations_rls</B> applied correctly.
+          <B>public.crm_clients</B> and <B>public.crm_reservations</B> were created, both with
+          RLS enabled, foreign keys to auth.users, indexes and status/quantity constraints.
+          Both tables have 0 rows; the existing localStorage data was neither migrated nor
+          deleted. Eight policies were installed (SELECT/INSERT/UPDATE/DELETE per table)
+          limited to <B>auth.uid() = user_id</B>; reservations also verify that the
+          client_id belongs to the same user. EXECUTE on public.rls_auto_enable() was
+          revoked for PUBLIC, anon and authenticated; the ensure_rls event trigger stays enabled.
         </P>
         <P>
-          <B>Verificación posterior:</B> list_tables confirmó las dos tablas y RLS activo.
-          La consulta de pg_policies confirmó las ocho políticas. El security advisor de Supabase
-          devolvió <B>0 avisos (lints: [])</B> después de la migración. Aún falta probar operaciones
-          reales con dos usuarios autenticados distintos; no hay usuarios de prueba y no se
-          afirma que el aislamiento multiusuario ya haya pasado pruebas de extremo a extremo.
+          <B>Verification afterwards:</B> list_tables confirmed both tables and active RLS.
+          The pg_policies query confirmed the eight policies. The Supabase security advisor
+          returned <B>0 warnings (lints: [])</B> after the migration. Real operations with two
+          different authenticated users still need testing; there are no test users and it is
+          not claimed that multi-user isolation has already passed end-to-end tests.
         </P>
         <P>
-          <B>Paso 2 — Auth:</B> todavía pendiente de integración en Next.js. Auth del proyecto
-          Supabase está disponible, pero no hay pantallas login/registro/reset password, clientes
-          SSR/browser, verificación getClaims(), proxy.ts ni protección server-side. No se han
-          creado usuarios ni enviado correos. La integración requiere añadir @supabase/ssr y
-          @supabase/supabase-js al proyecto y fijar el lockfile.
+          <B>Step 2 — Auth:</B> still pending integration in Next.js. The Supabase project's
+          Auth is available, but there are no login/register/reset-password screens, no
+          SSR/browser clients, no getClaims() verification, no proxy.ts and no server-side
+          protection. No users have been created and no emails sent. The integration requires
+          adding @supabase/ssr and @supabase/supabase-js to the project and pinning the lockfile.
         </P>
         <P>
-          <B>Bloqueo actual de Vercel:</B> las llamadas autorizadas de Vercel para leer
-          deployments/sandboxes responden <B>403 Forbidden / Not authorized</B>. Por ello no se
-          pudo abrir un entorno de trabajo de Vercel ni verificar build/deployment en esta etapa.
-          No se realizó deployment. Antes de desplegar, recuperar acceso autorizado a Vercel
-          (equipo islandCity / proyecto claris) o utilizar un flujo GitHub CI autorizado.
+          <B>Current Vercel block:</B> the authorized Vercel calls to read
+          deployments/sandboxes answer <B>403 Forbidden / Not authorized</B>. Because of that,
+          no Vercel work environment could be opened and no build/deployment could be verified
+          at this stage. No deployment was made. Before deploying, recover authorized Vercel
+          access (team islandCity / project claris) or use an authorized GitHub CI flow.
         </P>
         <P>
-          <B>Próximas tareas:</B> (1) restablecer lectura/escritura de Vercel o CI autorizado;
-          (2) implementar Auth SSR para Next.js 16 con proxy.ts, login, registro, logout y
-          recuperación; (3) configurar NEXT_PUBLIC_SUPABASE_URL y
-          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY en Vercel Production/Preview/Development sin
-          exponer secretos; (4) proteger la aplicación y conservar la ruta/experiencia actual;
-          (5) compilar y desplegar; (6) ejecutar pruebas con dos cuentas y luego migrar datos
-          locales de forma idempotente sin pérdida.
+          <B>Next tasks:</B> (1) restore Vercel read/write or an authorized CI; (2) implement
+          SSR Auth for Next.js 16 with proxy.ts, login, register, logout and recovery;
+          (3) configure NEXT_PUBLIC_SUPABASE_URL and
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in Vercel Production/Preview/Development without
+          exposing secrets; (4) protect the application and keep the current route/experience;
+          (5) build and deploy; (6) run tests with two accounts and then migrate local data
+          idempotently, with no loss.
         </P>
         <P>
-          <B>Deployment:</B> no se inició ninguno para este cambio de base de datos. Estado de
-          deployment: <B>no creado / no aplicable</B>. Push notifications: sin cambios; no se
-          realizó una nueva prueba push en esta sesión. La prueba local de iPhone previamente
-          documentada sigue siendo la única prueba reportada; pruebas remotas pendientes.
+          <B>Deployment:</B> none was started for this database change. Deployment status:
+          <B>not created / not applicable</B>. Push notifications: no changes; no new push test
+          was run in this session. The previously documented local iPhone test remains the only
+          reported test; remote tests pending.
         </P>
       </Section>
 
@@ -1487,7 +1485,7 @@ export function HowItWorksScreen() {
           <B>Status:</B> built and verified on 2026-11-26 in the test branch <B>test/crm-fases</B>
           (worktree claris-test-crm), on Miguel&apos;s order to complete everything defined for the
           CRM, and <B>deployed to production in this same deployment</B> — Miguel authorized the
-          upload in the same order (“tiene un sí al lado”), so no separate “súbelo” was waited
+          upload in the same order (“it has a yes next to it”), so no separate “upload it” was waited
           for. The deployment commit is recorded in the report <B>crm-fases-2026-11-26.md</B>.
           This section supersedes the “Still not built” list at the end of section 19: those four
           items are exactly what was built here. Still owed after this deployment: applying the
@@ -1590,35 +1588,42 @@ export function HowItWorksScreen() {
         </ul>
       </Section>
 
-      <Section title="21. LISTA DE PRIORIDADES — lo que está abierto, en lenguaje claro">
+      <Section title="21. PRIORITY LIST — what is open, in plain language">
         <P>
-          <B>Para qué es esta lista (palabras de Miguel, 2026-11-26):</B> aquí quedan las
-          prioridades abiertas, escritas claro, dentro de su propia aplicación. Si Amani no
-          termina algo, Miguel lo ve aquí y busca cómo terminarlo. <B>Esta lista se actualiza en
-          cada deploy</B>, en esta misma sección, junto con las notas de ese deploy — nunca en una
-          sección nueva.
+          <B>What this list is for (Miguel's words, 2026-11-26):</B> the open priorities live
+          here, written plainly, inside his own application. If Amani does not finish something,
+          Miguel sees it here and finds a way to finish it. <B>This list is updated in every
+          deploy</B>, in this same section, together with that deploy's notes — never in a new
+          section.
         </P>
-        <P><B>Prioridad 1 — El medidor de tarifa (el proyecto primero de la lista):</B></P>
+        <P>
+          <B>Done with this deploy (2026-11-26):</B> full English audit — the whole application
+          and this manual are now 100% in English: every title, label, button, message and note.
+          Text only: no logic, no calculations and no data were changed.
+        </P>
+        <P><B>Priority 1 — The fare meter (the first project on the list):</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li><B>El caso:</B> el cliente va en el carro y pregunta “¿cuánto me va a cobrar?”. Miguel escribe la dirección y la herramienta le da el precio competitivo en segundos, sin adivinar.</li>
-          <li><B>Cómo se calcula:</B> la fórmula de la TLC partida en la línea de la ciudad — millas y minutos <B>dentro</B> de NYC a su tarifa y <B>fuera</B> a la otra — más los peajes a costo E-ZPass, más el cargo de aeropuerto cuando aplica, redondeado a $5; y comparado con el mercado: lo que cobran Uber, Lyft, Empower y Throo por ese mismo viaje.</li>
-          <li><B>Estado:</B> la fórmula está verificada contra la página de la TLC y las notas de tarifas por trabajo están guardadas. <B>Falta construir la herramienta rápida</B> (escribir la dirección → ver el precio) y terminar la investigación de qué sitios dan el precio del mercado en vivo en segundos. La estrategia acordada: primero ganar clientes con el mejor precio; subir precios después.</li>
+          <li><B>The case:</B> the client is in the car and asks “how much are you going to charge me?”. Miguel types the address and the tool gives him the competitive price in seconds, with no guessing.</li>
+          <li><B>How it is calculated:</B> the TLC formula split at the city line — miles and minutes <B>inside</B> NYC at their rate and <B>outside</B> at the other one — plus tolls at E-ZPass cost, plus the airport fee when it applies, rounded to $5; and compared with the market: what Uber, Lyft, Empower and Throo charge for that same trip.</li>
+          <li><B>Status:</B> the formula is verified against the TLC page and the per-job fare notes are saved. The market-price research is <B>done</B> (2026-11-26): no site gives true live prices — the aggregators publish modeled ranges, Uber hides its prices behind a login, Lyft is app-only, and Empower and Throo publish no web prices; the method is the TLC formula plus his own flat-rate zone card, with spot checks in the rider apps. <B>Still to build:</B> the quick tool (type the address → see the price) and the fare meter inside the reservation form. The agreed strategy: first win clients with the best price; raise prices later.</li>
         </ul>
-        <P><B>Prioridad 2 — El CRM completo (esta construcción):</B></P>
+        <P><B>Priority 2 — The full CRM (this build):</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
-          <li><B>Hecho y en producción con este deploy:</B> la conexión a la nube (fase 1, §19) y las fases 2–5 (§20): número de cuenta por cliente con su historial, foto del cliente en su ficha y en la reserva, bandeja de mensajes con borrador editable y Approve &amp; Send, aviso de reservas de hoy y recordatorios solo para Miguel. Y el aviso <B>MESSAGE en TODAY</B> (§20): la luz en el hueco donde estaba GPS READY — parpadea suave con mensajes pendientes, tocarla abre la bandeja, ignorar a propósito la apaga y cerrar por ocupado la deja prendida; GPS READY bajó junto a pickup/drop-off (verde activo, gris apagado).</li>
-          <li><B>Hecho con este deploy:</B> borrar ya es borrar de verdad — lo que se borra en Copiloto se borra también en la nube y no resucita; la bandeja de mensajes gana botón <B>Delete</B> aparte de Discard (§20).</li>
-          <li><B>Hecho con este deploy:</B> tres herramientas más del CRM (§20) — botón <B>Reenviar</B> junto al “Sent” de cada mensaje enviado (vuelve a pendiente con su mismo borrador), <B>control de estatus real en la ficha del cliente</B> (la fila de la lista solo filtraba) y <B>marca de seguimiento</B> en mensajes enviados. Pendiente corto: aplicar la migración <B>20261126170000</B> en el Supabase del CRM para que la marca de seguimiento también viaje a la nube; sin ella la marca queda en el teléfono y todo lo demás funciona igual.</li>
-          <li><B>Hecho (2026-11-26):</B> la migración <B>20261126120000</B> quedó aplicada en el proyecto de Supabase del CRM — el número de cuenta, las fotos y los mensajes ya viven también en la nube.</li>
-          <li><B>Hecho con este deploy:</B> <B>envío real SMS + indicador honesto</B> (§20) — Approve &amp; Send pone la respuesta en la <B>cola de salida SMS</B> de la nube, Amani la despacha como texto desde el teléfono de Miguel (su número real), y “sent” solo se marca con el despacho confirmado y su hora guardada en el récord; el indicador junto a cada mensaje dice la verdad del canal SMS (en cola = no enviado; enviado desde tu teléfono = entrega no confirmada, nunca “entregado” falso; falló = con motivo). <B>Pendiente corto:</B> aplicar la migración <B>20261126180000</B> en el Supabase del CRM para que el estado del despacho también viaje a la nube entre los dos teléfonos. Sin llaves ni proveedores nuevos: la cola trabaja con el teléfono pareado y la aprobación de siempre.</li>
-          <li><B>Hecho con este deploy:</B> el <B>paquete del formulario de reserva</B> (§20) — indicadores de campos requeridos (vacío ámbar, lleno verde; la hora ahora es requerida), lista de todo lo que falta de una vez y Save activo solo con el formulario completo; <B>auto-llenado desde el mensaje</B> (recogida, destino, fecha, hora, pasajeros y vuelo); <B>verificación de direcciones</B> contra el mapa (calle + número + ciudad juntos; marca, nunca traba); y <B>parada opcional</B> verificada que entra a la ruta GPS recogida → parada → destino. <B>Pendiente corto:</B> aplicar la migración <B>20261126190000</B> en el Supabase del CRM para que la parada también viaje a la nube; sin ella la parada queda en el teléfono y todo lo demás funciona igual.</li>
-          <li><B>Hecho con este deploy:</B> el <B>flujo de cuenta al aceptar</B> (§20) — la persona nueva que escribe queda <B>sin número de cuenta</B> (se acabó el relleno automático ICT al abrir el CRM); cuando Miguel <B>acepta</B> su mensaje y se crea su ficha, el sistema asigna el siguiente <B>ACT-0-###</B> tras el mayor ACT existente (Shah = ACT-0-100 → el siguiente es ACT-0-101), antes de que exista reserva; crear la ficha a mano usa la misma regla. El número es <B>editable en la ficha</B> con guarda anti-duplicados (un número ya usado por otro cliente no se guarda) y los números ya asignados <B>jamás se reescriben</B> (Shah conserva ACT-0-100; José conserva su ICT-0003). Sin migración: viaja en la columna account_number que ya existe.</li>
-          <li><B>Pendiente, bloqueado fuera del CRM:</B> el aviso push con la aplicación cerrada — el almacén de suscripciones (Vercel Blob) sigue suspendido y falta un disparador programado. Y la confirmación visual de Miguel en su teléfono de todo lo anterior.</li>
+          <li><B>Done and in production:</B> the cloud connection (phase 1, §19) and phases 2–5 (§20): an account number per client with their history, the client's photo on their profile and on the reservation, a message inbox with an editable draft and Approve &amp; Send, today's-reservation notices and reminders for Miguel only. And the <B>MESSAGE notice in TODAY</B> (§20): the light in the slot where GPS READY was — it blinks softly with pending messages, tapping it opens the inbox, ignoring it on purpose turns it off and closing it while busy leaves it on; GPS READY moved down beside pickup/drop-off (green on, grey off).</li>
+          <li><B>Done:</B> deleting is really deleting — what is deleted in Copiloto is also deleted in the cloud and does not come back; the message inbox has a <B>Delete</B> button separate from Discard (§20).</li>
+          <li><B>Done:</B> three more CRM tools (§20) — a <B>Resend</B> button beside the “Sent” of each sent message (it returns to pending with the same draft), a <B>real status control on the client profile</B> (the list row only filtered) and a <B>follow-up mark</B> on sent messages. <B>Done (2026-11-26):</B> migration <B>20261126170000</B> was applied in the CRM Supabase, so the follow-up mark also travels to the cloud.</li>
+          <li><B>Done (2026-11-26):</B> migration <B>20261126120000</B> was applied in the CRM Supabase project — the account number, the photos and the messages now also live in the cloud.</li>
+          <li><B>Done:</B> <B>real SMS sending + honest indicator</B> (§20) — Approve &amp; Send puts the reply in the cloud's <B>SMS outbox queue</B>, Amani dispatches it as a text from Miguel's phone (his real number), and “sent” is only marked with the confirmed dispatch and its time saved in the record; the indicator beside each message tells the truth of the SMS channel (queued = not sent; sent from your phone = delivery not confirmed, never a false “delivered”; failed = with the reason). <B>Done (2026-11-26):</B> migration <B>20261126180000</B> was applied in the CRM Supabase, so the dispatch state also travels to the cloud between the two phones. No new keys or providers: the queue works with the paired phone and the usual approval.</li>
+          <li><B>Done:</B> the <B>reservation form package</B> (§20) — required-field indicators (empty amber, filled green; the time is now required), the full missing list at once and Save active only with the form complete; <B>auto-fill from the message</B> (pickup, destination, date, time, passengers and flight); <B>address verification</B> against the map (street + number + city together; it flags, it never blocks); and an <B>optional stop</B>, verified, that joins the GPS route pickup → stop → destination. <B>Done (2026-11-26):</B> migration <B>20261126190000</B> was applied and verified in the CRM Supabase, so the stop also travels to the cloud.</li>
+          <li><B>Done:</B> the <B>account flow on accept</B> (§20) — a new person who writes in stays <B>with no account number</B> (the automatic ICT backfill when opening the CRM is over); when Miguel <B>accepts</B> their message and their profile is created, the system assigns the next <B>ACT-0-###</B> after the highest existing ACT (Shah = ACT-0-100 → the next one is ACT-0-101), before any reservation exists; creating a profile by hand uses the same rule. The number is <B>editable on the profile</B> with an anti-duplicate guard (a number already used by another client is not saved) and numbers already assigned are <B>never rewritten</B> (Shah keeps ACT-0-100; José keeps his ICT-0003). No migration: it travels in the account_number column that already exists.</li>
+          <li><B>Open — live inbox refresh:</B> today the app loads the cloud messages when it opens; a message that arrives while the app is open does not appear until the app is reopened (that is why a test message was only found after signing out and back in). The fix — messages arriving live while the app is open — is agreed as the next build (ordered 2026-11-26).</li>
+          <li><B>Open — special-fare mark on the client profile:</B> when a client's account is opened in the CRM it must show whether they have a special fare (the Mr. Shah model: $90 Manhattan / $55 JFK) so they are quoted <B>their</B> fare; a new client with no mark is quoted with the standard calculation (TLC formula + market). Ordered 2026-11-26; not built yet.</li>
+          <li><B>Pending, blocked outside the CRM:</B> the push notice with the app closed — the subscription store (Vercel Blob) is still suspended and a scheduled trigger is missing. And Miguel's visual confirmation on his phone of everything above.</li>
         </ul>
         <P>
-          <B>Cómo se mantiene esta lista:</B> cada deploy mueve lo terminado fuera de la lista (o
-          lo marca hecho con su fecha), añade lo nuevo que Miguel pida, y deja el orden de
-          prioridad como él lo dejó. Si algo cambia de orden, se cambia aquí primero.
+          <B>How this list is kept:</B> each deploy moves what is finished out of the list (or
+          marks it done with its date), adds the new things Miguel asks for, and leaves the
+          priority order as he left it. If something changes order, it changes here first.
         </P>
       </Section>
 

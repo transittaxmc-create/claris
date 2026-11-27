@@ -15,14 +15,14 @@ export async function POST(req: Request) {
     const apiKey = process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY
     if (!apiKey) {
       return NextResponse.json(
-        { error: "API de IA no configurada (GEMINI_API_KEY ausente)" },
+        { error: "AI API not configured (GEMINI_API_KEY missing)" },
         { status: 503 },
       )
     }
 
     const { image, mimeType, today } = await req.json()
     if (!image) {
-      return NextResponse.json({ error: "Falta la imagen en base64" }, { status: 400 })
+      return NextResponse.json({ error: "Missing base64 image" }, { status: 400 })
     }
     const hoy = typeof today === "string" && /^\d{4}-\d{2}-\d{2}$/.test(today) ? today : new Date().toISOString().slice(0, 10)
 
@@ -84,7 +84,7 @@ Reglas:
       const errText = await response.text()
       console.error("[scan-bank-shot] Gemini API error:", response.status, errText)
       return NextResponse.json(
-        { error: `Error del servicio de IA (${response.status})` },
+        { error: `AI service error (${response.status})` },
         { status: 502 },
       )
     }

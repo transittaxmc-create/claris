@@ -99,7 +99,7 @@ async function pullDataDoc(key: string): Promise<PullOutcome> {
       kind: "fail",
       status: 0,
       reason: "network",
-      message: err instanceof Error ? err.message : "Sin conexión",
+      message: err instanceof Error ? err.message : "No connection",
     }
   }
   if (res.status === 503) {
@@ -120,7 +120,7 @@ async function pullDataDoc(key: string): Promise<PullOutcome> {
   // Sin documento todavía: el servidor responde { doc: null }.
   if (!body || body.doc === null) return { kind: "empty" }
   if (typeof body !== "object" || Array.isArray(body) || !Array.isArray(body.entries)) {
-    return { kind: "fail", status: res.status, reason: "invalid_doc", message: "Documento de la nube ilegible" }
+    return { kind: "fail", status: res.status, reason: "invalid_doc", message: "Cloud document unreadable" }
   }
   return { kind: "doc", doc: body as SyncDoc<SyncTrip> }
 }
@@ -138,7 +138,7 @@ async function pushDataDoc(
     if (!res.ok) return { ok: false, status: res.status, message: await readError(res) }
     return { ok: true, status: 200, message: "ok" }
   } catch (err) {
-    return { ok: false, status: 0, message: err instanceof Error ? err.message : "Sin conexión" }
+    return { ok: false, status: 0, message: err instanceof Error ? err.message : "No connection" }
   }
 }
 
@@ -173,7 +173,7 @@ export async function syncDataWithServer<T extends SyncTrip>(
   localFinance?: SyncFinance,
 ): Promise<DataSyncResult> {
   if (!key) {
-    return { ok: false, status: 0, reason: "not_configured", message: "Sync automático no activado" }
+    return { ok: false, status: 0, reason: "not_configured", message: "Automatic sync not enabled" }
   }
 
   const pulled = await pullDataDoc(key)
@@ -220,7 +220,7 @@ export async function syncDataWithServer<T extends SyncTrip>(
         ok: false,
         status: 200,
         reason: "empty_guard",
-        message: "La mezcla daría cero ítems y la nube sí tiene datos: no se tocó nada.",
+        message: "The merge would give zero items and the cloud does have data: nothing was touched.",
       }
     }
   }

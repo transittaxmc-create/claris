@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 
   if (!clientId || !redirectUri) {
     return NextResponse.json(
-      { error: "google_no_configurado", hint: "Falta GOOGLE_CLIENT_ID o GOOGLE_REDIRECT_URI en Vercel." },
+      { error: "google_not_configured", hint: "Missing GOOGLE_CLIENT_ID or GOOGLE_REDIRECT_URI in Vercel." },
       { status: 501 },
     )
   }

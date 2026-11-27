@@ -282,7 +282,7 @@ export function runReconciliationCheck(input: {
         detail: `${fmt(amt)} · ${shortDate(t.date)}`,
         severity: "warn",
         bankTx: { date: String(t.date).slice(0, 10), detail: t.detail || "Bank", amount: amt },
-        proposedAction: { kind: "crear-apunte", label: esTransfer ? "Crear apunte transfer" : "Crear apunte" },
+        proposedAction: { kind: "crear-apunte", label: esTransfer ? "Create transfer entry" : "Create entry" },
       })
     }
 

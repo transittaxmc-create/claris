@@ -51,14 +51,14 @@ export async function POST(req: Request) {
     if (!apiKey) {
       console.error("[scan-receipt] GEMINI_API_KEY no configurada")
       return NextResponse.json(
-        { error: "API de IA no configurada (GEMINI_API_KEY ausente)" },
+        { error: "AI API not configured (GEMINI_API_KEY missing)" },
         { status: 503 },
       )
     }
 
     const { image, mimeType, kind } = await req.json()
     if (!image) {
-      return NextResponse.json({ error: "Falta la imagen en base64" }, { status: 400 })
+      return NextResponse.json({ error: "Missing base64 image" }, { status: 400 })
     }
 
     const cleanBase64 = image.replace(/^data:[^;]+;base64,/, "")
@@ -223,7 +223,7 @@ Respond with ONLY a valid JSON object with those exact keys: vendor, date, amoun
       const errText = await response.text()
       console.error("[scan-receipt] Gemini API error:", response.status, errText)
       return NextResponse.json(
-        { error: `Error del servicio de IA (${response.status})` },
+        { error: `AI service error (${response.status})` },
         { status: 502 },
       )
     }

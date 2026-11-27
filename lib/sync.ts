@@ -210,7 +210,7 @@ export function buildDoc<T extends SyncTrip>(
 // ---------------------------------------------------------------------
 function webCrypto(): Crypto {
   const c = (globalThis as any).crypto
-  if (!c?.subtle) throw new Error("Este navegador no soporta cifrado (WebCrypto)")
+  if (!c?.subtle) throw new Error("This browser does not support encryption (WebCrypto)")
   return c as Crypto
 }
 
@@ -329,13 +329,13 @@ export async function pullRemote(
     const key = await syncKeyId(code)
     const res = await fetch(`/api/sync?key=${key}`, { cache: "no-store" })
     if (res.status === 501) {
-      return { ok: false, status: 501, payload: null, message: "El servidor no tiene sync configurado" }
+      return { ok: false, status: 501, payload: null, message: "The server has no sync configured" }
     }
     if (!res.ok) return { ok: false, status: res.status, payload: null, message: await readError(res) }
     const json = (await res.json()) as { payload?: string | null }
     return { ok: true, status: 200, payload: json?.payload ?? null, message: "ok" }
   } catch (err) {
-    return { ok: false, status: 0, payload: null, message: err instanceof Error ? err.message : "Sin conexión" }
+    return { ok: false, status: 0, payload: null, message: err instanceof Error ? err.message : "No connection" }
   }
 }
 
@@ -353,7 +353,7 @@ export async function pushRemote(
     if (!res.ok) return { ok: false, status: res.status, message: await readError(res) }
     return { ok: true, status: 200, message: "ok" }
   } catch (err) {
-    return { ok: false, status: 0, message: err instanceof Error ? err.message : "Sin conexión" }
+    return { ok: false, status: 0, message: err instanceof Error ? err.message : "No connection" }
   }
 }
 
@@ -364,12 +364,12 @@ export async function deleteCloudDoc(code: string): Promise<{ ok: boolean; statu
     const key = await syncKeyId(code)
     const res = await fetch(`/api/sync?key=${key}`, { method: "DELETE", cache: "no-store" })
     if (res.status === 501) {
-      return { ok: false, status: 501, message: "El servidor no tiene sync configurado" }
+      return { ok: false, status: 501, message: "The server has no sync configured" }
     }
     if (!res.ok) return { ok: false, status: res.status, message: await readError(res) }
     return { ok: true, status: 200, message: "ok" }
   } catch (err) {
-    return { ok: false, status: 0, message: err instanceof Error ? err.message : "Sin conexión" }
+    return { ok: false, status: 0, message: err instanceof Error ? err.message : "No connection" }
   }
 }
 
@@ -390,7 +390,7 @@ export async function syncWithCloud<T extends SyncTrip>(
       ok: false,
       status: 400,
       reason: "invalid_code",
-      message: `El código necesita al menos ${MIN_SYNC_CODE_LENGTH} caracteres`,
+      message: `The code needs at least ${MIN_SYNC_CODE_LENGTH} characters`,
     }
   }
 
@@ -416,7 +416,7 @@ export async function syncWithCloud<T extends SyncTrip>(
         ok: false,
         status: 200,
         reason: "bad_code",
-        message: "El código no coincide con los datos del servidor (o el archivo está dañado)",
+        message: "The code does not match the server data (or the file is damaged)",
       }
     }
     remoteTrips = Array.isArray(doc.entries) ? doc.entries : []

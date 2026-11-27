@@ -43,7 +43,7 @@ export function DineroProyeccionV2(props: {
       </div>
       <img
         src={screen === "register" ? REGISTER_IMAGE : TRENDS_IMAGE}
-        alt={screen === "register" ? "Registro y pronóstico de flujo de caja" : "Proyección y tendencias del flujo de caja"}
+        alt={screen === "register" ? "Cash flow register and forecast" : "Cash flow projection and trends"}
         className="block h-auto w-full"
       />
     </section>

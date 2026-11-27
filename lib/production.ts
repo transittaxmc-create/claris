@@ -234,9 +234,9 @@ export function improveAdvice(input: { stats: HourStat[]; goalRate: number }): I
   if (totals.measuredHours < 2) {
     return [
       {
-        title: "Todavía no hay base para comparar",
+        title: "Not enough history to compare yet",
         detail:
-          "Deja el cronómetro encendido mientras trabajas. Con 2 o 3 horas medidas te digo tu ritmo real y en qué horas rindes más.",
+          "Leave the timer running while you work. With 2 or 3 measured hours I can tell you your real pace and which hours you perform best.",
       },
     ]
   }
@@ -246,20 +246,20 @@ export function improveAdvice(input: { stats: HourStat[]; goalRate: number }): I
 
   if (rate >= goal) {
     tips.push({
-      title: `Vas por encima de tu meta: $${rate.toFixed(0)}/h real`,
-      detail: `Tu meta es $${goal}/h y tu ritmo medido va $${(rate - goal).toFixed(0)}/h arriba. Mantén la rutina: lo que estás haciendo ya funciona.`,
+      title: `You are above your goal: $${rate.toFixed(0)}/h real`,
+      detail: `Your goal is $${goal}/h and your measured pace is $${(rate - goal).toFixed(0)}/h above it. Keep the routine: what you are doing already works.`,
     })
   } else {
     const gap = goal - rate
     if (best && (best.rate ?? 0) >= goal) {
       tips.push({
-        title: `Te faltan $${gap.toFixed(0)}/h para la meta`,
-        detail: `Tu ritmo medido es $${rate.toFixed(0)}/h, pero tu mejor hora (${best.label}) llegó a $${(best.rate ?? 0).toFixed(0)}/h. Repite las condiciones de esa hora: es el ritmo que sí alcanza la meta.`,
+        title: `You are $${gap.toFixed(0)}/h short of the goal`,
+        detail: `Your measured pace is $${rate.toFixed(0)}/h, but your best hour (${best.label}) reached $${(best.rate ?? 0).toFixed(0)}/h. Repeat the conditions of that hour: that is the pace that does reach the goal.`,
       })
     } else {
       tips.push({
-        title: `Te faltan $${gap.toFixed(0)}/h y tu mejor hora tampoco llegó`,
-        detail: `Ritmo medido $${rate.toFixed(0)}/h y tu mejor hora $${(best?.rate ?? 0).toFixed(0)}/h. Forzar más velocidad no es realista: la mejora está en trabajar más horas o en apuntar a viajes más largos, no en correr.`,
+        title: `You are $${gap.toFixed(0)}/h short and your best hour did not reach it either`,
+        detail: `Measured pace $${rate.toFixed(0)}/h and your best hour $${(best?.rate ?? 0).toFixed(0)}/h. Forcing more speed is not realistic: the improvement is in working more hours or aiming for longer trips, not in rushing.`,
       })
     }
   }
@@ -282,8 +282,8 @@ export function improveAdvice(input: { stats: HourStat[]; goalRate: number }): I
   if (ranked.length >= 2) {
     const top = ranked[0]
     tips.push({
-      title: `Tu mejor franja es ${String(top.hour).padStart(2, "0")}:00`,
-      detail: `En esa hora del día promedias $${top.rate.toFixed(0)}/h ($${top.produced.toFixed(2)} acumulados). Si puedes, concentra ahí las horas de trabajo.`,
+      title: `Your best time slot is ${String(top.hour).padStart(2, "0")}:00`,
+      detail: `In that hour of the day you average $${top.rate.toFixed(0)}/h ($${top.produced.toFixed(2)} accumulated). If you can, concentrate your work hours there.`,
     })
   }
 
@@ -292,18 +292,18 @@ export function improveAdvice(input: { stats: HourStat[]; goalRate: number }): I
   if (unmeasured > 0) {
     tips.push({
       title: `${unmeasured} ${unmeasured === 1 ? "hora" : "horas"} sin tiempo medido`,
-      detail: "Hubo producción pero el cronómetro estaba apagado, así que no se puede calcular el $/hora de esas horas. Enciéndelo al empezar y apágalo al terminar.",
+      detail: "There was production but the timer was off, so the $/hour of those hours cannot be calculated. Turn it on when you start and off when you finish.",
     })
   }
 
   if (totals.measuredHours >= 3) {
     const pct = Math.round((totals.goalHours / totals.measuredHours) * 100)
     tips.push({
-      title: `${totals.goalHours} de ${totals.measuredHours} horas llegaron a la meta (${pct} %)`,
+      title: `${totals.goalHours} of ${totals.measuredHours} hours reached the goal (${pct} %)`,
       detail:
         pct >= 60
-          ? `Llevas $${totals.produced.toFixed(2)} en ${(totals.workedMin / 60).toFixed(1)} h medidas. Con este porcentaje vas bien: cuida no perder las horas buenas.`
-          : `Llevas $${totals.produced.toFixed(2)} en ${(totals.workedMin / 60).toFixed(1)} h medidas. Menos de 6 de cada 10 horas llegan a la meta: revisa las pausas y los huecos entre viajes.`,
+          ? `You have $${totals.produced.toFixed(2)} in ${(totals.workedMin / 60).toFixed(1)} measured hours. At this percentage you are doing well: take care not to lose the good hours.`
+          : `You have $${totals.produced.toFixed(2)} in ${(totals.workedMin / 60).toFixed(1)} measured hours. Fewer than 6 of every 10 hours reach the goal: check the breaks and the gaps between trips.`,
     })
   }
 
@@ -365,8 +365,8 @@ export function hourlyAdvice(
       tone: "goal-met",
       message:
         projectedRate !== null
-          ? `🏆 Meta superada: $${earned.toFixed(2)} esta hora (ritmo $${projectedRate.toFixed(0)}/h). Todo lo que siga es ganancia extra.`
-          : `🏆 Meta de la hora cumplida: $${earned.toFixed(2)}.`,
+          ? `🏆 Goal beaten: $${earned.toFixed(2)} this hour (pace $${projectedRate.toFixed(0)}/h). Everything from here is extra profit.`
+          : `🏆 Hour goal met: $${earned.toFixed(2)}.`,
     }
   }
 
@@ -379,7 +379,7 @@ export function hourlyAdvice(
       remainingToGoal,
       neededRate: null,
       tone: "hard",
-      message: `Cerraste la hora con $${earned.toFixed(2)} ($${remainingToGoal.toFixed(2)} por debajo). Empieza la siguiente con un viaje más largo.`,
+      message: `You closed the hour with $${earned.toFixed(2)} ($${remainingToGoal.toFixed(2)} below). Start the next one with a longer trip.`,
     }
   }
 
@@ -395,7 +395,7 @@ export function hourlyAdvice(
       remainingToGoal,
       neededRate,
       tone: "on-track",
-      message: `✅ Vas en ritmo de $${projectedRate.toFixed(0)}/h. Te faltan $${remainingToGoal.toFixed(2)} en ${remaining} min para la meta de $${goalSafe}.`,
+      message: `✅ You are on a pace of $${projectedRate.toFixed(0)}/h. You need $${remainingToGoal.toFixed(2)} in ${remaining} min to reach the goal of $${goalSafe}.`,
     }
   }
 
@@ -409,7 +409,7 @@ export function hourlyAdvice(
       remainingToGoal,
       neededRate,
       tone: "reachable",
-      message: `💪 Necesitas $${remainingToGoal.toFixed(2)} en ${remaining} min (ritmo $${neededRate.toFixed(0)}/h). Es alcanzable: prioriza viajes largos, sin pausas.`,
+      message: `💪 You need $${remainingToGoal.toFixed(2)} in ${remaining} min (pace $${neededRate.toFixed(0)}/h). It is reachable: prioritize long trips, no breaks.`,
     }
   }
 
@@ -422,7 +422,7 @@ export function hourlyAdvice(
     remainingToGoal,
     neededRate,
     tone: "hard",
-    message: `⚠️ Quedan ${remaining} min y faltan $${remainingToGoal.toFixed(2)}: haría falta un ritmo de $${neededRate.toFixed(0)}/h, por encima de tu meta. No es realista forzarlo — asegura la próxima hora completa.`,
+    message: `⚠️ ${remaining} min left and $${remainingToGoal.toFixed(2)} to go: it would take a pace of $${neededRate.toFixed(0)}/h, above your goal. Forcing it is not realistic — secure the next full hour.`,
   }
 }
 
@@ -462,7 +462,7 @@ export function planToCover(input: {
       daysNeeded: 0,
       feasible: true,
       dailyTarget: 0,
-      message: "✅ No falta nada: tus ingresos cubren los pagos de esta semana.",
+      message: "✅ Nothing is missing: your income covers this week's payments.",
     }
   }
 
@@ -471,7 +471,7 @@ export function planToCover(input: {
   const feasible = daysNeeded <= daysUntilDue
   const dailyTarget = Math.round((shortfall / Math.max(1, daysUntilDue)) * 100) / 100
 
-  const base = `Faltan $${shortfall.toFixed(2)}: a tu meta de $${goalRate}/h son ~${hoursNeeded} h de trabajo (~${daysNeeded} día${daysNeeded === 1 ? "" : "s"} de ${hoursPerDay} h).`
+  const base = `You are short $${shortfall.toFixed(2)}: at your goal of $${goalRate}/h that is ~${hoursNeeded} h of work (~${daysNeeded} day${daysNeeded === 1 ? "" : "s"} of ${hoursPerDay} h).`
 
   return {
     shortfall,
@@ -483,7 +483,7 @@ export function planToCover(input: {
     feasible,
     dailyTarget,
     message: feasible
-      ? `${base} Tienes ${daysUntilDue} día${daysUntilDue === 1 ? "" : "s"} → ✅ alcanzable. Meta diaria: $${dailyTarget.toFixed(2)}.`
-      : `${base} Solo quedan ${daysUntilDue} día${daysUntilDue === 1 ? "" : "s"} → ⚠️ ajustado. Necesitarías ~${Math.ceil((shortfall / Math.max(1, daysUntilDue) / goalRate) * 10) / 10} h al día (más de ${hoursPerDay} h). Divide el pago o amplía el plazo.`,
+      ? `${base} You have ${daysUntilDue} day${daysUntilDue === 1 ? "" : "s"} → ✅ reachable. Daily goal: $${dailyTarget.toFixed(2)}.`
+      : `${base} Only ${daysUntilDue} day${daysUntilDue === 1 ? "" : "s"} left → ⚠️ tight. You would need ~${Math.ceil((shortfall / Math.max(1, daysUntilDue) / goalRate) * 10) / 10} h a day (more than ${hoursPerDay} h). Split the payment or extend the deadline.`,
   }
 }

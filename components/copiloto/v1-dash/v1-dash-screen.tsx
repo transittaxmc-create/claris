@@ -432,10 +432,10 @@ function EzpassSummaryCard({
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <div className="w-1.5 h-1.5 rounded-full bg-[#8b5cf6]" />
-          <p className="text-[10px] tracking-[0.18em] font-bold text-[#a78bfa]">E-ZPASS · RESUMEN</p>
+          <p className="text-[10px] tracking-[0.18em] font-bold text-[#a78bfa]">E-ZPASS · SUMMARY</p>
         </div>
         <span className="font-mono-jet text-[11px] font-bold text-[#c4b5fd]">
-          ${data.hoy.toFixed(2)} {data.shiftScoped ? "este turno" : "hoy"}
+          ${data.hoy.toFixed(2)} {data.shiftScoped ? "this shift" : "today"}
         </span>
       </div>
 
@@ -449,7 +449,7 @@ function EzpassSummaryCard({
           onKeyDown={(e) => {
             if (e.key === "Enter") commitCar()
           }}
-          placeholder="Ej. Tag del carro · cuenta 1234"
+          placeholder="E.g. Car tag · account 1234"
           className="mb-2 w-full rounded-lg border border-[#2a2340] bg-black/40 px-2 py-1.5 text-[11px] text-[#e9e4ff] outline-none placeholder:text-[#6d5a9c]"
         />
       ) : (
@@ -461,16 +461,16 @@ function EzpassSummaryCard({
           }}
           className="mb-2 block w-full text-left text-[11px] text-[#c4b5fd]/80 active:opacity-60"
         >
-          🚗 {carLabel || "Toca para anotar la cuenta del carro"}
+          🚗 {carLabel || "Tap to note the car account"}
         </button>
       )}
 
       <div className="grid grid-cols-3 gap-2">
         {(
           [
-            [data.shiftScoped ? "HOY · TURNO" : "HOY", data.hoy],
-            ["SEMANA", data.semana],
-            ["AÑO", data.anio],
+            [data.shiftScoped ? "TODAY · SHIFT" : "TODAY", data.hoy],
+            ["WEEK", data.semana],
+            ["YEAR", data.anio],
           ] as Array<[string, number]>
         ).map(([c, f]) => (
           <div key={c} className="text-center">
@@ -480,40 +480,40 @@ function EzpassSummaryCard({
         ))}
       </div>
       {data.shiftScoped && (
-        <p className="mt-1 text-center text-[8px] text-[#6d5a9c]">HOY cuenta desde el inicio del turno</p>
+        <p className="mt-1 text-center text-[8px] text-[#6d5a9c]">TODAY counts from the start of the shift</p>
       )}
 
       <div className="mt-2.5 flex items-center justify-between border-t border-[#2a2340] pt-2">
         <span className="text-[10px] text-[#c4b5fd]/70">
-          Semana por pagar{data.bill ? ` · vence ${fridayLabel}` : ""}
+          Week payable{data.bill ? ` · due ${fridayLabel}` : ""}
         </span>
         {data.bill ? (
           <span className="font-mono-jet text-[11px] font-bold text-[#c4b5fd]">
             ${data.bill.remaining.toFixed(2)}{" "}
-            <span className="font-normal text-[#6d5a9c]">de ${data.bill.total.toFixed(2)}</span>
+            <span className="font-normal text-[#6d5a9c]">of ${data.bill.total.toFixed(2)}</span>
           </span>
         ) : (
-          <span className="font-mono-jet text-[11px] text-[#6d5a9c]">Sin bill esta semana</span>
+          <span className="font-mono-jet text-[11px] text-[#6d5a9c]">No bill this week</span>
         )}
       </div>
 
       <div className="mt-2 border-t border-[#2a2340] pt-2">
-        <p className="text-[10px] font-bold tracking-[0.14em] text-[#a78bfa]">RECONCILIACIÓN</p>
+        <p className="text-[10px] font-bold tracking-[0.14em] text-[#a78bfa]">RECONCILIATION</p>
         {!data.hasStatement ? (
-          <p className="mt-1 text-[10px] text-[#c4b5fd]/70">Sin statement escaneado todavía</p>
+          <p className="mt-1 text-[10px] text-[#c4b5fd]/70">No statement scanned yet</p>
         ) : (
           <div className="mt-1 space-y-0.5 text-[10px] text-[#c4b5fd]/80">
             <p>
-              Consumido (statement):{" "}
+              Consumed (statement):{" "}
               <span className="font-mono-jet font-bold text-[#c4b5fd]">${data.audit!.statementTotal.toFixed(2)}</span>
-              {" · "}Macheados: {data.audit!.matched}
+              {" · "}Matched: {data.audit!.matched}
             </p>
             <p>
-              Problemas: duplicados? {data.audit!.duplicates} · sin match GPS {data.audit!.unmatchedStatement} ·
-              no están en el statement {data.audit!.unmatchedGps}
+              Problems: duplicates? {data.audit!.duplicates} · no GPS match {data.audit!.unmatchedStatement} ·
+              not on the statement {data.audit!.unmatchedGps}
             </p>
             <p>
-              Pagado a E-ZPass:{" "}
+              Paid to E-ZPass:{" "}
               <span className="font-mono-jet font-bold text-[#c4b5fd]">${data.paid.toFixed(2)}</span>
             </p>
           </div>
@@ -1153,29 +1153,29 @@ export function V1DashScreen({
             {moneyLine.todayOut > 0 ? (
               <>
                 <p className="font-mono-jet text-[11px] font-bold text-neutral-300 whitespace-nowrap">
-                  Hoy sale <span className="text-[#f87171]">${moneyLine.todayOut.toFixed(2)}</span>
+                  Going out today <span className="text-[#f87171]">${moneyLine.todayOut.toFixed(2)}</span>
                 </p>
                 <p className="font-mono-jet text-[11px] text-neutral-400 whitespace-nowrap">
-                  Llevas <span className="text-neutral-200">${grossToday.toFixed(2)}</span>
+                  So far <span className="text-neutral-200">${grossToday.toFixed(2)}</span>
                   {grossToday < moneyLine.todayOut ? (
                     <>
-                      {" · Te faltan "}
+                      {" · You are short "}
                       <span className="font-bold text-[#fbbf24]">${(moneyLine.todayOut - grossToday).toFixed(2)}</span>
                     </>
                   ) : (
                     <>
                       {" · "}
-                      <span className="font-bold text-[#4ade80]">Ya lo cubriste ✓</span>
+                      <span className="font-bold text-[#4ade80]">You covered it ✓</span>
                     </>
                   )}
                 </p>
               </>
             ) : (
               <>
-                <p className="font-mono-jet text-[11px] font-bold text-neutral-300 whitespace-nowrap">Hoy no sale nada</p>
+                <p className="font-mono-jet text-[11px] font-bold text-neutral-300 whitespace-nowrap">Nothing goes out today</p>
                 {moneyLine.next ? (
                   <p className="font-mono-jet text-[11px] text-neutral-400 whitespace-nowrap">
-                    Próxima salida: {nextOutLabel} ·{" "}
+                    Next payment out: {nextOutLabel} ·{" "}
                     <span className="text-neutral-200">${moneyLine.next.amount.toFixed(2)}</span>
                   </p>
                 ) : null}

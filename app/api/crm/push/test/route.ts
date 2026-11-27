@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   try {
     const result = await sendCrmPush(body.subscription, {
       title: "Copiloto CRM — prueba push",
-      body: "La notificación push remota llegó desde el servidor.",
+      body: "The remote push notification arrived from the server.",
       url: "/",
       tag: "copiloto-crm-push-test",
     })

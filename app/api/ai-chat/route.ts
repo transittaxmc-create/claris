@@ -16,7 +16,7 @@ export async function POST(req: Request) {
 
     const { messages, context, image } = await req.json()
     if (!Array.isArray(messages) || messages.length === 0) {
-      return NextResponse.json({ error: "Faltan los mensajes de conversación" }, { status: 400 })
+      return NextResponse.json({ error: "Missing conversation messages" }, { status: 400 })
     }
 
     let generationConfig: Record<string, unknown> = {

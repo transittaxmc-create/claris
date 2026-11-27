@@ -168,7 +168,7 @@ export function CRMNotifications() {
       }
       const registration = await navigator.serviceWorker.ready
       await registration.showNotification("Copiloto CRM — prueba local", {
-        body: "Esta notificación se generó directamente en este dispositivo.",
+        body: "This notification was generated directly on this device.",
         icon: "/icon.svg",
         badge: "/icon.svg",
         tag: "copiloto-crm-local-test",

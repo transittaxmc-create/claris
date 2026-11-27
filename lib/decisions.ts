@@ -110,8 +110,8 @@ export function moneyAlerts(input: AlertInput, max = 3): MoneyAlert[] {
     const oldest = input.overdue.reduce((worst, p) => (p.daysLate > worst.daysLate ? p : worst), input.overdue[0])
     alerts.push({
       id: "vencidos",
-      title: input.overdue.length === 1 ? "1 pago vencido" : `${input.overdue.length} pagos vencidos`,
-      detail: `${oldest.description} · hace ${oldest.daysLate} ${oldest.daysLate === 1 ? "día" : "días"}`,
+      title: input.overdue.length === 1 ? "1 overdue payment" : `${input.overdue.length} overdue payments`,
+      detail: `${oldest.description} · ${oldest.daysLate} ${oldest.daysLate === 1 ? "day" : "days"} ago`,
       amount: total,
       tone: "danger",
       tier: 0,
@@ -119,11 +119,11 @@ export function moneyAlerts(input: AlertInput, max = 3): MoneyAlert[] {
   }
 
   if (input.shortfall > 0) {
-    const dia = input.tightDay ? ` El día más ajustado es el ${input.tightDay.date}.` : ""
+    const dia = input.tightDay ? ` The tightest day is ${input.tightDay.date}.` : ""
     alerts.push({
       id: "semana-corta",
-      title: "La semana no cierra con lo que hay",
-      detail: `Faltan $${round2(input.shortfall).toFixed(2)} para cubrir todo lo que vence.${dia}`,
+      title: "The week does not close with what there is",
+      detail: `You are short $${round2(input.shortfall).toFixed(2)} to cover everything that is due.${dia}`,
       amount: round2(input.shortfall),
       tone: "danger",
       tier: 0,
@@ -135,9 +135,9 @@ export function moneyAlerts(input: AlertInput, max = 3): MoneyAlert[] {
       id: "peajes",
       title:
         input.unpaidTollBills.count === 1
-          ? "1 factura de peaje sin pagar"
-          : `${input.unpaidTollBills.count} facturas de peaje sin pagar`,
-      detail: `$${round2(input.unpaidTollBills.amount).toFixed(2)} pendientes de pago`,
+          ? "1 unpaid toll bill"
+          : `${input.unpaidTollBills.count} unpaid toll bills`,
+      detail: `$${round2(input.unpaidTollBills.amount).toFixed(2)} pending payment`,
       amount: round2(input.unpaidTollBills.amount),
       tone: "warn",
       tier: 1,
@@ -149,9 +149,9 @@ export function moneyAlerts(input: AlertInput, max = 3): MoneyAlert[] {
       id: "sin-recibo",
       title:
         input.expensesWithoutReceipt.count === 1
-          ? "1 gasto sin recibo"
-          : `${input.expensesWithoutReceipt.count} gastos sin recibo`,
-      detail: `$${round2(input.expensesWithoutReceipt.amount).toFixed(2)} que no puedes deducir sin el recibo`,
+          ? "1 expense without a receipt"
+          : `${input.expensesWithoutReceipt.count} expenses without a receipt`,
+      detail: `$${round2(input.expensesWithoutReceipt.amount).toFixed(2)} you cannot deduct without the receipt`,
       amount: round2(input.expensesWithoutReceipt.amount),
       tone: "info",
       tier: 2,
@@ -163,9 +163,9 @@ export function moneyAlerts(input: AlertInput, max = 3): MoneyAlert[] {
       id: "sin-clasificar",
       title:
         input.unclassified.count === 1
-          ? "1 gasto sin clasificar"
-          : `${input.unclassified.count} gastos sin clasificar`,
-      detail: "Sepáralos en negocio o personal para la declaración",
+          ? "1 unclassified expense"
+          : `${input.unclassified.count} unclassified expenses`,
+      detail: "Separate them into business or personal for the tax return",
       amount: 0,
       tone: "info",
       tier: 2,

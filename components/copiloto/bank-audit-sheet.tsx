@@ -38,7 +38,7 @@ async function resizeImage(file: File, maxDim = 1200): Promise<{ base64: string;
         ctx.drawImage(img, 0, 0, width, height)
         resolve({ base64: canvas.toDataURL("image/jpeg", 0.82), mimeType: "image/jpeg" })
       }
-      img.onerror = () => reject(new Error("No se pudo leer la imagen"))
+      img.onerror = () => reject(new Error("Could not read the image"))
       img.src = e.target?.result as string
     }
     reader.onerror = reject

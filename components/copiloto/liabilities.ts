@@ -280,7 +280,7 @@ export function buildDebts(
   for (const s of schedules || []) {
     if (!s || s.kind !== "expense" || s.active === false) continue
     if (Math.abs(Number(s.amount) || 0) < 0.01) continue
-    debts.set(`sched:${s.id}`, newDebt(`sched:${s.id}`, s.description || s.category || "Deuda", s.category || "Other", s.id))
+    debts.set(`sched:${s.id}`, newDebt(`sched:${s.id}`, s.description || s.category || "Debt", s.category || "Other", s.id))
   }
   // Bills de ciclo: si tienen gemela externa, la externa los reemplaza.
   const suppressed = new Set<string>()
@@ -295,7 +295,7 @@ export function buildDebts(
     if (debt) addBill(debt, b, false)
     else {
       const key = `vendor:${norm(b.vendor) || b.id}`
-      if (!debts.has(key)) debts.set(key, newDebt(key, b.vendor || "Deuda", b.category || "Other"))
+      if (!debts.has(key)) debts.set(key, newDebt(key, b.vendor || "Debt", b.category || "Other"))
       addBill(debts.get(key)!, b, false)
     }
   }
@@ -312,7 +312,7 @@ export function buildDebts(
       continue
     }
     const key = `vendor:${norm(e.vendor) || e.id}`
-    if (!debts.has(key)) debts.set(key, newDebt(key, e.vendor || "Deuda", e.category || "Other"))
+    if (!debts.has(key)) debts.set(key, newDebt(key, e.vendor || "Debt", e.category || "Other"))
     addBill(debts.get(key)!, e, true)
   }
   const list = [...debts.values()]
@@ -542,7 +542,7 @@ export function categoryYearSums(
     const raw = String(tx.category || "").trim()
     const n = norm(raw)
     if (TRANSFER_CATS.has(n)) continue
-    const label = !raw || n === "banco" ? "Sin categoría" : raw
+    const label = !raw || n === "banco" ? "No category" : raw
     const row = map.get(label) || { category: label, total: 0, count: 0 }
     row.total = r2(row.total + Math.abs(amt))
     row.count++
@@ -563,6 +563,6 @@ export function applyCategoryProposal(
     date: String(p.tx.date).slice(0, 10),
     source: "banco",
     bankTxId: bankTxIdOf(p.tx),
-    note: "Por categoría",
+    note: "By category",
   })
 }

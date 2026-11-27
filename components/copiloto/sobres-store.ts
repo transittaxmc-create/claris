@@ -16,7 +16,7 @@ export type Sobre = {
 const KEY = "claris_sobres_v1"
 
 const DEFAULTS: Omit<Sobre, "id" | "createdAt">[] = [
-  { nombre: "Renta", meta: 1500, asignado: 0 },
+  { nombre: "Rent", meta: 1500, asignado: 0 },
   { nombre: "Car leasing", meta: 924, asignado: 0 },
   { nombre: "Phone", meta: 0, asignado: 0 },
 ]

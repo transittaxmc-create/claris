@@ -153,7 +153,7 @@ export function AIScreen({
         }
         img.onerror = () => {
           URL.revokeObjectURL(url)
-          reject(new Error("No se pudo leer la imagen"))
+          reject(new Error("Could not read the image"))
         }
         img.src = url
       })
@@ -163,7 +163,7 @@ export function AIScreen({
     } catch {
       setMessages((prev) => [
         ...prev,
-        { id: `a-${Date.now()}`, role: "assistant", content: "No pude comprimir la foto.", time: new Date().toLocaleTimeString() },
+        { id: `a-${Date.now()}`, role: "assistant", content: "I could not compress the photo.", time: new Date().toLocaleTimeString() },
       ])
       return
     }
@@ -210,7 +210,7 @@ export function AIScreen({
           {
             id: `a-${Date.now()}`,
             role: "assistant",
-            content: `Ese recibo ya está guardado (${dupReceipt.vendor} · ${dupReceipt.date} · $${dupReceipt.amount.toFixed(2)}). Duplicado anulado — no lo guardé otra vez.`,
+            content: `That receipt is already saved (${dupReceipt.vendor} · ${dupReceipt.date} · $${dupReceipt.amount.toFixed(2)}). Duplicate cancelled — I did not save it again.`,
             time: new Date().toLocaleTimeString(),
           },
         ])
@@ -219,7 +219,7 @@ export function AIScreen({
       let appliedNote = ""
       if (onApplySchedules) {
         onApplySchedules([sched])
-        appliedNote = `\n\n✅ GUARDADO: ${sched.description} $${sched.amount.toFixed(2)} para el ${sched.startDate} en Proyecciones.`
+        appliedNote = `\n\n✅ SAVED: ${sched.description} $${sched.amount.toFixed(2)} for ${sched.startDate} in Projections.`
         // Adjunto de auditoría: la foto queda guardada y se machea con su
         // transacción del banco en el register.
         void archiveReceipt({
@@ -241,7 +241,7 @@ export function AIScreen({
     } catch {
       setMessages((prev) => [
         ...prev,
-        { id: `a-${Date.now()}`, role: "assistant", content: "No pude leer la foto. Intenta de nuevo.", time: new Date().toLocaleTimeString() },
+        { id: `a-${Date.now()}`, role: "assistant", content: "I could not read the photo. Try again.", time: new Date().toLocaleTimeString() },
       ])
     } finally {
       setLoading(false)

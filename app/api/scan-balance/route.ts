@@ -11,14 +11,14 @@ export async function POST(req: Request) {
     const apiKey = process.env.GEMINI_API_KEY || process.env.OPENAI_API_KEY
     if (!apiKey) {
       return NextResponse.json(
-        { error: "API de IA no configurada (GEMINI_API_KEY ausente)" },
+        { error: "AI API not configured (GEMINI_API_KEY missing)" },
         { status: 503 },
       )
     }
 
     const { image, mimeType } = await req.json()
     if (!image) {
-      return NextResponse.json({ error: "Falta la imagen en base64" }, { status: 400 })
+      return NextResponse.json({ error: "Missing base64 image" }, { status: 400 })
     }
 
     const cleanBase64 = image.replace(/^data:[^;]+;base64,/, "")
@@ -72,7 +72,7 @@ Reglas:
       const errText = await response.text()
       console.error("[scan-balance] Gemini API error:", response.status, errText)
       return NextResponse.json(
-        { error: `Error del servicio de IA (${response.status})` },
+        { error: `AI service error (${response.status})` },
         { status: 502 },
       )
     }
@@ -88,7 +88,7 @@ Reglas:
 
     const balance = typeof parsed.balance === "number" && Number.isFinite(parsed.balance) ? parsed.balance : null
     if (balance === null) {
-      return NextResponse.json({ success: false, error: "No se pudo leer el saldo de la imagen" }, { status: 200 })
+      return NextResponse.json({ success: false, error: "Could not read the balance from the image" }, { status: 200 })
     }
 
     console.log(`[scan-balance] Saldo leído en ${Date.now() - start}ms: ${balance}`)

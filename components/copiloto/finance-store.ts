@@ -35,16 +35,16 @@ export type FinanceExpenseCategory =
   | "Comida / Gastro"
   | "Mantenimiento / Taller"
   | "Lavado"
-  | "Peajes / E-ZPass"
-  | "Seguro"
+  | "Tolls / E-ZPass"
+  | "Insurance"
 
 export const FINANCE_EXPENSE_CATEGORIES: FinanceExpenseCategory[] = [
   "Combustible",
   "Comida / Gastro",
   "Mantenimiento / Taller",
   "Lavado",
-  "Peajes / E-ZPass",
-  "Seguro",
+  "Tolls / E-ZPass",
+  "Insurance",
 ]
 
 export interface LoggedExpense {

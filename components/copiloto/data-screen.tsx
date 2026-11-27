@@ -236,22 +236,22 @@ export function DataScreen({
         })
         if (res.ok) {
           setBackupNote(
-            `✅ Respaldo subido a Google Drive: ${c.entries} entradas · ${c.expenses} gastos · ${c.trips} viajes. Archivo: ${filename}`,
+            `✅ Backup uploaded to Google Drive: ${c.entries} entries · ${c.expenses} expenses · ${c.trips} trips. File: ${filename}`,
           )
         } else {
           // Fallback a descarga local si Drive falla
           downloadFullBackup(doc)
-          setBackupNote("⚠️ No se pudo subir a Drive. Se descargó el archivo localmente.")
+          setBackupNote("⚠️ Could not upload to Drive. The file was downloaded locally.")
         }
       } else {
         // Sin Drive: descarga local
         downloadFullBackup(doc)
         setBackupNote(
-          `Backup descargado: ${c.entries} entradas · ${c.expenses} gastos · ${c.trips} viajes. Guárdalo en tu Google Drive.`,
+          `Backup downloaded: ${c.entries} entries · ${c.expenses} expenses · ${c.trips} trips. Save it in your Google Drive.`,
         )
       }
     } catch {
-      setBackupNote("No se pudo crear el respaldo. Intenta de nuevo.")
+      setBackupNote("Could not create the backup. Try again.")
     } finally {
       setBackupBusy(false)
     }
@@ -259,17 +259,17 @@ export function DataScreen({
 
   const restaurarDesdeDrive = async () => {
     setBackupBusy(true)
-    setBackupNote("⬇️ Buscando respaldos en Google Drive…")
+    setBackupNote("⬇️ Looking for backups in Google Drive…")
     try {
       const res = await fetch("/api/gdrive/restore?list=1", { cache: "no-store" })
       if (!res.ok) {
-        setBackupNote("No se encontraron respaldos en Google Drive.")
+        setBackupNote("No backups were found in Google Drive.")
         setBackupBusy(false)
         return
       }
       const data = (await res.json()) as { files?: { id: string; name: string; createdTime: string }[] }
       if (!data.files || data.files.length === 0) {
-        setBackupNote("No hay respaldos en Google Drive todavía. Presiona SUBIR primero.")
+        setBackupNote("There are no backups in Google Drive yet. Tap UPLOAD first.")
         setBackupBusy(false)
         return
       }
@@ -277,7 +277,7 @@ export function DataScreen({
       setShowDriveBackups(true)
       setBackupNote(null)
     } catch {
-      setBackupNote("Error al conectar con Google Drive.")
+      setBackupNote("Error connecting to Google Drive.")
     } finally {
       setBackupBusy(false)
     }
@@ -290,26 +290,26 @@ export function DataScreen({
     try {
       const res = await fetch(`/api/gdrive/restore?filename=${encodeURIComponent(filename)}`, { cache: "no-store" })
       if (!res.ok) {
-        setBackupNote("No se pudo descargar el respaldo de Drive.")
+        setBackupNote("Could not download the backup from Drive.")
         setBackupBusy(false)
         return
       }
       const data = (await res.json()) as { content?: string }
       if (!data.content) {
-        setBackupNote("El respaldo en Drive está vacío o dañado.")
+        setBackupNote("The backup in Drive is empty or damaged.")
         setBackupBusy(false)
         return
       }
       const doc = parseFullBackup(data.content)
       if (!doc) {
-        setBackupNote("El archivo en Drive no es un respaldo válido de Copiloto.")
+        setBackupNote("The file in Drive is not a valid Copiloto backup.")
         setBackupBusy(false)
         return
       }
       setBackupNote(null)
       setPendingRestore({ doc, counts: backupCounts(doc) })
     } catch {
-      setBackupNote("Error al restaurar desde Drive.")
+      setBackupNote("Error restoring from Drive.")
     } finally {
       setBackupBusy(false)
     }
@@ -357,7 +357,7 @@ export function DataScreen({
           onClick={onRefreshInfo}
           className="flex items-center gap-1 rounded-full border border-neutral-700 px-2.5 py-1 text-[11px] font-bold text-neutral-300 hover:text-white"
         >
-          <RefreshCw className="size-3" /> ACTUALIZAR
+          <RefreshCw className="size-3" /> UPDATE
         </button>
       </div>
 
@@ -417,7 +417,7 @@ export function DataScreen({
           />
           <p className="mt-2 text-[10px] leading-tight text-neutral-500">
             Each trip is saved in two places (localStorage + IndexedDB) and backed up. If the phone wipes
-            el navegador, IndexedDB devuelve los trips al abrir la app.
+            the browser cache, IndexedDB brings the trips back when the app opens.
           </p>
         </section>
 
@@ -482,14 +482,14 @@ export function DataScreen({
                   onClick={conectarDrive}
                   className="rounded-full border border-sky-700 bg-sky-950/50 px-2 py-0.5 text-[10px] font-bold text-sky-300 hover:bg-sky-900/60"
                 >
-                  Conectar Drive →
+                  Connect Drive →
                 </button>
               )}
             </div>
             <p className="mt-1 text-[10px] leading-tight text-neutral-400">
               {gdriveConnected
-                ? "Drive conectado. Presiona SUBIR para guardar directo en tu Drive — sin descargar nada. En el otro teléfono, RESTAURAR baja el último respaldo automático."
-                : "Conecta Google Drive para subir y restaurar con 1 clic. Sin Drive, el botón descarga el archivo localmente."}
+                ? "Drive connected. Tap UPLOAD to save straight to your Drive — no download needed. On the other phone, RESTORE downloads the latest automatic backup."
+                : "Connect Google Drive to upload and restore in 1 tap. Without Drive, the button downloads the file locally."}
             </p>
             <div className="mt-2 flex gap-2">
               <button
@@ -499,7 +499,7 @@ export function DataScreen({
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-emerald-600 to-green-500 py-2.5 text-[11px] font-extrabold text-black disabled:opacity-60"
               >
                 <Upload className="size-3.5" />
-                {backupBusy ? "SUBIENDO…" : gdriveConnected ? "SUBIR A DRIVE" : "SUBIR RESPALDO"}
+                {backupBusy ? "UPLOADING…" : gdriveConnected ? "UPLOAD TO DRIVE" : "UPLOAD BACKUP"}
               </button>
               <button
                 type="button"
@@ -508,7 +508,7 @@ export function DataScreen({
                 className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-emerald-600/60 py-2.5 text-[11px] font-extrabold text-emerald-300 disabled:opacity-60"
               >
                 <Download className="size-3.5" />
-                {backupBusy ? "BUSCANDO…" : gdriveConnected ? "RESTAURAR DRIVE" : "RESTAURAR"}
+                {backupBusy ? "SEARCHING…" : gdriveConnected ? "RESTORE DRIVE" : "RESTORE"}
               </button>
               <input
                 ref={restoreInputRef}
@@ -526,7 +526,7 @@ export function DataScreen({
             {/* Lista de respaldos en Drive para elegir */}
             {showDriveBackups && driveBackupList.length > 0 && (
               <div className="mt-2 rounded-xl border border-sky-800/60 bg-sky-950/20 p-2">
-                <p className="mb-1.5 text-[10px] font-bold text-sky-300">RESPALDOS EN GOOGLE DRIVE</p>
+                <p className="mb-1.5 text-[10px] font-bold text-sky-300">BACKUPS IN GOOGLE DRIVE</p>
                 <div className="space-y-1">
                   {driveBackupList.map((f) => (
                     <button
@@ -545,7 +545,7 @@ export function DataScreen({
                   onClick={() => setShowDriveBackups(false)}
                   className="mt-2 w-full rounded-lg border border-neutral-700 py-1 text-[10px] font-bold text-neutral-400"
                 >
-                  CANCELAR
+                  CANCEL
                 </button>
               </div>
             )}
@@ -559,9 +559,9 @@ export function DataScreen({
                   Backup from {fmtTime(pendingRestore.doc.exportedAt)}
                 </p>
                 <p className="mt-0.5 text-[10px] leading-tight text-neutral-300">
-                  {pendingRestore.counts.entries} entradas · {pendingRestore.counts.expenses} gastos ·{" "}
-                  {pendingRestore.counts.trips} viajes. Restaurar{" "}
-                  <strong className="text-amber-200">REEMPLAZA todo en este teléfono</strong> con el respaldo.
+                  {pendingRestore.counts.entries} entries · {pendingRestore.counts.expenses} expenses ·{" "}
+                  {pendingRestore.counts.trips} trips. Restoring{" "}
+                  <strong className="text-amber-200">REPLACES everything on this phone</strong> with the backup.
                 </p>
                 <div className="mt-2 flex gap-2">
                   <button
@@ -570,7 +570,7 @@ export function DataScreen({
                     disabled={backupBusy}
                     className="flex-1 rounded-xl bg-amber-500 py-2.5 text-[11px] font-extrabold text-black disabled:opacity-60 active:scale-[0.99]"
                   >
-                    {backupBusy ? "RESTAURANDO…" : "SÍ, RESTAURAR"}
+                    {backupBusy ? "RESTORING…" : "YES, RESTORE"}
                   </button>
                   <button
                     type="button"

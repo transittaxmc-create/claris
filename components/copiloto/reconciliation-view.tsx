@@ -86,7 +86,7 @@ export function ReconciliationSection(props: {
           <div className="mb-2 flex items-center justify-between rounded-[14px] border border-[#262633] bg-[#16161f] px-3 py-2">
             <span className="flex items-center gap-1.5 text-[11px] font-bold text-[#f2f3f7]">
               <ShieldCheck className="size-3.5 text-emerald-400" />
-              {report.summary.cuadradas}/{report.summary.total} cuentas cuadradas
+              {report.summary.cuadradas}/{report.summary.total} accounts reconciled
               {report.summary.diferenciaTotal > 0.009 && (
                 <span className="text-rose-300">· {money(report.summary.diferenciaTotal)} in differences</span>
               )}

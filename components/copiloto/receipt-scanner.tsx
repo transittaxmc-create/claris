@@ -679,7 +679,7 @@ export function ReceiptScanner({
             >
               <option value="">— Choose the type —</option>
               <option value="factura">Bill — payable (Easy Pass, Tower, invoice)</option>
-              <option value="recibo">Receipt (Receipt) — already paid</option>
+              <option value="recibo">Receipt — already paid</option>
             </select>
             <p className="mt-1.5 text-[10px] leading-snug" style={{ color: "#8A93A3" }}>
               {docTipo === "factura"
@@ -688,7 +688,7 @@ export function ReceiptScanner({
                   ? "Saved as Scanned · Receipt: goes to Bank as Posted (already paid)."
                   : sugerirTipoDoc(comercio, notas) === "factura"
                     ? "Suggested: Bill (looks like a toll or a payable account). Your call."
-                    : "Los peajes (Easy Pass, SunPass, Tower) casi siempre son Facturas, no recibos."}
+                    : "Tolls (Easy Pass, SunPass, Tower) are almost always Bills, not receipts."}
             </p>
           </div>
 

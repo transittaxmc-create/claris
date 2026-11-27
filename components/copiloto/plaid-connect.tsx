@@ -31,7 +31,7 @@ export function PlaidConnectButton({ onLinked }: { onLinked?: () => void }) {
         s.async = true
         s.dataset.plaidLink = "1"
         s.onload = () => resolve()
-        s.onerror = () => reject(new Error("No se pudo cargar Plaid Link"))
+        s.onerror = () => reject(new Error("Could not load Plaid Link"))
         document.body.appendChild(s)
       })
 
@@ -73,7 +73,7 @@ export function PlaidConnectButton({ onLinked }: { onLinked?: () => void }) {
         disabled={busy}
         className="rounded-xl border border-[#5b8cff]/40 bg-[#5b8cff]/10 px-3 py-2 text-[12px] font-bold text-[#8eb6ff] disabled:opacity-50"
       >
-        {busy ? "Abriendo Plaid…" : "Conectar banco (Plaid)"}
+        {busy ? "Opening Plaid…" : "Connect bank (Plaid)"}
       </button>
       {error && <p className="text-[10px] text-[#ff5d6c]">{error}</p>}
     </div>

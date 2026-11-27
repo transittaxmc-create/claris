@@ -99,13 +99,13 @@ async function resizeShotImage(file: File, maxDim = 1400): Promise<{ base64: str
         canvas.height = height
         const ctx = canvas.getContext("2d")
         if (!ctx) {
-          reject(new Error("No se pudo preparar la imagen"))
+          reject(new Error("Could not prepare the image"))
           return
         }
         ctx.drawImage(img, 0, 0, width, height)
         resolve({ base64: canvas.toDataURL("image/jpeg", 0.85), mimeType: "image/jpeg" })
       }
-      img.onerror = () => reject(new Error("No se pudo leer la imagen"))
+      img.onerror = () => reject(new Error("Could not read the image"))
       img.src = e.target?.result as string
     }
     reader.onerror = reject

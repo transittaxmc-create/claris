@@ -97,11 +97,11 @@ export function buildBackupHtml(input: BackupInput): string {
     .join("")
 
   return `<!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Índice de copia de seguridad · ${esc(input.date)}</title>
+<title>Backup index · ${esc(input.date)}</title>
 <style>
   :root { color-scheme: light; }
   body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; margin: 0; padding: 2rem; background: #f7f8fa; color: #14181f; }
@@ -121,33 +121,33 @@ export function buildBackupHtml(input: BackupInput): string {
 </style>
 </head>
 <body>
-  <h1>Índice de copia de seguridad</h1>
-  <p class="meta">Generado el ${esc(input.date)} · IslandCity Tip Tracker / Claris</p>
+  <h1>Backup index</h1>
+  <p class="meta">Generated on ${esc(input.date)} · IslandCity Tip Tracker / Claris</p>
 
   <div class="cards">
-    <div class="card"><div class="k">Viajes</div><div class="v">${input.trips.length}</div></div>
-    <div class="card"><div class="k">Bruto</div><div class="v">${money(gross)}</div></div>
-    <div class="card"><div class="k">Neto</div><div class="v">${money(net)}</div></div>
-    <div class="card"><div class="k">Gastos</div><div class="v">${money(expenseTotal)}</div></div>
+    <div class="card"><div class="k">Trips</div><div class="v">${input.trips.length}</div></div>
+    <div class="card"><div class="k">Gross</div><div class="v">${money(gross)}</div></div>
+    <div class="card"><div class="k">Net</div><div class="v">${money(net)}</div></div>
+    <div class="card"><div class="k">Expenses</div><div class="v">${money(expenseTotal)}</div></div>
     <div class="card"><div class="k">Business</div><div class="v">${money(business)}</div></div>
     <div class="card"><div class="k">Personal</div><div class="v">${money(personal)}</div></div>
-    <div class="card"><div class="k">Resultado</div><div class="v">${money(net - expenseTotal)}</div></div>
+    <div class="card"><div class="k">Result</div><div class="v">${money(net - expenseTotal)}</div></div>
   </div>
 
-  <h2>Archivos respaldados (${Object.keys(input.keys).length})</h2>
-  <table><thead><tr><th>Clave</th><th class="n">Tamaño</th></tr></thead><tbody>${keyRows}</tbody></table>
+  <h2>Backed-up files (${Object.keys(input.keys).length})</h2>
+  <table><thead><tr><th>Key</th><th class="n">Size</th></tr></thead><tbody>${keyRows}</tbody></table>
 
-  <h2>Viajes (${input.trips.length})</h2>
-  ${input.trips.length === 0 ? "<p class='meta'>Sin viajes registrados.</p>" : `<table><thead><tr><th>Fecha</th><th>Plataforma</th><th class="n">Bruto</th><th class="n">Neto</th></tr></thead><tbody>${tripRows}</tbody></table>`}
+  <h2>Trips (${input.trips.length})</h2>
+  ${input.trips.length === 0 ? "<p class='meta'>No trips recorded.</p>" : `<table><thead><tr><th>Date</th><th>Platform</th><th class="n">Gross</th><th class="n">Net</th></tr></thead><tbody>${tripRows}</tbody></table>`}
 
-  <h2>Gastos (${input.expenses.length})</h2>
-  ${input.expenses.length === 0 ? "<p class='meta'>Sin gastos registrados.</p>" : `<table><thead><tr><th>Fecha</th><th>Vendedor</th><th>Categoría</th><th>Clasificación</th><th class="n">Monto</th></tr></thead><tbody>${expenseRows}</tbody></table>`}
+  <h2>Expenses (${input.expenses.length})</h2>
+  ${input.expenses.length === 0 ? "<p class='meta'>No expenses recorded.</p>" : `<table><thead><tr><th>Date</th><th>Vendor</th><th>Category</th><th>Classification</th><th class="n">Amount</th></tr></thead><tbody>${expenseRows}</tbody></table>`}
 
-  <h2>Cómo restaurar</h2>
+  <h2>How to restore</h2>
   <div class="note">
-    Usa el archivo <strong>JSON</strong> descargado junto a este índice en la pestaña
-    <strong>DATA → IMPORTAR JSON</strong> de la app. Este HTML es el índice legible: te dice
-    qué había en cada archivo y los totales del momento del respaldo.
+    Use the <strong>JSON</strong> file downloaded together with this index in the app's
+    <strong>DATA → IMPORT JSON</strong> section. This HTML is the readable index: it tells you
+    what was in each file and the totals at the moment of the backup.
   </div>
 </body>
 </html>`

@@ -94,7 +94,7 @@ export function DashScreen({ trips, expenses }: { trips: Trip[]; expenses: Expen
               icon={<PiggyBank className="size-3.5 text-green-400/70" />}
             />
             <StatCard
-              label="VIAJES"
+              label="TRIPS"
               value={String(data.count)}
               valueClass="text-white"
               icon={<Car className="size-3.5 text-neutral-400" />}
@@ -113,7 +113,7 @@ export function DashScreen({ trips, expenses }: { trips: Trip[]; expenses: Expen
               <p className="mt-1 text-base font-extrabold text-cyan-300">{money(data.tips)}</p>
             </div>
             <div className="rounded-2xl border border-neutral-800 bg-neutral-900/80 p-3">
-              <p className="text-[10px] font-bold tracking-wide text-neutral-500">PEAJES</p>
+              <p className="text-[10px] font-bold tracking-wide text-neutral-500">TOLLS</p>
               <p className="mt-1 text-base font-extrabold text-cyan-300">{money(data.tolls)}</p>
             </div>
             <div className="rounded-2xl border border-neutral-800 bg-neutral-900/80 p-3">

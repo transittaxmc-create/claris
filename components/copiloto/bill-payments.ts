@@ -574,7 +574,7 @@ export function offerReceiptBillMatch(
   const ok = window.confirm(
     byNumber
       ? `This receipt from ${receipt.vendor} (${money(need)}) lists invoice ${bill.invoiceNo} — apply ${money(amount)} to the bill "${bill.vendor}" (${bill.invoiceNo})?\n\nRemaining on that bill: ${money(remaining)}.`
-      : `This receipt from ${receipt.vendor} (${money(need)}) es pago de la factura "${bill.vendor}"?\n\nRestan ${money(remaining)}.`,
+      : `This receipt from ${receipt.vendor} (${money(need)}) is payment of the bill "${bill.vendor}"?\n\nRemaining: ${money(remaining)}.`,
   )
   if (!ok) return null
   return {

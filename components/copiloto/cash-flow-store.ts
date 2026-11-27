@@ -455,11 +455,11 @@ export function validarCobros(trips: Trip[], libro: CashFlowEntry[]): Validacion
       if (!diasFantasma.includes(m[1])) diasFantasma.push(m[1])
     }
     if ((Number(e.amount) || 0) <= 0) {
-      warnings.push(`Cobro con monto ≤ 0: ${e.id}`)
+      warnings.push(`Receivable with amount ≤ 0: ${e.id}`)
     }
   }
   if (diasFantasma.length > 0) {
-    warnings.push(`Cobros sin viajes: ${diasFantasma.join(", ")} (${cobrosSinViaje} líneas)`)
+    warnings.push(`Receivables without trips: ${diasFantasma.join(", ")} (${cobrosSinViaje} lines)`)
   }
   return { ok: warnings.length === 0, warnings, diasFantasma, cobrosSinViaje }
 }

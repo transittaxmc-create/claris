@@ -70,7 +70,7 @@ function LocationColumn({
           )}
         >
           {busy
-            ? "BUSCANDO..."
+            ? "SEARCHING..."
             : loc?.accuracy
             ? `GPS · ±${loc.accuracy}m`
             : "GPS"}
@@ -158,7 +158,7 @@ function LocationColumn({
             className={cn("flex items-center justify-center gap-1.5 rounded-lg py-3 text-sm font-bold text-black active:scale-[0.98] disabled:cursor-wait disabled:opacity-60 transition", button)}
           >
             {busy ? <Loader2 className="size-4 animate-spin" /> : <MapPin className="size-4" />}
-            {busy ? "BUSCANDO..." : `${label} NOW`}
+            {busy ? "SEARCHING..." : `${label} NOW`}
           </button>
         </>
       )}
@@ -954,12 +954,12 @@ export function EntryScreen({
         <div className="flex h-[18px] items-center">
           {tollPing ? (
             <span key={tollPing.n} className="truncate text-[11px] font-semibold text-emerald-300">
-              ✓ Peaje detectado · {tollPing.plaza}
+              ✓ Toll detected · {tollPing.plaza}
               {tollPing.amount != null ? ` $${tollPing.amount.toFixed(2)}` : ""} · sumando al tablero
             </span>
           ) : (
             <span className="truncate text-[10px] font-semibold tracking-[0.12em] text-neutral-500">
-              🛣️ E-ZPASS · LOS PEAJES SE SUMAN EN EL DASHBOARD
+              🛣️ E-ZPASS · TOLLS ARE ADDED IN THE DASHBOARD
             </span>
           )}
         </div>

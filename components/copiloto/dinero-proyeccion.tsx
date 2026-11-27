@@ -1441,9 +1441,9 @@ function FootNotes({ fc }: { fc: Forecast }) {
   return (
     <p className="mt-2 border-t border-neutral-800 pt-1.5 text-[10px] text-neutral-500">
       {[
-        fc.duplicatesSkipped ? `${fc.duplicatesSkipped} recurring(s) ya en el libro` : "",
+        fc.duplicatesSkipped ? `${fc.duplicatesSkipped} recurring(s) already in the register` : "",
         fc.recurringPaidSkipped ? `${fc.recurringPaidSkipped} already paid at the bank` : "",
-        fc.beyondHorizonCount ? `${fc.beyondHorizonCount} después del ${fechaCorta(fc.endDate)}` : "",
+        fc.beyondHorizonCount ? `${fc.beyondHorizonCount} after ${fechaCorta(fc.endDate)}` : "",
       ]
         .filter(Boolean)
         .join(" · ")}

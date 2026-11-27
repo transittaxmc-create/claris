@@ -101,14 +101,14 @@ export function HourlyStrip({ trips, amountsVisible }: { trips: Trip[]; amountsV
           {buckets.map((b) => (
             <div key={b.hour} className="flex items-center justify-between py-0.5 text-[11px]">
               <span className="font-mono text-neutral-400">{hourRangeLabel(b.hour)}</span>
-              <span className="text-neutral-500">{b.trips} viaje{b.trips === 1 ? "" : "s"}</span>
+              <span className="text-neutral-500">{b.trips} trip{b.trips === 1 ? "" : "s"}</span>
               <span className="w-14 text-right font-mono font-bold tabular-nums text-white">
                 {amountsVisible ? money(b.total) : masked}
               </span>
             </div>
           ))}
           <div className="mt-1 flex items-center justify-between border-t border-neutral-800 pt-1 text-[11px] font-bold">
-            <span className="text-neutral-300">Hoy</span>
+            <span className="text-neutral-300">Today</span>
             <span className="font-mono tabular-nums text-emerald-300">
               {amountsVisible ? money(dayTotal) : masked}
             </span>

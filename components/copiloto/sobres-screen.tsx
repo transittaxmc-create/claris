@@ -247,7 +247,7 @@ export function SobresScreen() {
             <button
               type="button"
               onClick={crear}
-              aria-label="Crear sobre"
+              aria-label="Create envelope"
               className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500 text-black active:scale-95"
             >
               <Plus className="size-5" strokeWidth={2.5} />

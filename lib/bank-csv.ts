@@ -76,7 +76,7 @@ export function parseBankCsv(text: string): BankTransaction[] | null {
         .slice(1, amountIndex)
         .join(" ")
         .replace(/\s+/g, " ")
-        .trim() || "(sin descripción)"
+        .trim() || "(no description)"
 
     rows.push({ date, description, amount })
   }

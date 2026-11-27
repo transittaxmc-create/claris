@@ -75,7 +75,7 @@ export function computeScheduleC(
     lines.push({ line, label, amount: r2(amount), note, total })
 
   // Parte I — Ingreso
-  L("1", "Gross receipts or sales", gross, "Viajes + propinas + extra, en bruto (sin restar comisiones)")
+  L("1", "Gross receipts or sales", gross, "Trips + tips + extra, gross (before commissions)")
   L("7", "Gross income", gross, undefined, true)
 
   // Parte II — Gastos
@@ -99,7 +99,7 @@ export function computeScheduleC(
     "10",
     "Commissions and fees",
     platformFees + opts.transferFees,
-    "Comisiones de plataforma + fees de transferencia de tarjetas",
+    "Platform commissions + card transfer fees",
   )
   L("11", "Contract labor", 0)
   L("13", "Depreciation and section 179", 0, "Only with the actual method and his own car (he leases)")
@@ -125,7 +125,7 @@ export function computeScheduleC(
   L("22", "Supplies", c("Supplies"))
   L("23", "Taxes and licenses", opts.licenses, "TLC / registration / inspection — manual amount")
   L("24a", "Travel", 0)
-  L("24b", "Deductible meals (50%)", 0, "Comida diaria local NO es deducible — solo viajes con pernocta")
+  L("24b", "Deductible meals (50%)", 0, "Daily local meals are NOT deductible — only trips with an overnight stay")
   L("25", "Utilities", c("Phone"), "Business portion of the phone")
   L("26", "Wages", 0)
   L("27b", "Other expenses", c("Bank fees") + c("Other"), "Bank fees + otros (negocio)")
@@ -339,8 +339,8 @@ export function ScheduleCDraft({
         <span className="font-mono text-[11px] text-neutral-300">{money(qbi)}</span>
       </div>
       <p className="mt-1 text-[9px] leading-snug text-neutral-500">
-        Estimados con cifras IRS 2026. Tips: hasta $25,000 deducibles (§224) — confirmar con CPA. Renta del apartamento
-        ($1,500) y comida diaria NO entran — personal.
+        Estimates with IRS 2026 figures. Tips: up to $25,000 deductible (§224) — confirm with a CPA. Apartment rent
+        ($1,500) and daily meals do NOT count — personal.
       </p>
     </section>
   )

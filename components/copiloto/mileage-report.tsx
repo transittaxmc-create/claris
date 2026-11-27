@@ -79,7 +79,7 @@ export function MileageReport() {
           <p className="font-mono text-sm font-bold text-white">{num(totals.h2)}</p>
         </div>
         <div className="rounded-xl bg-neutral-950 p-2 text-center">
-          <p className="text-[9px] font-bold text-neutral-500">DEDUCCIÓN EST.</p>
+          <p className="text-[9px] font-bold text-neutral-500">DEDUCTION EST.</p>
           <p className="font-mono text-sm font-bold text-emerald-400">
             ${num(totals.h1 * 0.725 + totals.h2 * 0.76)}
           </p>
@@ -89,7 +89,7 @@ export function MileageReport() {
       {/* Odómetro */}
       <div className="mb-2 grid grid-cols-2 gap-2">
         <label className="flex flex-col gap-1">
-          <span className="text-[9px] font-bold text-neutral-500">ODÓMETRO 1 ENE {year}</span>
+          <span className="text-[9px] font-bold text-neutral-500">ODOMETER JAN 1 {year}</span>
           <input
             type="number"
             min={0}
@@ -100,7 +100,7 @@ export function MileageReport() {
           />
         </label>
         <label className="flex flex-col gap-1">
-          <span className="text-[9px] font-bold text-neutral-500">ODÓMETRO 31 DIC {year}</span>
+          <span className="text-[9px] font-bold text-neutral-500">ODOMETER DEC 31 {year}</span>
           <input
             type="number"
             min={0}

@@ -117,9 +117,9 @@ export function FinanceRegisterTable({
             <tr>
               <th className="sticky left-0 z-10 bg-neutral-900 px-4 py-3 font-bold">Date</th>
               <th className="px-3 py-3 font-bold">Description</th>
-              <th className="px-3 py-3 font-bold">Origen</th>
+              <th className="px-3 py-3 font-bold">Origin</th>
               <th className="px-3 py-3 text-right font-bold">Entrada</th>
-              <th className="px-3 py-3 text-right font-bold">Salida</th>
+              <th className="px-3 py-3 text-right font-bold">Out</th>
               <th className="px-4 py-3 text-right font-bold">Balance acumulado</th>
             </tr>
           </thead>

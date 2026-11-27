@@ -857,7 +857,7 @@ export function ExpensesScreen({
   async function saveDraft() {
     if (!draft) return
     if (!draft.vendor.trim() || !Number.isFinite(draft.amount)) {
-      window.alert("Completa el vendedor y el monto.")
+      window.alert("Enter the vendor and the amount.")
       return
     }
 
@@ -865,7 +865,7 @@ export function ExpensesScreen({
     // fecha y mismo monto = el mismo ticket. Se avisa, y el usuario decide si
     // es un gasto legítimo distinto o un escaneo repetido.
     if (draft.docType !== "factura" && draft.docType !== "recibo") {
-      window.alert("Elige el tipo: Bill (payable) o Receipt (already paid).")
+      window.alert("Choose the type: Bill (payable) or Receipt (already paid).")
       return
     }
     // ANTI-DUPLICADO de recibos con foto (Miguel, 2026-10-29): si esta foto
@@ -1309,7 +1309,7 @@ export function ExpensesScreen({
               <input
                 value={draft.invoiceNo ?? ""}
                 onChange={(e) => setDraft({ ...draft, invoiceNo: e.target.value })}
-                placeholder="CBL-1263590 — si el documento trae número"
+                placeholder="CBL-1263590 — if the document has a number"
                 className="rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white outline-none placeholder:text-neutral-600"
               />
             </label>
@@ -1367,9 +1367,9 @@ export function ExpensesScreen({
                   className="rounded-xl border border-neutral-700 bg-neutral-950 px-3 py-2 text-sm text-white outline-none"
                 >
                   <option value="once">Once</option>
-                  <option value="daily">Diario</option>
-                  <option value="weekly">Semanal</option>
-                  <option value="monthly">Mensual</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
                   <option value="annual">Anual</option>
                 </select>
                 {draft.frequency === "once" ? (

@@ -242,7 +242,7 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
     lines.push(`Bruto,${data.gross}`)
     lines.push(`Propinas,${data.tips}`)
     lines.push(`Extra cash,${data.extra}`)
-    lines.push(`Peajes cobrados,${data.tolls}`)
+    lines.push(`Tolls collected,${data.tolls}`)
     lines.push(`Platform fees,${data.fees > 0 ? "-" : ""}${data.fees}`)
     lines.push(`NET,${data.net}`)
     lines.push("")
@@ -475,10 +475,10 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
           </p>
 
           <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-emerald-400">Income</p>
-          <Row label="Bruto (earnings + extra + propinas + peajes)" value={money(data.gross)} tone="income" />
+          <Row label="Gross (earnings + extra + tips + tolls)" value={money(data.gross)} tone="income" />
           <Row label="· Propinas" value={money(data.tips)} indent tone="muted" />
           <Row label="· Extra cash" value={money(data.extra)} indent tone="muted" />
-          <Row label="· Peajes cobrados" value={money(data.tolls)} indent tone="muted" />
+          <Row label="· Tolls collected" value={money(data.tolls)} indent tone="muted" />
           <Row label="Platform fees" value={`${data.fees > 0 ? "-" : ""}${money(data.fees)}`} tone="expense" />
           <Row label="INCOME NET" value={money(data.net)} bold tone="total" />
 
