@@ -48,7 +48,7 @@ export function HowItWorksScreen() {
           <li>§21 PRIORITY LIST — what is open, in plain language, updated with every deployment</li>
           <li>§22 APPLICATION INVENTORY &amp; ARCHITECTURE AUDIT — complete source map, integrations, database state, verified gaps and agent handoff (2026-11-27)</li>
           <li>§23 CRM COPILOT V7 — TECHNICAL AUDIT &amp; VERIFIED GAPS (2026-11-27)</li>
-          <li>§24 COPILOTO V7 — PHASE 1 BUILD FOUNDATION &amp; ARCHITECTURE (2026-11-27) · §25 V7 PREVIEW WORKSPACE — FIRST IMPLEMENTATION (2026-11-27) · §26 TRANSPORT OPERATIONS PREVIEW (2026-11-27) · §27 TAX PREPARATION PREVIEW (2026-11-27)</li>
+          <li>§24 COPILOTO V7 — PHASE 1 BUILD FOUNDATION &amp; ARCHITECTURE (2026-11-27) · §25 V7 PREVIEW WORKSPACE — FIRST IMPLEMENTATION (2026-11-27) · §26 TRANSPORT OPERATIONS PREVIEW (2026-11-27) · §27 TAX PREPARATION PREVIEW (2026-11-27) · §28 WORK OPPORTUNITIES REVIEW PREVIEW (2026-11-27)</li>
         </ul>
       </Section>
 
@@ -2032,6 +2032,15 @@ export function HowItWorksScreen() {
         <P><B>Seguridad y operaciones pendientes:</B> separar Transport/Taxes por autorización server-side y RLS, MFA, bóveda privada, cifrado, auditoría, retención, backups/restauración, pruebas negativas entre usuarios y unidades, aprobación explícita antes de e-file y comunicaciones.</P>
         <P><B>Verificación:</B> componente e integración en feat/copiloto-v7-phase1-foundation; commit de componente df74bdd7a2865c2b6a8f72c2f86f0a8ef8334b58 y de integración 816713f30ce1e74c4dd71edf385d00f06cab0628. Build, typecheck, tests y QA visual pendientes. No hubo cambios de Supabase ni deployment V7.</P>
         <P><B>Estado:</B> interfaz de demostración de Taxes implementada y documentada; backend seguro, documentos, cálculos reales, integraciones y pruebas pendientes. No habilitar con clientes.</P>
+      </Section>
+
+      <Section title="COPILOTO V7 — PUNTO 7: WORK OPPORTUNITIES (2026-11-27)">
+        <P><B>Preview implementado:</B> se creó components/copiloto-v7-preview/work-opportunities-workspace.tsx y se integró en app/copiloto-v7-preview/page.tsx. Incluye bandeja sintética, filtros, clasificación verde/interesado, amarilla/revisar y roja/no interesado, detalle de ruta/horario/vehículo, tarifa, deadhead, millas, peajes, combustible, duración y estimación limitada de neto.</P>
+        <P><B>Control humano:</B> se puede preparar un borrador YES para revisión; no se envía. No hay aceptación automática, confirmación ni dispatch.</P>
+        <P><B>Datos faltantes:</B> tarifa, pickup, hora, vehículo, pasajeros/equipaje o distancia desconocidos se muestran como faltantes; no se inventan ni se confirma rentabilidad con una resta parcial de costos.</P>
+        <P><B>WhatsApp:</B> no hay lectura de grupos personales, scraping ni integración no oficial. Deben evaluarse métodos de recepción autorizados y compatibles, como compartir/reenviar o captura manual aprobada. ZapClaw/WhatsApp no se consideran conectados ni verificados aquí.</P>
+        <P><B>Verificación:</B> componente 59ed9042df7bd4110f45aed8546551ddddd8c5a4 e integración ae3724b789f77ee2c15bcc81785eb258f380e23d en feat/copiloto-v7-phase1-foundation. Build, typecheck, tests y QA visual pendientes. Sin cambios de Supabase ni deployment V7.</P>
+        <P><B>Estado:</B> interfaz de revisión implementada y documentada; ingesta, persistencia, integraciones, análisis completo de costos y pruebas pendientes. No habilitar con operaciones reales.</P>
       </Section>
 
       <p className="mt-6 text-center text-[10px] text-neutral-600">
