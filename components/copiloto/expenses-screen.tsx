@@ -1138,7 +1138,7 @@ export function ExpensesScreen({
         <div className="mt-3 flex gap-2">
           <StatCard label="TOTAL EXPENSES" value={money(total)} valueClass="text-rose-400" />
           <StatCard label="FILTRADOS" value={money(filteredTotal)} valueClass="text-amber-400" />
-          <StatCard label="CANTIDAD" value={String(expenses.length)} valueClass="text-white" />
+          <StatCard label="COUNT" value={String(expenses.length)} valueClass="text-white" />
         </div>
 
         {/* Formulario (añadir / editar) */}
