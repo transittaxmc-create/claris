@@ -2210,6 +2210,11 @@ export function HowItWorksScreen() {
         <P><B>Independent tsc:</B> GitHub Actions run 46081202819 on commit 7ae8ae5906d8dd9b5d8e0d153cccaf15d27bf0b6 ran pnpm exec tsc --noEmit with Node 24, pnpm 12.3.4, TypeScript 5.7.3. Exit code 2; 76 diagnostics. 69 match the pre-existing app/test set; 7 come from Deno Edge Function source included in the root tsconfig. Historical 65/66 divergence remains unresolved.</P>
         <P><B>Credential gate:</B> no key rotation or delivery until secure handoff and supported runtime secret storage are available. No production, SMS or WhatsApp actions.</P>
       </Section>
+      <Section title="39. CURRENT HEAD TYPECHECK — exact CI evidence (2026-11-27)">
+        <P><B>HEAD:</B> 32c379124708a67278c565b37cd05c4deadf7aa5. GitHub Actions run 46081404731; command pnpm exec tsc --noEmit; Node 24, pnpm 12.3.4, TypeScript 5.7.3; exit code 2; exactly 76 diagnostics.</P>
+        <P><B>Breakdown:</B> 69 existing application/test diagnostics plus 7 Deno Edge Function source diagnostics because the root tsconfig includes the Deno runtime file. The historical 65/66 discrepancy is still unresolved; no errors were suppressed.</P>
+        <P><B>Schema source:</B> recovered catalog baseline includes the append-only event trigger and function; source SQL was reconstructed and versioned, not applied to Supabase.</P>
+      </Section>
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>

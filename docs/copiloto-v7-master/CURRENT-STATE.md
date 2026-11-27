@@ -315,3 +315,11 @@
 - Exact diagnostics: 76 TypeScript errors, process exit code 2. Of these, 69 match the prior check on commit 9867adf; 7 additional diagnostics are from the recovered Deno Edge Function source being included by the root tsconfig (Deno global/npm: specifier plus inferred any). This makes the current count 76; it does not resolve the historical 65/66 divergence.
 - Categories among the 69 existing application/test diagnostics: AI chat input type; ScheduledEntry/ExpenseUpdate/BackupInput model mismatches; missing ScheduleOverride/newBillPayment/backupFileName; Trip pickup/dropoff/notes shape mismatches; MileageDay required fields; Platform metadata keys; Reconciliation field shape; report data contract; test .ts extension settings and test constructor signature. Exact source diagnostics are preserved in workflow run 46081202819 logs.
 - No TypeScript fixes were made in this checkpoint; no errors are hidden or waived. Next: decide whether Deno functions get a separate Deno check and exclude that folder from app tsconfig, then resolve the existing 69 app/test errors in a controlled batch.
+
+
+## 22. Current HEAD typecheck re-run — 2026-11-27
+- Exact branch HEAD under test: `32c379124708a67278c565b37cd05c4deadf7aa5` (`chore(copiloto): recover and version deployed agent gateway source` + follow-up schema/documentation checkpoint in this branch lineage).
+- GitHub Actions run `46081404731` completed FAILURE at step `TypeScript check`.
+- Command: `pnpm exec tsc --noEmit`; Node 24; pnpm 12.3.4; TypeScript 5.7.3; install `pnpm install --frozen-lockfile`; process exit code 2.
+- Exact diagnostic count: **76**. Same count as prior run 46081202819 on 7ae8ae5. 69 diagnostics are the existing app/test errors; 7 are Deno Edge Function errors caused by the root tsconfig including `supabase/functions/agent-gateway/index.ts` (Deno global and npm: import typing/inferred any). No diagnostics were suppressed. Historical 65/66 discrepancy remains unresolved.
+- The core migration reconstruction now includes the `agent_events_reject_mutation()` trigger function and `agent_events_no_update` trigger recovered from live catalog.

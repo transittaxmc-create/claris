@@ -89,3 +89,7 @@ The deployed Edge Function v4 source and the live catalog definitions are being 
 - Versioned reconstructed SQL baselines: `20261127224018_copiloto_v7_agent_gateway_core.sql` and `20261127224752_copiloto_v7_agent_gateway_recovery_state.sql`; they reflect the live catalog, including seven tables, constraints/indexes, RLS, two RPCs, checkpoint view and append-only event trigger. They are not the original SQL authoring text and were not applied.
 - CI typecheck run 46081202819 on 7ae8ae5906d8dd9b5d8e0d153cccaf15d27bf0b6: `pnpm exec tsc --noEmit` → exit 2, 76 diagnostics (69 application/test diagnostics plus 7 Deno-source diagnostics). The 65/66 historical discrepancy remains open.
 - Credential rotation and authenticated E2E are still blocked by missing secure handoff/runtime configuration. Current deployed auth is machine-key/hash based and must be reconciled with Issue #87's Supabase Auth/JWT architecture.
+
+
+## Current HEAD checkpoint — 2026-11-27
+The deployed Supabase Edge Function v4 source and catalog-reconstructed migration baselines are versioned in the repository. The recovered schema includes the event append-only trigger `agent_events_no_update` and trigger function `agent_events_reject_mutation`. Independent CI typecheck on current HEAD `32c379124708a67278c565b37cd05c4deadf7aa5` failed with 76 diagnostics (69 app/test and 7 Deno source context); command `pnpm exec tsc --noEmit`, Node 24, pnpm 12.3.4, TypeScript 5.7.3, exit 2. No production deploy or external channel actions.

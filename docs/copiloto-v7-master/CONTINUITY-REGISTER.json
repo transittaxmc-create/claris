@@ -1,9 +1,9 @@
 {
   "schema_version": "0.2.0",
   "project": "copiloto-v7",
-  "updated_at": "2026-11-27T23:16:00Z",
+  "updated_at": "2026-11-27T23:17:30Z",
   "source_branch": "feat/copiloto-v7-phase1-foundation",
-  "source_commit": "7ae8ae5906d8dd9b5d8e0d153cccaf15d27bf0b6",
+  "source_commit": "32c379124708a67278c565b37cd05c4deadf7aa5",
   "environment": {
     "development": "in progress",
     "railway_review": "SUCCESS deployment 423f5d02-3547-47f0-8557-f4e64829df52 on commit 9867adf543e07b7624d2d1b5c378e8b3c65edfb3; public continuity endpoint 200 reports eventStore=private-supabase-agent-gateway and writeOperations=authenticated-only; unauthenticated recovery and bridge return 401.",
@@ -64,10 +64,10 @@
       "title": "Run standalone TypeScript validation and fix errors",
       "owner": "Implementation",
       "status": "failed",
-      "result": "76 diagnostics on commit 7ae8ae5906d8dd9b5d8e0d153cccaf15d27bf0b6; 69 prior app/test diagnostics + 7 Deno-source diagnostics"
+      "result": "76 diagnostics on current checked commit 32c379124708a67278c565b37cd05c4deadf7aa5; exit 2; 69 app/test + 7 Deno-source"
     }
   ],
-  "next_authorized_action": "Resolve tsc baseline (69 app/test diagnostics and 7 Deno project-configuration diagnostics), then complete credential rotation only after secure handoff channel and runtime secret stores are specified; then authenticated reciprocal E2E. No production or external channel actions.",
+  "next_authorized_action": "Resolve TypeScript baseline and Deno/app compiler separation; then rotate credentials only after a secure handoff channel and runtime secret-store targets are specified; then authenticated ChatGPT/Muse continuity and reciprocal message/inbox/ACK tests. No production or external channels.",
   "checkpoint_rule": "Future agent checkpoints must be derived from persisted server-stamped events; this seed snapshot is not a dynamic checkpoint.",
   "storage_mode": "supabase-persistent-event-store",
   "event_log": "Supabase public.agent_events; immutable to agents; repository JSON remains versioned seed/snapshot",
@@ -168,15 +168,15 @@
     "fresh_conversation_recovery": "PENDING",
     "independent_typescript_check": {
       "status": "FAIL",
-      "commit": "7ae8ae5906d8dd9b5d8e0d153cccaf15d27bf0b6",
-      "workflow_run": 46081202819,
+      "commit": "32c379124708a67278c565b37cd05c4deadf7aa5",
+      "workflow_run": 46081404731,
       "command": "pnpm exec tsc --noEmit",
       "node": "24",
       "pnpm": "12.3.4",
       "typescript": "5.7.3",
       "exit_code": 2,
       "diagnostic_count": 76,
-      "comparison": "69 diagnostics also present on previous checked commit 9867adf; 7 additional diagnostics caused by Deno Edge Function source being included by root tsconfig",
+      "comparison": "69 pre-existing app/test diagnostics plus 7 Deno Edge Function diagnostics from the recovered source included in root tsconfig",
       "historical_65_66_divergence": "NOT RESOLVED"
     },
     "public_continuity_endpoint": {
@@ -196,6 +196,7 @@
         "supabase/migrations/20261127224018_copiloto_v7_agent_gateway_core.sql",
         "supabase/migrations/20261127224752_copiloto_v7_agent_gateway_recovery_state.sql"
       ],
+      "includes": "7 gateway tables, 48 constraints, indexes, 2 RPCs, checkpoint view, RLS, event append-only trigger",
       "source": "read-only live catalog reconstruction; not original SQL authoring text; not applied"
     }
   }

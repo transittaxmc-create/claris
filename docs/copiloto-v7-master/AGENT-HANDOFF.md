@@ -276,3 +276,11 @@ Read first: docs/copiloto-v7-master/AGENT-GATEWAY.md, AGENT-GATEWAY-API.md, and 
 - Independent CI typecheck on commit 7ae8ae5906d8dd9b5d8e0d153cccaf15d27bf0b6: `pnpm exec tsc --noEmit`, Node 24 / pnpm 12.3.4 / TypeScript 5.7.3, exit 2, exactly 76 diagnostics. 69 are the pre-existing app/test set also seen on 9867adf; 7 arise from Deno edge source included in root tsconfig. Historical 65/66 discrepancy remains unresolved.
 - Credential rotation is not performed: ChatGPT runtime cannot be configured from this conversation with a private x-agent-key header; Amani key cannot be delivered until Miguel specifies an approved secure handoff channel and vault destination. No secrets printed or committed.
 - No production, SMS, WhatsApp, real customers or payments touched.
+
+
+## Current handoff — 2026-11-27 18:17 EST
+- Branch HEAD at this checkpoint: 32c379124708a67278c565b37cd05c4deadf7aa5.
+- Agent Gateway source v4 is versioned under supabase/functions/agent-gateway/. Reconstructed migration baselines are versioned under supabase/migrations/; they include the live catalog's seven tables, constraints/indexes, two RPCs, checkpoint view, RLS and append-only event trigger. They are explicitly reconstructed from the live catalog, not the original authored SQL. No SQL applied.
+- Independent typecheck on this exact HEAD: GitHub Actions run 46081404731; `pnpm exec tsc --noEmit`; Node 24 / pnpm 12.3.4 / TypeScript 5.7.3; exit 2; 76 diagnostics (69 app/test + 7 Deno-source diagnostics). Historical 65/66 issue remains unresolved.
+- Railway Review endpoint remains confirmed on deployment 423f5d02/commit 9867adf; public continuity 200 reports private persistent event store and authenticated-only writes; recovery/bridge anonymous requests 401.
+- Credential rotation and authenticated E2E remain blocked pending secure channel designation and supported runtime secret configuration. No real SMS/WhatsApp, no production.
