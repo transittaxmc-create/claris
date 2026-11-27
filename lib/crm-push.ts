@@ -30,29 +30,6 @@ export function crmPushIsConfigured() {
   return configured()
 }
 
-/**
- * Only accept browser push endpoints operated by the major Web Push services.
- * The endpoint is later fetched by this server; accepting arbitrary HTTPS URLs
- * would let an untrusted same-origin request turn the push sender into an SSRF
- * primitive. Keep this allowlist aligned with the providers supported by
- * Chrome/Edge, Firefox and Apple Web Push.
- */
-function isTrustedPushEndpoint(value: string): boolean {
-  try {
-    const url = new URL(value)
-    if (url.protocol !== "https:" || url.username || url.password || (url.port && url.port !== "443")) return false
-    const host = url.hostname.toLowerCase()
-    return host === "fcm.googleapis.com" ||
-      host.endsWith(".fcm.googleapis.com") ||
-      host.endsWith(".push.services.mozilla.com") ||
-      host.endsWith(".notify.windows.com") ||
-      host.endsWith(".push.apple.com") ||
-      host.endsWith(".wns.windows.com")
-  } catch {
-    return false
-  }
-}
-
 export function isSameOriginRequest(request: Request) {
   const origin = request.headers.get("origin")
   if (!origin) return false
