@@ -192,7 +192,7 @@ Este es el primer vertical y debe ser el foco. No comenzar otro módulo hasta qu
 - Borrador YES con aprobación explícita; sin aceptación ni envío automático.
 
 ### Paso 6 — Canales y notificaciones
-- Twilio SMS con webhooks/status callbacks, opt-out y pruebas sandbox/test numbers.
+- ZapClaw SMS (proveedor elegido por el usuario; NO Twilio), sujeto a verificar primero API/webhooks/auth oficiales; luego opt-out y pruebas sintéticas/sandbox.
 - Email con proveedor/API autorizado.
 - WhatsApp solo por métodos oficiales compatibles; mantener números actuales; no lectura de grupos personales ni scraping.
 - Push: registro remoto, entrega con app abierta/cerrada, reintentos y revocación probados.
@@ -327,3 +327,7 @@ Esta sección amplía el documento maestro existente; no crea un proyecto parale
 Antes de editar, declarar internamente (y en el resumen de progreso cuando sea útil): hito actual, criterio de aceptación, archivos exactos y qué NO se tocará. Un solo frente técnico a la vez.
 Después de editar: comprobar diff, commit, build/tests pertinentes, estado real de deployment si se desplegó, HTTP/rutas si se comparte enlace, y actualizar este documento + `CURRENT-STATE.md` + la sección correspondiente de `components/copiloto/how-it-works-screen.tsx`. No declarar documentación actualizada sin releerla.
 Cada entrega debe dejar: qué cambió, archivos, commit, pruebas y resultados exactos, errores/limitaciones, estado Railway (READY/BUILDING/FAILED), push remoto (registrado/no verificado) y pruebas de notificación completadas/pendientes. No merge ni producción sin autorización.
+
+
+### 10.10 Corrección de proveedor SMS — 2026-11-27
+El usuario confirmó expresamente que **no está usando Twilio**. El proveedor a investigar e integrar para SMS es **ZapClaw** (Claw, no Cloud). Esta decisión supersede la propuesta histórica “Twilio primero” que aparece en How This Works §10. No reutilizar Twilio, no crear variables TWILIO_* y no migrar números. ZapClaw aún no está técnicamente verificado ni conectado al CRM. Investigar documentación oficial, API, autenticación, webhooks/callbacks, estados y límites antes de diseñar el adaptador. No pedir secretos en el chat; la credencial expuesta previamente debe rotarse en el panel oficial y guardarse solo como secreto del entorno autorizado. Pruebas sintéticas primero; sin mensajes reales ni cambios de número/cuenta sin aprobación expresa.
