@@ -1727,6 +1727,165 @@ export function HowItWorksScreen() {
         </ol>
 
         <P><B>Non-negotiable preservation rules:</B> stay in transittaxmc-create/claris, branch main and Vercel project claris. Keep CRM data in Supabase mimgwleghecseoymgdug. Do not redirect CRM code to zrcnpmipdhpjdjkfrrgt, do not change the Plaid source or the existing finance/register logic while auditing CRM, do not create a second app/repository/project, do not expose secrets in code or documentation, and do not report a feature as verified unless its real behavior was tested. Preserve all user approval gates and the no-silent-modification rule.</P>
+
+        <P><B>Complete file-by-file source index:</B> this index is generated from the same GitHub main tree snapshot as the counts above. It is intended for agents to locate existing modules before creating new ones. The 34 API route paths are enumerated in the API inventory above; the lists below cover the 99 Copiloto files, all shared library files, all 21 scripts, and all six database migrations.</P>
+        <P><B>components/copiloto/ — 99 files:</B></P>
+        <ul className="mb-3 list-disc space-y-1 pl-4 text-[11px] text-neutral-300">
+          <li><B>components/copiloto/account-flags.ts</B></li>
+          <li><B>components/copiloto/account-registers-impl.tsx</B></li>
+          <li><B>components/copiloto/account-registers.part1</B></li>
+          <li><B>components/copiloto/account-registers.tsx</B></li>
+          <li><B>components/copiloto/account-settings.tsx</B></li>
+          <li><B>components/copiloto/accounts-panel.tsx</B></li>
+          <li><B>components/copiloto/ai-daily-classification.ts</B></li>
+          <li><B>components/copiloto/ai-screen.tsx</B></li>
+          <li><B>components/copiloto/auto-categorize.ts</B></li>
+          <li><B>components/copiloto/backup.ts</B></li>
+          <li><B>components/copiloto/bank-audit-sheet.tsx</B></li>
+          <li><B>components/copiloto/bank-brand.ts</B></li>
+          <li><B>components/copiloto/bank-tx-report.tsx</B></li>
+          <li><B>components/copiloto/bill-payments.ts</B></li>
+          <li><B>components/copiloto/bottom-nav.tsx</B></li>
+          <li><B>components/copiloto/cash-flow-register.tsx</B></li>
+          <li><B>components/copiloto/cash-flow-store.ts</B></li>
+          <li><B>components/copiloto/copiloto-app.tsx</B></li>
+          <li><B>components/copiloto/credit-screen.tsx</B></li>
+          <li><B>components/copiloto/credit-store.ts</B></li>
+          <li><B>components/copiloto/crm-notifications.tsx</B></li>
+          <li><B>components/copiloto/crm-screen.tsx</B></li>
+          <li><B>components/copiloto/dash-screen.tsx</B></li>
+          <li><B>components/copiloto/data-screen.tsx</B></li>
+          <li><B>components/copiloto/dinero-forecast.ts</B></li>
+          <li><B>components/copiloto/dinero-proyeccion-v2.tsx</B></li>
+          <li><B>components/copiloto/dinero-proyeccion.tsx</B></li>
+          <li><B>components/copiloto/dispatch-fab.tsx</B></li>
+          <li><B>components/copiloto/dispatch-scan.ts</B></li>
+          <li><B>components/copiloto/dual-sync.ts</B></li>
+          <li><B>components/copiloto/entry-screen.tsx</B></li>
+          <li><B>components/copiloto/expense-register-form.tsx</B></li>
+          <li><B>components/copiloto/expenses-screen.tsx</B></li>
+          <li><B>components/copiloto/ezpass-weekly.ts</B></li>
+          <li><B>components/copiloto/finance-bridge.ts</B></li>
+          <li><B>components/copiloto/finance-cloud.ts</B></li>
+          <li><B>components/copiloto/finance-register-table.tsx</B></li>
+          <li><B>components/copiloto/finance-screen.tsx</B></li>
+          <li><B>components/copiloto/finance-store.ts</B></li>
+          <li><B>components/copiloto/finance-sync.ts</B></li>
+          <li><B>components/copiloto/geo.ts</B></li>
+          <li><B>components/copiloto/hourly-earnings-chart.tsx</B></li>
+          <li><B>components/copiloto/hourly-overlay.tsx</B></li>
+          <li><B>components/copiloto/hourly-production.tsx</B></li>
+          <li><B>components/copiloto/hourly-strip.tsx</B></li>
+          <li><B>components/copiloto/how-it-works-screen.tsx</B></li>
+          <li><B>components/copiloto/liabilities-screen.tsx</B></li>
+          <li><B>components/copiloto/liabilities.ts</B></li>
+          <li><B>components/copiloto/mileage-log.ts</B></li>
+          <li><B>components/copiloto/mileage-report.tsx</B></li>
+          <li><B>components/copiloto/money-input.tsx</B></li>
+          <li><B>components/copiloto/money-ui.tsx</B></li>
+          <li><B>components/copiloto/num-pad.tsx</B></li>
+          <li><B>components/copiloto/open-bills-panel.tsx</B></li>
+          <li><B>components/copiloto/open-bills-store.ts</B></li>
+          <li><B>components/copiloto/pending-deposits.tsx</B></li>
+          <li><B>components/copiloto/per-hour.ts</B></li>
+          <li><B>components/copiloto/plaid-connect.tsx</B></li>
+          <li><B>components/copiloto/platform-avatar.tsx</B></li>
+          <li><B>components/copiloto/platform-meta.ts</B></li>
+          <li><B>components/copiloto/projected-cash-flow.tsx</B></li>
+          <li><B>components/copiloto/proyeccion-charts.tsx</B></li>
+          <li><B>components/copiloto/proyeccion-form.tsx</B></li>
+          <li><B>components/copiloto/proyeccion-foto1.tsx</B></li>
+          <li><B>components/copiloto/proyeccion-foto2.tsx</B></li>
+          <li><B>components/copiloto/proyeccion-shared.tsx</B></li>
+          <li><B>components/copiloto/receipt-scanner.tsx</B></li>
+          <li><B>components/copiloto/receipts.ts</B></li>
+          <li><B>components/copiloto/reconciliation-check.ts</B></li>
+          <li><B>components/copiloto/reconciliation-view.tsx</B></li>
+          <li><B>components/copiloto/reconciliation.ts</B></li>
+          <li><B>components/copiloto/register-screen.tsx</B></li>
+          <li><B>components/copiloto/registers-store.ts</B></li>
+          <li><B>components/copiloto/reports-screen.tsx</B></li>
+          <li><B>components/copiloto/scan-inbox.ts</B></li>
+          <li><B>components/copiloto/schedule-c-draft.tsx</B></li>
+          <li><B>components/copiloto/screenshot-txs.ts</B></li>
+          <li><B>components/copiloto/selector-logo.tsx</B></li>
+          <li><B>components/copiloto/shift-tolls.ts</B></li>
+          <li><B>components/copiloto/shift.ts</B></li>
+          <li><B>components/copiloto/sobres-screen.tsx</B></li>
+          <li><B>components/copiloto/sobres-store.ts</B></li>
+          <li><B>components/copiloto/split-editor.tsx</B></li>
+          <li><B>components/copiloto/storage.ts</B></li>
+          <li><B>components/copiloto/tax-2026-screen.tsx</B></li>
+          <li><B>components/copiloto/tax-worksheet.tsx</B></li>
+          <li><B>components/copiloto/toll-audit-screen.tsx</B></li>
+          <li><B>components/copiloto/toll-audit.ts</B></li>
+          <li><B>components/copiloto/toll-detect.ts</B></li>
+          <li><B>components/copiloto/toll-plazas-2026.ts</B></li>
+          <li><B>components/copiloto/transfer-fees.ts</B></li>
+          <li><B>components/copiloto/transfer-matcher.ts</B></li>
+          <li><B>components/copiloto/trip-edit-sheet.tsx</B></li>
+          <li><B>components/copiloto/types.ts</B></li>
+          <li><B>components/copiloto/upcoming-bills-form.tsx</B></li>
+          <li><B>components/copiloto/v1-dash/v1-dash-screen.tsx</B></li>
+          <li><B>components/copiloto/v1-dash/v1-dash-zones.ts</B></li>
+          <li><B>components/copiloto/week-tolls.ts</B></li>
+          <li><B>components/copiloto/weekly-close.ts</B></li>
+        </ul>
+        <P><B>lib/ — 18 shared library files:</B></P>
+        <ul className="mb-3 list-disc space-y-1 pl-4 text-[11px] text-neutral-300">
+          <li><B>lib/backup.ts</B></li>
+          <li><B>lib/bank-csv.ts</B></li>
+          <li><B>lib/crm-push.ts</B></li>
+          <li><B>lib/crm/crm-cloud.ts</B></li>
+          <li><B>lib/crm/crm-photos.ts</B></li>
+          <li><B>lib/crm/geocode.ts</B></li>
+          <li><B>lib/crm/parse-message.ts</B></li>
+          <li><B>lib/crm/supabase-browser.ts</B></li>
+          <li><B>lib/crm/supabase-server.ts</B></li>
+          <li><B>lib/data-sync.ts</B></li>
+          <li><B>lib/dates.ts</B></li>
+          <li><B>lib/decisions.ts</B></li>
+          <li><B>lib/money.ts</B></li>
+          <li><B>lib/plaid.ts</B></li>
+          <li><B>lib/production.ts</B></li>
+          <li><B>lib/sync.ts</B></li>
+          <li><B>lib/utils.ts</B></li>
+          <li><B>lib/version-check.ts</B></li>
+        </ul>
+        <P><B>scripts/ — 21 verification, assembly and database scripts:</B></P>
+        <ul className="mb-3 list-disc space-y-1 pl-4 text-[11px] text-neutral-300">
+          <li><B>scripts/_check-db.mjs</B></li>
+          <li><B>scripts/_check-schema.mjs</B></li>
+          <li><B>scripts/_create-sync-table.mjs</B></li>
+          <li><B>scripts/_mock-redis.mjs</B></li>
+          <li><B>scripts/_test-backup.mjs</B></li>
+          <li><B>scripts/_test-bank-csv.mjs</B></li>
+          <li><B>scripts/_test-cash-flow.mjs</B></li>
+          <li><B>scripts/_test-classify.mjs</B></li>
+          <li><B>scripts/_test-dates.mjs</B></li>
+          <li><B>scripts/_test-decisions.mjs</B></li>
+          <li><B>scripts/_test-expenses.mjs</B></li>
+          <li><B>scripts/_test-finance.mjs</B></li>
+          <li><B>scripts/_test-money.mjs</B></li>
+          <li><B>scripts/_test-platforms.mjs</B></li>
+          <li><B>scripts/_test-production.mjs</B></li>
+          <li><B>scripts/_test-reconciliation.mjs</B></li>
+          <li><B>scripts/_test-schedule.mjs</B></li>
+          <li><B>scripts/_test-sync-e2e.mjs</B></li>
+          <li><B>scripts/_test-sync.mjs</B></li>
+          <li><B>scripts/assemble-registers.js</B></li>
+          <li><B>scripts/create-plaid-items-table.sql</B></li>
+        </ul>
+        <P><B>supabase/migrations/ — 6 SQL migration files:</B></P>
+        <ul className="mb-3 list-disc space-y-1 pl-4 text-[11px] text-neutral-300">
+          <li><B>supabase/migrations/20261126024701_crm_auth_clients_reservations_rls.sql</B></li>
+          <li><B>supabase/migrations/20261126120000_crm_account_photos_messages.sql</B></li>
+          <li><B>supabase/migrations/20261126150000_finance_sync_doc.sql</B></li>
+          <li><B>supabase/migrations/20261126170000_crm_message_follow_up.sql</B></li>
+          <li><B>supabase/migrations/20261126180000_crm_message_send.sql</B></li>
+          <li><B>supabase/migrations/20261126190000_crm_reservation_stop.sql</B></li>
+        </ul>
+        <P><B>Public asset inventory:</B> 60 files under public/. They are grouped into public/bank-logos/ (bank/card/payment-provider marks), public/logos/ (rideshare/transportation platform marks), PWA/app icons (icon.svg, light/dark 32px icons, apple-icon.png), service worker (sw.js), and reference images. Treat these as application assets; do not replace logos or branding without a specific request.</P>
       </Section>
 
       <p className="mt-6 text-center text-[10px] text-neutral-600">
