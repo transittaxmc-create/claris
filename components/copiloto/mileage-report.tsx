@@ -71,11 +71,11 @@ export function MileageReport() {
       {/* Resumen por semestre (tasas IRS 2026 distintas) */}
       <div className="mb-2 grid grid-cols-3 gap-2">
         <div className="rounded-xl bg-neutral-950 p-2 text-center">
-          <p className="text-[9px] font-bold text-neutral-500">ENE–JUN ($0.725)</p>
+          <p className="text-[9px] font-bold text-neutral-500">JAN–JUN ($0.725)</p>
           <p className="font-mono text-sm font-bold text-white">{num(totals.h1)}</p>
         </div>
         <div className="rounded-xl bg-neutral-950 p-2 text-center">
-          <p className="text-[9px] font-bold text-neutral-500">JUL–DIC ($0.76)</p>
+          <p className="text-[9px] font-bold text-neutral-500">JUL–DEC ($0.76)</p>
           <p className="font-mono text-sm font-bold text-white">{num(totals.h2)}</p>
         </div>
         <div className="rounded-xl bg-neutral-950 p-2 text-center">
