@@ -101,7 +101,7 @@ export function DashScreen({ trips, expenses }: { trips: Trip[]; expenses: Expen
             />
             <StatCard
               label="PENDING COLLECTION"
-              value={data.pending.length === 0 ? "Todo cuadra" : `${data.pending.length} · ${money(data.pendingAmount)}`}
+              value={data.pending.length === 0 ? "Everything matches" : `${data.pending.length} · ${money(data.pendingAmount)}`}
               valueClass={data.pending.length === 0 ? "text-green-400" : "text-orange-400"}
               icon={<CircleAlert className="size-3.5 text-orange-400/70" />}
             />
