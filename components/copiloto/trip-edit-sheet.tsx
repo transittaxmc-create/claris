@@ -311,7 +311,7 @@ export function TripEditSheet({
             <div className="grid grid-cols-2 gap-3">
               <MoneyInput
                 size="sm"
-                label="ESPERADO"
+                label="EXPECTED"
                 value={expected}
                 onChange={(n) => setRecon({ expected: round2(n) })}
               />
@@ -324,7 +324,7 @@ export function TripEditSheet({
             </div>
 
             <div className="mt-2 flex items-center justify-between rounded-xl border border-neutral-800 bg-black/30 px-3 py-2">
-              <span className="text-[10px] font-bold tracking-wide text-neutral-400">DIFERENCIA</span>
+              <span className="text-[10px] font-bold tracking-wide text-neutral-400">DIFFERENCE</span>
               <span className={cn("text-base font-extrabold", tone.text)}>{signedMoney(diff)}</span>
             </div>
 
