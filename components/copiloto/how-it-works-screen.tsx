@@ -1981,6 +1981,19 @@ export function HowItWorksScreen() {
         <P><B>Estado:</B> blueprint de arquitectura entregado; no se crearon tablas, no se aplicaron migraciones, no se conectaron proveedores, no se cambió la ruta raíz y no hubo deployment. Los nombres de entidades son modelo lógico propuesto, no tablas ya existentes. El siguiente bloqueo técnico es reconciliar migraciones y completar el diseño de permisos antes de cualquier DDL.</P>
       </Section>
 
+
+      <Section title="29. COPILOTO V7 — PUNTO 3: AUDITORÍA DE BASE DE DATOS Y SEGURIDAD (2026-11-27)">
+        <P><B>Resultado:</B> auditoría de solo lectura completada; implementación de seguridad pendiente. Proyecto CRM <B>mimgwleghecseoymgdug</B>, ACTIVE_HEALTHY, PostgreSQL 17.12. No confundir con el proyecto financiero legado.</P>
+        <P><B>Datos verificados:</B> cuatro tablas públicas — crm_clients (7), crm_reservations (2), crm_messages (1), finance_sync_doc (1). RLS está habilitado en las cuatro. Políticas CRM limitan operaciones al propietario auth.uid() = user_id; finance_sync_doc usa owner_id = auth.uid().</P>
+        <P><B>Storage:</B> crm-client-photos existe como bucket privado, con cuatro políticas que limitan el acceso a la carpeta cuyo primer segmento es el UUID del usuario. No hay límite de tamaño ni MIME allowlist configurados. Este bucket de fotos no equivale todavía al vault general de documentos fiscales y de transporte.</P>
+        <P><B>Auth:</B> se contaron dos usuarios y cero factores MFA verificados o pendientes. La configuración de proveedores y enforcement no es visible mediante las herramientas disponibles; no afirmar que MFA esté exigido. Security Advisor reporta leaked-password protection desactivada.</P>
+        <P><B>Otros avisos:</B> Performance Advisor reporta dos foreign keys sin índice de cobertura en crm_messages y cuatro avisos RLS initplan en finance_sync_doc. Health Advisor sin hallazgos. proxy.ts refresca claims/cookies si existen variables CRM, pero no bloquea por sí solo rutas privadas; cada endpoint debe validar sesión y autorización.</P>
+        <P><B>Bloqueo de migraciones:</B> la rama tiene seis archivos SQL; Supabase registra tres migraciones aplicadas. Solo coincide 20261126024701. Las versiones aplicadas 20261126033314 y 20261126035245 no están en el directorio de esta rama; los otros cinco archivos de la rama no aparecen aplicados. No ejecutar DDL hasta reconciliar el historial y el SQL real.</P>
+        <P><B>Separación de negocio:</B> el esquema actual demuestra separación por propietario, pero todavía no aislamiento explícito por unidad transport / taxes / work_opportunities ni roles/membresías. Debe diseñarse y probarse antes de datos reales.</P>
+        <P><B>Acciones pendientes:</B> reconciliar migraciones; revisar Auth/MFA/sesiones; activar protección de contraseñas filtradas; diseñar autorización por unidad; crear vault privado de documentos con límites MIME/tamaño, versiones y URLs firmadas; verificar secretos solo en servidor; definir backups/restore y revocación de dispositivos; probar accesos negativos entre usuarios y unidades.</P>
+        <P><B>Seguridad y deployment:</B> auditoría read-only; no se aplicó DDL, no se cambiaron usuarios/configuración, no se enviaron mensajes ni pagos y no hubo deployment. No usar datos reales hasta cerrar brechas y completar pruebas.</P>
+      </Section>
+
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
