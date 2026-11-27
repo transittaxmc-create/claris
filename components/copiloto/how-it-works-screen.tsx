@@ -48,7 +48,7 @@ export function HowItWorksScreen() {
           <li>§21 PRIORITY LIST — what is open, in plain language, updated with every deployment</li>
           <li>§22 APPLICATION INVENTORY &amp; ARCHITECTURE AUDIT — complete source map, integrations, database state, verified gaps and agent handoff (2026-11-27)</li>
           <li>§23 CRM COPILOT V7 — TECHNICAL AUDIT &amp; VERIFIED GAPS (2026-11-27)</li>
-          <li>§24 COPILOTO V7 — PHASE 1 BUILD FOUNDATION &amp; ARCHITECTURE (2026-11-27) · §25 V7 PREVIEW WORKSPACE — FIRST IMPLEMENTATION (2026-11-27) · §26 TRANSPORT OPERATIONS PREVIEW (2026-11-27) · §27 TAX PREPARATION PREVIEW (2026-11-27) · §28 WORK OPPORTUNITIES REVIEW PREVIEW (2026-11-27)</li>
+          <li>§24 COPILOTO V7 — PHASE 1 BUILD FOUNDATION &amp; ARCHITECTURE (2026-11-27) · §25 V7 PREVIEW WORKSPACE — FIRST IMPLEMENTATION (2026-11-27) · §26 TRANSPORT OPERATIONS PREVIEW (2026-11-27) · §27 TAX PREPARATION PREVIEW (2026-11-27) · §28 WORK OPPORTUNITIES REVIEW PREVIEW (2026-11-27) · §29 SQUARE OPERATIONS PREVIEW (2026-11-27)</li>
         </ul>
       </Section>
 
@@ -2041,6 +2041,15 @@ export function HowItWorksScreen() {
         <P><B>WhatsApp:</B> no hay lectura de grupos personales, scraping ni integración no oficial. Deben evaluarse métodos de recepción autorizados y compatibles, como compartir/reenviar o captura manual aprobada. ZapClaw/WhatsApp no se consideran conectados ni verificados aquí.</P>
         <P><B>Verificación:</B> componente 59ed9042df7bd4110f45aed8546551ddddd8c5a4 e integración ae3724b789f77ee2c15bcc81785eb258f380e23d en feat/copiloto-v7-phase1-foundation. Build, typecheck, tests y QA visual pendientes. Sin cambios de Supabase ni deployment V7.</P>
         <P><B>Estado:</B> interfaz de revisión implementada y documentada; ingesta, persistencia, integraciones, análisis completo de costos y pruebas pendientes. No habilitar con operaciones reales.</P>
+      </Section>
+
+      <Section title="COPILOTO V7 — PUNTO 8: SQUARE OPERATIONS (2026-11-27)">
+        <P><B>Preview implementado:</B> se creó components/copiloto-v7-preview/square-workspace.tsx y se añadió Square a la navegación. La vista de diseño incluye Overview, Customers, Invoices, Payments y Documents con ejemplos sintéticos y matriz de preparación.</P>
+        <P><B>Estado real:</B> Square no está conectado ni autorizado en este proyecto; no hay Sandbox, OAuth, API, webhooks, lectura/escritura de clientes o facturas, ni operaciones de pago/reembolso ejecutadas. Las cifras y registros son ejemplos locales, no datos de Square.</P>
+        <P><B>Diseño de integración:</B> Square permanece como sistema conectado; Copiloto será el centro de operaciones para las acciones compatibles. Cada acción se clasificará como API soportada, handoff al dashboard de Square o no soportada. Credenciales solo server-side, permisos mínimos, webhooks firmados, idempotencia y auditoría.</P>
+        <P><B>Control financiero:</B> Sandbox primero. Capturas, cobros, reembolsos y cambios financieros requerirán aprobación humana explícita. Documentos se organizarán mediante la bóveda privada de Copiloto, no en carpetas públicas.</P>
+        <P><B>Verificación:</B> componente e216e2783f7decc70622971b404ce931bb981a6a e integración 7c50dea918814ca9ff39488c4b5326a9ee80d46c en feat/copiloto-v7-phase1-foundation. Sin credenciales, conexión ni pruebas Sandbox. Build, typecheck y QA visual pendientes. No hubo cambios de Supabase.</P>
+        <P><B>Estado:</B> diseño de demostración implementado; integración real, scopes, webhooks y pruebas transaccionales pendientes. No usar para pagos reales. Informe: docs/copiloto-v7-punto-8-square-2026-11-27.md</P>
       </Section>
 
       <p className="mt-6 text-center text-[10px] text-neutral-600">
