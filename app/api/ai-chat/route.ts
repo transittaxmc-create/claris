@@ -24,7 +24,7 @@ export async function POST(req: Request) {
       maxOutputTokens: 1800,
     }
 
-    // Modo foto: extraer datos de un recibo/factura y devolver schedules estructurados.
+    // Image mode: extract receipt or invoice details and return structured schedules.
     const imageMode = typeof image === "string" && image.startsWith("data:image/")
 
     const platformInfo = context?.platformBreakdown
