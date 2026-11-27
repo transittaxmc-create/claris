@@ -26,9 +26,10 @@ export async function GET() {
     return NextResponse.json({
       ok: true,
       project: "copiloto-v7",
-      access: "public-read-only",
-      eventStore: "not_configured",
-      writeOperations: "disabled",
+      access: "public-documentation-only",
+      eventStore: "private-supabase-agent-gateway",
+      writeOperations: "authenticated-only",
+      agentApi: "https://mimgwleghecseoymgdug.supabase.co/functions/v1/agent-gateway",
       documents,
     }, { headers: { "Cache-Control": "no-store" } })
   } catch {
