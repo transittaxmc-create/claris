@@ -141,3 +141,13 @@
 - Todas las interacciones son React state local con datos sintéticos. La acción Save trip y Add client NO persisten en Supabase ni sobreviven reload; approve draft NO envía mensajes; no hay geolocalización/GPS real, proveedor de mensajería ni Square conectado. Etiquetas de demo visibles.
 - Commit de creación: d9be60e07dd3ad649825c6c40f15c0fed1490e23. Aún no hay build/TypeScript/browser QA de este nuevo archivo ni deployment Railway confirmado. No marcar como funcionalidad de producción ni QA aprobado.
 - Siguiente: revisar build y tipos, desplegar solo a Railway review si el servicio sigue vinculado a la feature branch, abrir ruta en teléfono y escritorio, probar flujo; después conectar con APIs/backend una vez cerrados bloqueos Stage 2/3 y persistencia segura. Mantener main y producción intactos.
+
+
+## 18. Re-enfoque y continuidad — 2026-11-27
+- Documento rector nuevo: docs/copiloto-v7-master/FOCUS-AND-EXECUTION-BASELINE.md. Consolida la misión, alcance de Transport/Taxes/Communications/Clients/Documents/Work Opportunities/Square/Agenda, decisiones, límites, estado real, bloqueos, criterios de terminado y secuencia de ejecución.
+- La revisión de conversaciones y documentación confirma que el principal problema de avance es que hay prototipos visuales y auditorías, pero todavía no una vertical CRM V7 persistente de extremo a extremo. No seguir agregando pantallas ni repetir inventarios.
+- Orden obligatorio: (1) terminar el deployment actual y QA desktop/iPhone; (2) resolver la procedencia de las migraciones históricas y cerrar Auth/MFA/memberships/RLS/Storage; (3) construir Clients + Transport + Communications con persistencia, permisos, auditoría y pruebas A/B; (4) Documents vault + Taxes; (5) Work Opportunities; (6) conectores SMS/WhatsApp/email/push; (7) Square Sandbox; (8) QA integral y release readiness.
+- HEAD conocido al momento de crear el documento rector: f8c559ff59ba09038bdb64d966e67d42e83a61a4. La documentación de enfoque se agregó después en commits separados; confirmar el nuevo HEAD y deployment antes de continuar.
+- Deployment Railway observado antes de estos commits documentales: 3accbe2e-e61c-410c-91aa-be114cf82f18, commit f8c559ff..., BUILDING. No inferir que el nuevo HEAD está desplegado. Volver a consultar estado, SHA, logs y URL.
+- Push registration remoto: no verificada. Tests locales de validación push: 4/4; no prueban entrega real ni app cerrada.
+- No hubo autorización para merge a main, Vercel production, uso de datos reales, mensajes reales o pagos reales. Supabase financiero/Plaid zrcnpmipdhpjdjkfrrgt permanece fuera de alcance.
