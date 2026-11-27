@@ -2092,6 +2092,12 @@ export function HowItWorksScreen() {
         <P><B>Continuidad:</B> leer docs/copiloto-v7-master/README.md y seguir AGENT-HANDOFF.md antes de cualquier cambio. Actualizar la carpeta maestra y How This Works en cada hito, re-fetch para verificar, e informar deployment READY/BUILDING/FAILED, push registration y pruebas push exactas.</P>
       </Section>
 
+      <Section title="COPILOTO V7 — §34: GO MODE · OPERACIÓN MÓVIL RÁPIDA (2026-11-27)">
+        <P><B>Objetivo de diseño confirmado por Miguel:</B> la computadora es el centro de administración profundo; el teléfono es herramienta de operación inmediata mientras está en movimiento o negociando. No replicar en móvil un dashboard de escritorio lleno de tarjetas, pestañas y atajos. La pantalla móvil debe reducir pasos, mantener funciones potentes detrás de flujos simples y priorizar mensajes, reservas/viajes, clientes y oportunidades.</P>
+        <P><B>Prototipo creado:</B> ruta /copiloto-v7-go (app/copiloto-v7-go/page.tsx), separada de la ruta desktop /copiloto-v7-preview y sin reemplazar Claris. Navegación móvil Today / Inbox / Trips / Clients / More. Today prioriza Quick trip entry, mensajes pendientes y oportunidad que requiere revisión. Trips permite captura rápida de pickup, destination, fare y cliente opcional. Inbox reúne mensajes por canal y área; puede preparar borrador y marcar aprobación simulada, nunca enviar. Clients permite buscar y añadir contacto de muestra. Escritorio añade Field Workflow con la secuencia de extremo a extremo.</P>
+        <P><B>Estado real:</B> prototipo interactivo local con datos sintéticos y estado React en memoria. No hay persistencia Supabase, no se conserva tras reload, no hay GPS real, no hay envío de SMS/WhatsApp, no se acepta trabajo ni se procesa pago. Save trip/Add client/Approve draft son simulaciones explícitamente etiquetadas. No afirmar que los datos están guardados en CRM central.</P>
+        <P><B>Commit:</B> d9be60e07dd3ad649825c6c40f15c0fed1490e23. Documentación CURRENT-STATE actualizada en commit 64ffcb747b933de6ceb3893c4455082f7132ea91. Build, TypeScript, browser visual QA y Railway deployment de esta ruta todavía pendientes. Próximo paso: validar build y responsive en Railway review; luego conectar el flujo a la base CRM y APIs solo tras completar seguridad y migraciones. No merge a main ni producción.</P>
+      </Section>
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
