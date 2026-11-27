@@ -383,7 +383,7 @@ export function DataScreen({
           <Row label="LAST RECORDING" value={fmtTime(info?.lastSavedAt ?? null)} />
           <Row
             label="LOCALSTORAGE"
-            value={info ? (info.localStorageOk ? "OK" : "BLOQUEADO") : "…"}
+            value={info ? (info.localStorageOk ? "OK" : "BLOCKED") : "…"}
             tone={info?.localStorageOk ? "text-green-400" : "text-rose-400"}
           />
           <Row
@@ -432,11 +432,11 @@ export function DataScreen({
           </div>
           <p className="text-[10px] leading-tight text-neutral-500">
             Used by the DASHBOARD tab (the v1-cloned hourly board). The hourly goal is also adjusted with
-            el deslizador del propio tablero.
+            the dashboard's own slider.
           </p>
           <div className="mt-2 flex items-center gap-2">
             <label htmlFor="meta-diaria" className="text-[11px] font-bold text-neutral-300">
-              Goal diaria $
+              Daily goal $
             </label>
             <input
               id="meta-diaria"
@@ -473,7 +473,7 @@ export function DataScreen({
                   onClick={desconectarDrive}
                   className="rounded-full border border-neutral-700 px-2 py-0.5 text-[10px] font-bold text-neutral-400 hover:text-rose-400"
                 >
-                  ✓ Drive · desconectar
+                  ✓ Drive · disconnect
                 </button>
               )}
               {gdriveConnected === false && (
@@ -578,7 +578,7 @@ export function DataScreen({
                     disabled={backupBusy}
                     className="flex-1 rounded-xl border border-neutral-700 py-2.5 text-[11px] font-bold text-neutral-300"
                   >
-                    CANCELAR
+                    CANCEL
                   </button>
                 </div>
               </div>
@@ -591,14 +591,14 @@ export function DataScreen({
               onClick={onExport}
               className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-neutral-700 bg-neutral-950 py-2.5 text-[11px] font-bold text-neutral-200 hover:border-neutral-500"
             >
-              <Download className="size-3.5" /> EXPORTAR JSON
+              <Download className="size-3.5" /> EXPORT JSON
             </button>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
               className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-neutral-700 bg-neutral-950 py-2.5 text-[11px] font-bold text-neutral-200 hover:border-neutral-500"
             >
-              <Upload className="size-3.5" /> IMPORTAR JSON
+              <Upload className="size-3.5" /> IMPORT JSON
             </button>
             <input
               ref={fileInputRef}
@@ -622,7 +622,7 @@ export function DataScreen({
             <Download className="size-3.5" /> DOWNLOAD ALL (FULL BACKUP)
           </button>
           <p className="mt-1.5 text-[10px] leading-tight text-neutral-500">
-            Descarga <strong className="text-neutral-300">all JSON files</strong> of the app
+            Download <strong className="text-neutral-300">all JSON files</strong> of the app
             (trips, expenses, finances, ledger, categories, settings) plus a{" "}
             <strong className="text-neutral-300">readable HTML index</strong> with totals and tables. With
             that you never have to start from scratch.
@@ -660,7 +660,7 @@ export function DataScreen({
                   className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-500 py-2.5 text-[11px] font-extrabold text-black disabled:opacity-60"
                 >
                   <RefreshCw className={cn("size-3.5", syncing && "animate-spin")} />
-                  {syncing ? "SYNCING…" : "SINCRONIZAR AHORA"}
+                  {syncing ? "SYNCING…" : "SYNC NOW"}
                 </button>
                 <button
                   type="button"
@@ -688,7 +688,7 @@ export function DataScreen({
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-green-600 to-emerald-500 py-2.5 text-[11px] font-extrabold text-black disabled:opacity-40"
               >
                 <Cloud className={cn("size-3.5", syncing && "animate-spin")} />
-                {syncing ? "CONECTANDO…" : "CONECTAR Y SINCRONIZAR"}
+                {syncing ? "CONNECTING…" : "CONNECT & SYNC"}
               </button>
             </div>
           )}
