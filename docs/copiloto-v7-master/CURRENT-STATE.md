@@ -177,3 +177,11 @@
 - ZapClaw todavía NO está verificado ni conectado al CRM. Antes de programar el adaptador, confirmar la documentación/API/webhooks oficiales de ZapClaw, el mecanismo de autenticación, estados/callbacks, límites y compatibilidad con el número/cuenta existente. No asumir que una API de SMS existe ni que ZapClaw es intercambiable con Twilio.
 - No pedir ni copiar tokens al chat. La credencial previamente expuesta se considera comprometida; rotarla desde el panel oficial del proveedor antes de cualquier uso y guardarla únicamente como secreto en el entorno autorizado, después de verificar dependencias.
 - Próximo paso: investigar ZapClaw (no Twilio), mapear capacidades reales y diseñar envío/recepción, callbacks, opt-out STOP/HELP, consentimiento, idempotencia, auditoría y aprobación humana. Mantener pruebas sintéticas/sandbox; no enviar mensajes reales ni cambiar números/cuentas sin autorización expresa.
+
+
+## 17. Alcance real de ZapClaw y SMS — verificado 2026-11-27
+- Documentación oficial de ZapClaw (`https://zapclaw.app/docs.html`, última actualización indicada 2026-11-12) describe una pasarela de **WhatsApp Business** basada en la API oficial de Meta: REST API para enviar mensajes WhatsApp, webhooks para mensajes entrantes y estados, y soporte de coexistencia. La documentación consultada NO presenta ZapClaw como proveedor de SMS telefónico tradicional.
+- Decisión de proveedor: **no usar Twilio**. ZapClaw se considera el candidato/proveedor para **WhatsApp Business**, sujeto a validar la cuenta y configuración existentes. **Proveedor de SMS tradicional: todavía no identificado ni aprobado**; no seleccionar ni integrar uno sin confirmación del usuario.
+- No confundir los canales en UI, backend, estados ni documentación. WhatsApp y SMS tendrán adaptadores, consentimientos, registros y estados separados, aunque se presenten en una bandeja común.
+- ZapClaw no está conectado al CRM todavía. Su integración futura requiere validar API key, firma del webhook, eventos, idempotencia, límites, coexistencia y números permitidos. Nunca copiar secretos al chat.
+- Próximo paso para cerrar mensajería: terminar el adaptador ZapClaw para WhatsApp en pruebas sintéticas cuando seguridad lo permita; para SMS, identificar el servicio realmente usado por el usuario. No enviar comunicaciones reales ni cambiar números/cuentas sin autorización expresa.
