@@ -521,8 +521,8 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
           </div>
 
           <p className="mt-3 text-[10px] font-bold uppercase tracking-wide text-neutral-400">Earnings reconciliation</p>
-          <Row label="Esperado" value={money(data.expectedTotal)} tone="muted" />
-          <Row label="Recibido" value={money(data.receivedTotal)} tone="income" />
+          <Row label="Expected" value={money(data.expectedTotal)} tone="muted" />
+          <Row label="Received" value={money(data.receivedTotal)} tone="income" />
           <Row label="Pending collection" value={money(data.pendingTotal)} tone={data.pendingTotal > 0 ? "expense" : "muted"} />
 
           {bankTxs.length > 0 && (
