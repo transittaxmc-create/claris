@@ -8,7 +8,7 @@
 - Repo transittaxmc-create/claris; default branch main; visibilidad actual PUBLIC.
 - Feature branch feat/copiloto-v7-phase1-foundation.
 - Railway project copiloto-v7-temporal ID a27e9703-8ee8-4650-ac57-c966a7301ca1; environment review ID 6b472376-3905-42d1-9e5b-58321f8caf12; service copiloto-v7-preview ID cd3e119a-0a24-4412-adc0-a0ae56f1e893.
-- Deployment V7 inicial 6c2ac0c8-725b-489c-ae86-a654bea2c3fd, SUCCESS, commit faf2350ffcc3e4e5166fa4f64d1d12671d09924a, región iad. Tras añadir el acceso directo CRM/lazy loading se disparó un deployment nuevo 6a948e27-3a11-4f60-97ca-918914c55056, commit b0aa463601a55fd3c5d12a11b28a9eeb63a1f59e, rama feature; último estado consultado BUILDING, sin URL ni región confirmada. El build local de ese código ya pasó.
+- Deployment vigente 6a948e27-3a11-4f60-97ca-918914c55056, SUCCESS, commit b0aa463601a55fd3c5d12a11b28a9eeb63a1f59e, región iad. Deployment anterior 6c2ac0c8 fue retirado.
 - Preview: https://copiloto-v7-preview-review.up.railway.app, target port 8080.
 - Runtime Next.js 16.3.3 Ready en puerto 8080.
 - Curl: / y /copiloto-v7-preview HTTP 200. HTML incluye Communications, Transport, Taxes, Work Opportunities, Square y meta viewport móvil.
@@ -71,3 +71,10 @@
 - Aprobación humana para mensajes salientes, aceptación de ofertas y acciones de dinero.
 - Railway SUCCESS. Push registration: no verificada. Notification tests: prueba local previa solamente; remote/app-closed pendientes.
 - Vercel team tuvo límite diario de despliegues; no crear otro proyecto permanente.
+
+## 8. Hito 1 — deploy y QA inicial (2026-11-27)
+- Railway SUCCESS: deployment 6a948e27-3a11-4f60-97ca-918914c55056; commit b0aa463601a55fd3c5d12a11b28a9eeb63a1f59e; branch feature; runtime Ready; URL temporal verificada.
+- Checks: / y /copiloto-v7-preview HTTP 200; build Next compila y genera 10/10 páginas; test:crm-push PASS 4/4; TypeScript FAIL con 66 diagnósticos baseline compartidos con main.
+- UI: CRM acceso directo lazy; Today/Earnings/Money/Reports/More preservados.
+- Límite: screenshot/browser QA responsive e interacción visual no completados por falta de navegador. No marcar QA visual PASS.
+- Push remoto/app cerrada no verificado.
