@@ -1969,6 +1969,18 @@ export function HowItWorksScreen() {
         <P><B>Next work:</B> complete source/migration reconciliation, inspect current auth and RLS policies plus private storage configuration, map all existing routes/screens before redesign, define module ownership and cross-module links, and produce a reviewed target schema/permission matrix before any database writes.</P>
       </Section>
 
+
+      <Section title="28. COPILOTO V7 — PUNTO 2: ARQUITECTURA FUNCIONAL Y TÉCNICA (2026-11-27)">
+        <P><B>Entrega:</B> se creó docs/copiloto-v7-punto-2-arquitectura-2026-11-27.md en la rama feat/copiloto-v7-phase1-foundation. Define Copiloto como consola principal y a Supabase/Square/Twilio/Meta como servicios conectados mediante adaptadores; no promete operaciones fuera de las APIs o permisos disponibles.</P>
+        <P><B>Propiedad de módulos:</B> Overview agrega; Transport posee reservas/viajes; Taxes posee expedientes fiscales; Work Opportunities posee ofertas, extracción, evaluación y decisión; Communications conserva originales, análisis, borradores, aprobaciones y eventos; Clients mantiene relaciones por unidad; Documents controla el vault privado; Square expone solo capacidades permitidas; Notifications conserva alertas; Identity/Audit controla usuarios, permisos, sesiones y trazabilidad.</P>
+        <P><B>Separación:</B> cada registro operativo debe tener unidad transport, taxes o work_opportunities. Compartir ficha de contacto no comparte expedientes, viajes ni documentos. RLS y permisos de servidor deben reforzar el aislamiento.</P>
+        <P><B>Flujo:</B> UI → endpoint autenticado → autorización/RLS y servicio de dominio → transacción/outbox idempotente → adaptador externo → webhook firmado → estado y auditoría. El mensaje original nunca se sustituye por el análisis IA. Todo envío y aceptación requieren aprobación humana.</P>
+        <P><B>Square:</B> comenzar en Sandbox; exponer customers/invoices/payments/refunds solo si endpoint y scopes están disponibles. La UI debe distinguir acción integrada, enlace a Square y función no soportada. No almacenar PAN/CVV.</P>
+        <P><B>Documentos y notificaciones:</B> móvil como captura/consulta, vault central privado como maestro; URLs firmadas breves, versiones, auditoría y restore probado. Alertas persistentes son canónicas; push es solo un canal y requiere prueba en iPhone físico.</P>
+        <P><B>Compatibilidad:</B> conservar CopilotoApp y las funciones actuales hasta QA. La sincronización financiera heredada permanece apagada. WhatsApp Personal/grupos no se consideran ingestión automática; solo vías oficiales permitidas.</P>
+        <P><B>Estado:</B> blueprint de arquitectura entregado; no se crearon tablas, no se aplicaron migraciones, no se conectaron proveedores, no se cambió la ruta raíz y no hubo deployment. Los nombres de entidades son modelo lógico propuesto, no tablas ya existentes. El siguiente bloqueo técnico es reconciliar migraciones y completar el diseño de permisos antes de cualquier DDL.</P>
+      </Section>
+
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
