@@ -164,3 +164,7 @@ Before any work, read docs/copiloto-v7-master/FOCUS-AND-EXECUTION-BASELINE.md. I
 
 ### What this session did
 This session re-read the existing continuity index and master documents and re-queried Railway. It made no functional code, database, Auth, Storage, provider, Vercel, or production changes; no visual QA and no remote push tests were performed. It updated continuity documentation only so the next chat starts from this current handoff rather than an older status snapshot.
+
+
+## Provider correction — 2026-11-27 (user-confirmed)
+**Do not use Twilio.** The user explicitly corrected the provider choice: Copiloto V7 is to use **ZapClaw** (spelled with “Claw”), not Twilio. This supersedes the older How This Works section 10 titled “TWILIO SMS” and any “Twilio first” plan. ZapClaw is not yet verified or connected in CRM; do not claim it works. The inspected CRM dispatch route still returns `501 phone_dispatch_not_connected`, and the outbox only queues. Research ZapClaw's official API/webhook/auth capabilities first, then implement a secure adapter and synthetic tests. Never request credentials in chat; rotate the previously exposed credential through the provider's official console and store secrets only in the authorized environment. No real SMS or number/account changes without explicit approval.
