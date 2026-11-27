@@ -1947,7 +1947,7 @@ export function HowItWorksScreen() {
         <P><B>Files changed:</B> <B>app/copiloto-v7-preview/page.tsx</B> (new) and this manual. The preview page was committed in the feature branch; the first JSX correction was committed separately. Verify the final branch commit before reporting build results.</P>
         <P><B>Not yet implemented:</B> live data persistence, authentication/authorization for this route, real Transport or Tax workflows, real client/document records, inbound communication connectors, OCR, notifications, opportunity parsing/scoring, audit event persistence, or provider integrations. Do not expose this preview to customers or enter real personal/tax data.</P>
         <P><B>Verification state:</B> source code has been written to the feature branch. TypeScript/Next.js build, Vercel Preview deployment, browser rendering, responsive-device QA and automated interaction tests are still pending until independently verified. No production deployment or database change was made.</P>
-        <P><B>Next step:</B> run a Preview deployment from this exact branch, inspect build logs and route availability, then perform visual and interaction QA. Record the deployment URL and exact READY/BUILDING/FAILED state here only after Vercel confirms it.</P>
+        <P><B>Next step:</B> run a Preview deployment from this exact branch, inspect build logs and route availability, then perform visual and interaction QA. Retry only after Vercel's 24-hour limit window and record the deployment URL and exact READY/BUILDING/FAILED state only after Vercel confirms it.</P>
       </Section>
 \n      <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
