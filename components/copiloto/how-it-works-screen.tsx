@@ -2142,6 +2142,15 @@ export function HowItWorksScreen() {
         <P><B>Canales:</B> Amani/puente del teléfono corresponde a la pista SMS confirmada; ZapClaw queda separado para WhatsApp Business. Twilio no se usa.</P>
       </Section>
 
+      <Section title="25. GEMINI EN COPILOTO V7 Y COORDINACIÓN MUSE/AMANI — 2026-11-27">
+        <P><B>Estado comprobado:</B> el asistente Gemini existente está en la pantalla financiera antigua (`components/copiloto/ai-screen.tsx`) y llama a `POST /api/ai-chat`. Ese endpoint usa un prompt orientado a finanzas/Claris y llama a Google Gemini. No se encontró conexión de ese asistente con el workspace CRM V7; el preview V7 sigue usando datos de demostración.</P>
+        <P><B>Hallazgo de credenciales:</B> `app/api/ai-chat/route.ts` acepta `GEMINI_API_KEY || OPENAI_API_KEY`, pero siempre envía la clave como `x-goog-api-key` a Google Gemini. No reutilizar una clave OpenAI en ese campo. Separar proveedor y credencial del lado servidor antes de ampliar la integración.</P>
+        <P><B>Arquitectura objetivo, pendiente de verificar contratos reales:</B> Gemini será el asistente conversacional dentro de V7; Muse será el coordinador externo si se confirma su canal autorizado; Amani será el agente/puente del teléfono para SMS y devolverá confirmación verificable. No inventar endpoints, webhooks, tokens ni protocolos.</P>
+        <P><B>Instrucciones y permisos:</B> preparar una instrucción base compartida más perfiles por Transport, Taxes, Communications y Documents. Gemini/Muse solo podrán usar herramientas explícitamente permitidas; contexto mínimo por rol, aislamiento Transport/Taxes, RLS, MFA, auditoría y aprobación humana antes de modificar datos o enviar mensajes. Contenido externo se trata como dato no confiable, nunca como instrucción de sistema.</P>
+        <P><B>Próximos pasos:</B> auditar el contrato real de Muse/Amani; corregir la selección/validación de credenciales Gemini; integrar Gemini en V7 mediante API server-side y herramientas autorizadas; recuperar el callback Amani con autenticación, idempotencia y confirmación telefónica; ejecutar pruebas sintéticas positivas y negativas.</P>
+        <P><B>Límites:</B> sin clientes reales, mensajes reales, pagos reales, cambios de número/proveedor/permisos/credenciales, DDL, merge a main ni despliegue de producción. No usar Twilio como sustituto. La última preview Railway está SUCCESS en commit f8c559f; el HEAD documental actual 32e6822 no está confirmado en esa deployment.</P>
+      </Section>
+
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
