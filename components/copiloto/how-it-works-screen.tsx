@@ -48,7 +48,7 @@ export function HowItWorksScreen() {
           <li>§21 PRIORITY LIST — what is open, in plain language, updated with every deployment</li>
           <li>§22 APPLICATION INVENTORY &amp; ARCHITECTURE AUDIT — complete source map, integrations, database state, verified gaps and agent handoff (2026-11-27)</li>
           <li>§23 CRM COPILOT V7 — TECHNICAL AUDIT &amp; VERIFIED GAPS (2026-11-27)</li>
-          <li>§24 COPILOTO V7 — PHASE 1 BUILD FOUNDATION &amp; ARCHITECTURE (2026-11-27)</li>
+          <li>§24 COPILOTO V7 — PHASE 1 BUILD FOUNDATION &amp; ARCHITECTURE (2026-11-27) · §25 V7 PREVIEW WORKSPACE — FIRST IMPLEMENTATION (2026-11-27)</li>
         </ul>
       </Section>
 
@@ -1938,7 +1938,18 @@ export function HowItWorksScreen() {
         <P><B>Agent handoff rule:</B> before changing code, read this section and the matching file in <B>docs/</B>. After each implementation step, update both records with commit SHA, changed paths, tests actually run, build/deployment state, unresolved risks and exact next task. Never convert a planned or mocked feature into a statement that it is live.</P>
       </Section>
 
-      <p className="mt-6 text-center text-[10px] text-neutral-600">
+
+      <Section title="25. COPILOTO V7 — FIRST RESPONSIVE PREVIEW WORKSPACE (2026-11-27)">
+        <P><B>Implementation:</B> a separate preview route has been added at <B>/copiloto-v7-preview</B> on branch <B>feat/copiloto-v7-phase1-foundation</B>. It does not replace the current root application route and does not alter existing production screens.</P>
+        <P><B>First working UI:</B> responsive desktop sidebar and mobile bottom navigation; Copiloto overview dashboard; Transport, Taxes, Work Opportunities, Communications, Clients and Documents workspace entry points; sample activity feed; sample opportunity review queue; create-new workspace chooser; searchable navigation; and local interactive follow-up marking.</P>
+        <P><B>Data and safety:</B> all dashboard figures, activity items and opportunity examples are synthetic placeholders. The preview is not connected to customer records, CRM Supabase, WhatsApp, SMS, Square, payment processing or any production provider. The opportunity action only marks a sample item for follow-up in local component state; it does not send a response or accept a job.</P>
+        <P><B>Visual direction:</B> initial professional workspace shell with deep navy navigation, light neutral work surface and restrained amber accent. This is a first implementation baseline for review, not the final approved brand system.</P>
+        <P><B>Files changed:</B> <B>app/copiloto-v7-preview/page.tsx</B> (new) and this manual. The preview page was committed in the feature branch; the first JSX correction was committed separately. Verify the final branch commit before reporting build results.</P>
+        <P><B>Not yet implemented:</B> live data persistence, authentication/authorization for this route, real Transport or Tax workflows, real client/document records, inbound communication connectors, OCR, notifications, opportunity parsing/scoring, audit event persistence, or provider integrations. Do not expose this preview to customers or enter real personal/tax data.</P>
+        <P><B>Verification state:</B> source code has been written to the feature branch. TypeScript/Next.js build, Vercel Preview deployment, browser rendering, responsive-device QA and automated interaction tests are still pending until independently verified. No production deployment or database change was made.</P>
+        <P><B>Next step:</B> run a Preview deployment from this exact branch, inspect build logs and route availability, then perform visual and interaction QA. Record the deployment URL and exact READY/BUILDING/FAILED state here only after Vercel confirms it.</P>
+      </Section>
+\n      <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
     </div>
