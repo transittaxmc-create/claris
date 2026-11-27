@@ -2125,11 +2125,12 @@ export function HowItWorksScreen() {
         <P><B>Regla de continuidad:</B> no pedir al usuario que repita decisiones ya documentadas. Antes de editar, indicar internamente el paso actual, criterio de aceptación y archivos exactos; después verificar diff/tests/deployment y actualizar FOCUS-AND-EXECUTION-BASELINE.md, CURRENT-STATE.md y How This Works. Si un trabajo no contribuye al paso actual o a un bloqueo concreto, posponerlo.</P>
       </Section>
 
-      <Section title="23. CORRECCIÓN DEL PROVEEDOR SMS — 2026-11-27">
-        <P><B>Decisión actual confirmada por Miguel:</B> Copiloto V7 NO va a usar Twilio. El proveedor correcto para investigar e integrar es <B>ZapClaw</B> (Claw, no Cloud). Esta decisión reemplaza cualquier instrucción anterior de “Twilio primero” que aparece en la sección histórica 10.</P>
-        <P><B>Estado real:</B> ZapClaw todavía no está verificado ni conectado al CRM. El endpoint CRM de despacho sigue devolviendo 501 phone_dispatch_not_connected; la ruta de envío solo crea una cola y no transmite SMS. No se ha confirmado ningún SMS entrante o saliente desde Copiloto.</P>
-        <P><B>Próximo trabajo:</B> verificar documentación oficial de ZapClaw, API disponible, autenticación, webhooks/callbacks, estados, límites y compatibilidad con el número/cuenta existente. Después implementar el adaptador seguro, persistencia de conversaciones, consentimiento/STOP/HELP, idempotencia, auditoría y aprobación humana. No crear variables TWILIO_* ni integrar Twilio.</P>
-        <P><B>Seguridad:</B> nunca pedir tokens en el chat. La credencial del proveedor previamente expuesta se considera comprometida y debe rotarse desde el panel oficial antes de usarla; guardarla solo como secreto del entorno autorizado. No enviar SMS reales ni cambiar números/cuentas sin autorización expresa. Usar pruebas sintéticas/sandbox primero.</P>
+      <Section title="23. CORRECCIÓN DE PROVEEDOR Y CANALES — 2026-11-27">
+        <P><B>Decisión confirmada por Miguel:</B> Copiloto V7 NO va a usar Twilio. El nombre correcto es <B>ZapClaw</B> (Claw, no Cloud).</P>
+        <P><B>Alcance verificado de ZapClaw:</B> la documentación oficial (zapclaw.app/docs.html, actualizada el 2026-11-12) lo describe como pasarela de <B>WhatsApp Business</B> sobre la API oficial de Meta, con envío REST, webhooks de entrada/estados y coexistencia. No documenta SMS tradicional. No llamar SMS a los mensajes enviados por ZapClaw.</P>
+        <P><B>Proveedor SMS:</B> queda pendiente de identificar y aprobar. No seleccionar Twilio ni otro proveedor por cuenta propia. Mantener SMS y WhatsApp como canales separados en backend, consentimientos, historial y estados.</P>
+        <P><B>Estado real:</B> ZapClaw no está conectado al CRM. El endpoint CRM de despacho devuelve 501 phone_dispatch_not_connected; la ruta de envío solo crea una cola y no transmite mensajes. No hay mensajes SMS ni WhatsApp confirmados desde Copiloto.</P>
+        <P><B>Próximo trabajo:</B> verificar la cuenta y configuración ZapClaw existente, API key, firma de webhook, eventos, coexistencia, límites e idempotencia; preparar integración de WhatsApp con pruebas sintéticas. Para SMS, esperar a identificar el servicio que Miguel utiliza. No pedir tokens en el chat ni enviar comunicaciones reales o cambiar números/cuentas sin autorización expresa.</P>
       </Section>
 
       <p className="mt-6 text-center text-[10px] text-neutral-600">
