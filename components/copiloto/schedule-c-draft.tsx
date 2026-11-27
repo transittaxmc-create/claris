@@ -235,7 +235,7 @@ export function ScheduleCDraft({
       {opts.method === "mileage" && (
         <div className="mb-2 grid grid-cols-2 gap-2">
           <label className="flex flex-col gap-1">
-            <span className="text-[9px] font-bold text-neutral-500">MILLAS NEGOCIO ENE–JUN 2026 ($0.725)</span>
+            <span className="text-[9px] font-bold text-neutral-500">BUSINESS MILES JAN–JUN 2026 ($0.725)</span>
             <input
               type="number"
               min={0}
