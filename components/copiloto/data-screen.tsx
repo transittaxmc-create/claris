@@ -667,7 +667,7 @@ export function DataScreen({
                   onClick={onDisconnectSync}
                   className="flex items-center justify-center gap-1.5 rounded-xl border border-neutral-700 px-3 py-2.5 text-[11px] font-bold text-neutral-300 hover:text-white"
                 >
-                  <CloudOff className="size-3.5" /> DESCONECTAR
+                  <CloudOff className="size-3.5" /> DISCONNECT
                 </button>
               </div>
             </div>
