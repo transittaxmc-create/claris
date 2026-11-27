@@ -89,7 +89,7 @@ function ReconciliationPanel({ summary, groups }: { summary: ReconSummary; group
       </div>
       <div className="grid grid-cols-3 gap-2">
         <div className="flex flex-col gap-0.5">
-          <span className="text-[9px] font-bold text-neutral-500">ESPERADO</span>
+          <span className="text-[9px] font-bold text-neutral-500">EXPECTED</span>
           <span className="text-sm font-extrabold text-neutral-200">{money(summary.expected)}</span>
         </div>
         <div className="flex flex-col gap-0.5">
