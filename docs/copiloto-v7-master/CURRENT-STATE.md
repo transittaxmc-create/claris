@@ -159,3 +159,13 @@
 - Esta actualización es documentación solamente: no cambia código funcional, base de datos, Railway, Vercel, producción ni servicios externos.
 - Próximo foco: verificar HEAD/deployment vigente y cerrar QA responsive; después avanzar al primer flujo persistente Clients + Transport + Communications conforme al documento maestro. No repetir auditorías ya documentadas sin evidencia nueva.
 - Pendiente de sincronización: reflejar esta continuidad en la sección correspondiente de `components/copiloto/how-it-works-screen.tsx` en el siguiente cambio documental coordinado.
+
+
+## 11. Corte de continuidad verificado — 2026-11-27 (sesión de handoff)
+- Se releyó el índice y los documentos maestros existentes. No se creó otro proyecto ni otra carpeta maestra; el punto de entrada sigue siendo `docs/copiloto-v7-master/README.md`, que dirige primero a `FOCUS-AND-EXECUTION-BASELINE.md`.
+- Railway review fue consultado nuevamente: proyecto `copiloto-v7-temporal`, entorno `review`, servicio `copiloto-v7-preview`; deployment vigente `3accbe2e-e61c-410c-91aa-be114cf82f18`, estado **SUCCESS**, commit desplegado `f8c559ff59ba09038bdb64d966e67d42e83a61a4`, región `iad`, 1 réplica, sin cambios staged. La URL de deployment devuelta por Railway fue null; usar el preview conocido solo después de comprobar HTTP/rutas. Este deployment no incluye commits documentales posteriores si la rama HEAD está más adelante.
+- El último commit de continuidad previamente registrado es `2ab7e662c716417e49c67d7e64ff7577e911d91b` (actualización documental de CURRENT-STATE). El deployment SUCCESS está en `f8c559f...`; por tanto existe desfase entre código desplegado y documentación posterior. Reconsultar HEAD de la rama antes de cualquier cambio o afirmación sobre el commit actual.
+- No se hizo QA visual real en navegador/escritorio/iPhone en esta sesión; no declarar esa etapa aprobada. No se cambió código funcional, base de datos, Auth, Storage, integraciones, Vercel ni producción.
+- Próxima acción: cerrar QA visual real de las rutas Preview y Go en escritorio/iPhone; luego continuar con recuperación de procedencia SQL de `20261126033314` y `20261126035245` y diseño MFA/memberships/RLS/Storage. No ejecutar DDL mientras falte el SQL/procedencia. Después entregar Clients + Transport + Communications persistente, con datos sintéticos.
+- Restricciones intactas: feature branch solamente; no merge a `main`, no Vercel production, no datos reales, no comunicaciones/pagos reales; no tocar Supabase financiero/Plaid `zrcnpmipdhpjdjkfrrgt`.
+- Esta sesión solo revisó y consolidó continuidad; no se hicieron pruebas push remotas. Push registration/delivery remota sigue **no verificada**.
