@@ -10,10 +10,10 @@ import { money } from "./types"
 import type { ReconReport, ReconFinding } from "./reconciliation-check"
 
 const TYPE_LABEL: Record<ReconFinding["type"], string> = {
-  diferencia: "Diferencia",
+  diferencia: "Difference",
   "sin-clasificar": "Unclassified",
   "pendiente-banco": "Pending at bank",
-  duplicado: "Duplicado",
+  duplicado: "Duplicate",
   "transfer-sin-pareja": "Unmatched transfer",
 }
 
@@ -60,7 +60,7 @@ export function ReconciliationSection(props: {
           className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#262633] bg-[#16161f] px-2.5 py-1.5 text-[10px] font-bold text-[#f2f3f7] active:scale-95 disabled:opacity-50"
         >
           <RefreshCw className={cn("size-3", loading && "animate-spin")} />
-          {loading ? "Verificando…" : "Verify now"}
+          {loading ? "Verifying…" : "Verify now"}
         </button>
       </div>
 
@@ -97,7 +97,7 @@ export function ReconciliationSection(props: {
                 onClick={props.onApproveAll}
                 className="rounded-lg bg-[#2fbf71] px-2.5 py-1 text-[10px] font-black text-[#06281a] active:scale-95"
               >
-                Aprobar todo
+                Approve all
               </button>
             )}
           </div>
@@ -107,7 +107,7 @@ export function ReconciliationSection(props: {
 
           {findings.length === 0 ? (
             <p className="rounded-[14px] border border-[rgba(47,191,113,.5)] bg-[#16161f] p-3 text-[12px] font-bold text-[#2fbf71]">
-              ✅ Todo cuadra. No findings today.
+              ✅ Everything matches. No findings today.
             </p>
           ) : (
             <div className="space-y-2">
