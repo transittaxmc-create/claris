@@ -9,7 +9,8 @@
     "build:cloudflare": "opennextjs-cloudflare build",
     "preview:cloudflare": "wrangler dev",
     "deploy:cloudflare": "opennextjs-cloudflare deploy",
-    "start": "next start"
+    "start": "next start",
+    "test:crm-push": "node --experimental-strip-types --test tests/crm-push-validation.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
