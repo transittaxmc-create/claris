@@ -2125,6 +2125,13 @@ export function HowItWorksScreen() {
         <P><B>Regla de continuidad:</B> no pedir al usuario que repita decisiones ya documentadas. Antes de editar, indicar internamente el paso actual, criterio de aceptación y archivos exactos; después verificar diff/tests/deployment y actualizar FOCUS-AND-EXECUTION-BASELINE.md, CURRENT-STATE.md y How This Works. Si un trabajo no contribuye al paso actual o a un bloqueo concreto, posponerlo.</P>
       </Section>
 
+      <Section title="23. CORRECCIÓN DEL PROVEEDOR SMS — 2026-11-27">
+        <P><B>Decisión actual confirmada por Miguel:</B> Copiloto V7 NO va a usar Twilio. El proveedor correcto para investigar e integrar es <B>ZapClaw</B> (Claw, no Cloud). Esta decisión reemplaza cualquier instrucción anterior de “Twilio primero” que aparece en la sección histórica 10.</P>
+        <P><B>Estado real:</B> ZapClaw todavía no está verificado ni conectado al CRM. El endpoint CRM de despacho sigue devolviendo 501 phone_dispatch_not_connected; la ruta de envío solo crea una cola y no transmite SMS. No se ha confirmado ningún SMS entrante o saliente desde Copiloto.</P>
+        <P><B>Próximo trabajo:</B> verificar documentación oficial de ZapClaw, API disponible, autenticación, webhooks/callbacks, estados, límites y compatibilidad con el número/cuenta existente. Después implementar el adaptador seguro, persistencia de conversaciones, consentimiento/STOP/HELP, idempotencia, auditoría y aprobación humana. No crear variables TWILIO_* ni integrar Twilio.</P>
+        <P><B>Seguridad:</B> nunca pedir tokens en el chat. La credencial del proveedor previamente expuesta se considera comprometida y debe rotarse desde el panel oficial antes de usarla; guardarla solo como secreto del entorno autorizado. No enviar SMS reales ni cambiar números/cuentas sin autorización expresa. Usar pruebas sintéticas/sandbox primero.</P>
+      </Section>
+
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
