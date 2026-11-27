@@ -30,7 +30,7 @@
 - Overview, Communications, Clients y Documents se presentan dentro de la page preview.
 - Interacciones nuevas son React state local; no persisten ni llaman CRM DB/proveedores.
 - Ruta raíz app/page.tsx continúa en app existente CopilotoApp; no sustituida.
-- Navegación original mantiene CRM y Tax 2026 existentes; no se ha instalado el nuevo preview como CRM principal ni añadido el icono lazy del CRM nuevo.
+- Se añadió CRM como quinto acceso directo de la navegación inferior (sin quitar TODAY, EARNINGS, MONEY, REPORTS ni MORE) y se retiró CRM de la lista duplicada de MORE. CRMScreen ahora usa next/dynamic con ssr:false y estado Loading CRM; se carga al seleccionar CRM. Commits 0e0104cba9bf606220f5d16ed62ff77125467d27 y cf1caace273e2ad26dd13766a53631af3330d2c6. La validación de build/tests de este cambio está en curso; todavía no se ha verificado visualmente el ancho de los seis accesos en iPhone.
 
 ## 4. CRM existente y API
 - components/copiloto/crm-screen.tsx y lib/crm/crm-cloud.ts representan CRM existente con clientes, reservas, mensajes/fotos y mapeos.
