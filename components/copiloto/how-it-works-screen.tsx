@@ -1958,7 +1958,18 @@ export function HowItWorksScreen() {
         <P><B>Files added/changed in this step:</B> <B>app/copiloto-v7-preview/page.tsx</B>; <B>.github/workflows/copiloto-v7-preview-build.yml</B>; this manual and the V7 preview workspace document. Feature branch only.</P>
         <P><B>Next:</B> verify the CI workflow actually starts and capture its real job result; resolve compile/test errors if any; then retry Vercel Preview after quota reset and complete browser/mobile QA. Only after this shell is validated should persistent, authenticated backend workflows be implemented.</P>
       </Section>
-\n      <p className="mt-6 text-center text-[10px] text-neutral-600">
+\n
+      <Section title="27. COPILOTO V7 — PHASE 1 READ-ONLY TECHNICAL AUDIT (2026-11-27)">
+        <P><B>Authorization:</B> the user explicitly authorized progression through the ten readiness workstreams, with the release boundary remaining “ready for Vercel publication”; production publication is not authorized by this instruction.</P>
+        <P><B>Supabase project checked:</B> CRM project <B>mimgwleghecseoymgdug</B>, region us-east-2, status ACTIVE_HEALTHY, PostgreSQL 17.12. The separate legacy finance project remains out of scope.</P>
+        <P><B>Database inventory:</B> public schema currently exposes crm_clients (7 rows), crm_reservations (2 rows), crm_messages (1 row), and finance_sync_doc (1 row); RLS is enabled on all four tables. Existing CRM tables are not yet a complete schema for the planned Transport/Taxes/Communications/Work Opportunities/Square architecture.</P>
+        <P><B>Migration history:</B> Supabase currently reports three applied migrations: 20261126024701 crm_auth_clients_reservations_rls; 20261126033314 crm_reservations_owner_fk_index; 20261126035245 crm_database_hardening_airport_validation. Prior repository-vs-database migration drift remains a blocking reconciliation item. No DDL or migration was applied during this audit.</P>
+        <P><B>Security advisor:</B> one warning — leaked-password protection is disabled. Performance advisor reports two unindexed foreign keys on crm_messages, four RLS initplan warnings on finance_sync_doc, two unused indexes, and one duplicate index pair on crm_clients. Health advisor returned no findings. These are findings to assess and remediate through reviewed migrations, not permission to make unreviewed production changes.</P>
+        <P><B>Safety boundary:</B> audit was read-only. No production records were modified, no real messages or payments were sent, no external connector was activated, and no deployment was made.</P>
+        <P><B>Next work:</B> complete source/migration reconciliation, inspect current auth and RLS policies plus private storage configuration, map all existing routes/screens before redesign, define module ownership and cross-module links, and produce a reviewed target schema/permission matrix before any database writes.</P>
+      </Section>
+
+      <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
     </div>
