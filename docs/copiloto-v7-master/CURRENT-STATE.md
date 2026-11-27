@@ -247,6 +247,6 @@
 - CRM Supabase schema inspected read-only: public tables are crm_clients, crm_reservations, crm_messages and finance_sync_doc; no agent identity/task/event tables exist. No SQL/DDL/migration was run.
 - Event store and agent identities are not active. The write route returns 503 until schema and auth model are approved and implemented.
 - SMS/Amani and WhatsApp/ZapClaw remain separate, unverified channels. No messages were sent.
-- Existing Railway review deployment before this change: SUCCESS on service copiloto-v7-preview, commit f8c559ff59ba09038bdb64d966e67d42e83a61a4. New commit deployment pending.
-- Synthetic tests added for strict identity-field rejection, checkpoint derivation, independent channel state and disabled-store behavior. Execution/build verification pending.
+- Existing Railway review deployment before this change: SUCCESS on service copiloto-v7-preview, commit f8c559ff59ba09038bdb64d966e67d42e83a61a4. Gateway code commit c047840932e532a59dae500533cbb27bcc5ba195 deployed successfully to Railway review (deployment 5210f13e-8b62-44e7-8cf6-ffebbdcfd37f).
+- Verified in Railway build commit c047840932e532a59dae500533cbb27bcc5ba195: existing CRM push tests 4/4 passed; Agent Gateway tests 6/6 passed; Next.js production build compiled; Railway review deployment SUCCESS; GET /api/agent-gateway/continuity returned HTTP 200 and the read-only document package. The Next.js build configuration skips TypeScript type validation, so a separate tsc check remains pending.
 - No production deployment, main merge, environment-variable changes, database changes or external provider actions.

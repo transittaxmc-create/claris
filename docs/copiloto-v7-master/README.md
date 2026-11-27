@@ -5,7 +5,9 @@
 - [Plan maestro y alcance](./MASTER-PLAN.md)
 - [Estado técnico verificado](./CURRENT-STATE.md)
 - [Instrucciones para el siguiente agente](./AGENT-HANDOFF.md)
-- [Registro de decisiones y requisitos del usuario](./DECISION-LOG.md)\n- [Agent Gateway y Registro Maestro de Continuidad](./AGENT-GATEWAY.md)\n- [Snapshot versionado del Registro Maestro](./CONTINUITY-REGISTER.json)
+- [Registro de decisiones y requisitos del usuario](./DECISION-LOG.md)
+- [Agent Gateway y Registro Maestro de Continuidad](./AGENT-GATEWAY.md)
+- [Snapshot versionado del Registro Maestro](./CONTINUITY-REGISTER.json)
 
 ## Regla de prioridad documental
 1. Esta carpeta contiene la visión integrada, estado consolidado y orden de trabajo.

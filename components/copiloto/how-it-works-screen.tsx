@@ -2177,9 +2177,10 @@ export function HowItWorksScreen() {
       <Section title="34. AGENT GATEWAY — master continuity and coordinated agents (2026-11-27)">
         <P><B>Owner direction:</B> prioritize the Gateway so a fresh ChatGPT or Muse conversation can recover the same confirmed project state without relying on chat memory.</P>
         <P><B>Canonical contract:</B> <B>docs/copiloto-v7-master/AGENT-GATEWAY.md</B>. The versioned seed snapshot is <B>CONTINUITY-REGISTER.json</B>; Issues remain tracking records, not the sole source of truth.</P>
-        <P><B>Implemented in this first slice:</B> typed event/task/channel contracts, strict validation that rejects caller-supplied actor/owner/timestamps, checkpoint derivation from server-stamped events, a public read-only continuity endpoint, and a write endpoint that fails closed.</P>
+        <P><B>Implemented and verified in review:</B> typed event/task/channel contracts, strict validation that rejects caller-supplied actor/owner/timestamps, checkpoint derivation from server-stamped events, public read-only continuity endpoint (HTTP 200), and write endpoint that fails closed.</P>
         <P><B>Not yet active:</B> dedicated agent Auth identities/scopes, durable event store, task claim/lease/heartbeat, human approval records and live agent-to-agent communication. The current database has no agent tables; no SQL or migration was run. The seed JSON is not a dynamic event log.</P>
         <P><B>Channel separation:</B> SMS/Amani and WhatsApp/ZapClaw have independent state slots. Neither is marked connected or delivered without real end-to-end evidence.</P>
+        <P><B>Verification:</B> existing CRM push tests 4/4 passed; Agent Gateway synthetic tests 6/6 passed; Next.js production build compiled and Railway review deployment reached SUCCESS. Type validation is skipped by the existing Next.js build configuration and remains a separate verification item.</P>
         <P><B>Next action:</B> review/approve the consolidated schema proposal in AGENT-GATEWAY.md. Only then prepare a development-only migration and synthetic isolation/idempotency/lease tests. No production deployment, real client data or real messages.</P>
       </Section>
       <p className="mt-6 text-center text-[10px] text-neutral-600">

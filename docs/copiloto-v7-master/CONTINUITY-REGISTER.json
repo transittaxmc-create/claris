@@ -1,16 +1,16 @@
 {
   "schema_version": "0.1.0",
   "project": "copiloto-v7",
-  "updated_at": "2026-11-27T17:18:00-05:00",
+  "updated_at": "2026-11-27T17:28:00-05:00",
   "source_branch": "feat/copiloto-v7-phase1-foundation",
-  "source_commit": "5c1eb8cfc2b55c82cf4b63bb85faefea0ed97b1b",
+  "source_commit": "c047840932e532a59dae500533cbb27bcc5ba195",
   "environment": {
     "development": "in progress",
-    "railway_review": "existing preview; gateway build not yet deployed",
+    "railway_review": "SUCCESS on commit c047840932e532a59dae500533cbb27bcc5ba195; GET /api/agent-gateway/continuity returned HTTP 200",
     "production": "not authorized"
   },
   "confirmed_state": {
-    "gateway": "read-only continuity endpoint scaffolded; event write path intentionally disabled",
+    "gateway": "read-only continuity endpoint deployed to review and verified HTTP 200; event write path intentionally disabled",
     "event_store": "not configured; schema proposal pending approval",
     "agent_identities": "not configured",
     "task_queue": "not configured",
@@ -61,8 +61,20 @@
       "blocker": "Agent identities and durable event store not active"
     }
   ],
-  "next_authorized_action": "Review the proposed schema in AGENT-GATEWAY.md; do not run DDL or production deployment.",
+  "next_authorized_action": "Review and approve/correct the consolidated schema in AGENT-GATEWAY.md; do not run DDL or production deployment.",
   "checkpoint_rule": "Future agent checkpoints must be derived from persisted server-stamped events; this seed snapshot is not a dynamic checkpoint.",
   "storage_mode": "repository-seed-only",
-  "event_log": []
+  "event_log": [],
+  "tests": {
+    "crm_push": {
+      "passed": 4,
+      "failed": 0
+    },
+    "agent_gateway": {
+      "passed": 6,
+      "failed": 0
+    },
+    "next_build": "compiled successfully",
+    "typescript": "Next.js build skipped type validation; standalone tsc check pending"
+  }
 }

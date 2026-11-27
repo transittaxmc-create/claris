@@ -214,3 +214,13 @@ Use existing GitHub issue #85 as the canonical recovery task: https://github.com
 Read docs/copiloto-v7-master/AGENT-GATEWAY.md first. First code slice adds contracts, validation, disabled event-store adapter, public read-only continuity route and fail-closed event route. CONTINUITY-REGISTER.json is versioned but is not a dynamic checkpoint/event log. CRM Supabase schema was inspected read-only; no agent tables exist and no DDL/migration was run.
 
 Next exact action: review and explicitly approve/correct the proposed consolidated data model in AGENT-GATEWAY.md. Then create a development-only migration and dedicated Auth identities/scopes, followed by synthetic tests for isolation, token revocation, atomic claim/lease, heartbeat, idempotency, append-only events and fresh-session recovery. Do not merge main, deploy production, change environment secrets or send real communications. Keep SMS/Amani and WhatsApp/ZapClaw as separate state machines.
+
+
+## Gateway verification checkpoint — 2026-11-27
+- Code/test commit: c047840932e532a59dae500533cbb27bcc5ba195.
+- Railway review deployment: SUCCESS, deployment 5210f13e-8b62-44e7-8cf6-ffebbdcfd37f.
+- Build ran existing CRM push tests: 4 passed / 0 failed; Agent Gateway tests: 6 passed / 0 failed; Next.js production build compiled successfully.
+- Next.js build configuration reports "Skipping validation of types"; run a separate TypeScript check before considering the code fully verified.
+- Live GET https://copiloto-v7-preview-review.up.railway.app/api/agent-gateway/continuity returned HTTP 200 and the read-only versioned document package.
+- POST event storage remains intentionally disabled; event store and dedicated agent identities are not configured.
+- Next: review/approve the schema proposal in AGENT-GATEWAY.md. No DDL/migrations or production release.
