@@ -151,3 +151,11 @@
 - Deployment Railway observado antes de estos commits documentales: 3accbe2e-e61c-410c-91aa-be114cf82f18, commit f8c559ff..., BUILDING. No inferir que el nuevo HEAD está desplegado. Volver a consultar estado, SHA, logs y URL.
 - Push registration remoto: no verificada. Tests locales de validación push: 4/4; no prueban entrega real ni app cerrada.
 - No hubo autorización para merge a main, Vercel production, uso de datos reales, mensajes reales o pagos reales. Supabase financiero/Plaid zrcnpmipdhpjdjkfrrgt permanece fuera de alcance.
+
+
+## 10. Continuidad del plan maestro — 2026-11-27 14:10 ET
+- Se recuperó contexto de conversaciones del 2026-11-26 y 2026-11-27 y se amplió el documento rector existente `docs/copiloto-v7-master/FOCUS-AND-EXECUTION-BASELINE.md`, sección 10 (decisiones de producto, UX desktop/móvil, Copiloto Go, flujo Clients+Transport+Communications, mensajería, Square Terminal, restricciones y orden de ejecución).
+- Commit de actualización del documento maestro: `838b696c319f6b5d0367e46419c49ae3233b2f73` en `feat/copiloto-v7-phase1-foundation`.
+- Esta actualización es documentación solamente: no cambia código funcional, base de datos, Railway, Vercel, producción ni servicios externos.
+- Próximo foco: verificar HEAD/deployment vigente y cerrar QA responsive; después avanzar al primer flujo persistente Clients + Transport + Communications conforme al documento maestro. No repetir auditorías ya documentadas sin evidencia nueva.
+- Pendiente de sincronización: reflejar esta continuidad en la sección correspondiente de `components/copiloto/how-it-works-screen.tsx` en el siguiente cambio documental coordinado.
