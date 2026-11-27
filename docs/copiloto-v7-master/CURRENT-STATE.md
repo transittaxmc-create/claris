@@ -101,3 +101,9 @@
 - Railway review no tiene NEXT_PUBLIC_CRM_SUPABASE_URL ni NEXT_PUBLIC_CRM_SUPABASE_PUBLISHABLE_KEY (solo variables internas Railway). Prueba HTTP GET /api/crm/state devuelve 503 crm_cloud_not_configured. POST /api/crm/send es solo outbox queued, no SMS; /api/crm/send/dispatch permanece 501.
 - Resultado: demo visual/interacciones locales están presentes; vertical end-to-end persistente NO CERRADO. Bloqueado por etapa 3 (MFA/memberships/unidades de negocio) y configuración segura de Auth/entorno; no se conectó Railway a DB con MFA pendiente ni se cargaron clientes reales.
 - Requisitos para cerrar: schema multi-unit revisado, test A/B read/write/delete, enrolamiento+enforcement MFA, variables public URL/key en review, test de login con cuenta sintética autorizada, CRUD de cliente/reserva/mensaje verificado contra DB, persistencia tras reload y no cross-unit leakage. SMS/WhatsApp envío real pertenece a etapa 8 y sigue desactivado.
+
+## 12. Hito 5 — Documents vault (2026-11-27)
+- UI preview muestra un registro metadata-only con datos de ejemplo y estado local; no hay carga de archivos en /copiloto-v7-preview.
+- Único bucket existente: crm-client-photos, privado, owner-folder policies; file_size_limit y allowed_mime_types NULL. Código crm-photos.ts solo gestiona fotos JPEG de cliente/reserva y signed URL temporal.
+- No existe bucket separado para documentos fiscales/civiles, tabla de documentos/versiones, hashes, OCR pipeline, retención, auditoría de descargas ni flujo de recuperación. No hay OCR/e-file integrado.
+- Resultado: etapa 5 NO CERRADA. Requiere etapa 3 (MFA/memberships), reconciliación de esquema, bucket privado independiente, MIME/tamaño allowlist, clasificación temporal OCR vs original final, versioning/hash, audit trail, retención y test de restore en segundo dispositivo. No se subieron ni modificaron archivos.
