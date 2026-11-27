@@ -9,7 +9,7 @@ export async function proxyAgentGateway(request: Request, forcedOperation?: stri
   if (!endpoint) return json({ ok: false, error: "agent_gateway_upstream_not_configured" }, 503)
 
   const key = request.headers.get("x-agent-key") ??
-    request.headers.get("authorization")?.replace(/^Bearer\\s+/i, "") ?? ""
+    request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? ""
   if (!key || key.length < 40 || key.length > 200) {
     return json({ ok: false, error: "agent_authentication_required" }, 401)
   }
