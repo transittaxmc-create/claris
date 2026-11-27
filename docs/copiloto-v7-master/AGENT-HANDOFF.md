@@ -100,3 +100,34 @@ Registrar fecha, branch/commit, archivos, cambios, tests, DB/migration impact, s
 
 ## Reporte al usuario
 En español simple y breve: hecho/comprobado, pendiente/bloqueado, riesgo/permiso, siguiente paso. No pedir repetir contexto ni hacer cuestionarios. Trabajar secuencialmente.
+
+
+## Handoff update — end of 2026-11-27 review session
+
+### Stage ledger (do not overstate completion)
+| # | Stage | Status | Evidence / blocker |
+|---|---|---|---|
+| 1 | Railway deploy + route check | DEPLOY/HTTP PASS; visual QA pending | Deployment 6a948e27 SUCCESS, commit b0aa463; `/` and `/copiloto-v7-preview` HTTP 200. Browser screenshot/interactions not completed. |
+| 2 | Migration reconciliation | READ-ONLY AUDIT COMPLETE; historical gap open | Two applied ledger versions have no source SQL in branch; effects exist. Do not rerun or fabricate SQL. |
+| 3 | Auth/MFA/memberships/RLS | BLOCKED | A/B SELECT isolation passes in four tables. 0 MFA factors observed; leaked-password protection off; no business-unit memberships; no FORCE RLS; no negative write tests. |
+| 4 | Clients + Transport + Communications | BLOCKED | Preview is local React state; existing CRMScreen has cloud sync code but Railway env missing CRM URL/publishable key; API returns 503. |
+| 5 | Documents vault | BLOCKED | Only private photo bucket; no separate vault, MIME/size limits, OCR, versions, hashes, retention or recovery. |
+| 6 | Taxes | BLOCKED | UI seed/local state only; no tax tables, secure vault, tax software or e-file. |
+| 7 | Work Opportunities | BLOCKED | Seed/local state only; no ingestion. Personal WhatsApp groups are not available through official API; no scraping. |
+| 8 | SMS/WhatsApp/email/push | BLOCKED | SMS dispatch 501; outbox 503; push disabled; WhatsApp/email not connected; no remote delivery tests. |
+| 9 | Square Sandbox | BLOCKED | Local demo only; no Square credentials, OAuth, API or webhooks. |
+
+### Required resume order
+1. Complete stage 1 visual QA using a real browser on desktop and iPhone; verify six bottom-nav items fit and CRM opens/loads correctly.
+2. Recover exact source SQL/provenance for ledger versions 20261126033314 and 20261126035245. Never reconstruct from effects and never edit migration ledger manually.
+3. Design and test MFA enrollment/enforcement, leaked-password protection, business-unit membership schema, owner + unit authorization, storage policies, session/device revocation and negative A/B read/write/delete tests. Do not connect real clients until all pass.
+4. Only after stage 3 PASS, connect preview to CRM Supabase using publishable URL/key; use a synthetic test account approved for preview; verify Clients/Transport/Communications create/read/update/delete, reload persistence and cross-unit isolation.
+5. Build the separate private document vault; then Taxes; then Work Opportunities intake/evaluation; then official SMS/WhatsApp/email/push integrations; then Square Sandbox.
+6. Update CURRENT-STATE.md and How This Works after every stage. Re-fetch both to verify. Do not merge main or deploy production without explicit approval.
+
+### Verified runtime details
+- Railway preview URL: https://copiloto-v7-preview-review.up.railway.app
+- Deployment: 6a948e27-3a11-4f60-97ca-918914c55056 / SHA b0aa463601a55fd3c5d12a11b28a9eeb63a1f59e / SUCCESS.
+- `/api/crm/state` returns 503 `crm_cloud_not_configured` because CRM Supabase env vars are absent in Railway review.
+- `/api/crm/send/dispatch` returns 501 `phone_dispatch_not_connected`; `/api/crm/push/config` returns `enabled:false`.
+- Build PASS and `test:crm-push` PASS 4/4; TypeScript remains FAIL with 66 baseline diagnostics also present on main.
