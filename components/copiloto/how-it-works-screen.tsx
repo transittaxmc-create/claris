@@ -2193,6 +2193,12 @@ export function HowItWorksScreen() {
         <P><B>Cold-start recovery:</B> call the authenticated continuity operation at the beginning of each new agent session. Configure the agent's individual key and tool/connector using AGENT-GATEWAY-API.md and AGENT-RECOVERY-PROMPT.md. A new ChatGPT conversation without that connector/tool cannot silently access private records.</P>
         <P><B>Channel boundary:</B> SMS/Amani and WhatsApp/ZapClaw are separate records and remain not_connected/unknown. No external send or delivery claim is enabled.</P>
       </Section>
+      <Section title="36. AGENT GATEWAY — Railway Review verification checkpoint (2026-11-27)">
+        <P><B>Deployment:</B> Railway Review SUCCESS, deployment 75cdda75-8cca-4d65-94bf-9447ac4967a8, source commit 6b40691ded792c16a5f4320ceedff368aae0e62d, branch feat/copiloto-v7-phase1-foundation. No pending staged changes. This is Review, not production.</P>
+        <P><B>HTTP smoke test:</B> GET /api/agent-gateway/recovery without a key returns HTTP 401 agent_authentication_required. GET /api/agent-gateway/bridge?op=status without a key returns the same HTTP 401. Both routes are deployed and reject anonymous access. This does not prove a valid key works.</P>
+        <P><B>Still open:</B> authenticated HTTP continuity/status from ChatGPT and Muse independently; real cross-agent message → inbox → ACK; cold-start recovery from a fresh ChatGPT conversation; independent TypeScript check. Never expose machine keys in source, chat, URLs or logs.</P>
+        <P><B>Channel and production boundary:</B> SMS/Amani and WhatsApp/ZapClaw remain independent and not_connected/unknown. No real messages, customer data, payments, production deploy or merge to main.</P>
+      </Section>
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
