@@ -12,7 +12,7 @@
 - Preview: https://copiloto-v7-preview-review.up.railway.app, target port 8080.
 - Runtime Next.js 16.3.3 Ready en puerto 8080.
 - Curl: / y /copiloto-v7-preview HTTP 200. HTML incluye Communications, Transport, Taxes, Work Opportunities, Square y meta viewport móvil.
-- No se completó screenshot/browser visual QA. Playwright Chromium falló por incompatibilidad del instalador con Ubuntu 26.04.
+- No se completó screenshot/browser visual QA. Playwright Chromium falló por incompatibilidad del instalador con Ubuntu 26.04. El cambio reciente de navegación aún no se ha desplegado a Railway; el deployment activo sigue en el commit anterior.
 - No merge a main, no Vercel production, no cambios productivos.
 - Autorización Railway↔GitHub resuelta; servicio sigue rama feature.
 
@@ -30,7 +30,7 @@
 - Overview, Communications, Clients y Documents se presentan dentro de la page preview.
 - Interacciones nuevas son React state local; no persisten ni llaman CRM DB/proveedores.
 - Ruta raíz app/page.tsx continúa en app existente CopilotoApp; no sustituida.
-- Se añadió CRM como quinto acceso directo de la navegación inferior (sin quitar TODAY, EARNINGS, MONEY, REPORTS ni MORE) y se retiró CRM de la lista duplicada de MORE. CRMScreen ahora usa next/dynamic con ssr:false y estado Loading CRM; se carga al seleccionar CRM. Commits 0e0104cba9bf606220f5d16ed62ff77125467d27 y cf1caace273e2ad26dd13766a53631af3330d2c6. La validación de build/tests de este cambio está en curso; todavía no se ha verificado visualmente el ancho de los seis accesos en iPhone.
+- Se añadió CRM como quinto acceso directo de la navegación inferior (sin quitar TODAY, EARNINGS, MONEY, REPORTS ni MORE) y se retiró CRM de la lista duplicada de MORE. CRMScreen usa next/dynamic con ssr:false y estado Loading CRM; carga al seleccionar CRM. Commits 0e0104cba9bf606220f5d16ed62ff77125467d27 y cf1caace273e2ad26dd13766a53631af3330d2c6. En el clon limpio actualizado: pnpm run test:crm-push PASS 4/4 y pnpm run build PASS (Next.js 16.3.3, compilación y generación 10/10). pnpm exec tsc --noEmit sigue con 66 errores; mismo conjunto de problemas que main, con posiciones de línea desplazadas por el nuevo código, sin nuevos diagnósticos/categorías. Ancho visual de seis accesos en iPhone pendiente.
 
 ## 4. CRM existente y API
 - components/copiloto/crm-screen.tsx y lib/crm/crm-cloud.ts representan CRM existente con clientes, reservas, mensajes/fotos y mapeos.
