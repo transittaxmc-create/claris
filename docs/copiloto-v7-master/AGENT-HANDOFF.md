@@ -135,3 +135,32 @@ En español simple y breve: hecho/comprobado, pendiente/bloqueado, riesgo/permis
 
 ## Mandatory focus reset — 2026-11-27
 Before any work, read docs/copiloto-v7-master/FOCUS-AND-EXECUTION-BASELINE.md. It is the current execution contract and supersedes older suggested next-step lists where they conflict. Do not restart inventory or repeat completed audits without new evidence. First close the current Railway deployment and desktop/iPhone preview QA; then resolve migration provenance and security gates; then deliver Clients + Transport + Communications end-to-end. Keep work on the feature branch, synthetic data only, no legacy Finance/Plaid changes, no main merge or production deployment. Report exact evidence and update How This Works + CURRENT-STATE after each milestone.
+
+
+## Latest verified handoff — 2026-11-27
+
+**Read the current master first; do not rely on this file's older snapshots.** Start at `docs/copiloto-v7-master/README.md`, then read `FOCUS-AND-EXECUTION-BASELINE.md`, `CURRENT-STATE.md`, this handoff, and `components/copiloto/how-it-works-screen.tsx`. The repository files and live tool results outrank chat summaries.
+
+### Latest known Railway state
+- Project `copiloto-v7-temporal`; environment `review`; service `copiloto-v7-preview`; branch `feat/copiloto-v7-phase1-foundation`.
+- Latest deployment confirmed in this session: `3accbe2e-e61c-410c-91aa-be114cf82f18` = **SUCCESS**, deployed SHA `f8c559ff59ba09038bdb64d966e67d42e83a61a4`, region `iad`. Railway returned no deployment URL. Confirm current branch HEAD and deployment SHA again before presenting any preview link.
+- No browser-based desktop/iPhone visual QA was completed in this session. Do not mark it PASS.
+
+### Exact next work
+1. Close visual QA for `/copiloto-v7-preview` and `/copiloto-v7-go` on desktop and a real iPhone: navigation fit, route loading, forms, overflow, console, reload and key interactions. Capture evidence; if browser/device access is unavailable, state the blocker and do not claim success.
+2. Recover the exact original SQL/provenance for applied migration versions `20261126033314` and `20261126035245`. Never reconstruct SQL from effects, rerun applied DDL, or edit the Supabase migration ledger manually.
+3. Complete the security design/gates: MFA enrollment and enforcement, leaked-password protection, Transport/Taxes memberships and server-side authorization, Storage restrictions, session/device revocation, and negative A/B read/write/delete tests. No real client data until PASS.
+4. Only after security PASS, connect the review environment using the CRM publishable URL/key and a synthetic test account; complete persistent Clients + Transport + Communications CRUD, reload recovery and cross-unit isolation.
+5. Then proceed in order to Documents vault, Taxes, Work Opportunities, official communications/push, and Square Sandbox.
+
+### Non-negotiable boundaries
+- Work only on `feat/copiloto-v7-phase1-foundation`; do not merge to `main` or deploy Vercel production without explicit approval.
+- Do not touch legacy Finance/Plaid/Supabase `zrcnpmipdhpjdjkfrrgt`, Money/Projections or related finance workflows.
+- CRM Supabase is `mimgwleghecseoymgdug`; do not create another project.
+- Synthetic data only. No real client/tax data, outbound SMS/WhatsApp/email, job acceptance, or real payments.
+- Do not apply migrations/DDL until historical SQL provenance is resolved.
+- Never claim a demo/local React interaction is persisted or connected. Approved/queued is not sent. Push registration and remote delivery remain unverified.
+- At each verified milestone update this folder and How This Works, then re-fetch both. Report actual Railway state and deployment SHA; say explicitly whether How This Works was updated.
+
+### What this session did
+This session re-read the existing continuity index and master documents and re-queried Railway. It made no functional code, database, Auth, Storage, provider, Vercel, or production changes; no visual QA and no remote push tests were performed. It updated continuity documentation only so the next chat starts from this current handoff rather than an older status snapshot.
