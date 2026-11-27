@@ -26,7 +26,7 @@ Actúa como responsable técnico (tech lead). No reinicies el trabajo ni vuelvas
 
 ## Estado inicial
 - Branch feat/copiloto-v7-phase1-foundation; main intacta.
-- Railway preview SUCCESS: deployment 6c2ac0c8-725b-489c-ae86-a654bea2c3fd, commit faf2350ffcc3e4e5166fa4f64d1d12671d09924a; URL https://copiloto-v7-preview-review.up.railway.app.
+- Railway preview inicial SUCCESS: deployment 6c2ac0c8-725b-489c-ae86-a654bea2c3fd, commit faf2350ffcc3e4e5166fa4f64d1d12671d09924a; URL https://copiloto-v7-preview-review.up.railway.app. Tras el cambio de navegación CRM se inició deployment 6a948e27-3a11-4f60-97ca-918914c55056 (commit b0aa463601a55fd3c5d12a11b28a9eeb63a1f59e), último estado BUILDING; reconsultar Railway hasta terminal y verificar dominio.
 - pnpm run test:crm-push: 4/4 PASS.
 - Typecheck: 66 errores en feature y 66 idénticos en main; cero diagnósticos adicionales feature, pero typecheck global falla.
 - / y /copiloto-v7-preview HTTP 200 por curl; screenshot/browser QA pendiente. El último cambio de navegación no está desplegado en Railway aún.
