@@ -2133,6 +2133,15 @@ export function HowItWorksScreen() {
         <P><B>Próximo trabajo:</B> verificar la cuenta y configuración ZapClaw existente, API key, firma de webhook, eventos, coexistencia, límites e idempotencia; preparar integración de WhatsApp con pruebas sintéticas. Para SMS, esperar a identificar el servicio que Miguel utiliza. No pedir tokens en el chat ni enviar comunicaciones reales o cambiar números/cuentas sin autorización expresa.</P>
       </Section>
 
+
+      <Section title="24. PRUEBA SMS REAL Y PUENTE AMANI — 2026-11-27">
+        <P><B>Prueba confirmada por Miguel:</B> Muse envió un SMS real desde el número comercial y el mensaje llegó al segundo dispositivo de Miguel. No fue solamente un estado visual del CRM.</P>
+        <P><B>Mecanismo identificado en el commit histórico daa6b578:</B> Amani en el Samsung S26 Ultra pareado, con permiso SMS y reenvío activados, era el puente telefónico previsto para despachar los mensajes aprobados. Esto identifica la ruta histórica como envío desde el teléfono, no como ZapClaw ni como proveedor SMS API. No se debe asumir que la configuración siga activa hoy.</P>
+        <P><B>Límite del código disponible:</B> el repositorio contiene la cola `/api/crm/send` y la ruta `/api/crm/send/dispatch` que registra el resultado informado por el teléfono; no contiene la app/agente Android Amani ni el consumidor externo que lee la cola y ejecuta el SMS. La prueba real confirma que ese componente externo funcionó entonces, pero su versión y configuración deben recuperarse desde el Samsung pareado.</P>
+        <P><B>Estado actual:</B> en main, el callback de despacho está deshabilitado y devuelve 501 phone_dispatch_not_connected; la ruta de envío solo encola. No declarar que el SMS esté conectado en la versión actual. Próximo paso: auditar Amani instalado, permisos SMS, endpoint/cola, activación o polling, autenticación, callback y logs. No copiar secretos al chat, no cambiar el número/proveedor y no enviar mensajes reales a clientes durante desarrollo.</P>
+        <P><B>Canales:</B> Amani/puente del teléfono corresponde a la pista SMS confirmada; ZapClaw queda separado para WhatsApp Business. Twilio no se usa.</P>
+      </Section>
+
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
