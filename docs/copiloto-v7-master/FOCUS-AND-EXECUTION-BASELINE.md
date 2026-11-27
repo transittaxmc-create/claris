@@ -192,7 +192,7 @@ Este es el primer vertical y debe ser el foco. No comenzar otro módulo hasta qu
 - Borrador YES con aprobación explícita; sin aceptación ni envío automático.
 
 ### Paso 6 — Canales y notificaciones
-- ZapClaw SMS (proveedor elegido por el usuario; NO Twilio), sujeto a verificar primero API/webhooks/auth oficiales; luego opt-out y pruebas sintéticas/sandbox.
+- ZapClaw WhatsApp Business (NO Twilio), sujeto a verificar API/webhooks/auth oficiales; proveedor de SMS tradicional pendiente de identificar y aprobar.
 - Email con proveedor/API autorizado.
 - WhatsApp solo por métodos oficiales compatibles; mantener números actuales; no lectura de grupos personales ni scraping.
 - Push: registro remoto, entrega con app abierta/cerrada, reintentos y revocación probados.
@@ -331,3 +331,7 @@ Cada entrega debe dejar: qué cambió, archivos, commit, pruebas y resultados ex
 
 ### 10.10 Corrección de proveedor SMS — 2026-11-27
 El usuario confirmó expresamente que **no está usando Twilio**. El proveedor a investigar e integrar para SMS es **ZapClaw** (Claw, no Cloud). Esta decisión supersede la propuesta histórica “Twilio primero” que aparece en How This Works §10. No reutilizar Twilio, no crear variables TWILIO_* y no migrar números. ZapClaw aún no está técnicamente verificado ni conectado al CRM. Investigar documentación oficial, API, autenticación, webhooks/callbacks, estados y límites antes de diseñar el adaptador. No pedir secretos en el chat; la credencial expuesta previamente debe rotarse en el panel oficial y guardarse solo como secreto del entorno autorizado. Pruebas sintéticas primero; sin mensajes reales ni cambios de número/cuenta sin aprobación expresa.
+
+
+### 10.11 Alcance verificado de ZapClaw — 2026-11-27
+La documentación oficial de ZapClaw (`https://zapclaw.app/docs.html`, marcada 2026-11-12) describe una pasarela de WhatsApp Business sobre la API oficial de Meta: envío REST, webhooks entrantes/estados y coexistencia. No documenta SMS tradicional. El usuario indicó expresamente que no se use Twilio. Por tanto ZapClaw se reserva para la integración WhatsApp Business; el proveedor SMS tradicional queda sin identificar y sin aprobar. Mantener canales/adaptadores separados. No escoger otro proveedor SMS sin confirmación del usuario y no etiquetar un envío WhatsApp como SMS.
