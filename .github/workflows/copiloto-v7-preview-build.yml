@@ -28,6 +28,8 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: TypeScript check
+        run: pnpm exec tsc --noEmit
       - name: Run CRM push validation tests
         run: pnpm test:crm-push
       - name: Build Next.js application
