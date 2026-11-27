@@ -237,3 +237,10 @@ Read first: docs/copiloto-v7-master/AGENT-GATEWAY.md, AGENT-GATEWAY-API.md, and 
 - Authenticated HTTP E2E has not yet been demonstrated for either agent. Do not call the Gateway fully accepted until ChatGPT and Muse each authenticate, recover the same checkpoint, exchange a message and verify its acknowledgement.
 - The first fresh-session action must be authenticated GET ?op=continuity; then read checkpoint, decisions, open tasks and independent channel states. No external action without explicit human approval.
 - Remaining: run authenticated E2E using agent secret stores; add rate limiting; independent TypeScript check; wire a ChatGPT custom connector/tool if the client supports it and configure Muse's actual runtime interface. No production release or live messages.
+
+
+## Build gate correction — 2026-11-27
+- Strict typecheck was attempted by temporarily adding tsc --noEmit to the Railway build. It failed on pre-existing Claris finance/driver model mismatches (Trip, Reconciliation, Expense, MileageDay, platform metadata) and .ts test import settings. This is not evidence of an Agent Gateway runtime defect.
+- Removed strict typecheck from the mandatory build so it cannot block the review deployment. Kept an optional typecheck script for a separate cleanup task. The normal build still runs CRM push tests, Agent Gateway tests and next build.
+- Current branch head after the build correction: 5f28be7c5421f3e2658aa52cda4b3f122855b822. Verify the Railway review deployment on this exact commit before calling it live.
+- Authenticated API E2E from ChatGPT and Muse is still pending; no production release.

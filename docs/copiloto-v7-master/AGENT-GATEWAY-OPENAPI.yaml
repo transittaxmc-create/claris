@@ -1,0 +1,118 @@
+openapi: 3.1.0
+info:
+  title: Copiloto V7 Agent Gateway
+  version: 0.2.0
+  description: Authenticated machine-agent API for persistent continuity, task coordination, internal messaging and human approval requests.
+servers:
+  - url: https://mimgwleghecseoymgdug.supabase.co/functions/v1/agent-gateway
+security:
+  - AgentKey: []
+components:
+  securitySchemes:
+    AgentKey:
+      type: apiKey
+      in: header
+      name: x-agent-key
+      description: Individual 256-bit machine credential. Never share between agents.
+  schemas:
+    AgentAction:
+      oneOf:
+        - type: object
+          required: [action, title, domain, idempotencyKey]
+          properties:
+            action: { const: task.create }
+            title: { type: string, maxLength: 240 }
+            description: { type: string, maxLength: 4000 }
+            domain: { type: string, enum: [platform, transport, taxes, communications, documents] }
+            assignedAgentId: { type: string, enum: [chatgpt, muse] }
+            maxAttempts: { type: integer, minimum: 1, maximum: 10 }
+            idempotencyKey: { type: string, minLength: 8, maxLength: 128 }
+        - type: object
+          required: [action, taskId]
+          properties:
+            action: { const: task.claim }
+            taskId: { type: string, format: uuid }
+            leaseSeconds: { type: integer, minimum: 30, maximum: 600 }
+        - type: object
+          required: [action, taskId]
+          properties:
+            action: { const: task.heartbeat }
+            taskId: { type: string, format: uuid }
+            leaseSeconds: { type: integer, minimum: 30, maximum: 600 }
+        - type: object
+          required: [action, taskId, result]
+          properties:
+            action: { const: task.complete }
+            taskId: { type: string, format: uuid }
+            result: { type: object }
+        - type: object
+          required: [action, type, idempotencyKey, payload]
+          properties:
+            action: { const: event.append }
+            type: { type: string, enum: [task.progress, task.blocked, task.failed, agent.checkpoint.recorded] }
+            idempotencyKey: { type: string, minLength: 8, maxLength: 128 }
+            taskId: { type: string, format: uuid }
+            payload: { type: object }
+        - type: object
+          required: [action, recipientAgentId, subject, body, idempotencyKey]
+          properties:
+            action: { const: message.send }
+            recipientAgentId: { type: string, enum: [chatgpt, muse] }
+            messageType: { type: string, enum: [task_handoff, status, question, result, checkpoint, system] }
+            subject: { type: string, maxLength: 200 }
+            body: { type: object }
+            idempotencyKey: { type: string, minLength: 8, maxLength: 128 }
+        - type: object
+          required: [action, messageId, status]
+          properties:
+            action: { const: message.ack }
+            messageId: { type: string, format: uuid }
+            status: { type: string, enum: [acknowledged, rejected, completed] }
+            note: { type: string, maxLength: 1000 }
+        - type: object
+          required: [action, actionName, target, payload]
+          properties:
+            action: { const: approval.request }
+            actionName: { type: string, maxLength: 120 }
+            target: { type: string, maxLength: 500 }
+            payload: { type: object }
+            expiresInMinutes: { type: integer, minimum: 5, maximum: 10080 }
+paths:
+  /:
+    get:
+      operationId: getAgentGatewayState
+      summary: Read status, persistent continuity, tasks or inbox
+      parameters:
+        - in: query
+          name: op
+          required: true
+          schema:
+            type: string
+            enum: [status, continuity, tasks, inbox]
+      responses:
+        "200":
+          description: Authenticated result
+        "401":
+          description: Missing, invalid, revoked or disabled agent credential
+        "403":
+          description: Scope denied
+    post:
+      operationId: performAgentGatewayAction
+      summary: Create or coordinate a task, append a checkpoint, message an agent or request approval
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentAction"
+      responses:
+        "200":
+          description: Action persisted and confirmed
+        "201":
+          description: New record persisted and confirmed
+        "401":
+          description: Missing, invalid, revoked or disabled agent credential
+        "403":
+          description: Scope or domain denied
+        "409":
+          description: Lease or acknowledgement conflict

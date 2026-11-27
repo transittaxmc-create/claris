@@ -1,9 +1,9 @@
 {
   "schema_version": "0.2.0",
   "project": "copiloto-v7",
-  "updated_at": "2026-11-27T18:00:00-05:00",
+  "updated_at": "2026-11-27T18:10:00-05:00",
   "source_branch": "feat/copiloto-v7-phase1-foundation",
-  "source_commit": "5b95896910525e94abe8280a42f9f8e7243b93bd",
+  "source_commit": "5f28be7c5421f3e2658aa52cda4b3f122855b822",
   "environment": {
     "development": "in progress",
     "railway_review": "Deployment pending after authenticated proxy routes and CRM_AGENT_GATEWAY_URL configuration",
@@ -65,7 +65,7 @@
       "status": "pending"
     }
   ],
-  "next_authorized_action": "Verify Railway review deployment, configure each machine key in its own agent runtime, execute authenticated ChatGPT↔Muse E2E and fresh-session recovery; complete TypeScript check. No production release.",
+  "next_authorized_action": "Deploy latest review commit, verify authenticated proxy routes, then configure ChatGPT/Muse secure runtimes and execute reciprocal E2E. No production release.",
   "checkpoint_rule": "Future agent checkpoints must be derived from persisted server-stamped events; this seed snapshot is not a dynamic checkpoint.",
   "storage_mode": "supabase-persistent-event-store",
   "event_log": "Supabase public.agent_events; immutable to agents; repository JSON remains versioned seed/snapshot",
@@ -102,8 +102,8 @@
     "muse_runtime_e2e": {
       "status": "pending"
     },
-    "typescript": "standalone tsc --noEmit pending",
-    "deployment": "Railway review deployment pending after proxy route commit"
+    "typescript": "tsc --noEmit attempted; failed on pre-existing Claris finance/driver model type mismatches and .ts test imports; excluded from mandatory build",
+    "deployment": "latest Railway review deployment on commit 5f28be7c5421f3e2658aa52cda4b3f122855b822 pending"
   },
   "database": {
     "project_ref": "mimgwleghecseoymgdug",

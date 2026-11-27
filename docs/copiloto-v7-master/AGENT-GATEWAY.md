@@ -51,7 +51,7 @@ Header requerido: x-agent-key: <clave individual>.
 - POST action message.send
 - POST action message.ack
 - POST action approval.request
-La referencia completa está en AGENT-GATEWAY-API.md.
+La referencia completa está en AGENT-GATEWAY-API.md y el contrato OpenAPI para una Action/connector está en AGENT-GATEWAY-OPENAPI.yaml.
 
 ## Recuperación de conversación nueva
 Cada runtime debe tener su propia clave configurada en un secret store y una herramienta/connector capaz de invocar HTTPS. Primer paso de cada sesión: GET ?op=continuity; verificar ok=true, source=supabase-persistent-event-store, recoveredFor correcto y leer projectState, checkpoints, decisions, tasks, inbox y channels. Luego leer el Registro Maestro versionado en Git y confirmar HEAD/deployment. Al terminar, publicar checkpoint con idempotency key única. Instrucciones en AGENT-RECOVERY-PROMPT.md.
@@ -68,7 +68,7 @@ Ambas filas inicializan not_connected / unknown. Los agentes no pueden auto-actu
 - Grants: anon y authenticated no pueden leer agent_events; service_role sí: PASS.
 - Edge Function sin credencial: HTTP 401: PASS.
 - Edge Function autenticada desde cada runtime: PENDIENTE.
-- TypeScript tsc --noEmit: PENDIENTE.
+- TypeScript tsc --noEmit: ejecutado y FALLÓ por errores heredados del código financiero/driver Claris (Trip/Reconciliation/Expense/MileageDay), además de imports .ts en tests. Se mantiene fuera del build para no bloquear el Gateway; no se atribuyen estos errores a la nueva ruta sin pruebas.
 - Dos claims HTTP concurrentes, revocación y rate limiting: PENDIENTE.
 - ChatGPT cold-start y Muse runtime E2E: PENDIENTE.
 - Aprobación humana desde UI CRM y callbacks de proveedores: PENDIENTE.

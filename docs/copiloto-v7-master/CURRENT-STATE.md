@@ -265,3 +265,11 @@
 - Added authenticated Railway proxy routes /api/agent-gateway/bridge and /api/agent-gateway/recovery; Railway review variable CRM_AGENT_GATEWAY_URL points to the Supabase Edge Function. Deployment/build verification is pending.
 - Not yet verified: successful HTTP request using each real agent key, end-to-end cold-start recovery from a fresh ChatGPT conversation, direct Muse runtime connection, human approval UI, provider callbacks, rate limiting, and independent tsc --noEmit.
 - No production deployment, main merge, real communications, payment actions, or financial database changes.
+
+
+## 25. Verificación de build y conexión de agentes — 2026-11-27
+- Railway review source branch se corrigió para apuntar a feat/copiloto-v7-phase1-foundation, no a main. Deployment de commit b0c18a47c1f26fd89789de597205c15a6d45fa97 alcanzó SUCCESS; luego se preparó el commit e69c1e509e0d907db1c1cc60420b486ec6d61a89 con proxy bearer corregido.
+- Se intentó añadir tsc --noEmit al build. Falló por numerosos errores preexistentes en módulos Claris de finanzas/driver (Trip, Reconciliation, Expense, MileageDay, platform metadata) y por imports .ts en tests. Se retiró del build obligatorio; el script typecheck queda disponible para una reparación separada. No se ocultó ni se atribuyó falsamente al Gateway.
+- El build de review con el script de typecheck falló; se revirtió el gate para restaurar el build normal con las suites CRM push y Agent Gateway y Next.js. El deployment del commit más reciente queda pendiente de verificación.
+- OpenAPI de Agent Gateway se añadió para facilitar configuración de ChatGPT Actions/custom connector; el conector no se instala automáticamente desde esta sesión.
+- Autenticación HTTP válida con ambos agentes sigue pendiente de verificación desde los runtimes seguros. No afirmar que ChatGPT/Muse ya han ejecutado el handshake real.
