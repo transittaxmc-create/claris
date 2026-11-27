@@ -2161,6 +2161,15 @@ export function HowItWorksScreen() {
         <P><B>Alcance de este checkpoint:</B> solo documentación y recuperación de continuidad. No se modificó código funcional, credenciales, teléfono, proveedor, base de datos ni deployment. No se enviaron mensajes reales ni se usaron datos de clientes.</P>
       </Section>
 
+
+      <Section title="COPILOTO V7 — §37: AGENT COORDINATION & GEMINI INSTRUCTION REDESIGN · 2026-11-27">
+        <P><B>Objetivo confirmado por el usuario:</B> establecer cómo Muse puede conocer el estado real de Copiloto mediante contexto autorizado y reestructurar las instrucciones de Gemini para que asista en todo Copiloto V7, no solamente en el Copilot financiero legacy.</P>
+        <P><B>Estado del código:</B> Gemini actual pertenece al flujo financiero legacy y su prompt se centra en viajes, ingresos, gastos y conciliación. No está conectado al workspace CRM V7. Su ruta usa una clave OpenAI como fallback aunque llama a Google Gemini; corregir esa selección antes de reutilizarla.</P>
+        <P><B>Arquitectura propuesta:</B> Copiloto será la fuente de verdad; un servicio server-side entregará a Muse y Gemini contexto mínimo, actualizado y filtrado por usuario/módulo. Muse coordinará solo cuando se verifique su interfaz real; Gemini será el asistente conversacional dentro de V7; Amani seguirá siendo un puente SMS separado, sujeto a recuperar y autenticar su agente del teléfono.</P>
+        <P><B>Instrucciones Gemini:</B> diseñar capas versionadas de seguridad, misión Copiloto, principios comunes, perfil autorizado Transport/Taxes/Communications/Documents, contexto mínimo de tarea, herramientas permitidas y formato de respuesta. No reemplazar todavía el prompt financiero legacy.</P>
+        <P><B>Documento de diseño:</B> docs/copiloto-v7-master/AGENT-INSTRUCTION-ARCHITECTURE.md. Contiene hallazgos verificados, modelo de coordinación, borrador de instrucción común, perfiles de roles, controles y próximos pasos.</P>
+        <P><B>Estado de este hito:</B> documentación y arquitectura propuesta solamente. No se modificó código funcional, credenciales, teléfono, proveedores, base de datos ni deployment; no se enviaron comunicaciones reales.</P>
+      </Section>
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
