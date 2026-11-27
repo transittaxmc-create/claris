@@ -22,3 +22,8 @@
 - Preview: https://copiloto-v7-preview-review.up.railway.app
 
 **Última consolidación:** 2026-11-27. No merge a main, no despliegue productivo ni uso con clientes reales autorizado.
+
+
+## Documento prioritario de enfoque (27-11-2026)
+- **Leer primero:** [FOCUS-AND-EXECUTION-BASELINE.md](./FOCUS-AND-EXECUTION-BASELINE.md). Consolida visión, decisiones, límites, estado real, por qué se repite trabajo, orden obligatorio y próxima acción exacta.
+- No abrir un frente nuevo ni repetir auditorías ya completadas sin evidencia nueva. Trabajar una vertical funcional a la vez.
