@@ -48,7 +48,7 @@ export function HowItWorksScreen() {
           <li>§21 PRIORITY LIST — what is open, in plain language, updated with every deployment</li>
           <li>§22 APPLICATION INVENTORY &amp; ARCHITECTURE AUDIT — complete source map, integrations, database state, verified gaps and agent handoff (2026-11-27)</li>
           <li>§23 CRM COPILOT V7 — TECHNICAL AUDIT &amp; VERIFIED GAPS (2026-11-27)</li>
-          <li>§24 COPILOTO V7 — PHASE 1 BUILD FOUNDATION &amp; ARCHITECTURE (2026-11-27) · §25 V7 PREVIEW WORKSPACE — FIRST IMPLEMENTATION (2026-11-27) · §26 TRANSPORT OPERATIONS PREVIEW (2026-11-27) · §27 TAX PREPARATION PREVIEW (2026-11-27) · §28 WORK OPPORTUNITIES REVIEW PREVIEW (2026-11-27) · §29 SQUARE OPERATIONS PREVIEW (2026-11-27) · §30 V7 VERIFICATION STATUS (2026-11-27) · §31 RELEASE READINESS & TRANSFER (2026-11-27) · §32 TEMPORARY RAILWAY PREVIEW & AGENT HANDOFF (2026-11-27) · §33 MASTER PROJECT PLAN & CONTINUITY FOLDER (2026-11-27)</li>
+          <li>§24 COPILOTO V7 — PHASE 1 BUILD FOUNDATION &amp; ARCHITECTURE (2026-11-27) · §25 V7 PREVIEW WORKSPACE — FIRST IMPLEMENTATION (2026-11-27) · §26 TRANSPORT OPERATIONS PREVIEW (2026-11-27) · §27 TAX PREPARATION PREVIEW (2026-11-27) · §28 WORK OPPORTUNITIES REVIEW PREVIEW (2026-11-27) · §29 SQUARE OPERATIONS PREVIEW (2026-11-27) · §30 V7 VERIFICATION STATUS (2026-11-27) · §31 RELEASE READINESS & TRANSFER (2026-11-27) · §32 TEMPORARY RAILWAY PREVIEW & AGENT HANDOFF (2026-11-27) · §33 MASTER PROJECT PLAN & CONTINUITY FOLDER (2026-11-27) · §34 AGENT GATEWAY & MASTER CONTINUITY REGISTER (2026-11-27)</li>
         </ul>
       </Section>
 
@@ -2172,6 +2172,15 @@ export function HowItWorksScreen() {
         <P><B>Hallazgo preciso del historial:</B> la issue existente <a href="https://github.com/transittaxmc-create/claris/issues/85">GitHub #85</a> documenta la recuperación. La auditoría del commit histórico `daa6b578` confirma que el repositorio contiene cola y callback, pero no el worker/cliente Amani, polling, conexión Muse ni autenticación del teléfono. El éxito histórico de SMS confirmado por el usuario tuvo que depender del runtime/configuración externa de Muse/Amani. El callback antiguo confiaba en una sesión CRM normal y no debe reactivarse sin autenticación fuerte del agente/dispositivo.</P>
         <P><B>Distinción técnica:</B> esa autorización del entorno Muse no crea automáticamente un conector Muse dentro de esta sesión de ChatGPT. No pedir reautorización. Hay que localizar el contrato real de handoff/API/MCP/webhook o flujo de repositorio que Muse ya utiliza. Una consulta de Vercel Agent Runs no encontró proyectos Eve observables en los últimos 30 días; eso no demuestra que Muse esté desconectado ni inactivo.</P>
         <P><B>Estado de este hito:</B> documentación y arquitectura propuesta solamente. No se modificó código funcional, credenciales, teléfono, proveedores, base de datos ni deployment; no se enviaron comunicaciones reales.</P>
+      </Section>
+
+      <Section title="34. AGENT GATEWAY — master continuity and coordinated agents (2026-11-27)">
+        <P><B>Owner direction:</B> prioritize the Gateway so a fresh ChatGPT or Muse conversation can recover the same confirmed project state without relying on chat memory.</P>
+        <P><B>Canonical contract:</B> <B>docs/copiloto-v7-master/AGENT-GATEWAY.md</B>. The versioned seed snapshot is <B>CONTINUITY-REGISTER.json</B>; Issues remain tracking records, not the sole source of truth.</P>
+        <P><B>Implemented in this first slice:</B> typed event/task/channel contracts, strict validation that rejects caller-supplied actor/owner/timestamps, checkpoint derivation from server-stamped events, a public read-only continuity endpoint, and a write endpoint that fails closed.</P>
+        <P><B>Not yet active:</B> dedicated agent Auth identities/scopes, durable event store, task claim/lease/heartbeat, human approval records and live agent-to-agent communication. The current database has no agent tables; no SQL or migration was run. The seed JSON is not a dynamic event log.</P>
+        <P><B>Channel separation:</B> SMS/Amani and WhatsApp/ZapClaw have independent state slots. Neither is marked connected or delivered without real end-to-end evidence.</P>
+        <P><B>Next action:</B> review/approve the consolidated schema proposal in AGENT-GATEWAY.md. Only then prepare a development-only migration and synthetic isolation/idempotency/lease tests. No production deployment, real client data or real messages.</P>
       </Section>
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change

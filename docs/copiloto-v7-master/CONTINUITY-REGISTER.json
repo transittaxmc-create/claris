@@ -1,0 +1,68 @@
+{
+  "schema_version": "0.1.0",
+  "project": "copiloto-v7",
+  "updated_at": "2026-11-27T17:18:00-05:00",
+  "source_branch": "feat/copiloto-v7-phase1-foundation",
+  "source_commit": "5c1eb8cfc2b55c82cf4b63bb85faefea0ed97b1b",
+  "environment": {
+    "development": "in progress",
+    "railway_review": "existing preview; gateway build not yet deployed",
+    "production": "not authorized"
+  },
+  "confirmed_state": {
+    "gateway": "read-only continuity endpoint scaffolded; event write path intentionally disabled",
+    "event_store": "not configured; schema proposal pending approval",
+    "agent_identities": "not configured",
+    "task_queue": "not configured",
+    "sms_amani": "separate channel; no end-to-end dispatch confirmation",
+    "whatsapp_zapclaw": "separate channel; no end-to-end delivery confirmation"
+  },
+  "decisions": [
+    {
+      "date": "2026-11-27",
+      "decision": "Prioritize Agent Gateway construction to prevent context loss across fresh agent conversations.",
+      "status": "approved",
+      "evidence": "User instruction in current session"
+    },
+    {
+      "date": "2026-11-27",
+      "decision": "No production, DDL/migrations, real customer data or outbound communications until required approvals and security tests pass.",
+      "status": "approved",
+      "evidence": "Copiloto V7 master and issue #87"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "gateway-schema-approval",
+      "title": "Approve consolidated agent identity/task/event/approval/channel-state schema",
+      "owner": "Miguel",
+      "status": "blocked",
+      "blocker": "Schema proposal must be reviewed before DDL/migrations"
+    },
+    {
+      "id": "gateway-agent-auth",
+      "title": "Create dedicated Supabase Auth identities and least-privilege scopes",
+      "owner": "Implementation",
+      "status": "blocked",
+      "blocker": "Requires approved schema and Auth configuration"
+    },
+    {
+      "id": "gateway-event-store",
+      "title": "Implement persistent append-only events, task leases and idempotency",
+      "owner": "Implementation",
+      "status": "blocked",
+      "blocker": "Requires approved schema and isolated synthetic DB tests"
+    },
+    {
+      "id": "gateway-e2e",
+      "title": "Verify fresh-session recovery across ChatGPT and Muse",
+      "owner": "ChatGPT + Muse",
+      "status": "pending",
+      "blocker": "Agent identities and durable event store not active"
+    }
+  ],
+  "next_authorized_action": "Review the proposed schema in AGENT-GATEWAY.md; do not run DDL or production deployment.",
+  "checkpoint_rule": "Future agent checkpoints must be derived from persisted server-stamped events; this seed snapshot is not a dynamic checkpoint.",
+  "storage_mode": "repository-seed-only",
+  "event_log": []
+}

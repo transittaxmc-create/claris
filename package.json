@@ -10,7 +10,8 @@
     "preview:cloudflare": "wrangler dev",
     "deploy:cloudflare": "opennextjs-cloudflare deploy",
     "start": "next start",
-    "test:crm-push": "node --experimental-strip-types --test tests/crm-push-validation.test.ts"
+    "test:crm-push": "node --experimental-strip-types --test tests/crm-push-validation.test.ts",
+    "test:agent-gateway": "node --experimental-strip-types --test tests/agent-gateway.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
@@ -42,4 +43,4 @@
     "typescript": "5.7.3",
     "wrangler": "^4.151.0"
   }
-}
+}\n

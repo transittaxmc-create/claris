@@ -208,3 +208,9 @@ The user explicitly confirms Muse already has authorized access to GitHub, Verce
 
 ## Exact SMS bridge finding — 2026-11-27
 Use existing GitHub issue #85 as the canonical recovery task: https://github.com/transittaxmc-create/claris/issues/85. Its audit comments establish that commit `daa6b578...` contains the queue/callback only, not the Amani worker, Muse link, polling, device authentication or webhook; the old callback trusted ordinary CRM session state and must not be re-enabled. The user's historical SMS success therefore came from Muse/Amani outside the inspected repo or external configuration. Current route queues only; dispatch is 501. Issue #85 does not itself notify Muse. Verify whether Muse monitors GitHub issues/repository before treating GitHub as a live shared mailbox.
+
+
+## Agent Gateway handoff — 2026-11-27
+Read docs/copiloto-v7-master/AGENT-GATEWAY.md first. First code slice adds contracts, validation, disabled event-store adapter, public read-only continuity route and fail-closed event route. CONTINUITY-REGISTER.json is versioned but is not a dynamic checkpoint/event log. CRM Supabase schema was inspected read-only; no agent tables exist and no DDL/migration was run.
+
+Next exact action: review and explicitly approve/correct the proposed consolidated data model in AGENT-GATEWAY.md. Then create a development-only migration and dedicated Auth identities/scopes, followed by synthetic tests for isolation, token revocation, atomic claim/lease, heartbeat, idempotency, append-only events and fresh-session recovery. Do not merge main, deploy production, change environment secrets or send real communications. Keep SMS/Amani and WhatsApp/ZapClaw as separate state machines.

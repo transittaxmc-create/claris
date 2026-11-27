@@ -349,3 +349,7 @@ El usuario confirmó que la prueba de Muse llegó como SMS real al segundo dispo
 
 ### 10.14 Agent coordination and Gemini instruction redesign — 2026-11-27
 The user's clarified goal is to let Muse receive authorized, current Copiloto context and to restructure Gemini's legacy finance-only instructions for the wider Copiloto V7 workspace. See docs/copiloto-v7-master/AGENT-INSTRUCTION-ARCHITECTURE.md for the verified baseline, proposed context-sharing architecture, layered instruction hierarchy, role profiles, security controls and exact next steps. This is a design checkpoint only; do not treat Muse, Gemini or Amani as integrated until runtime contracts and tests prove it. Preserve the legacy Finance Copilot until the V7 instruction set is reviewed and regression-safe.
+
+
+## Owner-directed priority override — 2026-11-27
+Miguel explicitly redirected immediate work to the Agent Gateway because continuity loss between fresh ChatGPT/Muse conversations is blocking progress. Start with docs/copiloto-v7-master/AGENT-GATEWAY.md and its first code slice on feat/copiloto-v7-phase1-foundation. This changes work priority only; it does not waive existing gates: no DDL/migrations until the consolidated schema is approved, no production deployment, no real client data, no outbound communications, and no changes to legacy Finance/Plaid. After schema approval, implement the durable event store and individual agent identities in an isolated development environment, then prove fresh-session recovery.

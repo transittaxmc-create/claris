@@ -238,3 +238,15 @@
 - Its audit comment confirms historical commit `daa6b578...` contains the queue and a callback, but no Amani worker/client, Muse connection, polling trigger, device authentication or webhook. The callback used a normal CRM session and is unsafe to reactivate without authenticated device/service proof.
 - User-confirmed historical SMS success means Muse/Amani ran externally or was configured outside this repo; it does not prove current runtime connectivity. Current code still queues only and dispatch returns 501.
 - Issue #85 is a tracking record, not a notification to Muse. GitHub can become a shared handoff channel only if Muse is configured to monitor/respond to the issue or repository. Do not claim direct agent contact until a response is observed.
+
+
+## 23. Agent Gateway — first code slice (2026-11-27)
+- Miguel redirected immediate priority to the Agent Gateway to prevent continuity loss between fresh ChatGPT/Muse conversations.
+- Added docs/copiloto-v7-master/AGENT-GATEWAY.md, typed contracts/validation/store interface, a read-only continuity API and a fail-closed event-write API.
+- Added CONTINUITY-REGISTER.json as a repository seed; it is explicitly repository-seed-only, not a dynamic event store.
+- CRM Supabase schema inspected read-only: public tables are crm_clients, crm_reservations, crm_messages and finance_sync_doc; no agent identity/task/event tables exist. No SQL/DDL/migration was run.
+- Event store and agent identities are not active. The write route returns 503 until schema and auth model are approved and implemented.
+- SMS/Amani and WhatsApp/ZapClaw remain separate, unverified channels. No messages were sent.
+- Existing Railway review deployment before this change: SUCCESS on service copiloto-v7-preview, commit f8c559ff59ba09038bdb64d966e67d42e83a61a4. New commit deployment pending.
+- Synthetic tests added for strict identity-field rejection, checkpoint derivation, independent channel state and disabled-store behavior. Execution/build verification pending.
+- No production deployment, main merge, environment-variable changes, database changes or external provider actions.
