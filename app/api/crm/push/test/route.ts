@@ -3,7 +3,9 @@ import {
   isSameOriginRequest,
   isValidCrmPushSubscription,
   sendCrmPush,
+  getCrmPushSubscription,
 } from "@/lib/crm-push"
+import { getCrmPushUserId } from "@/lib/crm/push-auth"
 
 export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
@@ -12,6 +14,8 @@ export async function POST(request: Request) {
   if (!isSameOriginRequest(request)) {
     return NextResponse.json({ error: "same_origin_required" }, { status: 403 })
   }
+  const userId = await getCrmPushUserId()
+  if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 })
   let body: { subscription?: unknown } = {}
   try {
     body = await request.json()
@@ -21,8 +25,12 @@ export async function POST(request: Request) {
   if (!isValidCrmPushSubscription(body.subscription)) {
     return NextResponse.json({ error: "invalid_subscription" }, { status: 400 })
   }
+  const registered = await getCrmPushSubscription(userId, body.subscription.endpoint)
+  if (!registered) {
+    return NextResponse.json({ error: "subscription_not_registered_for_user" }, { status: 404 })
+  }
   try {
-    const result = await sendCrmPush(body.subscription, {
+    const result = await sendCrmPush(registered, {
       title: "Copiloto CRM — prueba push",
       body: "The remote push notification arrived from the server.",
       url: "/",

@@ -1,11 +1,11 @@
 import { createCipheriv, createDecipheriv, createECDH, createHmac, createPrivateKey, randomBytes, sign, timingSafeEqual } from "node:crypto"
 import { head, put } from "@vercel/blob"
+import { isTrustedPushEndpoint, isValidCrmPushSubscription, type CrmPushSubscription } from "@/lib/crm/push-validation"
 
-export type CrmPushSubscription = {
-  endpoint: string
-  expirationTime?: number | null
-  keys: { p256dh: string; auth: string }
-}
+export { isTrustedPushEndpoint, isValidCrmPushSubscription } from "@/lib/crm/push-validation"
+
+export type { CrmPushSubscription } from "@/lib/crm/push-validation"
+type StoredCrmPushSubscription = CrmPushSubscription & { userId?: string }
 
 const STORE_PATH = "crm-private/push-subscriptions.enc"
 
@@ -28,17 +28,6 @@ function configured() {
 
 export function crmPushIsConfigured() {
   return configured()
-}
-
-export function isValidCrmPushSubscription(value: unknown): value is CrmPushSubscription {
-  if (!value || typeof value !== "object") return false
-  const sub = value as Partial<CrmPushSubscription>
-  return typeof sub.endpoint === "string" &&
-    sub.endpoint.startsWith("https://") &&
-    sub.endpoint.length <= 2048 &&
-    Boolean(sub.keys && typeof sub.keys.p256dh === "string" && typeof sub.keys.auth === "string") &&
-    sub.keys!.p256dh.length >= 80 &&
-    sub.keys!.auth.length >= 16
 }
 
 export function isSameOriginRequest(request: Request) {
@@ -69,7 +58,7 @@ function encryptStore(value: CrmPushSubscription[]) {
   return Buffer.concat([iv, cipher.getAuthTag(), encrypted]).toString("base64")
 }
 
-function decryptStore(value: string): CrmPushSubscription[] {
+function decryptStore(value: string): StoredCrmPushSubscription[] {
   const bytes = Buffer.from(value, "base64")
   if (bytes.length < 29) throw new Error("CRM push store is invalid")
   const iv = bytes.subarray(0, 12)
@@ -81,7 +70,7 @@ function decryptStore(value: string): CrmPushSubscription[] {
   return Array.isArray(parsed) ? parsed.filter(isValidCrmPushSubscription) : []
 }
 
-async function readSubscriptions(): Promise<CrmPushSubscription[]> {
+async function readSubscriptions(): Promise<StoredCrmPushSubscription[]> {
   try {
     const info = await head(STORE_PATH)
     const response = await fetch(info.url, { cache: "no-store" })
@@ -101,24 +90,34 @@ async function writeSubscriptions(value: CrmPushSubscription[]) {
   })
 }
 
-export async function saveCrmPushSubscription(subscription: CrmPushSubscription) {
+export async function saveCrmPushSubscription(subscription: CrmPushSubscription, userId: string) {
   if (!configured()) throw new Error("CRM push server is not configured")
   const current = await readSubscriptions()
-  const index = current.findIndex((item) => item.endpoint === subscription.endpoint)
-  if (index >= 0) current[index] = subscription
+  if (!userId) throw new Error("CRM user is required")
+  const index = current.findIndex((item) => item.endpoint === subscription.endpoint && item.userId === userId)
+  if (index >= 0) current[index] = { ...subscription, userId }
   else {
-    if (current.length >= 10) throw new Error("The CRM push device limit has been reached")
-    current.push(subscription)
+    const ownedCount = current.filter((item) => item.userId === userId).length
+    if (ownedCount >= 10) throw new Error("The CRM push device limit has been reached")
+    current.push({ ...subscription, userId })
   }
   await writeSubscriptions(current)
-  return current.length
+  return current.filter((item) => item.userId === userId).length
 }
 
-export async function removeCrmPushSubscription(endpoint: string) {
+export async function removeCrmPushSubscription(endpoint: string, userId: string) {
   const current = await readSubscriptions()
-  const next = current.filter((item) => item.endpoint !== endpoint)
+  const next = current.filter((item) => item.endpoint !== endpoint || item.userId !== userId)
   await writeSubscriptions(next)
   return current.length - next.length
+}
+
+export async function getCrmPushSubscription(userId: string, endpoint: string): Promise<CrmPushSubscription | null> {
+  const current = await readSubscriptions()
+  const match = current.find((item) => item.userId === userId && item.endpoint === endpoint)
+  if (!match) return null
+  const { userId: _owner, ...subscription } = match
+  return subscription
 }
 
 function hkdfExtract(salt: Buffer, input: Buffer) {
@@ -221,6 +220,7 @@ export async function sendCrmPush(subscription: CrmPushSubscription, payload: {
       "Content-Type": "application/octet-stream",
     },
     body,
+    redirect: "error",
     signal: AbortSignal.timeout(12000),
   })
   return { ok: response.ok || response.status === 201 || response.status === 202, status: response.status, stale: response.status === 404 || response.status === 410 }
@@ -232,8 +232,10 @@ export async function sendCrmPushToAll(payload: {
   url?: string
   tag?: string
 }) {
-  const subscriptions = await readSubscriptions()
-  const keep: CrmPushSubscription[] = []
+  const allSubscriptions = await readSubscriptions()
+  const subscriptions = allSubscriptions.filter((item) => typeof item.userId === "string" && item.userId.length > 0)
+  const unownedLegacy = allSubscriptions.filter((item) => !item.userId)
+  const keep: StoredCrmPushSubscription[] = []
   let sent = 0
   let failed = 0
   for (const subscription of subscriptions) {
@@ -248,7 +250,7 @@ export async function sendCrmPushToAll(payload: {
       failed += 1
     }
   }
-  if (keep.length !== subscriptions.length) await writeSubscriptions(keep)
+  if (keep.length !== subscriptions.length) await writeSubscriptions([...unownedLegacy, ...keep])
   return { registered: subscriptions.length, sent, failed, removedExpired: subscriptions.length - keep.length }
 }
 

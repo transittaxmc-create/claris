@@ -1,0 +1,58 @@
+name: CRM synthetic push validation
+
+on:
+  pull_request:
+    paths:
+      - "lib/crm/push-validation.ts"
+      - "lib/crm-push.ts"
+      - "lib/crm/push-auth.ts"
+      - "app/api/crm/push/subscribe/route.ts"
+      - "app/api/crm/push/test/route.ts"
+      - "app/api/crm/send/dispatch/route.ts"
+      - "components/copiloto/crm-screen.tsx"
+      - "components/copiloto/how-it-works-screen.tsx"
+      - "tests/crm-push-validation.test.ts"
+      - "package.json"
+      - ".github/workflows/crm-push-tests.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "lib/crm/push-validation.ts"
+      - "tests/crm-push-validation.test.ts"
+      - "package.json"
+      - ".github/workflows/crm-push-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-push-validation:
+    name: Synthetic push endpoint tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout reviewed source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Set up Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24"
+      - name: Run synthetic validation tests
+        run: node --experimental-strip-types --test tests/crm-push-validation.test.ts
+
+  source-build:
+    name: Next.js source build (no production credentials)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout reviewed source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Set up Node.js 24
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: "24"
+      - name: Install pinned pnpm
+        run: npm install --global pnpm@12.3.4
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build with synthetic/no production credentials
+        run: pnpm run build
