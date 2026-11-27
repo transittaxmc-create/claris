@@ -2200,6 +2200,11 @@ export function HowItWorksScreen() {
         <P><B>Still open:</B> authenticated HTTP continuity/status from ChatGPT and Muse independently; real cross-agent message → inbox → ACK; cold-start recovery from a fresh ChatGPT conversation; independent TypeScript check. Never expose machine keys in source, chat, URLs or logs.</P>
         <P><B>Channel and production boundary:</B> SMS/Amani and WhatsApp/ZapClaw remain independent and not_connected/unknown. No real messages, customer data, payments, production deploy or merge to main.</P>
       </Section>
+      <Section title="37. AGENT GATEWAY — source recovery and live endpoint (2026-11-27)">
+        <P><B>Live endpoint:</B> Railway Review deployment 423f5d02 SUCCESS, commit 9867adf543e07b7624d2d1b5c378e8b3c65edfb3. Public continuity returns HTTP 200 and reports eventStore=private-supabase-agent-gateway, writeOperations=authenticated-only. Unauthenticated recovery and bridge return HTTP 401.</P>
+        <P><B>Versioned source:</B> recovered deployed Supabase Edge Function v4 and catalog-reconstructed SQL for the seven gateway tables, two task RPCs and checkpoint view. These SQL files are recovery baselines, not original migration authoring text; no SQL was applied during recovery.</P>
+        <P><B>Security boundary:</B> deployed function still authenticates machine keys via SHA-256 hashes. Issue #87's dedicated Supabase Auth/JWT architecture remains a design reconciliation item. Do not rotate credentials until a secure handoff channel and runtime secret stores are available. Standalone tsc is still pending; Railway skips type validation.</P>
+      </Section>
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>

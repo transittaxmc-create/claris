@@ -261,3 +261,11 @@ Read first: docs/copiloto-v7-master/AGENT-GATEWAY.md, AGENT-GATEWAY-API.md, and 
 - ChatGPT and Muse machine credentials are in Supabase Vault, names only in repository. Retrieve directly to each agent's secret store; do not paste in chat.
 - Do not claim E2E complete until both runtimes authenticate, recover the same checkpoint, exchange a message and persist recipient ACK. ChatGPT custom Action/connector and Muse runtime configuration are external setup gates.
 - Keep deployment in review; no main merge, production release, real communications or payments.
+
+
+## Checkpoint 2026-11-27 — after source recovery
+- Current branch head at start: 9867adf543e07b7624d2d1b5c378e8b3c65edfb3; Railway Review deployment 423f5d02 SUCCESS.
+- Public continuity endpoint is HTTP 200 and accurately reports the private Supabase event store and authenticated-only write operations. Unauthenticated recovery and bridge remain HTTP 401.
+- Supabase Edge Function source v4 and live schema catalog are recovered for versioning; migration files are reconstructed baselines, not original source. No DDL was executed.
+- Next: complete standalone typecheck and record exact diagnostic count; then credential rotation only after a secure delivery channel and runtime secret-store targets are specified; then authenticated ChatGPT/Muse continuity and reciprocal message/inbox/ACK tests, followed by cold-start recovery.
+- Production, SMS and WhatsApp remain untouched.

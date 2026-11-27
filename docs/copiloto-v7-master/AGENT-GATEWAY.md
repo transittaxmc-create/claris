@@ -78,3 +78,7 @@ No incluir secretos en Git, logs, documentos o payloads. Las tablas no tienen gr
 
 ## Próximo checkpoint
 Configurar las claves individuales en los secret stores reales de ChatGPT/Muse, ejecutar E2E HTTP autenticado para ambos, verificar recuperación idéntica y ACK recíproco, completar typecheck y revisar los findings de seguridad. Mantener todo en desarrollo/review; no merge ni producción ni acciones externas.
+
+
+## Source recovery checkpoint — 2026-11-27
+The deployed Edge Function v4 source and the live catalog definitions are being added to the repository under `supabase/functions/agent-gateway/` and `supabase/migrations/`. The migration SQL is reconstructed from the live catalog because the original SQL files were absent from Git; it is not represented as the original authoring text and was not applied during recovery. Current deployed authentication remains machine-key/hash based, which must be reconciled with Issue #87's dedicated Supabase Auth/JWT architecture before broad use.

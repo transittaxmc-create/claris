@@ -299,3 +299,11 @@
 - Vault secret/hash checks passed for both ChatGPT and Muse; raw keys remain in Vault only. Retrieve them directly into their respective runtime secret stores as documented.
 - Remaining external acceptance gates: authenticated request from ChatGPT and Muse, reciprocal message ACK, fresh-chat ChatGPT Action/connector setup, Muse runtime configuration. These require the two agent runtimes to load their separate Vault secrets; not claimed complete.
 - No production deployment, main merge, real customer data, external communications or payment action.
+
+
+## 20. Agent Gateway — source recovery from live Supabase (2026-11-27)
+- Supabase CRM project mimgwleghecseoymgdug: agent-gateway Edge Function ACTIVE version 4. Source recovered from deployed function API; exact source will be versioned at supabase/functions/agent-gateway/index.ts. No environment secret values are part of the file.
+- Live catalog confirms seven persistent gateway tables (agent_identities, agent_tasks, agent_events, agent_messages, agent_approvals, agent_channel_states, agent_project_state), RLS enabled on all seven, no row policies, and grants limited to postgres/service_role; view agent_latest_checkpoints exists. RPCs agent_claim_task and agent_heartbeat_task recovered from pg_get_functiondef. The SQL files are catalog-reconstructed baselines, not the original migration authoring text, and were NOT applied in this operation.
+- Railway Review deployment 423f5d02 SUCCESS on 9867adf543e07b7624d2d1b5c378e8b3c65edfb3. GET /api/agent-gateway/continuity => HTTP 200, eventStore=private-supabase-agent-gateway, writeOperations=authenticated-only. GET recovery and bridge without credentials => HTTP 401.
+- Authentication still follows deployed x-agent-key/hash code. This is not the dedicated Supabase Auth/JWT architecture described in Issue #87; keep the mismatch explicit and do not silently redesign. Credential rotation remains blocked until a secure handoff channel is designated and both runtimes can store secrets.
+- Standalone tsc remains pending. Railway build log explicitly says "Skipping validation of types"; no new error count is asserted.
