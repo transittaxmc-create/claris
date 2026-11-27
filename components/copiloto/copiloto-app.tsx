@@ -16,7 +16,7 @@ import { ReportsScreen } from "./reports-screen"
 import { SobresScreen } from "./sobres-screen"
 import { TollAuditScreen } from "./toll-audit-screen"
 import { CreditScreen } from "./credit-screen"
-import { CRMScreen } from "./crm-screen"
+import dynamic from "next/dynamic"
 import { Tax2026Screen } from "./tax-2026-screen"
 import { syncEzpassWeekly } from "./ezpass-weekly"
 import { detectNewTolls, rateFor } from "./toll-detect"
@@ -112,6 +112,18 @@ function financeRawSig(): string {
     return ""
   }
 }
+
+const CRMScreen = dynamic<{ openMessagesNonce: number }>(
+  () => import("./crm-screen").then((module) => module.CRMScreen),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex h-full min-h-0 items-center justify-center text-sm text-neutral-400">
+        Loading CRM…
+      </div>
+    ),
+  },
+)
 
 function Placeholder({ label }: { label: string }) {
   return (
