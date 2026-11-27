@@ -2006,6 +2006,16 @@ export function HowItWorksScreen() {
         <P><B>Informe:</B> docs/copiloto-v7-reconciliacion-migraciones-y-protecciones-2026-11-27.md</P>
       </Section>
 
+
+      <Section title="COPILOTO V7 — PUNTO 4: CENTRO DE COMUNICACIONES (2026-11-27)">
+        <P><B>Preview implementado:</B> app/copiloto-v7-preview/page.tsx ahora presenta un inbox unificado de muestra para Transport, Taxes y Work Opportunities, con indicadores, búsqueda/clasificación, selección de mensaje, revisión y borrador local.</P>
+        <P><B>Aprobación segura:</B> la acción de demostración solo cambia el registro de muestra a “Approved · NOT SENT”. No envía, no crea una cola real y no acepta automáticamente oportunidades. La pantalla identifica SAMPLE DATA / NO LIVE CONNECTIONS.</P>
+        <P><B>Conectividad real pendiente:</B> no hay conectores verificados de WhatsApp Business, WhatsApp Personal/grupos, SMS, email, Twilio ni ZapClaw. /api/crm/send solo valida/encola la intención; /api/crm/send/dispatch sigue deshabilitada y responde 501 phone_dispatch_not_connected. No afirmar envío ni entrega.</P>
+        <P><B>Backend pendiente:</B> ampliar el modelo canónico para mensajes originales, eventos, adjuntos, consentimiento/opt-out, webhooks autenticados, idempotencia, outbox, auditoría y estados del proveedor. Preservar el mensaje original separado del análisis IA. Reconciliar migraciones antes de tocar esquema.</P>
+        <P><B>Verificación:</B> cambios guardados en rama feat/copiloto-v7-phase1-foundation. No hubo deployment, cambios de Supabase ni comunicaciones reales. No se ejecutó build/test ni QA visual; ambos siguen pendientes.</P>
+        <P><B>Estado:</B> interfaz de demostración implementada y documentada; Centro de Comunicaciones conectado y operativo todavía pendiente. Informe: docs/copiloto-v7-punto-4-centro-comunicaciones-2026-11-27.md</P>
+      </Section>
+
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
