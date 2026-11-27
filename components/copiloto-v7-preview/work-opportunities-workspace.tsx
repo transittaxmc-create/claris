@@ -24,7 +24,7 @@ export function WorkOpportunitiesWorkspace() {
   const [notice,setNotice]=useState("")
   const active=items.filter(x=>x.fit!=="Not interested")
   const visible=items.filter(x=>filter==="All"||(filter==="Active"&&x.fit!=="Not interested")||x.fit===filter)
-  const current=items.find(x=>x.id===selected)??visible[0]
+  const current=visible.find(x=>x.id===selected)??visible[0]
   const estimate=useMemo(()=>current&&current.fare!==null&&current.tolls!==null&&current.fuel!==null?current.fare-current.tolls-current.fuel:null,[current])
   function setFit(id:string,fit:Fit){setItems(v=>v.map(x=>x.id===id?{...x,fit}:x));setNotice(`${id}: ${fit}. Local preview only; no reply was sent and no job was accepted.`)}
   return <div className="space-y-5">
