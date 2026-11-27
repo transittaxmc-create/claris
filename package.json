@@ -5,13 +5,14 @@
   "packageManager": "pnpm@12.3.4",
   "scripts": {
     "dev": "next dev",
-    "build": "pnpm run test:crm-push && pnpm run test:agent-gateway && next build",
+    "build": "pnpm run typecheck && pnpm run test:crm-push && pnpm run test:agent-gateway && next build",
     "build:cloudflare": "opennextjs-cloudflare build",
     "preview:cloudflare": "wrangler dev",
     "deploy:cloudflare": "opennextjs-cloudflare deploy",
     "start": "next start",
     "test:crm-push": "node --experimental-strip-types --test tests/crm-push-validation.test.ts",
-    "test:agent-gateway": "node --experimental-strip-types --test tests/agent-gateway.test.ts"
+    "test:agent-gateway": "node --experimental-strip-types --test tests/agent-gateway.test.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
