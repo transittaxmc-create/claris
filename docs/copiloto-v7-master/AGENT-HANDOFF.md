@@ -131,3 +131,7 @@ En español simple y breve: hecho/comprobado, pendiente/bloqueado, riesgo/permis
 - `/api/crm/state` returns 503 `crm_cloud_not_configured` because CRM Supabase env vars are absent in Railway review.
 - `/api/crm/send/dispatch` returns 501 `phone_dispatch_not_connected`; `/api/crm/push/config` returns `enabled:false`.
 - Build PASS and `test:crm-push` PASS 4/4; TypeScript remains FAIL with 66 baseline diagnostics also present on main.
+
+
+## Mandatory focus reset — 2026-11-27
+Before any work, read docs/copiloto-v7-master/FOCUS-AND-EXECUTION-BASELINE.md. It is the current execution contract and supersedes older suggested next-step lists where they conflict. Do not restart inventory or repeat completed audits without new evidence. First close the current Railway deployment and desktop/iPhone preview QA; then resolve migration provenance and security gates; then deliver Clients + Transport + Communications end-to-end. Keep work on the feature branch, synthetic data only, no legacy Finance/Plaid changes, no main merge or production deployment. Report exact evidence and update How This Works + CURRENT-STATE after each milestone.
