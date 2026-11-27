@@ -1,16 +1,16 @@
 {
   "schema_version": "0.2.0",
   "project": "copiloto-v7",
-  "updated_at": "2026-11-27T23:09:00Z",
+  "updated_at": "2026-11-27T23:16:00Z",
   "source_branch": "feat/copiloto-v7-phase1-foundation",
-  "source_commit": "9867adf543e07b7624d2d1b5c378e8b3c65edfb3",
+  "source_commit": "7ae8ae5906d8dd9b5d8e0d153cccaf15d27bf0b6",
   "environment": {
     "development": "in progress",
     "railway_review": "SUCCESS deployment 423f5d02-3547-47f0-8557-f4e64829df52 on commit 9867adf543e07b7624d2d1b5c378e8b3c65edfb3; public continuity endpoint 200 reports eventStore=private-supabase-agent-gateway and writeOperations=authenticated-only; unauthenticated recovery and bridge return 401.",
     "production": "not authorized"
   },
   "confirmed_state": {
-    "gateway": "Supabase Edge Function agent-gateway ACTIVE v4. Railway Review public continuity endpoint reports private-supabase-agent-gateway and authenticated-only writes. Edge Function code and reconstructed schema baseline are being versioned in Git. Authenticated per-agent runtime E2E remains pending.",
+    "gateway": "Supabase Edge Function v4 source recovered and versioned; seven gateway tables, constraints/indexes, append-only trigger, task RPCs and checkpoint view catalog-reconstructed into migration files; no SQL applied. Railway Review public continuity reports persistent private Supabase event store and authenticated-only writes. Authenticated runtime E2E pending.",
     "event_store": "persistent Supabase tables active; append-only events; synthetic DB checks passed",
     "agent_identities": "ChatGPT and Muse active machine identities; independent 256-bit credentials stored in Supabase Vault; SHA-256 hashes match active identity records",
     "task_queue": "task creation, atomic claim, heartbeat and completion endpoints implemented; synthetic DB test passed",
@@ -63,10 +63,11 @@
       "id": "gateway-typescript",
       "title": "Run standalone TypeScript validation and fix errors",
       "owner": "Implementation",
-      "status": "pending"
+      "status": "failed",
+      "result": "76 diagnostics on commit 7ae8ae5906d8dd9b5d8e0d153cccaf15d27bf0b6; 69 prior app/test diagnostics + 7 Deno-source diagnostics"
     }
   ],
-  "next_authorized_action": "Configure each Vault secret in its matching runtime, install ChatGPT custom Action/connector and Muse tool, then perform authenticated reciprocal E2E. Do not deploy production.",
+  "next_authorized_action": "Resolve tsc baseline (69 app/test diagnostics and 7 Deno project-configuration diagnostics), then complete credential rotation only after secure handoff channel and runtime secret stores are specified; then authenticated reciprocal E2E. No production or external channel actions.",
   "checkpoint_rule": "Future agent checkpoints must be derived from persisted server-stamped events; this seed snapshot is not a dynamic checkpoint.",
   "storage_mode": "supabase-persistent-event-store",
   "event_log": "Supabase public.agent_events; immutable to agents; repository JSON remains versioned seed/snapshot",
@@ -165,12 +166,37 @@
     "authenticated_muse_runtime": "PENDING",
     "cross_agent_http_ack": "PENDING",
     "fresh_conversation_recovery": "PENDING",
-    "independent_typescript_check": "PENDING: Railway build explicitly skips TypeScript validation; standalone tsc not yet executed.",
+    "independent_typescript_check": {
+      "status": "FAIL",
+      "commit": "7ae8ae5906d8dd9b5d8e0d153cccaf15d27bf0b6",
+      "workflow_run": 46081202819,
+      "command": "pnpm exec tsc --noEmit",
+      "node": "24",
+      "pnpm": "12.3.4",
+      "typescript": "5.7.3",
+      "exit_code": 2,
+      "diagnostic_count": 76,
+      "comparison": "69 diagnostics also present on previous checked commit 9867adf; 7 additional diagnostics caused by Deno Edge Function source being included by root tsconfig",
+      "historical_65_66_divergence": "NOT RESOLVED"
+    },
     "public_continuity_endpoint": {
       "status": "PASS",
       "http": 200,
       "eventStore": "private-supabase-agent-gateway",
       "writeOperations": "authenticated-only"
+    },
+    "edge_function_source": {
+      "status": "VERSIONED",
+      "supabase_function_version": 4,
+      "path": "supabase/functions/agent-gateway/index.ts"
+    },
+    "migration_recovery": {
+      "status": "VERSIONED_RECONSTRUCTED_BASELINE",
+      "paths": [
+        "supabase/migrations/20261127224018_copiloto_v7_agent_gateway_core.sql",
+        "supabase/migrations/20261127224752_copiloto_v7_agent_gateway_recovery_state.sql"
+      ],
+      "source": "read-only live catalog reconstruction; not original SQL authoring text; not applied"
     }
   }
 }

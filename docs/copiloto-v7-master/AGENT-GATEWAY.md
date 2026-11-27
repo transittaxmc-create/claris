@@ -82,3 +82,10 @@ Configurar las claves individuales en los secret stores reales de ChatGPT/Muse, 
 
 ## Source recovery checkpoint — 2026-11-27
 The deployed Edge Function v4 source and the live catalog definitions are being added to the repository under `supabase/functions/agent-gateway/` and `supabase/migrations/`. The migration SQL is reconstructed from the live catalog because the original SQL files were absent from Git; it is not represented as the original authoring text and was not applied during recovery. Current deployed authentication remains machine-key/hash based, which must be reconciled with Issue #87's dedicated Supabase Auth/JWT architecture before broad use.
+
+
+## Recovery artifacts and typecheck evidence — 2026-11-27
+- Versioned deployed Edge Function v4 source: `supabase/functions/agent-gateway/index.ts` (source recovered from Supabase; no runtime secrets included).
+- Versioned reconstructed SQL baselines: `20261127224018_copiloto_v7_agent_gateway_core.sql` and `20261127224752_copiloto_v7_agent_gateway_recovery_state.sql`; they reflect the live catalog, including seven tables, constraints/indexes, RLS, two RPCs, checkpoint view and append-only event trigger. They are not the original SQL authoring text and were not applied.
+- CI typecheck run 46081202819 on 7ae8ae5906d8dd9b5d8e0d153cccaf15d27bf0b6: `pnpm exec tsc --noEmit` → exit 2, 76 diagnostics (69 application/test diagnostics plus 7 Deno-source diagnostics). The 65/66 historical discrepancy remains open.
+- Credential rotation and authenticated E2E are still blocked by missing secure handoff/runtime configuration. Current deployed auth is machine-key/hash based and must be reconciled with Issue #87's Supabase Auth/JWT architecture.

@@ -269,3 +269,10 @@ Read first: docs/copiloto-v7-master/AGENT-GATEWAY.md, AGENT-GATEWAY-API.md, and 
 - Supabase Edge Function source v4 and live schema catalog are recovered for versioning; migration files are reconstructed baselines, not original source. No DDL was executed.
 - Next: complete standalone typecheck and record exact diagnostic count; then credential rotation only after a secure delivery channel and runtime secret-store targets are specified; then authenticated ChatGPT/Muse continuity and reciprocal message/inbox/ACK tests, followed by cold-start recovery.
 - Production, SMS and WhatsApp remain untouched.
+
+
+## Checkpoint — 2026-11-27 18:16 EST
+- Source artifacts are versioned: live Supabase Edge Function v4 at `supabase/functions/agent-gateway/index.ts`; reconstructed SQL baselines for both applied gateway migration versions under `supabase/migrations/`. Baselines include all seven tables, 48 constraints, non-constraint indexes, task RPCs, checkpoint view, RLS and the append-only event trigger. They are reconstructed from live catalog, not original SQL source; no DDL was executed.
+- Independent CI typecheck on commit 7ae8ae5906d8dd9b5d8e0d153cccaf15d27bf0b6: `pnpm exec tsc --noEmit`, Node 24 / pnpm 12.3.4 / TypeScript 5.7.3, exit 2, exactly 76 diagnostics. 69 are the pre-existing app/test set also seen on 9867adf; 7 arise from Deno edge source included in root tsconfig. Historical 65/66 discrepancy remains unresolved.
+- Credential rotation is not performed: ChatGPT runtime cannot be configured from this conversation with a private x-agent-key header; Amani key cannot be delivered until Miguel specifies an approved secure handoff channel and vault destination. No secrets printed or committed.
+- No production, SMS, WhatsApp, real customers or payments touched.

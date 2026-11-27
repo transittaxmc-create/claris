@@ -307,3 +307,11 @@
 - Railway Review deployment 423f5d02 SUCCESS on 9867adf543e07b7624d2d1b5c378e8b3c65edfb3. GET /api/agent-gateway/continuity => HTTP 200, eventStore=private-supabase-agent-gateway, writeOperations=authenticated-only. GET recovery and bridge without credentials => HTTP 401.
 - Authentication still follows deployed x-agent-key/hash code. This is not the dedicated Supabase Auth/JWT architecture described in Issue #87; keep the mismatch explicit and do not silently redesign. Credential rotation remains blocked until a secure handoff channel is designated and both runtimes can store secrets.
 - Standalone tsc remains pending. Railway build log explicitly says "Skipping validation of types"; no new error count is asserted.
+
+
+## 21. Independent TypeScript check — exact result on commit 7ae8ae5 (2026-11-27)
+- GitHub Actions run 46081202819, workflow `Copiloto V7 preview branch build`, commit `7ae8ae5906d8dd9b5d8e0d153cccaf15d27bf0b6`, completed FAILURE at TypeScript check.
+- Exact command: `pnpm exec tsc --noEmit`; environment from workflow: Node 24, pnpm 12.3.4, TypeScript 5.7.3; dependencies installed using `pnpm install --frozen-lockfile`.
+- Exact diagnostics: 76 TypeScript errors, process exit code 2. Of these, 69 match the prior check on commit 9867adf; 7 additional diagnostics are from the recovered Deno Edge Function source being included by the root tsconfig (Deno global/npm: specifier plus inferred any). This makes the current count 76; it does not resolve the historical 65/66 divergence.
+- Categories among the 69 existing application/test diagnostics: AI chat input type; ScheduledEntry/ExpenseUpdate/BackupInput model mismatches; missing ScheduleOverride/newBillPayment/backupFileName; Trip pickup/dropoff/notes shape mismatches; MileageDay required fields; Platform metadata keys; Reconciliation field shape; report data contract; test .ts extension settings and test constructor signature. Exact source diagnostics are preserved in workflow run 46081202819 logs.
+- No TypeScript fixes were made in this checkpoint; no errors are hidden or waived. Next: decide whether Deno functions get a separate Deno check and exclude that folder from app tsconfig, then resolve the existing 69 app/test errors in a controlled batch.

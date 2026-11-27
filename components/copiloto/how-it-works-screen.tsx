@@ -2205,6 +2205,11 @@ export function HowItWorksScreen() {
         <P><B>Versioned source:</B> recovered deployed Supabase Edge Function v4 and catalog-reconstructed SQL for the seven gateway tables, two task RPCs and checkpoint view. These SQL files are recovery baselines, not original migration authoring text; no SQL was applied during recovery.</P>
         <P><B>Security boundary:</B> deployed function still authenticates machine keys via SHA-256 hashes. Issue #87's dedicated Supabase Auth/JWT architecture remains a design reconciliation item. Do not rotate credentials until a secure handoff channel and runtime secret stores are available. Standalone tsc is still pending; Railway skips type validation.</P>
       </Section>
+      <Section title="38. TYPECHECK AND SOURCE RECOVERY — verified checkpoint (2026-11-27)">
+        <P><B>Source recovery:</B> deployed Supabase Edge Function v4 and reconstructed SQL baselines are versioned under supabase/functions/ and supabase/migrations/. Catalog recovery includes seven tables, two task RPCs, checkpoint view, RLS, indexes and the append-only event trigger. No SQL was applied.</P>
+        <P><B>Independent tsc:</B> GitHub Actions run 46081202819 on commit 7ae8ae5906d8dd9b5d8e0d153cccaf15d27bf0b6 ran pnpm exec tsc --noEmit with Node 24, pnpm 12.3.4, TypeScript 5.7.3. Exit code 2; 76 diagnostics. 69 match the pre-existing app/test set; 7 come from Deno Edge Function source included in the root tsconfig. Historical 65/66 divergence remains unresolved.</P>
+        <P><B>Credential gate:</B> no key rotation or delivery until secure handoff and supported runtime secret storage are available. No production, SMS or WhatsApp actions.</P>
+      </Section>
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>

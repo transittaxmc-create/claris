@@ -145,3 +145,16 @@ begin
 end $function$;
 REVOKE ALL ON FUNCTION public.agent_heartbeat_task(p_agent_id text, p_task_id uuid, p_lease_seconds integer) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.agent_heartbeat_task(p_agent_id text, p_task_id uuid, p_lease_seconds integer) TO service_role;
+
+CREATE OR REPLACE FUNCTION public.agent_events_reject_mutation()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+begin
+  raise exception 'agent_events_are_append_only';
+end $function$;
+
+CREATE TRIGGER agent_events_no_update
+BEFORE DELETE OR UPDATE ON public.agent_events
+FOR EACH ROW EXECUTE FUNCTION public.agent_events_reject_mutation();
