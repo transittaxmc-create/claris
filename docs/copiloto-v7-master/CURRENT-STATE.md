@@ -113,3 +113,9 @@
 - No hay tablas tax_cases/tax_documents, bóveda fiscal, OCR, conexión con software tributario, e-file, firma, formularios reales ni workflow de revisión con auditoría.
 - Separación legal/operativa Taxes (Brakha Group Tax Services) vs Transport no está implementada en memberships/RLS; no usar datos fiscales reales.
 - Resultado: etapa 6 NO CERRADA. Demo UI local disponible; persistencia y seguridad bloqueadas por etapas 3 y 5. No se usaron SSN/ITIN, W-2/1099 ni documentos reales.
+
+## 14. Hito 7 — Work Opportunities intake/evaluation (2026-11-27)
+- WorkOpportunitiesWorkspace usa seed local + useState para filtros, selección, drafts y clasificación fit; aviso explícito de que no se envía respuesta ni se acepta trabajo. No fetch, webhook, DB ni persistencia.
+- No existe ingestión WhatsApp conectada. WhatsApp Personal/grupos no se pueden leer por API oficial; ZapClaw Coexistence no lee grupos personales. No scraping de WhatsApp Web. Captura viable para demo: compartir/reenviar/manual capture con consentimiento y revisión humana.
+- Evaluación de oportunidad todavía no está conectada a datos reales ni motor de rentabilidad; demo no verifica disponibilidad, deadhead, tolls, combustible, tiempo, fare ni margen real.
+- Resultado: etapa 7 NO CERRADA. Diseño local disponible; falta intake manual seguro y almacenamiento con audit trail, clasificador y evaluación de rentabilidad con datos sintéticos, y conectores oficiales donde soportados. No se envió ni aceptó ninguna oferta.
