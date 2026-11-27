@@ -185,9 +185,9 @@ export function HowItWorksScreen() {
             the selected one.
           </li>
           <li>
-            <B>NO SHOW / CANCELADO:</B> in the trip editor, a job that did not happen can be
+            <B>NO SHOW / CANCELED:</B> in the trip editor, a job that did not happen can be
             closed without deleting it — <B>NO SHOW</B> sets the trip to <B>$5.00</B> (it counts
-            as earned) and <B>CANCELADO</B> sets it to <B>$0</B>. The trip stays in the list as a
+            as earned) and <B>CANCELED</B> sets it to <B>$0</B>. The trip stays in the list as a
             record, marked; tap the mark again to undo. The editor also shows a discreet{" "}
             <B>Received: date · time</B> line — when that job was received/uploaded.
           </li>
