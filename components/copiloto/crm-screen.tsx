@@ -332,54 +332,107 @@ export function CRMScreen({ openMessagesNonce = 0 }: { openMessagesNonce?: numbe
     return r.json()
   }, [])
 
-  // Carga inicial con sesión: la nube manda en los ids que tenga; lo local
+  // Copia viva de los clientes: la descarga de la nube (la inicial y las
+  // de regreso a primer plano) fusiona siempre contra la lista actual,
+  // no contra la foto del primer montaje.
+  const clientsRef = useRef<Client[]>([])
+  useEffect(() => {
+    clientsRef.current = clients
+  }, [clients])
+  const pullInFlight = useRef(false)
+  const lastPullAt = useRef(0)
+
+  // Descarga de la nube: la nube manda en los ids que tenga; lo local
   // NUNCA sincronizado se SUBE (migración idempotente con los mismos ids).
   // Lo ya sincronizado que la nube ya no tiene se cae de la copia local y
   // NO se vuelve a subir: fue borrado en otro lado y el borrado manda.
+  // Las semillas de reservas y MENSAJES se entregan en cuanto la lectura
+  // llega, ANTES de la escritura de clientes: un fallo al subir clientes
+  // jamás puede dejar la bandeja sin los mensajes de la nube (el
+  // 2026-11-28 los 4 mensajes del webhook estaban en crm_messages y la
+  // bandeja no los pintó tras cerrar y abrir el CRM, porque la descarga
+  // entregaba la semilla de mensajes solo al final, tras la subida de
+  // clientes, y cualquier fallo ahí abortaba todo sin reintento).
+  const pullFromCloud = useCallback(async () => {
+    if (pullInFlight.current) return
+    pullInFlight.current = true
+    setCloudStatus("loading")
+    try {
+      const r = await fetch("/api/crm/state", { cache: "no-store" })
+      if (!r.ok) throw new Error("crm_read_failed")
+      const data = await r.json()
+      const localClients = clientsRef.current
+      const cloudClients = ((data.clients || []) as unknown as Client[]).map((c) => normalizeClient(c))
+      const cloudIds = new Set(cloudClients.map((c) => c.id))
+      const localIds = new Set(localClients.map((c) => c.id))
+      const syncedBefore = readSyncedIds(SYNCED_CLIENTS_KEY)
+      // Borrado en ESTE teléfono: sincronizado antes, ya no está local y
+      // la nube aún lo tiene → sale de la fusión y se borra en la nube.
+      const deletedHere = [...syncedBefore].filter((id) => !localIds.has(id) && cloudIds.has(id))
+      // Borrado en otro lado: sincronizado antes, sigue local, la nube ya
+      // no lo tiene → se cae de la copia local y NO se vuelve a subir.
+      // Solo sube lo que NUNCA se sincronizó (migración inicial).
+      const localOnly = localClients.filter((c) => !cloudIds.has(c.id) && !syncedBefore.has(c.id))
+      const keptCloud = cloudClients.filter((c) => !deletedHere.includes(c.id))
+      const merged = [...keptCloud, ...localOnly].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+      applyingCloud.current = true
+      setClients(merged)
+      // Semillas primero: reservas y bandeja reciben la nube aunque la
+      // subida de clientes falle justo después.
+      setCloudSeedReservations((data.reservations || []) as unknown as CRMReservation[])
+      setCloudSeedNonce((n) => n + 1)
+      setCloudSeedMessages((data.messages || []) as unknown as CRMMessage[])
+      setCloudSeedMessagesNonce((n) => n + 1)
+      setMessagesCloudPending(!!data.messagesPending)
+      let writeFailed = false
+      if (localOnly.length || deletedHere.length) {
+        try {
+          const res = await cloudPost({ upsertClients: localOnly, deleteClientIds: deletedHere })
+          if (typeof res?.counts?.clients === "number" && res.counts.clients < merged.length) throw new Error("crm_count_mismatch")
+        } catch {
+          writeFailed = true
+        }
+      }
+      if (!writeFailed) {
+        cloudClientIds.current = new Set(merged.map((c) => c.id))
+        writeSyncedIds(SYNCED_CLIENTS_KEY, cloudClientIds.current)
+      }
+      lastPullAt.current = Date.now()
+      setCloudStatus(writeFailed ? "error" : "synced")
+    } catch {
+      setCloudStatus("error")
+    } finally {
+      applyingCloud.current = false
+      pullInFlight.current = false
+    }
+  }, [cloudPost])
+
+  // Carga inicial con sesión (una sola vez por montaje, como antes).
   useEffect(() => {
     if (!session || !ready || cloudSynced.current) return
     cloudSynced.current = true
-    setCloudStatus("loading")
-    ;(async () => {
-      try {
-        const r = await fetch("/api/crm/state", { cache: "no-store" })
-        if (!r.ok) throw new Error("crm_read_failed")
-        const data = await r.json()
-        const cloudClients = ((data.clients || []) as unknown as Client[]).map((c) => normalizeClient(c))
-        const cloudIds = new Set(cloudClients.map((c) => c.id))
-        const localIds = new Set(clients.map((c) => c.id))
-        const syncedBefore = readSyncedIds(SYNCED_CLIENTS_KEY)
-        // Borrado en ESTE teléfono: sincronizado antes, ya no está local y
-        // la nube aún lo tiene → sale de la fusión y se borra en la nube.
-        const deletedHere = [...syncedBefore].filter((id) => !localIds.has(id) && cloudIds.has(id))
-        // Borrado en otro lado: sincronizado antes, sigue local, la nube ya
-        // no lo tiene → se cae de la copia local y NO se vuelve a subir.
-        // Solo sube lo que NUNCA se sincronizó (migración inicial).
-        const localOnly = clients.filter((c) => !cloudIds.has(c.id) && !syncedBefore.has(c.id))
-        const keptCloud = cloudClients.filter((c) => !deletedHere.includes(c.id))
-        const merged = [...keptCloud, ...localOnly].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-        applyingCloud.current = true
-        setClients(merged)
-        if (localOnly.length || deletedHere.length) {
-          const res = await cloudPost({ upsertClients: localOnly, deleteClientIds: deletedHere })
-          if (typeof res?.counts?.clients === "number" && res.counts.clients < merged.length) throw new Error("crm_count_mismatch")
-        }
-        cloudClientIds.current = new Set(merged.map((c) => c.id))
-        writeSyncedIds(SYNCED_CLIENTS_KEY, cloudClientIds.current)
-        setCloudSeedReservations((data.reservations || []) as unknown as CRMReservation[])
-        setCloudSeedNonce((n) => n + 1)
-        setCloudSeedMessages((data.messages || []) as unknown as CRMMessage[])
-        setCloudSeedMessagesNonce((n) => n + 1)
-        setMessagesCloudPending(!!data.messagesPending)
-        setCloudStatus("synced")
-      } catch {
-        setCloudStatus("error")
-      } finally {
-        applyingCloud.current = false
-      }
-    })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, ready])
+    void pullFromCloud()
+  }, [session, ready, pullFromCloud])
+
+  // Al volver a primer plano la nube se baja otra vez: un mensaje que
+  // entró por el webhook mientras la app dormía o estaba en otra
+  // pantalla aparece al volver, sin cerrar sesión (regla de Miguel,
+  // 2026-11-28: la bandeja no puede depender de cerrar y abrir sesión).
+  useEffect(() => {
+    if (!session) return
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return
+      if (!cloudSynced.current) return
+      if (Date.now() - lastPullAt.current < 3000) return
+      void pullFromCloud()
+    }
+    document.addEventListener("visibilitychange", onVisible)
+    window.addEventListener("focus", onVisible)
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible)
+      window.removeEventListener("focus", onVisible)
+    }
+  }, [session, pullFromCloud])
 
   // Escritura continua de clientes: cada cambio local se refleja en la nube
   // (upsert del conjunto + borrados desde la última sync confirmada).
