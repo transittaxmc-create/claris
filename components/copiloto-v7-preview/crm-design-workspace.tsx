@@ -1,6 +1,7 @@
 "use client"
 
 import { useMemo, useState } from "react"
+import { Inter } from "next/font/google"
 import {
   Activity, Archive, ArrowDownLeft, ArrowUpRight, Bell, BriefcaseBusiness,
   Building2, CalendarDays, Check, CheckCircle2, ChevronDown, ChevronRight,
@@ -8,6 +9,8 @@ import {
   MessageSquare, MoreHorizontal, Paperclip, Plus, Search, Send, ShieldCheck,
   Smartphone, UserRound, Users, Wallet, X
 } from "lucide-react"
+
+const inter = Inter({ subsets: ["latin"], display: "swap" })
 
 type Area = "Transport" | "Taxes"
 type Channel = "SMS" | "WhatsApp"
@@ -98,7 +101,7 @@ export function CRMDesignWorkspace() {
   ]
   const activeClient = clients.find(c=>c.id===clientSelected) || clients[0]
 
-  return <main className="min-h-screen bg-[#050505] font-sans text-white" style={{fontFamily:"Inter, ui-sans-serif, system-ui, sans-serif"}}>
+  return <main className={`min-h-screen bg-[#050505] font-sans text-white ${inter.className}`}>
     <div className="mx-auto flex min-h-screen max-w-[1600px]">
       <aside className={`${mobileMenu?"fixed inset-y-0 left-0 z-50 flex":"hidden"} w-[250px] shrink-0 flex-col border-r border-white/[0.08] bg-[#080808] lg:sticky lg:top-0 lg:flex lg:h-screen`}>
         <div className="flex items-center gap-3 border-b border-white/[0.08] px-5 py-5">
