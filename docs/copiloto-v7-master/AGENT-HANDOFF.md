@@ -348,3 +348,27 @@ Completar la conciliación documental de Fase 1 en esta rama no productiva y reg
 SMS y WhatsApp live bidireccionales, activación de proveedores, webhooks/números reales, envío a clientes, delivery receipts reales y campañas quedan para una fase posterior con aprobación específica.
 
 La comunicación ChatGPT↔Muse por Agent Gateway (Issue #87 Verification #22) es coordinación de agentes, no integración de mensajería de clientes.
+
+
+## Auditoría de implementación — 2026-11-27
+
+Último compare GitHub: `main...feat/copiloto-v7-phase1-foundation` = `diverged`, **183 ahead / 1 behind**, merge-base `51cb5217cdb9b938678428b51ea64bc8e1300408`. No merge/rebase/reset.
+
+La auditoría de código e informes confirma que V7 existe principalmente como preview aislado. `app/copiloto-v7-preview/page.tsx` contiene Overview, Transport, Taxes, Work Opportunities, Communications, Clients, Documents y Square; los datos/interacciones son sintéticos y React local. `app/page.tsx` sigue renderizando `CopilotoApp`. Transport/Taxes/Work Opportunities y Square están implementados como interfaces de preview, no como integraciones backend. Communications permite revisar y aprobar borradores de muestra localmente, no envía ni persiste; `/api/crm/send/dispatch` sigue deshabilitado con 501.
+
+### Matriz de seguimiento vigente
+- Plataforma central: IN PROGRESS; preview aislado, integración a ruta principal pendiente.
+- Dashboard: preview implementado; conexión a fuentes/QA pendiente.
+- Transport, Taxes, Work Opportunities: interfaces preview implementadas; persistencia, seguridad e integraciones pendientes.
+- Centro de Comunicaciones sintético: interfaz preview implementada; modelo backend, clasificación persistente y auditoría real pendientes.
+- Clasificación y aprobación: demostración local/parcial; no afirmar auditoría append-only.
+- Identidad/permisos/storage: bloqueado para cierre; RLS por propietario y bucket privado existente, pero MFA, separación por unidad y hardening documental pendientes.
+- Integración módulos existentes: pendiente; preservar ruta raíz y validar regresiones.
+- Tests/build/QA: bloqueado; no hay ejecución confirmada de CI para últimos cambios; typecheck histórico 76 diagnósticos, exit 2 (69 app/tests + 7 Deno); 65/66 sigue sin resolver.
+- Documentación: avanzada; reconciliación integral e índice/handoff aún pendientes.
+
+### No repetir / no habilitar
+ChatGPT↔Muse Agent Gateway E2E ya fue verificado en Issue #87 Verificación #22. No es mensajería con clientes. Mantener SMS/Amani y WhatsApp/ZapClaw diferidos. No datos reales, SQL, merge, deploy productivo ni tocar Supabase financiero legado.
+
+### Próximo paso
+Planificar la integración gradual de la preview con la app existente sin reemplazarla; luego correr typecheck/build/tests reproducibles y completar revisión de seguridad. No modificar arquitectura de Auth ni esquema Supabase sin aprobación.
