@@ -1,7 +1,7 @@
 {
   "schema_version": "0.2.0",
   "project": "copiloto-v7",
-  "updated_at": "2026-11-28T02:38:59.930Z",
+  "updated_at": "2026-11-28T02:44:55.856Z",
   "source_branch": "feat/copiloto-v7-phase1-foundation",
   "source_commit": "32e5a4509de088c473a1fc3124f0737f96a6d5db",
   "environment": {
@@ -70,7 +70,7 @@
       "result": "Latest exact evidence: run 46081558172 on 32e5a4509de088c473a1fc3124f0737f96a6d5db; 76 diagnostics, exit 2 (69 app/tests + 7 Deno). Historical 65/66 discrepancy unresolved."
     }
   ],
-  "next_authorized_action": "Finish Phase 1 documentation reconciliation and How This Works index verification on feat/copiloto-v7-phase1-foundation; then produce a reproducible same-snapshot TypeScript comparison and a safe branch-reconciliation plan. Do not merge, rebase destructively, deploy production, execute SQL, or change secrets without Miguel's explicit approval.",
+  "next_authorized_action": "Continue implementing and verifying the confirmed original Phase 1 scope: Copiloto platform shell/workspaces and prepared synthetic Communications Center. Keep live SMS/WhatsApp provider integrations deferred to a later phase. Do not activate providers, use real customer data, or deploy production.",
   "checkpoint_rule": "Future agent checkpoints must be derived from persisted server-stamped events; this seed snapshot is not a dynamic checkpoint.",
   "storage_mode": "supabase-persistent-event-store",
   "event_log": "Supabase public.agent_events; immutable to agents; repository JSON remains versioned seed/snapshot",
@@ -242,5 +242,30 @@
   },
   "architecture_decision": {
     "authentication": "PENDING_MIGUEL_DECISION: deployed per-agent x-agent-key + SHA-256 hash remains unchanged; approved Auth + JWT design is not silently replaced; no auth rebuild until Miguel decides."
+  },
+  "phase1_scope": {
+    "status": "CONFIRMED_BY_MIGUEL",
+    "confirmed_at": "2026-11-27",
+    "source": "Issue #87 and How This Works §24; Miguel's explicit scope confirmation in chat",
+    "definition": "Original Phase 1: Copiloto platform foundation and a prepared Communications Center/intake model. Use synthetic data and do not activate real SMS/WhatsApp providers or send/receive real customer communications.",
+    "included": [
+      "responsive Copiloto shell and navigation",
+      "dashboard/workspace landing",
+      "Transport workspace entry point and safe integration of existing workflows",
+      "Taxes workspace entry point and safe integration of existing workflows",
+      "Work Opportunities workflow shell using synthetic data and human approval",
+      "Communications Center prepared intake/conversation model, source/channel, sender, timestamps, attachment metadata, Transport/Taxes classification, review/approval and audit events",
+      "shared identity/permissions, private document storage, notifications and audit trail as scoped and verified",
+      "automated tests, typecheck/build, preview and responsive QA",
+      "continuity documentation and agent handoff"
+    ],
+    "deferred_to_later_phase": [
+      "live bidirectional SMS provider integration (Amani)",
+      "live bidirectional WhatsApp provider integration (ZapClaw)",
+      "real provider activation, phone numbers, webhooks, delivery receipts",
+      "real customer outbound/inbound communications and campaigns"
+    ],
+    "acceptance_boundary": "Communications Center must be structurally prepared and tested with synthetic fixtures only; no real customer messages or provider activation in Phase 1.",
+    "note": "Agent Gateway ChatGPT↔Muse E2E is agent coordination and is not the customer Communications Center."
   }
 }
