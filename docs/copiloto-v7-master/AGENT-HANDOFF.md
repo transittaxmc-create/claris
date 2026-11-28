@@ -296,3 +296,31 @@ Read first: docs/copiloto-v7-master/AGENT-GATEWAY.md, AGENT-GATEWAY-API.md, and 
 - ChatGPT runtime is BLOCKED because this conversation has no supported persistent secret manager or custom-header injection for fresh conversations. Do not claim ChatGPT key configured; do not retrieve secrets into this session.
 - Authentication architecture is Miguel's decision. Leave deployed x-agent-key/SHA-256 code unchanged; do not rebuild Auth/JWT or merge.
 - Typecheck published in Issue #87 comment #15: run 46081558172, source HEAD 32e5a4509de088c473a1fc3124f0737f96a6d5db, `pnpm exec tsc --noEmit`, Node v24.22.3, pnpm 12.3.4, TypeScript 5.7.3, exit 2, 76 diagnostics.
+
+
+## Handoff vigente — después de Issue #87 Verificación #22 (2026-11-27)
+
+### Cerrado y no repetir
+- La comunicación bidireccional ChatGPT↔Muse vía Agent Gateway quedó demostrada en vivo por Amani en Issue #87 Verificación #22. ChatGPT autenticó como `chatgpt` (HTTP 200), recibió y confirmó ACK de los dos mensajes pendientes, envió respuesta (HTTP 201), y Muse la recibió y confirmó ACK (HTTP 200). Atribución correcta: `chatgpt (via amani)`.
+- No volver a pedir ni depositar llaves para repetir esta conexión. No volver a tratar `f9aab76d` o `a30b3bb0` como pendientes.
+- La confirmación de lectura de ChatGPT quedó registrada en Issue #87 comentario #23.
+
+### No confundir con Phase 2 Coordinator
+- El servicio `services/openai-coordinator/` existe y su harness sintético pasó 14/14; eso no demuestra que el proceso Coordinator esté vivo en producción ni autenticado con su identidad propia.
+- Identidad `coordinator`: SQL revisado/listo, pero no ejecutado; llave `copiloto_v7_coordinator_agent_key` aún depende de creación autorizada y depósito seguro.
+- `OPENAI_API_KEY` del servicio Coordinator es independiente de la llave Gateway de ChatGPT; su disponibilidad en el secret store del servicio no está demostrada en la Verificación #22.
+
+### Pendientes reales de Fase 1
+1. Completar revisión y reconciliación de README, CURRENT-STATE, CONTINUITY-REGISTER, AGENT-HANDOFF, AGENT-GATEWAY-API, OPENAI-COORDINATOR y How This Works; conservar historial, pero dejar claramente identificadas las notas supersedidas.
+2. Resolver la divergencia histórica 65/66 con una comparación TypeScript reproducible en el mismo snapshot; último resultado exacto documentado: 76 diagnósticos, exit 2, run 46081558172, commit 32e5a4509de088c473a1fc3124f0737f96a6d5db (69 app/tests + 7 Deno).
+3. Resolver la estrategia de reconciliación entre `main` y `feat/copiloto-v7-phase1-foundation`: GitHub compare muestra diverged, 170 ahead / 1 behind. No merge/rebase/reset sin plan y aprobación de Miguel.
+4. Verificar índice único y que el manual How This Works tenga una sola entrada por tema y un handoff actualizado.
+
+### Límites vigentes
+- No tocar Supabase financiero legado `zrcnpmipdhpjdjkfrrgt`.
+- No SQL, secretos, producción, merge ni comunicaciones a clientes sin aprobación específica.
+- No presentar la preview como producción ni como SHA actual sin verificar el deployment.
+- Mantener SMS/Amani y WhatsApp/ZapClaw separados.
+
+### Próxima acción autorizada
+Completar la conciliación documental de Fase 1 en esta rama no productiva y registrar evidencia. Después, preparar el comparativo de typecheck y el plan de reconciliación de ramas. Fase 1 permanece IN PROGRESS hasta cerrar ambos bloqueos.
