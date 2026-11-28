@@ -66,11 +66,11 @@ El estado se actualiza EN ESTA MISMA PÁGINA, en su sitio. El historial vive en 
 
 ## Lista de cierre de esta etapa (fija — solo se tacha; nada nuevo sin orden de Miguel)
 
-**ORDEN POR PARTES (Miguel, 2026-11-27 22:24 EST): la Fase 1 del CRM es SOLO MENSAJERÍA.**
-Nada de tarifas ni de las demás partes del CRM hasta que Miguel dé la mensajería por terminada.
-La fase se da por terminada cuando MIGUEL compruebe que SMS y los dos WhatsApp **envían, reciben,
+**EL OBJETIVO ES TERMINAR EL CRM COMPLETO. El orden es POR PARTES, dentro del CRM (Miguel, 2026-11-27):**
+**Parte 1 = MENSAJERÍA.** Nada de tarifas ni de las demás partes hasta cerrar esta parte.
+La Parte 1 se cierra cuando MIGUEL compruebe que SMS y los dos WhatsApp **envían, reciben,
 no pierden ningún mensaje y se responden desde el CRM** con su aprobación y sus estados.
-El resto del CRM (diseño completo y demás partes) queda EN ESPERA detrás de esta lista.
+Cerrada la Parte 1, se continúa con las partes siguientes del CRM en orden hasta completarlo — el CRM no se pospone; se termina por partes.
 
 **Regla de reporte (Miguel, 2026-11-27):** cada agente reporta lo que TERMINA y ese reporte va al registro del Gateway. ChatGPT, al completar cada pieza, envía su reporte por el Gateway (message.send a Muse) y lo registra en el Issue #87. DeepSeek reporta a través de Amani, que asienta su reporte en el mismo registro. Amani verifica cada reporte contra la evidencia (commit/preview) antes de tachar el punto de esta lista, y entrega a Miguel UN solo reporte consolidado. Miguel no persigue a nadie: los reportes llegan al Gateway y Amani los recoge.
 
