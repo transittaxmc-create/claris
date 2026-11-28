@@ -49,6 +49,7 @@ export function HowItWorksScreen() {
           <li>§22 APPLICATION INVENTORY &amp; ARCHITECTURE AUDIT — complete source map, integrations, database state, verified gaps and agent handoff (2026-11-27)</li>
           <li>§23 CRM COPILOT V7 — TECHNICAL AUDIT &amp; VERIFIED GAPS (2026-11-27)</li>
           <li>§24 COPILOTO V7 — PHASE 1 BUILD FOUNDATION &amp; ARCHITECTURE (2026-11-27) · §25 V7 PREVIEW WORKSPACE — FIRST IMPLEMENTATION (2026-11-27) · §26 TRANSPORT OPERATIONS PREVIEW (2026-11-27) · §27 TAX PREPARATION PREVIEW (2026-11-27) · §28 WORK OPPORTUNITIES REVIEW PREVIEW (2026-11-27) · §29 SQUARE OPERATIONS PREVIEW (2026-11-27) · §30 V7 VERIFICATION STATUS (2026-11-27) · §31 RELEASE READINESS & TRANSFER (2026-11-27) · §32 TEMPORARY RAILWAY PREVIEW & AGENT HANDOFF (2026-11-27) · §33 MASTER PROJECT PLAN & CONTINUITY FOLDER (2026-11-27) · §34 AGENT GATEWAY & MASTER CONTINUITY REGISTER (2026-11-27)</li>
+          <li>§42 OPENAI COORDINATOR — PHASE 2 BRIDGE SERVICE (2026-11-27)</li>
         </ul>
       </Section>
 
@@ -2223,6 +2224,14 @@ export function HowItWorksScreen() {
         <P><B>Amani:</B> Secure Vault intake card already exists (Issue #87 comment #14), connector custom.copiloto-agent-gateway, identity claude/amani, header x-agent-key. Miguel deposits the Vault secret directly into this existing card. No second channel and no secret copied into chat or docs.</P>
         <P><B>ChatGPT:</B> BLOCKED. This conversation runtime has no supported persistent secret store or private x-agent-key header injection for future conversations. Do not claim the ChatGPT credential is configured or retrieve its secret into chat.</P>
         <P><B>Architecture:</B> Auth+JWT versus machine-key+hash remains Miguel's decision. No authentication rebuild, key reissue, main merge, production, SMS or WhatsApp action.</P>
+      </Section>
+      <Section title="42. OPENAI COORDINATOR — PHASE 2 BRIDGE SERVICE (2026-11-27)">
+        <P><B>What it is:</B> a standalone backend service in the repo (services/openai-coordinator) that gives the OpenAI side a safe runtime against the Agent Gateway. The ChatGPT conversation runtime cannot store a private key or send the x-agent-key header (see §41), so this service holds the OpenAI-side gateway identity on a server and exchanges tasks, messages and events with Muse through the gateway.</P>
+        <P><B>How it works:</B> it polls its gateway inbox; each instruction runs through the OpenAI Responses API with a bounded tool loop whose only tools are gateway operations (status, continuity, task list, create task for Muse, send/ack message, append event, request approval). Outcomes are acknowledged and appended to the persistent event store; when Muse completes a task the Coordinator created, the response is registered as a checkpoint event. Consequential actions require Miguel&apos;s approval through approval requests.</P>
+        <P><B>Security:</B> its own gateway identity and key, separate from Muse&apos;s and from chatgpt&apos;s — it never reuses the chatgpt key. Secrets live only in server secret stores (environment), never in the repo, the app or any chat. Writes are idempotent; retries cover network and 5xx errors only; the process fails closed on a rejected key.</P>
+        <P><B>Verified (synthetic):</B> the acceptance harness runs the real compiled service against mock gateway and mock OpenAI servers on localhost: 14/14 assertions passed, covering authentication, gateway communication, task creation for Muse, Muse claim and response, response registration, ordered event persistence, unauthorized rejection (401) and error/disconnect retry. Synthetic data only; no live keys were used.</P>
+        <P><B>Not yet live:</B> the live end-to-end run is pending two secrets Miguel must still configure — the OpenAI API key deposit and the creation of the Coordinator&apos;s own gateway identity with its key in Supabase Vault. Until that run is demonstrated and registered, bidirectional live communication is NOT claimed. A remote MCP face is planned over the same gateway client but is not implemented.</P>
+        <P><B>Boundaries:</B> preview branch only. No merge to main, no production deploy, no Supabase changes, no real client data, no SMS, WhatsApp or payments. Full record: docs/copiloto-v7-master/OPENAI-COORDINATOR.md.</P>
       </Section>
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
