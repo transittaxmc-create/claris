@@ -66,13 +66,18 @@ El estado se actualiza EN ESTA MISMA PÁGINA, en su sitio. El historial vive en 
 
 ## Lista de cierre de esta etapa (fija — solo se tacha; nada nuevo sin orden de Miguel)
 
-Amani coordina el cierre.
-**Regla de reporte (Miguel, 2026-11-27):** cada agente reporta lo que TERMINA y ese reporte va al registro del Gateway. ChatGPT, al completar cada pieza, envía su reporte por el Gateway (message.send a Muse) y lo registra en el Issue #87. DeepSeek reporta a través de Amani, que asienta su reporte en el mismo registro. Amani verifica cada reporte contra la evidencia (commit/preview) antes de tachar el punto de esta lista, y entrega a Miguel UN solo reporte consolidado. Miguel no persigue a nadie: los reportes llegan al Gateway y Amani los recoge.
- Congelado el papeleo: ningún documento ni sección nueva; todo converge a esta página y al Issue #87.
+**ORDEN POR PARTES (Miguel, 2026-11-27 22:24 EST): la Fase 1 del CRM es SOLO MENSAJERÍA.**
+Nada de tarifas ni de las demás partes del CRM hasta que Miguel dé la mensajería por terminada.
+La fase se da por terminada cuando MIGUEL compruebe que SMS y los dos WhatsApp **envían, reciben,
+no pierden ningún mensaje y se responden desde el CRM** con su aprobación y sus estados.
+El resto del CRM (diseño completo y demás partes) queda EN ESPERA detrás de esta lista.
 
-- [ ] 1. Resumen completo de los chats Miguel↔ChatGPT, reconciliado contra el registro (ChatGPT)
-- [ ] 2. Diseño del CRM completo en la rama, con SMS + 2 WhatsApp en diseño (ChatGPT)
-- [ ] 3. Revisión de DeepSeek del diseño contra el Design System V1.0 y la lógica de comunicaciones — verificada por Amani
-- [ ] 4. Verificación de Amani: commits, cobertura completa, typecheck sin pasar de 76, registro al día
-- [ ] 5. Aprobación de Miguel viendo el preview en Railway
-- [ ] 6. (Mañana) Integración en la aplicación original: un solo lote, con su confirmación en el teléfono
+**Regla de reporte (Miguel, 2026-11-27):** cada agente reporta lo que TERMINA y ese reporte va al registro del Gateway. ChatGPT, al completar cada pieza, envía su reporte por el Gateway (message.send a Muse) y lo registra en el Issue #87. DeepSeek reporta a través de Amani, que asienta su reporte en el mismo registro. Amani verifica cada reporte contra la evidencia (commit/preview) antes de tachar el punto de esta lista, y entrega a Miguel UN solo reporte consolidado. Miguel no persigue a nadie: los reportes llegan al Gateway y Amani los recoge.
+
+- [ ] 1. SMS — recepción y captura total en el CRM: ningún mensaje se pierde
+- [ ] 2. SMS — envío desde el CRM con aprobación de Miguel y estados honestos, probado de punta a punta
+- [ ] 3. WhatsApp Business — recepción y captura en el CRM, en su carril
+- [ ] 4. WhatsApp Business — envío desde el CRM con aprobación y estados, probado de punta a punta
+- [ ] 5. WhatsApp personal — recepción y captura en su carril (Impuestos + grupos de trabajos)
+- [ ] 6. WhatsApp personal — respuesta desde el CRM en su carril, con aprobación
+- [ ] 7. Prueba integral con Miguel en los tres canales (ida y vuelta, sin pérdidas) → Miguel da la Fase 1 por terminada
