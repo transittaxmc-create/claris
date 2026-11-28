@@ -19,30 +19,21 @@ El estado se actualiza EN ESTA MISMA PÁGINA, en su sitio. El historial vive en 
 - **Gemini:** integración vía Amani documentada; no asumir que el CRM V7 ya la usa.
 - **CRM Design Preview:** ruta aislada /copiloto-v7-crm-design; commits base 569626d, afd8da8, 8117caf. El Centro de Comunicaciones ahora muestra tres carriles separados: SMS/Amani → Transport; WhatsApp Business 934-208-1400 → Transport; WhatsApp personal 934-200-8109 → Taxes + Work Opportunities. Se añadieron datos sintéticos de oportunidad compartida manualmente, filtro dedicado y pantalla Work Opportunities. Commits 5afbbcd14a81726f8140393c44d91e1af1c8c52e, 084da52c0f0697b67e773cdaff156035680edbbe y 822bff21b73d7e8d78c1b90365eb84248e3e7362. SMS/Amani muestra solo Transport; se retiró el ejemplo SMS clasificado como Taxes y se evitó cualquier estado que pudiera sugerir entrega real. No hay persistencia ni conexión de proveedores; build/QA desktop/iPhone pendientes.
 
-## Alcance confirmado
+## Alcance confirmado — CRM Copiloto V7 completo
 
-- **Fase 1:** plataforma Copiloto + Centro de Comunicaciones preparado, con datos sintéticos. Activación de proveedores, mensajes reales, webhooks y recibos reales queda para fase posterior y requiere aprobación específica.
-- Integración incremental en la app original después de revisión/aprobación. No sustituir wholesale CopilotoApp ni alterar módulos existentes.
-- **Canales, siempre separados:**
-  - **SMS/Amani** → Transport (clientes/pasajeros).
-  - **WhatsApp Business 934-208-1400** → Transport.
-  - **WhatsApp personal 934-200-8109** → Taxes y grupos de Work Opportunities.
-  - No scraping no oficial de grupos ni respuestas YES automáticas; investigar reenvío/compartido manual.
-- Aclaración de Miguel en Issue #87: cuando dice «CMS» se refiere al CRM Copiloto V7 completo, no a un CMS separado.
-- El E2E ChatGPT↔Muse del Gateway no es el SMS/WhatsApp de clientes. En esta sesión se confirmó que la API está documentada, pero no hay una acción directa disponible para emitir ahora un message.send autenticado; no declarar nuevas órdenes entregadas a Muse/DeepSeek/Gemini. El intento de lanzar cloud agents de Railway fue rechazado porque el dashboard de agentes no está activado.
+La aclaración posterior de Miguel en Issue #87, comentario 7234067711, fija que «CMS» significa el CRM Copiloto V7 completo, no un CMS separado. El objetivo es completar el CRM como centro operativo del negocio, con continuidad/maestro compartido entre agentes, coordinación autenticada y auditable entre Muse, Amani, Gemini y ChatGPT, SMS mediante el puente original Muse/Amani y WhatsApp Business mediante ZapClaw. Los canales, cuentas y permisos de Transport y Taxes deben permanecer separados. Esta aclaración posterior actualiza el alcance más limitado de la decisión anterior de Fase 1.
 
-## Qué falta (responsable)
+**Prioridad de ejecución:** terminar por partes, empezando por la mensajería y sus carriles; después continuar con las demás partes del CRM en orden. No detener el proyecto en una preview visual.
 
-1. Ejecutar typecheck reproducible en la rama y registrar diferencias contra main; Railway build compiló, pero omite validación de tipos (ChatGPT).
-2. Verificar rutas CRM preview y hacer QA visual desktop/iPhone; corregir hallazgos (ChatGPT).
-3. Presentar el preview a Miguel para comentarios y aprobación; no integrar antes (ChatGPT/Miguel).
-4. Integrar incrementalmente el diseño aprobado en la app original, preservando navegación y flujos existentes (equipo, con autorización de Miguel).
-5. Coordinator: obtener el SQL revisado de Amani por canal seguro; Miguel autoriza/ejecuta creación de identidad `coordinator`; depositar por tarjeta segura la llave de Gateway y OpenAI API key; crear servicio Railway Review y ejecutar E2E sintético live. ChatGPT↔Muse ya está cerrado y no se repite (Miguel/Amani/ChatGPT).
-6. Decisión pendiente de Miguel: Auth+JWT (arquitectura aprobada en el checkpoint original) vs la desviación implementada de claves de máquina + hash SHA-256; no ampliar uso sin resolver.
-7. SMS/Amani: recuperar el contrato real del puente externo; callback antiguo no reactivar; dispatch actual sigue 501 y la cola no transmite (Amani).
-8. WhatsApp Business/ZapClaw y WhatsApp personal/grupos: auditar por separado; no conexión/ingestión/envío real verificado (Amani).
-9. Seguridad antes de clientes reales: MFA/enforcement, aislamiento Transport/Taxes, memberships/RLS, almacenamiento documental privado, pruebas de escritura/aislamiento, backups/restore y auditoría.
-10. Typecheck global sigue con baseline histórico de 76 diagnósticos; no declarar PASS sin corrida reproducible actual.
+**Canales, siempre separados:**
+- **SMS/Amani** → Transport.
+- **WhatsApp Business 934-208-1400** → Transport.
+- **WhatsApp personal 934-200-8109** → Taxes y grupos de Work Opportunities.
+- El carril personal recibe oportunidades compartidas manualmente; no scraping no oficial de grupos ni respuestas YES automáticas.
+
+**Salvaguardas vigentes:** no Twilio, no cambiar números ni cuentas, no tocar el Supabase financiero legado `zrcnpmipdhpjdjkfrrgt`, no producción, no datos reales de clientes, no pagos reales ni mensajes salientes reales sin aprobación específica. Un botón local o HTTP 2xx no demuestra entrega. Las pruebas deben demostrar los ciclos de extremo a extremo, persistencia, auditoría y no pérdida de mensajes cuando se habilite cada proveedor.
+
+El E2E ChatGPT↔Muse del Agent Gateway (#87 Verificación #22) es coordinación interna entre agentes; no demuestra que SMS o WhatsApp de clientes estén conectados.
 
 ## Reglas que no cambian
 
