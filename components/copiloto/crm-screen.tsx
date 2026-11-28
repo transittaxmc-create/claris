@@ -1566,7 +1566,7 @@ function CRMMessages({ clients, reservations, cloudSeed, cloudSeedNonce, onCloud
       const res = await fetch("/api/crm/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messageId: m.id, to: m.fromPhone, text: m.draftReply }),
+        body: JSON.stringify({ messageId: m.id, to: m.fromPhone, text: m.draftReply, approve: true }),
       })
       const data = (await res.json().catch(() => null)) as { ok?: boolean; queued?: boolean; error?: string } | null
       if (res.ok && data?.ok && data.queued) {
