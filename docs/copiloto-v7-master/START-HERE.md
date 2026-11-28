@@ -25,6 +25,13 @@ aquí vive SOLO el estado actual.
   borrador editable, aprobación humana simulada, estados explícitos y timeline de cliente.
   Todo es sintético/local; no usa backend ni proveedores. GitHub Actions build del HEAD `8117caf` en estado QUEUED; QA de build/browser aún pendiente.
 
+
+## Alcance de esta etapa (cerrado por Miguel, 2026-11-27 22:06 EST)
+
+- **SOLO el CRM. El resto de la aplicación NO se toca.**
+- Trabajo: conectar el diseño del CRM + la funcionalidad de sus comunicaciones.
+- Canales: **1 SMS y 2 WhatsApp** (Transporte (934) 208-1400 e Impuestos, el segundo número), carriles separados, nunca mezclados.
+
 ## Qué falta (dueño entre paréntesis)
 
 1. Identidad `coordinator` creada + su llave depositada (Miguel corre el SQL; Amani verifica).
