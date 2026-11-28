@@ -49,7 +49,7 @@ export function HowItWorksScreen() {
           <li>§22 APPLICATION INVENTORY &amp; ARCHITECTURE AUDIT — complete source map, integrations, database state, verified gaps and agent handoff (2026-11-27)</li>
           <li>§23 CRM COPILOT V7 — TECHNICAL AUDIT &amp; VERIFIED GAPS (2026-11-27)</li>
           <li>§24 COPILOTO V7 — PHASE 1 BUILD FOUNDATION &amp; ARCHITECTURE (2026-11-27) · §25 V7 PREVIEW WORKSPACE — FIRST IMPLEMENTATION (2026-11-27) · §26 TRANSPORT OPERATIONS PREVIEW (2026-11-27) · §27 TAX PREPARATION PREVIEW (2026-11-27) · §28 WORK OPPORTUNITIES REVIEW PREVIEW (2026-11-27) · §29 SQUARE OPERATIONS PREVIEW (2026-11-27) · §30 V7 VERIFICATION STATUS (2026-11-27) · §31 RELEASE READINESS & TRANSFER (2026-11-27) · §32 TEMPORARY RAILWAY PREVIEW & AGENT HANDOFF (2026-11-27) · §33 MASTER PROJECT PLAN & CONTINUITY FOLDER (2026-11-27) · §34 AGENT GATEWAY & MASTER CONTINUITY REGISTER (2026-11-27)</li>
-          <li>§42 OPENAI COORDINATOR — PHASE 2 BRIDGE SERVICE (2026-11-27) · §43 FASE 1 — CONTINUIDAD BIDIRECCIONAL, ESTADO DE TYPECHECK Y RECONCILIACIÓN DE RAMAS (2026-11-27) · §44 ALCANCE CONFIRMADO DE FASE 1 — PLATAFORMA + CENTRO DE COMUNICACIONES PREPARADO (2026-11-27)</li>
+          <li>§42 OPENAI COORDINATOR — PHASE 2 BRIDGE SERVICE (2026-11-27) · §43 FASE 1 — CONTINUIDAD BIDIRECCIONAL, ESTADO DE TYPECHECK Y RECONCILIACIÓN DE RAMAS (2026-11-27) · §44 ALCANCE CONFIRMADO DE FASE 1 — PLATAFORMA + CENTRO DE COMUNICACIONES PREPARADO (2026-11-27) · §45 AUDITORÍA DE IMPLEMENTACIÓN DE FASE 1 — ESTADO REAL DE PREVIEWS, INTEGRACIONES Y BLOQUEOS (2026-11-27)</li>
         </ul>
       </Section>
 
@@ -2272,4 +2272,35 @@ function B({ children }: { children: React.ReactNode }) {
         <P><B>Pruebas permitidas:</B> datos sintéticos y fixtures; no usar clientes reales ni activar proveedores. El Centro de Comunicaciones debe quedar preparado estructuralmente, no operativo con proveedores externos.</P>
         <P><B>Distinción:</B> el E2E ChatGPT↔Muse del Agent Gateway (#87 Verificación #22) prueba coordinación entre agentes. No es el SMS/WhatsApp del Centro de Comunicaciones de clientes.</P>
         <P><B>Seguimiento:</B> shell responsive, dashboard, Transport, Taxes, Work Opportunities, Communications Center sintético, servicios compartidos, seguridad, pruebas/build/preview y documentación se marcan terminados solo después de evidencia verificable. Fase 1 permanece IN PROGRESS hasta cumplir sus criterios.</P>
+      <Section title="45. AUDITORÍA DE IMPLEMENTACIÓN DE FASE 1 — ESTADO REAL DE PREVIEWS, INTEGRACIONES Y BLOQUEOS (2026-11-27)">
+        <P><B>Compare GitHub:</B> main...feat/copiloto-v7-phase1-foundation está diverged, con 183 commits ahead y 1 behind; merge-base 51cb5217cdb9b938678428b51ea64bc8e1300408. No hacer merge/rebase/reset.</P>
+        <P><B>Resultado principal:</B> V7 está implementado como preview aislado. La ruta raíz sigue renderizando CopilotoApp. Dashboard, Transport, Taxes, Work Opportunities, Communications y Square contienen interfaces de demostración con datos sintéticos/estado local; no son todavía módulos conectados a backend ni integraciones operativas.</P>
+        <P><B>Communications:</B> permite revisar y aprobar un borrador de muestra localmente; no envía ni persiste. /api/crm/send/dispatch sigue deshabilitado (501 phone_dispatch_not_connected). No se activa SMS/Amani ni WhatsApp/ZapClaw.</P>
+        <P><B>Seguridad:</B> la auditoría encontró RLS por propietario y bucket privado de fotos, pero no demuestra MFA exigido, aislamiento Transport/Taxes ni vault documental completo. Protección contra contraseñas filtradas sigue deshabilitada según Security Advisor. No usar datos reales.</P>
+        <P><B>Calidad:</B> no hay build/QA de la rama confirmados. El typecheck histórico falló con 76 diagnósticos (69 app/tests + 7 Deno); discrepancia 65/66 pendiente. La existencia de un workflow no equivale a un check exitoso.</P>
+        <P><B>Seguimiento:</B> plataforma IN PROGRESS; Dashboard/Transport/Taxes/Work Opportunities/Communications/Square PREVIEW IMPLEMENTED; clasificación y aprobación PARCIALES/LOCALES; seguridad, integración con la app existente y pruebas BLOQUEADAS/PENDIENTES; documentación AVANZADA, NO CERRADA.</P>
+        <P><B>Próximo paso:</B> diseñar integración incremental sin reemplazar CopilotoApp; ejecutar typecheck/build/tests reproducibles; cerrar MFA, permisos por unidad, storage privado y QA. No SQL, merge, producción ni comunicaciones reales sin aprobación específica.</P>
       </Section>
+      <p className="mt-6 text-center text-[10px] text-neutral-600">
+        Island City Transit · Copiloto procedures manual · update with every rule change
+      </p>
+    </div>
+  )
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="mb-4 rounded-2xl border border-neutral-800 bg-neutral-950/80 p-3.5">
+      <h2 className="mb-2 text-[13px] font-extrabold text-white">{title}</h2>
+      {children}
+    </section>
+  )
+}
+
+function P({ children }: { children: React.ReactNode }) {
+  return <p className="mb-2 text-[12px] leading-relaxed text-neutral-300 last:mb-0">{children}</p>
+}
+
+function B({ children }: { children: React.ReactNode }) {
+  return <strong className="font-bold text-yellow-400/95">{children}</strong>
+}
