@@ -1,7 +1,10 @@
 # Copiloto V7 — carpeta maestra
 
+> **EMPIEZA AQUÍ:** el estado actual del proyecto vive en [START-HERE.md](./START-HERE.md) — punto fijo que se actualiza en su sitio. Léelo primero; el historial completo está en el Issue #87.
+
 **Fuente de continuidad del proyecto.** Leer este índice antes de modificar código, base de datos, integraciones o despliegues.
 
+- [EMPIEZA AQUÍ — estado actual](./START-HERE.md)
 - [Plan maestro y alcance](./MASTER-PLAN.md)
 - [Estado técnico verificado](./CURRENT-STATE.md)
 - [Instrucciones para el siguiente agente](./AGENT-HANDOFF.md)
