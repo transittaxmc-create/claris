@@ -53,7 +53,7 @@ The public GET /api/agent-gateway/continuity remains a documentation-only endpoi
 Each machine key is 256-bit random material; the database stores only SHA-256. The handler resolves actor/scopes from the key hash and ignores caller-supplied actor identity. Missing, invalid, revoked or disabled keys return 401. To revoke one identity set status='revoked' on that row. Rotation requires generating a new random key, replacing key_hash, then securely updating that agent's secret store.
 
 ## Current limitation
-The REST API is deployed and authenticated at the handler level. Successful HTTP calls with both live agent keys and automatic fresh-session connector invocation still require E2E verification in the ChatGPT and Muse runtimes.
+The REST API is deployed. **Live ChatGPT↔Muse bidirectional E2E is VERIFIED** in Issue #87 Verification #22 via Amani's API route: ChatGPT identity status HTTP 200; two inbox messages ACKed; ChatGPT reply HTTP 201; Muse received and ACKed it HTTP 200. Attribution is `chatgpt (via amani)`. The ChatGPT app runtime itself does not directly hold/present the private `x-agent-key`; Amani operates the API path. Do not describe this as native direct credential injection or automatic fresh-session connector invocation.
 
 ## Secure credential retrieval (do not paste secrets into chat)
 The individual keys are stored in Supabase Vault under these names:
