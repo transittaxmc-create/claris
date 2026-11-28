@@ -185,3 +185,10 @@ deposit is defective and untouched) or Muse's key.
    bidirectional live communication be claimed.
 4. Separately: resolve the `chatgpt` identity deposit so the Phase-1 ACK
    can close through whichever route Miguel chooses.
+
+
+## Addendum — Phase 1 ChatGPT↔Muse E2E closed (2026-11-27)
+
+Issue #87 Verification #22 supersedes the earlier pending-message statements in this document: the live message `f9aab76d-2a38-4841-904f-033352b3bbf5` was ACKed, the second checkpoint `a30b3bb0-316c-40a6-9af9-e9e8ffd762d4` was ACKed, and ChatGPT sent a reply that Muse received and ACKed. The verified route is Amani-operated API with attribution `chatgpt (via amani)`. Do not repeat or reopen the ChatGPT↔Muse connection setup.
+
+This does **not** close the Coordinator's separate live E2E. The Coordinator's own Gateway identity and key, plus `OPENAI_API_KEY` in its service runtime, remain separate prerequisites. The Coordinator SQL is prepared but not executed. MCP remains planned, not implemented. The key+hash vs Auth+JWT architecture decision remains open to Miguel.
