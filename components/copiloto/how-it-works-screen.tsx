@@ -2240,31 +2240,6 @@ export function HowItWorksScreen() {
         <P><B>Ramas:</B> GitHub compare main...feat/copiloto-v7-phase1-foundation = diverged; feature 170 commits ahead / 1 behind; merge-base 51cb5217cdb9b938678428b51ea64bc8e1300408. La carpeta maestra está en feature y los paths equivalentes no existen en main. No merge, rebase destructivo ni reset sin plan de preservación y aprobación de Miguel.</P>
         <P><B>Estado de Fase 1:</B> IN PROGRESS. Continuidad bidireccional ChatGPT↔Muse verificada; reconciliación documental en curso; typecheck y reconciliación de ramas siguen abiertos. Cierre solo después de verificar índice único, coherencia documental, handoff, comparación reproducible de typecheck y plan de ramas aprobado.</P>
       </Section>
-      <p className="mt-6 text-center text-[10px] text-neutral-600">
-        Island City Transit · Copiloto procedures manual · update with every rule change
-      </p>
-    </div>
-  )
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="mb-4 rounded-2xl border border-neutral-800 bg-neutral-950/80 p-3.5">
-      <h2 className="mb-2 text-[13px] font-extrabold text-white">{title}</h2>
-      {children}
-    </section>
-  )
-}
-
-function P({ children }: { children: React.ReactNode }) {
-  return <p className="mb-2 text-[12px] leading-relaxed text-neutral-300 last:mb-0">{children}</p>
-}
-
-function B({ children }: { children: React.ReactNode }) {
-  return <strong className="font-bold text-yellow-400/95">{children}</strong>
-}
-
-
       <Section title="44. ALCANCE CONFIRMADO DE FASE 1 — PLATAFORMA + CENTRO DE COMUNICACIONES PREPARADO (2026-11-27)">
         <P><B>Decisión explícita de Miguel:</B> mantener el alcance original de Fase 1 descrito en §24. La fase entrega la plataforma Copiloto y el Centro de Comunicaciones preparado. SMS y WhatsApp completamente operativos, con proveedores reales y entrada/salida de mensajes de clientes, quedan para una fase posterior.</P>
         <P><B>Incluido en Fase 1:</B> shell y navegación responsive; dashboard; workspaces Transport, Taxes y Work Opportunities; integración segura de las pantallas existentes; Communications Center con modelo sintético de intake/conversación, canal/origen, remitente, timestamps, metadatos de adjuntos, clasificación Transport/Taxes, revisión, aprobación humana y auditoría; servicios compartidos de identidad/permisos, almacenamiento privado, notificaciones y audit trail según alcance; tests, build/preview y QA responsive.</P>
@@ -2282,6 +2257,7 @@ function B({ children }: { children: React.ReactNode }) {
         <P><B>Seguimiento:</B> plataforma IN PROGRESS; Dashboard/Transport/Taxes/Work Opportunities/Communications/Square PREVIEW IMPLEMENTED; clasificación y aprobación PARCIALES/LOCALES; seguridad, integración con la app existente y pruebas BLOQUEADAS/PENDIENTES; documentación AVANZADA, NO CERRADA.</P>
         <P><B>Próximo paso:</B> diseñar integración incremental sin reemplazar CopilotoApp; ejecutar typecheck/build/tests reproducibles; cerrar MFA, permisos por unidad, storage privado y QA. No SQL, merge, producción ni comunicaciones reales sin aprobación específica.</P>
       </Section>
+
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
       </p>
@@ -2305,3 +2281,5 @@ function P({ children }: { children: React.ReactNode }) {
 function B({ children }: { children: React.ReactNode }) {
   return <strong className="font-bold text-yellow-400/95">{children}</strong>
 }
+
+
