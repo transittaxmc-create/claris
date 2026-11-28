@@ -344,3 +344,32 @@
 - Synthetic acceptance harness (mock gateway + mock OpenAI on localhost, real compiled service): **14/14 assertions passed**, demonstrating authentication, gateway communication, task creation for Muse, Muse claim + response, response registration, ordered event persistence, unauthorized rejection (401) and error/disconnect logging with retry. Synthetic data only; no live keys.
 - **Live E2E is NOT demonstrated.** It remains blocked on two secrets Miguel must configure: (1) the OpenAI API key deposit (Secure Vault card already created by Amani), and (2) creation of the Coordinator's OWN gateway identity in `agent_identities` plus its key in Supabase Vault and deposit into the service secret store. The Coordinator never reuses the `chatgpt` key; that identity and its defective deposit are untouched, and the Phase-1 Muse → ChatGPT message ACK remains a separate open item.
 - No Supabase changes, no migrations, no merge to main, no production deploy, no real client data, no SMS/WhatsApp/payments. Full record: docs/copiloto-v7-master/OPENAI-COORDINATOR.md; manual §42.
+
+
+## 29. Reconciliación Fase 1 — estado tras Issue #87 Verificación #22 (2026-11-27)
+
+### Comunicación y continuidad — VERIFICADAS en el alcance probado
+- Issue #87, Verificación #22 y confirmación de lectura de ChatGPT (comentario #23) registran el ciclo real ChatGPT↔Agent Gateway↔Muse operado por Amani: `chatgpt` status HTTP 200; inbox con los dos mensajes pendientes; ACK de `f9aab76d-2a38-4841-904f-033352b3bbf5` y `a30b3bb0-316c-40a6-9af9-e9e8ffd762d4` confirmado; respuesta de ChatGPT HTTP 201; recepción y ACK de Muse HTTP 200. Atribución: `chatgpt (via amani)`.
+- La comunicación ChatGPT↔Muse no está pendiente. Cualquier nota histórica que diga lo contrario se conserva como historia, pero queda supersedida por la Verificación #22.
+- El acceso directo de la app/conversación ChatGPT a una credencial privada no está habilitado; el camino demostrado es API vía Amani. No afirmar que ChatGPT nativo mantiene o inyecta su llave.
+- Esto NO demuestra el E2E del servicio OpenAI Coordinator. Su identidad `coordinator`, su llave de Gateway y la llave de OpenAI del servicio continúan siendo asuntos separados.
+
+### TypeScript — FAILED, evidencia reproducible, discrepancia histórica abierta
+- Run GitHub Actions `46081558172`, source HEAD `32e5a4509de088c473a1fc3124f0737f96a6d5db`, comando `pnpm exec tsc --noEmit`, Node `v24.22.3`, pnpm `12.3.4`, TypeScript `5.7.3`, exit code `2`, 76 diagnósticos.
+- Desglose registrado: 69 diagnósticos app/tests y 7 por el archivo Deno `supabase/functions/agent-gateway/index.ts` incluido en el tsconfig raíz. La descarga de logs de ese job confirma errores Deno (`Deno` no declarado, import `npm:` sin tipos e inferencias `any`) además de errores de app/tests.
+- Tres corridas previas documentadas (46081202819, 46081404731 y 46082079883) también registraron 76 en sus respectivos árboles. Esto demuestra repetibilidad del resultado de 76 en esos snapshots; NO resuelve por sí solo la discrepancia histórica 65/66.
+- No se ha corrido en este checkpoint el mismo comando en el mismo commit unificado contra ambas bases `main` y feature. Por tanto, no afirmar que la divergencia 65/66 está resuelta ni que los 76 errores sean cero regresiones actuales.
+- Próximo paso técnico: ejecutar un comparativo limpio y reproducible de typecheck en un mismo snapshot de código, registrar hashes de commits, versiones y diagnósticos ordenados; separar explícitamente TypeScript de Next.js y Deno. No ocultar errores ni debilitar tsconfig.
+
+### Ramas y entornos
+- GitHub compare `main...feat/copiloto-v7-phase1-foundation`: estado `diverged`, feature `170` commits ahead y `1` behind; merge-base `51cb5217cdb9b938678428b51ea64bc8e1300408`; main observado por compare en `6540fc96a2e5acc1f26be8ba7e869bf3f5d6a2b5`.
+- La carpeta maestra y los documentos de esta fase están versionados en la rama feature; la lectura de los mismos paths en `main` devolvió 404, por lo que no están incorporados allí. La rama feature es el workspace de revisión, no una nueva autoridad productiva.
+- No hacer merge, rebase destructivo, reset ni despliegue. Primero preparar un plan de reconciliación que preserve los cambios de ambas líneas y obtener aprobación específica de Miguel.
+- Producción sigue fuera de alcance. Los despliegues Railway/preview históricos no deben confundirse con producción; volver a verificar el SHA de cualquier preview antes de usarlo.
+
+### Estado de Fase 1
+- Continuidad entre agentes y prueba bidireccional ChatGPT↔Muse: VERIFIED en el alcance de la Verificación #22.
+- Registro/documentación: RECONCILIATION IN PROGRESS; esta sección corrige el estado y las contradicciones conocidas, pero la verificación integral de todos los documentos aún debe completarse.
+- Typecheck y divergencia 65/66: BLOCKED / NOT RESOLVED.
+- Conciliación main↔feature y política de fuente canónica compartida: BLOCKED hasta revisión y aprobación; no merge autorizado.
+- Criterio de cierre: índice único verificado; documentos sin contradicciones activas; handoff exacto; comparación de ramas resuelta por plan aprobado; typecheck comparativo reproducible documentado. No declarar Fase 1 terminada antes de esos puntos.
