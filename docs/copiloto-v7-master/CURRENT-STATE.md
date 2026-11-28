@@ -1,5 +1,13 @@
 # Copiloto V7 — estado técnico verificado
 
+
+## 2026-11-28 — ejecución SMS outbox y validación independiente
+- Commits: `36dbef5d9b764e7d519b304eb772b7798bd6609c` (persistencia server-side de aprobación/cola), `3c6877fe859d0fc4bbf9663725c6a52175061b80` (la UI envía aprobación explícita), `f9e44c904e37935b6ce309ccd416f62958b9abb3` (CI ejecuta tests/build aunque TypeScript falle).
+- SMS: el endpoint autenticado valida owner, mensaje existente, canal SMS, destino igual al remitente entrante y estado queueable; escribe aprobación y estado queued en crm_messages. No manda SMS. Dispatch sigue 501.
+- CI run 46113117926: instalación PASS; CRM push tests PASS; Next build PASS, 12/12 páginas; TypeScript FAIL, 76 errores globales en archivos legacy/Agent Gateway/tests, cero diagnósticos en los dos archivos modificados. Workflow total queda FAILED por typecheck.
+- Railway no ha desplegado estos commits; el último SUCCESS conocido aún apunta a 28f00fc4. No hay prueba live de persistencia contra Supabase.
+- Amani: Issue #85 confirma que el puente histórico vivía fuera del repo; falta recuperar contrato real y autenticación dedicada/HMAC/anti-replay/idempotencia. WhatsApp: Issue #86 y árbol de la rama no muestran conector operativo; no tocar cuentas/números. Grupos personales: solo reenvío manual.
+
 **Corte:** 2026-11-27  
 **Rama:** feat/copiloto-v7-phase1-foundation  
 **Nota:** estado de demo/preview no equivale a CRM productivo.
