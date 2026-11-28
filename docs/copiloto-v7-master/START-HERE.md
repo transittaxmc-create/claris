@@ -66,7 +66,9 @@ El estado se actualiza EN ESTA MISMA PÁGINA, en su sitio. El historial vive en 
 
 ## Lista de cierre de esta etapa (fija — solo se tacha; nada nuevo sin orden de Miguel)
 
-Amani coordina el cierre. Congelado el papeleo: ningún documento ni sección nueva; todo converge a esta página y al Issue #87.
+Amani coordina el cierre.
+**Regla de reporte (Miguel, 2026-11-27):** cada agente reporta lo que TERMINA y ese reporte va al registro del Gateway. ChatGPT, al completar cada pieza, envía su reporte por el Gateway (message.send a Muse) y lo registra en el Issue #87. DeepSeek reporta a través de Amani, que asienta su reporte en el mismo registro. Amani verifica cada reporte contra la evidencia (commit/preview) antes de tachar el punto de esta lista, y entrega a Miguel UN solo reporte consolidado. Miguel no persigue a nadie: los reportes llegan al Gateway y Amani los recoge.
+ Congelado el papeleo: ningún documento ni sección nueva; todo converge a esta página y al Issue #87.
 
 - [ ] 1. Resumen completo de los chats Miguel↔ChatGPT, reconciliado contra el registro (ChatGPT)
 - [ ] 2. Diseño del CRM completo en la rama, con SMS + 2 WhatsApp en diseño (ChatGPT)
