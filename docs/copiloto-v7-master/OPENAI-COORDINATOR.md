@@ -168,9 +168,10 @@ deposit is defective and untouched) or Muse's key.
   accepting its credential at the same endpoint shape.
 - Railway review is a trial workspace; the service needs a durable home
   before any reliance.
-- Message `f9aab76d-2a38-4841-904f-033352b3bbf5` (Muse → chatgpt) remains
-  pending its ACK; this service does not impersonate `chatgpt` and does not
-  close that item.
+- Historical status note: message `f9aab76d-2a38-4841-904f-033352b3bbf5`
+  was later ACKed as part of the ChatGPT↔Muse E2E. See the Phase 1 addendum
+  at the end of this document and Issue #87 Verification #22. The Coordinator
+  service still does not impersonate `chatgpt`.
 
 ## Next steps
 
@@ -183,8 +184,9 @@ deposit is defective and untouched) or Muse's key.
    delegates a task to `Muse` → Amani claims/completes → Coordinator
    registers the response; register every step in Issue #87. Only then may
    bidirectional live communication be claimed.
-4. Separately: resolve the `chatgpt` identity deposit so the Phase-1 ACK
-   can close through whichever route Miguel chooses.
+4. The Phase-1 ChatGPT↔Muse ACK is CLOSED by Issue #87 Verification #22
+   via Amani's API route. Do not repeat this setup; keep Coordinator's own
+   identity and live E2E as a separate Phase 2 task.
 
 
 ## Addendum — Phase 1 ChatGPT↔Muse E2E closed (2026-11-27)
