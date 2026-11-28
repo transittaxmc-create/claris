@@ -14,7 +14,7 @@ const inter = Inter({ subsets: ["latin"], display: "swap" })
 
 type Area = "Transport" | "Taxes" | "Work Opportunities"
 type Channel = "SMS" | "WhatsApp Business" | "WhatsApp Personal"
-type MessageStatus = "Received" | "Draft" | "Awaiting approval" | "Approved · not sent" | "Queued · simulated" | "Delivered · sample receipt"
+type MessageStatus = "Received" | "Draft" | "Awaiting approval" | "Approved · not sent" | "Queued · simulated" | "Sample · no delivery"
 type SampleMessage = {
   id: string; client: string; clientId: string; channel: Channel; area: Area
   time: string; preview: string; body: string; status: MessageStatus; unread?: boolean
@@ -22,7 +22,7 @@ type SampleMessage = {
 
 const seedMessages: SampleMessage[] = [
   { id:"SMS-2048", client:"Jordan Ellis", clientId:"CL-1024", channel:"SMS", area:"Transport", time:"9:42 AM", preview:"Can you confirm the airport pickup?", body:"Hi, can you confirm the airport pickup for tomorrow at 4:30 PM? I will have two suitcases.", status:"Awaiting approval", unread:true },
-  { id:"SMS-2047", client:"Taylor Morgan", clientId:"CL-1023", channel:"SMS", area:"Taxes", time:"9:18 AM", preview:"I uploaded the documents.", body:"I uploaded the documents for my 2025 tax return. Please let me know if anything else is needed.", status:"Received", unread:true },
+  { id:"SMS-2047", client:"Morgan Reed", clientId:"CL-1025", channel:"SMS", area:"Transport", time:"9:18 AM", preview:"Can you confirm the return pickup?", body:"Can you confirm the return pickup location for this afternoon? This is a synthetic Transport-only SMS sample.", status:"Received", unread:true },
   { id:"WA-BIZ-3011", client:"Morgan Reed", clientId:"CL-1025", channel:"WhatsApp Business", area:"Transport", time:"Yesterday", preview:"Thank you for the ride.", body:"Thank you for the ride yesterday. Everything was excellent.", status:"Received" },
   { id:"WA-PER-3012", client:"Casey Rivera", clientId:"CL-1022", channel:"WhatsApp Personal", area:"Taxes", time:"8:56 AM", preview:"Can I schedule a review?", body:"Good morning. Can I schedule a review of my tax organizer this week?", status:"Draft" },
   { id:"WA-PER-3013", client:"Work Opportunities Feed", clientId:"WO-001", channel:"WhatsApp Personal", area:"Work Opportunities", time:"8:21 AM", preview:"Shared opportunity · manual review", body:"A sample work opportunity was manually shared with Copiloto. Review details and decide whether to follow up. No automatic group extraction or YES response.", status:"Received" },
@@ -45,7 +45,7 @@ const badgeTone: Record<string,string> = {
   "Awaiting approval":"text-[#FFB900] border-[#FFB900]/30 bg-[#FFB900]/10",
   "Approved · not sent":"text-[#00C76A] border-[#00C76A]/30 bg-[#00C76A]/10",
   "Queued · simulated":"text-[#08B9ED] border-[#08B9ED]/30 bg-[#08B9ED]/10",
-  "Delivered · sample receipt":"text-[#00C76A] border-[#00C76A]/30 bg-[#00C76A]/10",
+  "Sample · no delivery":"text-white/50 border-white/15 bg-white/5",
 }
 
 function Pill({ children, tone }: {children: React.ReactNode; tone?: string}) {
