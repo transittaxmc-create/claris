@@ -398,3 +398,37 @@ Miguel confirmó mantener el alcance original de Fase 1 descrito en la §24 del 
 La plataforma debe dejar preparado el centro y su modelo de intake: representación sintética de conversaciones/eventos, fuente/canal, remitente, timestamps, adjuntos como metadatos, clasificación sugerida Transport/Taxes, estado de revisión, aprobación humana y registro de auditoría. Las pruebas serán sintéticas y no tocarán proveedores externos.
 
 **Estado global:** Fase 1 sigue IN PROGRESS. Esta decisión fija el alcance, no declara funciones terminadas. La conexión Agent Gateway ChatGPT↔Muse verificada en #87 #22 es infraestructura de coordinación entre agentes y no equivale a SMS/WhatsApp del Centro de Comunicaciones.
+
+
+## 31. Auditoría de implementación de Fase 1 — checkpoint 2026-11-27
+
+### Estado observado en GitHub
+- Repositorio: `transittaxmc-create/claris`; rama: `feat/copiloto-v7-phase1-foundation`.
+- Compare actual `main...feat/copiloto-v7-phase1-foundation`: `diverged`, feature **183 ahead / 1 behind**; main observado `6540fc96a2e5acc1f26be8ba7e869bf3f5d6a2b5`; merge-base `51cb5217cdb9b938678428b51ea64bc8e1300408`.
+- La comparación incluye rutas V7 preview y documentos nuevos; no es una prueba de que la experiencia esté integrada en la ruta raíz.
+
+### Matriz de los 12 entregables
+1. **Plataforma central Copiloto — EN PROGRESO.** Existe una ruta aislada `/copiloto-v7-preview`; la ruta raíz sigue renderizando `CopilotoApp`. No hay transferencia validada a la experiencia principal.
+2. **Dashboard principal — IMPLEMENTADO COMO PREVIEW; QA PENDIENTE.** La vista Overview contiene métricas y navegación de demostración con datos hardcodeados/sintéticos; no es un dashboard conectado a fuentes de negocio.
+3. **Workspace Transport — IMPLEMENTADO COMO PREVIEW.** Tablero, filtros, alta y estados son React local; sin persistencia CRM, dispatch, GPS, proveedor de peajes ni pagos.
+4. **Workspace Taxes — IMPLEMENTADO COMO PREVIEW.** Cola/checklist y estados locales; sin vault documental, OCR, software tributario ni e-file.
+5. **Work Opportunities — IMPLEMENTADO COMO PREVIEW.** Lista y revisión humana local; sin ingesta autorizada, persistencia, análisis operativo completo ni aceptación/envío automático.
+6. **Centro de Comunicaciones sintético — IMPLEMENTADO COMO PREVIEW.** Inbox y panel de revisión locales; los borradores/aprobaciones no se envían ni crean una cola real. Modelo backend general aún no implementado.
+7. **Clasificación Transport/Taxes — PARCIAL / DEMOSTRATIVA.** La preview etiqueta ejemplos por área; no se ha probado clasificación automática persistente ni reglas de confianza/ruteo en backend.
+8. **Aprobación humana y auditoría — PARCIAL.** Hay cambios de estado/aprobación locales en preview; no equivalen a eventos de auditoría append-only ni a autorización backend.
+9. **Identidad, permisos y almacenamiento privado — BLOQUEADO PARA CIERRE.** La base CRM tiene RLS por propietario y bucket privado de fotos, pero faltan MFA/enforcement confirmado, aislamiento por unidad de negocio, controles de bucket de documentos y otras brechas documentadas. No cargar datos reales.
+10. **Integración de módulos existentes — PENDIENTE.** La nueva experiencia sigue aislada en preview; la ruta raíz conserva la app existente. No se ha probado una integración incremental ni regresiones.
+11. **Pruebas, seguridad y calidad — BLOQUEADO.** No hay build/QA de la rama confirmados; typecheck anterior falló con 76 diagnósticos (69 app/tests + 7 Deno); la discrepancia histórica 65/66 sigue abierta. El workflow configurado no prueba por sí solo que haya pasado.
+12. **Documentación y continuidad — AVANZADA, NO CERRADA.** Los documentos de puntos 1–10, master docs y manual contienen el alcance y las brechas; queda reconciliar contradicciones históricas, confirmar índice/handoff final y mantener evidencia por cambio.
+
+### Evidencia y límites
+- Fuentes revisadas: `app/copiloto-v7-preview/page.tsx`, `app/copiloto-v7-go/page.tsx`, componentes preview Transport/Taxes/Work Opportunities/Square, `components/copiloto/copiloto-app.tsx`, informes de puntos 1–10 y master docs.
+- El informe de Punto 1 confirma que `app/page.tsx` sigue en `CopilotoApp`; la nueva UI V7 está aislada y usa estado React local.
+- El Centro de Comunicaciones de preview declara SAMPLE DATA/NO LIVE CONNECTIONS; `/api/crm/send/dispatch` continúa 501 `phone_dispatch_not_connected`.
+- No se hizo build, test, cambio de código funcional, SQL, cambio de Supabase, merge, deploy ni comunicación externa en esta auditoría.
+- El alcance de Miguel permanece vigente: SMS y WhatsApp live diferidos a fase posterior; pruebas sintéticas solamente.
+
+### Próxima acción autorizada
+Continuar la auditoría técnica de la ruta de integración (sin sustituir la app existente), diseñar el plan de trabajo por bloque y preparar typecheck reproducible + reconciliación segura de ramas. No ejecutar SQL, merge, rebase/reset destructivo, producción, proveedores ni datos reales sin aprobación específica.
+
+**Estado global: FASE 1 IN PROGRESS.**
