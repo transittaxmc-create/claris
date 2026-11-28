@@ -3,6 +3,17 @@
 **Esta es la única puerta de entrada. No cambia de sitio ni de forma.**
 El estado se actualiza EN ESTA MISMA PÁGINA, en su sitio. El historial vive en Issue #87 y CURRENT-STATE.md; aquí vive SOLO el estado actual.
 
+
+## Checkpoint ejecutado — 2026-11-28 00:40 EST
+
+- **HEAD de código:** `3c6877fe859d0fc4bbf9663725c6a52175061b80`; después, workflow CI actualizado en `f9e44c904e37935b6ce309ccd416f62958b9abb3`.
+- **SMS outbox:** `app/api/crm/send/route.ts` ahora registra en `crm_messages` la aprobación explícita y la cola durable (`status=approved`, `approved_at`, `draft_reply`, `send_state=queued`, `send_via=phone`). Verifica sesión del dueño, pertenencia del mensaje, canal SMS, que el destino coincida con el teléfono del remitente entrante y que no esté enviado/descartado/en despacho. El cliente manda `approve: true` desde la acción de aprobación. Esto guarda en la nube; **NO transmite SMS**.
+- **SMS dispatch:** `/api/crm/send/dispatch` sigue deliberadamente en 501 `phone_dispatch_not_connected`. La búsqueda completa del repo y la Issue #85 confirman que no hay worker/cliente Amani, contrato de polling, autenticación del teléfono ni callback seguro dentro del repo. El puente histórico vivió fuera del repo y su contrato actual sigue sin recuperarse. No reactivar el callback antiguo.
+- **WhatsApp:** no se encontró conector de entrada/salida, webhook ni integración ZapClaw operativa en la rama. Issue #86 mantiene prohibido migrar/desconectar/registar cuentas sin aprobación; los grupos personales siguen por compartir/reenviar manualmente, sin scraping ni respuestas automáticas.
+- **CI del commit `f9e44c9`:** instalación PASS; `pnpm test:crm-push` PASS; build Next.js PASS (compilación y 12/12 páginas). TypeScript FAIL con 76 diagnósticos en archivos preexistentes/legacy, ninguno en `app/api/crm/send/route.ts` ni `components/copiloto/crm-screen.tsx`. El workflow ahora ejecuta pruebas y build aunque el typecheck falle; el fallo de tipos sigue visible y no se oculta.
+- **Despliegue:** el código aún NO está verificado en Railway Preview. El deployment Railway SUCCESS conocido sigue en el commit documental `28f00fc4a06e94fd5eade580b60859e1ac230af7`; no afirmar que esta mejora ya está desplegada ni que se ha probado contra Supabase.
+- **Seguridad/alcance:** sin mensajes reales, sin cambios de números/cuentas, sin DDL/migraciones, sin producción y sin tocar el Supabase financiero legado.
+
 Última actualización: 2026-11-28 — verificación en vivo Railway Review: deployment SUCCESS/Online en 1096040; build Next compiló y pruebas Gateway 6/6 PASS; TypeScript sigue sin validación porque Next omite typecheck. Detectado /api/scan-inbox 503 por falta de BLOB_READ_WRITE_TOKEN; Coordinator aún no tiene servicio Railway ni secretos.
 
 ## Estado ahora
