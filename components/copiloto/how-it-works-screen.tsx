@@ -49,7 +49,7 @@ export function HowItWorksScreen() {
           <li>§22 APPLICATION INVENTORY &amp; ARCHITECTURE AUDIT — complete source map, integrations, database state, verified gaps and agent handoff (2026-11-27)</li>
           <li>§23 CRM COPILOT V7 — TECHNICAL AUDIT &amp; VERIFIED GAPS (2026-11-27)</li>
           <li>§24 COPILOTO V7 — PHASE 1 BUILD FOUNDATION &amp; ARCHITECTURE (2026-11-27) · §25 V7 PREVIEW WORKSPACE — FIRST IMPLEMENTATION (2026-11-27) · §26 TRANSPORT OPERATIONS PREVIEW (2026-11-27) · §27 TAX PREPARATION PREVIEW (2026-11-27) · §28 WORK OPPORTUNITIES REVIEW PREVIEW (2026-11-27) · §29 SQUARE OPERATIONS PREVIEW (2026-11-27) · §30 V7 VERIFICATION STATUS (2026-11-27) · §31 RELEASE READINESS & TRANSFER (2026-11-27) · §32 TEMPORARY RAILWAY PREVIEW & AGENT HANDOFF (2026-11-27) · §33 MASTER PROJECT PLAN & CONTINUITY FOLDER (2026-11-27) · §34 AGENT GATEWAY & MASTER CONTINUITY REGISTER (2026-11-27)</li>
-          <li>§42 OPENAI COORDINATOR — PHASE 2 BRIDGE SERVICE (2026-11-27)</li>
+          <li>§42 OPENAI COORDINATOR — PHASE 2 BRIDGE SERVICE (2026-11-27) · §43 FASE 1 — CONTINUIDAD BIDIRECCIONAL, ESTADO DE TYPECHECK Y RECONCILIACIÓN DE RAMAS (2026-11-27)</li>
         </ul>
       </Section>
 
@@ -2232,6 +2232,13 @@ export function HowItWorksScreen() {
         <P><B>Verified (synthetic):</B> the acceptance harness runs the real compiled service against mock gateway and mock OpenAI servers on localhost: 14/14 assertions passed, covering authentication, gateway communication, task creation for Muse, Muse claim and response, response registration, ordered event persistence, unauthorized rejection (401) and error/disconnect retry. Synthetic data only; no live keys were used.</P>
         <P><B>Not yet live:</B> the live end-to-end run is pending two secrets Miguel must still configure — the OpenAI API key deposit and the creation of the Coordinator&apos;s own gateway identity with its key in Supabase Vault. Until that run is demonstrated and registered, bidirectional live communication is NOT claimed. A remote MCP face is planned over the same gateway client but is not implemented.</P>
         <P><B>Boundaries:</B> preview branch only. No merge to main, no production deploy, no Supabase changes, no real client data, no SMS, WhatsApp or payments. Full record: docs/copiloto-v7-master/OPENAI-COORDINATOR.md.</P>
+      </Section>
+      <Section title="43. FASE 1 — CONTINUIDAD BIDIRECCIONAL, TYPECHECK Y RECONCILIACIÓN DE RAMAS (2026-11-27)">
+        <P><B>Gateway ChatGPT ↔ Muse — VERIFICADO:</B> Issue #87, Verificación #22. ChatGPT autenticó con identidad propia por la vía API operada por Amani (HTTP 200), recibió y confirmó ACK de los dos mensajes de Muse (f9aab76d y a30b3bb0), envió respuesta (HTTP 201) y Muse la recibió y confirmó ACK (HTTP 200). Atribución: chatgpt (via amani). No repetir conexión ni solicitar llaves nuevas.</P>
+        <P><B>Límite del runtime:</B> la app/conversación ChatGPT no presenta directamente la llave privada x-agent-key; la ruta demostrada es vía Amani por API. No confundir este E2E con el E2E separado del OpenAI Coordinator.</P>
+        <P><B>TypeScript — FAILED:</B> GitHub Actions run 46081558172 sobre commit 32e5a4509de088c473a1fc3124f0737f96a6d5db, comando pnpm exec tsc --noEmit, Node v24.22.3, pnpm 12.3.4, TypeScript 5.7.3, exit 2, 76 diagnósticos (69 app/tests + 7 Deno Edge Function). La discrepancia histórica 65/66 sigue sin resolverse; no ocultar ni suprimir errores.</P>
+        <P><B>Ramas:</B> GitHub compare main...feat/copiloto-v7-phase1-foundation = diverged; feature 170 commits ahead / 1 behind; merge-base 51cb5217cdb9b938678428b51ea64bc8e1300408. La carpeta maestra está en feature y los paths equivalentes no existen en main. No merge, rebase destructivo ni reset sin plan de preservación y aprobación de Miguel.</P>
+        <P><B>Estado de Fase 1:</B> IN PROGRESS. Continuidad bidireccional ChatGPT↔Muse verificada; reconciliación documental en curso; typecheck y reconciliación de ramas siguen abiertos. Cierre solo después de verificar índice único, coherencia documental, handoff, comparación reproducible de typecheck y plan de ramas aprobado.</P>
       </Section>
       <p className="mt-6 text-center text-[10px] text-neutral-600">
         Island City Transit · Copiloto procedures manual · update with every rule change
