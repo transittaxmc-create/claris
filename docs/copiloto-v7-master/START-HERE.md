@@ -63,3 +63,14 @@ El estado se actualiza EN ESTA MISMA PÁGINA, en su sitio. El historial vive en 
 - **Historia técnica:** docs/copiloto-v7-master/CURRENT-STATE.md.
 - **Contrato Gateway:** docs/copiloto-v7-master/AGENT-GATEWAY-API.md (+ OpenAPI).
 - **Manual en la app:** components/copiloto/how-it-works-screen.tsx; actualmente tiene el error JSX descrito arriba y NO debe marcarse como validado hasta corregirlo.
+
+## Lista de cierre de esta etapa (fija — solo se tacha; nada nuevo sin orden de Miguel)
+
+Amani coordina el cierre. Congelado el papeleo: ningún documento ni sección nueva; todo converge a esta página y al Issue #87.
+
+- [ ] 1. Resumen completo de los chats Miguel↔ChatGPT, reconciliado contra el registro (ChatGPT)
+- [ ] 2. Diseño del CRM completo en la rama, con SMS + 2 WhatsApp en diseño (ChatGPT)
+- [ ] 3. Revisión de DeepSeek del diseño contra el Design System V1.0 y la lógica de comunicaciones — verificada por Amani
+- [ ] 4. Verificación de Amani: commits, cobertura completa, typecheck sin pasar de 76, registro al día
+- [ ] 5. Aprobación de Miguel viendo el preview en Railway
+- [ ] 6. (Mañana) Integración en la aplicación original: un solo lote, con su confirmación en el teléfono
