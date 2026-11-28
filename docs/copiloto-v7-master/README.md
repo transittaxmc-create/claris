@@ -32,3 +32,10 @@
 ## Documento prioritario de enfoque (27-11-2026)
 - **Leer primero:** [FOCUS-AND-EXECUTION-BASELINE.md](./FOCUS-AND-EXECUTION-BASELINE.md). Consolida visión, decisiones, límites, estado real, por qué se repite trabajo, orden obligatorio y próxima acción exacta.
 - No abrir un frente nuevo ni repetir auditorías ya completadas sin evidencia nueva. Trabajar una vertical funcional a la vez.
+
+
+## Estado de continuidad — cierre E2E ChatGPT↔Muse (2026-11-27)
+- La Verificación #22 del Issue #87 confirma comunicación bidireccional en vivo por API operada por Amani: identidad `chatgpt` autenticada (HTTP 200), dos mensajes de Muse recibidos y ACK (HTTP 200), respuesta enviada (HTTP 201), y recepción/ACK de vuelta por Muse.
+- La app de ChatGPT no presenta por sí sola la credencial privada; la atribución probada es `chatgpt (via amani)`. No confundir esto con el OpenAI Coordinator, cuyo E2E propio sigue pendiente.
+- La documentación anterior que marque el ACK o la comunicación ChatGPT↔Muse como pendiente queda supersedida por Issue #87, Verificación #22.
+- Fase 1 sigue IN PROGRESS: la conciliación documental está en curso; el typecheck permanece FAILED (76 diagnósticos en run 46081558172) y la relación entre `main` y la rama feature está divergente (170 ahead / 1 behind; no merge autorizado).
