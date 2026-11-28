@@ -1,78 +1,65 @@
 # EMPIEZA AQUÍ — Copiloto V7 (punto fijo de arranque)
 
 **Esta es la única puerta de entrada. No cambia de sitio ni de forma.**
-El estado se actualiza EN ESTA MISMA PÁGINA, en su sitio. Nada de crear secciones
-nuevas para decir el estado: el historial vive en el Issue #87 y en CURRENT-STATE.md;
-aquí vive SOLO el estado actual.
+El estado se actualiza EN ESTA MISMA PÁGINA, en su sitio. El historial vive en Issue #87 y CURRENT-STATE.md; aquí vive SOLO el estado actual.
 
-Última actualización: 2026-11-27 — CRM Design Preview creado en rama de trabajo (ChatGPT).
+Última actualización: 2026-11-28 — auditoría maestra registrada; Railway build del CRM Preview falló por JSX en How This Works.
 
 ## Estado ahora
 
-- **Producción:** `f06c125` — intacta. Nadie despliega ni fusiona sin orden de Miguel.
-- **Rama de trabajo:** `feat/copiloto-v7-phase1-foundation` — divergente de main; no merge/rebase.
-- **Agentes ↔ Gateway:** CERRADO Y PROBADO — ChatGPT autenticó con su identidad propia,
-  confirmó (ACK) los mensajes y respondió; Muse confirmó de vuelta (Issue #87, Verificación #22).
-  Vía vigente: Amani opera las API, atribución `chatgpt (via amani)`.
-- **OpenAI Coordinator:** construido en la rama (servicio + pruebas 14/14 contra simuladores).
-  Su E2E en vivo espera SU identidad (`coordinator`): el SQL está preparado, no ejecutado.
-- **DeepSeek:** conectado vía Amani y probado con llamada real (segundas opiniones de código/lógica).
-- **Claude (Anthropic):** solo diseño, por decisión de Miguel; su llave de API aún no se deposita.
-- **Gemini:** conectado vía Amani por API.
-- **CRM Design Preview:** NUEVA ruta aislada `/copiloto-v7-crm-design`, en commits
-  `569626d`, `afd8da8` y `8117caf` (Inter cargada mediante next/font/google). Incluye Overview, Clients, Transport, Taxes, Documents y
-  Communications con bandejas SMS/WhatsApp separadas, filtros Transport/Taxes,
-  borrador editable, aprobación humana simulada, estados explícitos y timeline de cliente.
-  Todo es sintético/local; no usa backend ni proveedores. GitHub Actions build del HEAD `8117caf` en estado QUEUED; QA de build/browser aún pendiente.
+- **Producción:** Vercel f06c125 — sin cambios por esta auditoría. No merge ni despliegue productivo sin orden específica de Miguel.
+- **Rama de trabajo:** feat/copiloto-v7-phase1-foundation; HEAD revisado: 8c9dfb20b0e0f6e643524d4050fecbe90c716a9a. Comparación actual con main: diverged, 195 ahead / 1 behind; no merge/rebase/reset.
+- **Railway Review:** proyecto copiloto-v7-temporal, entorno review, servicio copiloto-v7-preview, dominio https://copiloto-v7-preview-review.up.railway.app. Fuente conectada a la rama feature. Build del commit 8c9dfb20 = FAILED; último SUCCESS activo sigue en commit anterior 9867adf. El CRM Design Preview nuevo aún no está confirmado visible en Railway.
+- **Bloqueo de build:** components/copiloto/how-it-works-screen.tsx:2287 — falta cerrar un componente Section antes de abrir la sección siguiente. Corregir de forma mínima y volver a desplegar a Railway Review; no modificar producción.
+- **Agentes ↔ Gateway:** ChatGPT↔Muse CERRADO Y PROBADO por Amani API (Issue #87, Verificación #22). No repetir setup ni ACK.
+- **OpenAI Coordinator:** construido en la rama; pruebas sintéticas 14/14. E2E live separado pendiente de identidad/credenciales propias y configuración segura.
+- **DeepSeek:** conectado vía Amani y probado según el registro.
+- **Claude (Anthropic):** solo diseño; no integración activa.
+- **Gemini:** integración vía Amani documentada; no asumir que el CRM V7 ya la usa.
+- **CRM Design Preview:** ruta aislada /copiloto-v7-crm-design; commits de construcción 569626d, afd8da8, 8117caf. Incluye Overview, Clients, Transport, Taxes, Documents y Communications con bandejas SMS/WhatsApp separadas, filtros Transport/Taxes, borrador editable, aprobación humana simulada, estados y timeline. Todo sintético/local, sin backend ni proveedores. Build actual falló; QA visual desktop/iPhone pendiente.
 
+## Alcance confirmado
 
-## Alcance de esta etapa (cerrado por Miguel, 2026-11-27 22:06 EST)
+- **Fase 1:** plataforma Copiloto + Centro de Comunicaciones preparado, con datos sintéticos. Activación de proveedores, mensajes reales, webhooks y recibos reales queda para fase posterior y requiere aprobación específica.
+- Integración incremental en la app original después de revisión/aprobación. No sustituir wholesale CopilotoApp ni alterar módulos existentes.
+- **Canales, siempre separados:**
+  - **SMS/Amani** → Transport (clientes/pasajeros).
+  - **WhatsApp Business 934-208-1400** → Transport.
+  - **WhatsApp personal 934-200-8109** → Taxes y grupos de Work Opportunities.
+  - No scraping no oficial de grupos ni respuestas YES automáticas; investigar reenvío/compartido manual.
+- “CMS” aparece en chats, pero su significado exacto no está confirmado. El alcance técnico canónico registrado es CRM Copiloto V7 + Centro de Comunicaciones; no inventar una equivalencia.
+- El E2E ChatGPT↔Muse del Gateway no es el SMS/WhatsApp de clientes.
 
-- **SOLO el CRM. El resto de la aplicación NO se toca.**
-- Trabajo: conectar el diseño del CRM + la funcionalidad de sus comunicaciones.
-- Canales: **1 SMS y 2 WhatsApp**, carriles separados, nunca mezclados:
-  - **SMS** → Transporte (clientes/pasajeros).
-  - **WhatsApp Business (934) 208-1400** → Transporte (clientes/pasajeros).
-  - **WhatsApp personal (segundo número)** → DOS funciones: (1) **Impuestos** — clientes de taxes; (2) **Grupos de trabajos** — donde se publican las ofertas de trabajo (fuente de detección de trabajos).
+## Qué falta (responsable)
 
-## Qué falta (dueño entre paréntesis)
-
-1. Identidad `coordinator` creada + su llave depositada (Miguel corre el SQL; Amani verifica).
-2. Llave de OpenAI en su conector, como secreto del servicio del Coordinator (Miguel deposita).
-3. CRM Design Preview: ejecutar build/typecheck y QA visual responsive; corregir hallazgos
-   sin tocar lógica, cálculos, datos ni logos originales (ChatGPT).
-4. Integración incremental del diseño en la aplicación original, mañana, después de revisión
-   y autorización específica de Miguel; no sustituir wholesale `CopilotoApp`.
-5. SMS/WhatsApp de clientes: diseño preparado solamente en esta entrega. No activar proveedores,
-   webhooks ni envíos reales; requieren fase posterior y aprobación específica.
-6. Prueba SMS de Carlos y prueba WhatsApp de ZapClaw siguen en sus carriles separados y
-   no se consideran realizadas por este diseño.
-7. Decisión de arquitectura llave+hash vs JWT (Miguel) — la desviación sigue documentada.
+1. Corregir el JSX de How This Works y re-ejecutar build Railway Review (ChatGPT).
+2. Verificar que /copiloto-v7-crm-design responde en Railway y hacer QA visual desktop/iPhone; corregir hallazgos (ChatGPT).
+3. Presentar el preview a Miguel para comentarios y aprobación; no integrar antes (ChatGPT/Miguel).
+4. Integrar incrementalmente el diseño aprobado en la app original, preservando navegación y flujos existentes (equipo, con autorización de Miguel).
+5. Coordinator: resolver identidad/credenciales propias y E2E live, sin confundirlo con el E2E ya cerrado ChatGPT↔Muse (Miguel/Amani).
+6. Decisión pendiente de Miguel: Auth+JWT (arquitectura aprobada en el checkpoint original) vs la desviación implementada de claves de máquina + hash SHA-256; no ampliar uso sin resolver.
+7. SMS/Amani: recuperar el contrato real del puente externo; callback antiguo no reactivar; dispatch actual sigue 501 y la cola no transmite (Amani).
+8. WhatsApp Business/ZapClaw y WhatsApp personal/grupos: auditar por separado; no conexión/ingestión/envío real verificado (Amani).
+9. Seguridad antes de clientes reales: MFA/enforcement, aislamiento Transport/Taxes, memberships/RLS, almacenamiento documental privado, pruebas de escritura/aislamiento, backups/restore y auditoría.
+10. Typecheck global sigue con baseline histórico de 76 diagnósticos; no declarar PASS sin corrida reproducible actual.
 
 ## Reglas que no cambian
 
-- Design System V1.0 de Miguel: Inter; fondo `#050505`; tarjetas `#191919`;
-  ámbar `#FFB900`; verde `#00C76A`; cyan `#08B9ED`; rojo `#E64B55`.
-- Los logos existentes se usan sin redibujar, recolorear ni sustituir. No se crea un logo nuevo.
-- SMS y WhatsApp son carriles separados. Sin Twilio. Sin cambiar números ni cuentas.
-- Bandejas SMS y WhatsApp separadas; dentro de cada una, clasificación All / Transport / Taxes.
-  La aprobación en preview nunca dispara un envío. Los estados de entrega son ejemplos sintéticos.
-- **A Mr. Shah no le llega NINGÚN mensaje sin aprobación específica de Miguel.**
-  Toda prueba es ficticia y solo con los números propios de Miguel.
-- Ninguna llave en chats, issues ni documentos: solo Secure Vault / Supabase Vault.
-- Todo avance se registra en el Issue #87 (fecha, agente, evidencia, commit, estado, siguiente paso)
-  y el estado de ESTA página se actualiza en su sitio en el mismo paso.
-- El CRM Design Preview no cambia lógica, cálculos ni datos existentes. No conecta Supabase,
-  Amani, ZapClaw, SMS, WhatsApp ni APIs externas.
-- Una pantalla de preview NO es un módulo conectado: los previews usan datos sintéticos;
-  el CRM real vive en la aplicación original/producción.
+- Design System V1.0: Inter; fondo #050505; tarjetas #191919; ámbar #FFB900; verde #00C76A; cyan #08B9ED; rojo #E64B55.
+- Logos originales intactos. Sin redibujar, recolorear ni sustituir.
+- Sin Twilio. No cambiar números, cuentas ni proveedores.
+- Aprobación humana antes de mensajes salientes; ningún mensaje a clientes/Mr. Shah sin autorización específica.
+- No datos reales de clientes ni pagos reales en desarrollo.
+- No secretos en chats, issues, código o documentos.
+- No tocar Supabase financiero legado zrcnpmipdhpjdjkfrrgt; CRM Supabase es mimgwleghecseoymgdug.
+- Una pantalla Preview no equivale a un módulo conectado, persistente, seguro ni listo para clientes.
+- Cada agente lee este START-HERE + Issue #87 + issue del canal antes de actuar; no repetir trabajo verificado; cada avance registra commit, evidencia, prueba, estado, responsable y siguiente paso aquí y en Issue #87.
 
-## Dónde está cada cosa (sitios fijos)
+## Dónde está cada cosa
 
-- **Estado actual:** esta página.
-- **Registro e historial completo:** GitHub Issue #87 (SMS: #85 · WhatsApp: #86).
-- **CRM Design Preview:** `app/copiloto-v7-crm-design/page.tsx` →
-  `components/copiloto-v7-preview/crm-design-workspace.tsx`.
-- **Historia técnica por hitos:** `docs/copiloto-v7-master/CURRENT-STATE.md`.
-- **Contrato del Gateway:** `docs/copiloto-v7-master/AGENT-GATEWAY-API.md` (+ OPENAPI.yaml).
-- **Manual dentro de la app:** `components/copiloto/how-it-works-screen.tsx` (un solo índice).
+- **Auditoría maestra actual:** AUDIT-REPORT-2026-11-28.md.
+- **Registro e historial:** Issue #87; SMS #85; WhatsApp #86.
+- **CRM Design Preview:** app/copiloto-v7-crm-design/page.tsx → components/copiloto-v7-preview/crm-design-workspace.tsx.
+- **Historia técnica:** docs/copiloto-v7-master/CURRENT-STATE.md.
+- **Contrato Gateway:** docs/copiloto-v7-master/AGENT-GATEWAY-API.md (+ OpenAPI).
+- **Manual en la app:** components/copiloto/how-it-works-screen.tsx; actualmente tiene el error JSX descrito arriba y NO debe marcarse como validado hasta corregirlo.
