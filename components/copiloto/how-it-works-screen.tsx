@@ -2285,3 +2285,14 @@ function B({ children }: { children: React.ReactNode }) {
 }
 
 
+
+      <Section title="46. CHECKPOINT OPERATIVO — RAILWAY REVIEW, SMS OUTBOX Y BLOQUEOS (2026-11-28 05:51 EST)">
+        <P><B>Git:</B> rama feat/copiloto-v7-phase1-foundation, HEAD 8484bc8f791d842978a1ab419a520ca3237f6a9b. HEAD es documental; no implica que el código más reciente esté desplegado.</P>
+        <P><B>Railway Review:</B> copiloto-v7-temporal / review / copiloto-v7-preview está ONLINE (1/1). Deployment activo 9f820a6c-8d27-4b4f-8e3b-3157e3bdea5a SUCCESS, commit desplegado 28f00fc4a06e94fd5eade580b60859e1ac230af7, dominio https://copiloto-v7-preview-review.up.railway.app. El deployment a3d1f64f-ff3e-48a6-ae0a-bd825de40b49 está REMOVED, no activo.</P>
+        <P><B>SMS outbox:</B> commits 36dbef5d9b764e7d519b304eb772b7798bd6609c, 3c6877fe859d0fc4bbf9663725c6a52175061b80 y f9e44c904e37935b6ce309ccd416f62958b9abb3 documentan persistencia de aprobación/cola, aprobación explícita desde UI y CI independiente. No existe evidencia de que estos cambios estén en el deployment live ni de prueba contra Supabase en vivo. Dispatch sigue 501 y no transmite SMS.</P>
+        <P><B>CI:</B> run 46113117926 — instalación PASS, test:crm-push PASS, Next build PASS (12/12); TypeScript FAIL con 76 diagnósticos globales. El workflow queda FAILED; no declarar typecheck PASS.</P>
+        <P><B>Coordinator:</B> sigue STAGED/NO LIVE (servicio d2a25fd9-3038-4037-9736-3fa4975ee835; patch ab7a1ad9-6cfa-4015-9d9b-386153399e1e). Faltan OPENAI_API_KEY, COORDINATOR_GATEWAY_KEY e identidad dedicada coordinator. No aceptar patch ni inventar secretos/SQL.</P>
+        <P><B>Scanner:</B> /api/scan-inbox continúa 503 inbox_not_configured; faltan BLOB_READ_WRITE_TOKEN y SCAN_INBOX_KEY para POST. No se configuraron secretos. Railway Preview solo muestra variable CRM_AGENT_GATEWAY_URL (nombre, no valor).</P>
+        <P><B>Próximo paso:</B> recuperar evidencia del contrato real Muse/Amani y del polling/ACK/autenticación del puente SMS; preparar pruebas de la cola en Review cuando el código correspondiente esté desplegado. Sin dispatch, mensajes reales, migraciones, cambios externos ni producción.</P>
+        <P><B>Salvaguardas:</B> solo rama/Review; no merge/main/producción; no Supabase financiero zrcnpmipdhpjdjkfrrgt; no SQL/DDL; no secretos en chats/issues/docs; no datos reales ni pagos; mantener separados SMS/Amani, WhatsApp Business/ZapClaw y WhatsApp Personal.</P>
+      </Section>
