@@ -30,7 +30,10 @@ aquí vive SOLO el estado actual.
 
 - **SOLO el CRM. El resto de la aplicación NO se toca.**
 - Trabajo: conectar el diseño del CRM + la funcionalidad de sus comunicaciones.
-- Canales: **1 SMS y 2 WhatsApp** (Transporte (934) 208-1400 e Impuestos, el segundo número), carriles separados, nunca mezclados.
+- Canales: **1 SMS y 2 WhatsApp**, carriles separados, nunca mezclados:
+  - **SMS** → Transporte (clientes/pasajeros).
+  - **WhatsApp Business (934) 208-1400** → Transporte (clientes/pasajeros).
+  - **WhatsApp personal (segundo número)** → DOS funciones: (1) **Impuestos** — clientes de taxes; (2) **Grupos de trabajos** — donde se publican las ofertas de trabajo (fuente de detección de trabajos).
 
 ## Qué falta (dueño entre paréntesis)
 
