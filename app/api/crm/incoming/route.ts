@@ -44,8 +44,16 @@ export async function POST(request: Request) {
   const parsed = parseMessageForReservation(text)
   const isOrder = !!(parsed.pickupAddress || parsed.dropoffAddress || parsed.serviceDate)
 
+  // crm_messages.channel solo acepta 'SMS' | 'WhatsApp' | 'Other' (los valores que la
+  // bandeja muestra); el webhook manda claves cortas ('sms' | 'wa1' | 'wa2'): se mapean aquí.
+  const CHANNEL_MAP: Record<string, string> = { sms: "SMS", wa1: "WhatsApp", wa2: "WhatsApp" }
+  const rawChannel = (body.channel || "sms").trim()
+  const channel =
+    CHANNEL_MAP[rawChannel.toLowerCase()] ??
+    (rawChannel === "SMS" || rawChannel === "WhatsApp" || rawChannel === "Other" ? rawChannel : "SMS")
+
   const { error } = await supabase.from("crm_messages").insert({
-    channel: body.channel || "sms",
+    channel,
     from_phone: from,
     from_name: body.fromName || from,
     body: text,
