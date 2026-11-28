@@ -20,10 +20,10 @@ aquí vive SOLO el estado actual.
 - **Claude (Anthropic):** solo diseño, por decisión de Miguel; su llave de API aún no se deposita.
 - **Gemini:** conectado vía Amani por API.
 - **CRM Design Preview:** NUEVA ruta aislada `/copiloto-v7-crm-design`, en commits
-  `569626d` y `afd8da8`. Incluye Overview, Clients, Transport, Taxes, Documents y
+  `569626d`, `afd8da8` y `8117caf` (Inter cargada mediante next/font/google). Incluye Overview, Clients, Transport, Taxes, Documents y
   Communications con bandejas SMS/WhatsApp separadas, filtros Transport/Taxes,
   borrador editable, aprobación humana simulada, estados explícitos y timeline de cliente.
-  Todo es sintético/local; no usa backend ni proveedores. QA de build/browser aún pendiente.
+  Todo es sintético/local; no usa backend ni proveedores. GitHub Actions build del HEAD `8117caf` en estado QUEUED; QA de build/browser aún pendiente.
 
 ## Qué falta (dueño entre paréntesis)
 
