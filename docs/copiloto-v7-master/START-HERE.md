@@ -3,16 +3,16 @@
 **Esta es la única puerta de entrada. No cambia de sitio ni de forma.**
 El estado se actualiza EN ESTA MISMA PÁGINA, en su sitio. El historial vive en Issue #87 y CURRENT-STATE.md; aquí vive SOLO el estado actual.
 
-Última actualización: 2026-11-28 — checkpoint de ejecución: corrección JSX y diseño de tres carriles registrados; build de los commits nuevos aún pendiente de verificación.
+Última actualización: 2026-11-28 — verificación en vivo Railway Review: deployment SUCCESS/Online en 1096040; build Next compiló y pruebas Gateway 6/6 PASS; TypeScript sigue sin validación porque Next omite typecheck. Detectado /api/scan-inbox 503 por falta de BLOB_READ_WRITE_TOKEN; Coordinator aún no tiene servicio Railway ni secretos.
 
 ## Estado ahora
 
 - **Producción:** Vercel f06c125 — sin cambios por esta auditoría. No merge ni despliegue productivo sin orden específica de Miguel.
 - **Rama de trabajo:** feat/copiloto-v7-phase1-foundation; HEAD documental actual: ff1b0de3e79f5a8a8e38569bba60f1a23a3b2669; último commit de código: d92ae9dc73343ad5e575fc51e27d0a64862b4bda (código: ad326b1 JSX; 5afbbcd tres carriles; 084da52 UI; 822bff SMS limitado a Transport y sin estados de entrega ficticios; d92ae9 timelines alineados). Comparación actual con main: diverged, 195 ahead / 1 behind; no merge/rebase/reset.
-- **Railway Review:** proyecto copiloto-v7-temporal, entorno review, servicio copiloto-v7-preview, dominio https://copiloto-v7-preview-review.up.railway.app. Fuente conectada a la rama feature. El último deployment consultado sigue FAILED en el commit antiguo 8c9dfb20; el SUCCESS activo continúa en 9867adf. Los commits nuevos aún no aparecen como deployment, por lo que el build corregido NO está validado ni el preview nuevo confirmado en Railway.
-- **Build/JSX:** la estructura huérfana de §44–45 en components/copiloto/how-it-works-screen.tsx fue corregida en commit ad326b1155fc8bbeb8b27cbb987a23d71309664e; §44–45 permanecen dentro del retorno del manual. Pendiente build/CI y deployment Railway Review; no declarar PASS.
+- **Railway Review (verificado 2026-11-28):** proyecto copiloto-v7-temporal, entorno review, servicio copilot-v7-preview, dominio https://copiloto-v7-preview-review.up.railway.app. Deployment actual `a3d1f64f-ff3e-48a6-ae0a-bd825de40b49` SUCCESS/Online, commit `1096040e1c1514ab897112fe491887b0e04893bb`. Build: Next.js compiled successfully, 12/12 static pages, Agent Gateway tests 6/6 PASS. El build muestra `Skipping validation of types`; esto NO es typecheck PASS. Hay dos deployments FAILED históricos. Logs HTTP recientes muestran /api/scan-inbox 503.
+- **Build/JSX:** el arreglo JSX está incluido en la rama desplegada. El build Railway actual compiló correctamente y generó 12/12 páginas; Agent Gateway tests 6/6 PASS. Next omitió validación de tipos, así que el typecheck global sigue pendiente y no se declara PASS.
 - **Agentes ↔ Gateway:** ChatGPT↔Muse CERRADO Y PROBADO por Amani API (Issue #87, Verificación #22). No repetir setup ni ACK. La verificación previa fue vía Amani; en esta sesión no hay una acción Gateway autenticada disponible para emitir nuevos message.send.
-- **OpenAI Coordinator:** construido en la rama; pruebas sintéticas 14/14. E2E live separado pendiente de identidad/credenciales propias y configuración segura.
+- **OpenAI Coordinator:** código independiente construido; harness sintético 14/14 documentado. En Railway Review todavía NO existe un servicio Coordinator (solo está `copiloto-v7-preview`). Faltan `OPENAI_API_KEY` y `COORDINATOR_GATEWAY_KEY`; no se deben inventar ni pegar en chat. La identidad `coordinator` tampoco existe aún en Supabase `agent_identities`; SQL revisado por Amani está fuera del repo y NO ejecutado. E2E live no demostrado.
 - **DeepSeek:** conectado vía Amani y probado según el registro.
 - **Corrección de nombre (Miguel, 2026-11-27):** no existe un agente llamado Dixie en este equipo; la referencia correcta es DeepSeek. No crear tareas, menciones ni reportes bajo el nombre Dixie.
 - **Claude (Anthropic):** solo diseño; no integración activa.
@@ -33,11 +33,11 @@ El estado se actualiza EN ESTA MISMA PÁGINA, en su sitio. El historial vive en 
 
 ## Qué falta (responsable)
 
-1. Validar build/CI y deployment Railway Review después del arreglo JSX (ChatGPT).
-2. Verificar que /copiloto-v7-crm-design responde 200 en Railway y hacer QA visual desktop/iPhone; corregir hallazgos (ChatGPT).
+1. Ejecutar typecheck reproducible en la rama y registrar diferencias contra main; Railway build compiló, pero omite validación de tipos (ChatGPT).
+2. Verificar rutas CRM preview y hacer QA visual desktop/iPhone; corregir hallazgos (ChatGPT).
 3. Presentar el preview a Miguel para comentarios y aprobación; no integrar antes (ChatGPT/Miguel).
 4. Integrar incrementalmente el diseño aprobado en la app original, preservando navegación y flujos existentes (equipo, con autorización de Miguel).
-5. Coordinator: resolver identidad/credenciales propias y E2E live, sin confundirlo con el E2E ya cerrado ChatGPT↔Muse (Miguel/Amani).
+5. Coordinator: obtener el SQL revisado de Amani por canal seguro; Miguel autoriza/ejecuta creación de identidad `coordinator`; depositar por tarjeta segura la llave de Gateway y OpenAI API key; crear servicio Railway Review y ejecutar E2E sintético live. ChatGPT↔Muse ya está cerrado y no se repite (Miguel/Amani/ChatGPT).
 6. Decisión pendiente de Miguel: Auth+JWT (arquitectura aprobada en el checkpoint original) vs la desviación implementada de claves de máquina + hash SHA-256; no ampliar uso sin resolver.
 7. SMS/Amani: recuperar el contrato real del puente externo; callback antiguo no reactivar; dispatch actual sigue 501 y la cola no transmite (Amani).
 8. WhatsApp Business/ZapClaw y WhatsApp personal/grupos: auditar por separado; no conexión/ingestión/envío real verificado (Amani).
@@ -54,6 +54,7 @@ El estado se actualiza EN ESTA MISMA PÁGINA, en su sitio. El historial vive en 
 - No secretos en chats, issues, código o documentos.
 - No tocar Supabase financiero legado zrcnpmipdhpjdjkfrrgt; CRM Supabase es mimgwleghecseoymgdug.
 - Una pantalla Preview no equivale a un módulo conectado, persistente, seguro ni listo para clientes.
+- **Incidencia operativa detectada 2026-11-28:** `/api/scan-inbox` devuelve 503 `inbox_not_configured` porque el servicio Railway no tiene `BLOB_READ_WRITE_TOKEN`. La ruta también requiere `SCAN_INBOX_KEY` para POST; no configurar con valores inventados. Resolver mediante almacenamiento/secretos aprobados y probar POST/GET en Review.
 - Cada agente lee este START-HERE + Issue #87 + issue del canal antes de actuar; no repetir trabajo verificado; cada avance registra commit, evidencia, prueba, estado, responsable y siguiente paso aquí y en Issue #87.
 
 ## Dónde está cada cosa
