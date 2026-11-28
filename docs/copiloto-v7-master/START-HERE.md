@@ -3,13 +3,13 @@
 **Esta es la única puerta de entrada. No cambia de sitio ni de forma.**
 El estado se actualiza EN ESTA MISMA PÁGINA, en su sitio. El historial vive en Issue #87 y CURRENT-STATE.md; aquí vive SOLO el estado actual.
 
-Última actualización: 2026-11-28 — auditoría maestra registrada; Railway build del CRM Preview falló por JSX en How This Works.
+Última actualización: 2026-11-28 — checkpoint de ejecución: corrección JSX y diseño de tres carriles registrados; build de los commits nuevos aún pendiente de verificación.
 
 ## Estado ahora
 
 - **Producción:** Vercel f06c125 — sin cambios por esta auditoría. No merge ni despliegue productivo sin orden específica de Miguel.
-- **Rama de trabajo:** feat/copiloto-v7-phase1-foundation; HEAD revisado: 8c9dfb20b0e0f6e643524d4050fecbe90c716a9a. Comparación actual con main: diverged, 195 ahead / 1 behind; no merge/rebase/reset.
-- **Railway Review:** proyecto copiloto-v7-temporal, entorno review, servicio copiloto-v7-preview, dominio https://copiloto-v7-preview-review.up.railway.app. Fuente conectada a la rama feature. Build del commit 8c9dfb20 = FAILED; último SUCCESS activo sigue en commit anterior 9867adf. El CRM Design Preview nuevo aún no está confirmado visible en Railway.
+- **Rama de trabajo:** feat/copiloto-v7-phase1-foundation; HEAD de trabajo tras correcciones: 084da52c0f0697b67e773cdaff156035680edbbe (commits de código: ad326b1155fc8bbeb8b27cbb987a23d71309664e y 5afbbcd14a81726f8140393c44d91e1af1c8c52e; ajuste visual final 084da52). Comparación actual con main: diverged, 195 ahead / 1 behind; no merge/rebase/reset.
+- **Railway Review:** proyecto copiloto-v7-temporal, entorno review, servicio copiloto-v7-preview, dominio https://copiloto-v7-preview-review.up.railway.app. Fuente conectada a la rama feature. El último deployment consultado sigue FAILED en el commit antiguo 8c9dfb20; el SUCCESS activo continúa en 9867adf. Los commits nuevos aún no aparecen como deployment, por lo que el build corregido NO está validado ni el preview nuevo confirmado en Railway.
 - **Bloqueo de build:** components/copiloto/how-it-works-screen.tsx:2287 — falta cerrar un componente Section antes de abrir la sección siguiente. Corregir de forma mínima y volver a desplegar a Railway Review; no modificar producción.
 - **Agentes ↔ Gateway:** ChatGPT↔Muse CERRADO Y PROBADO por Amani API (Issue #87, Verificación #22). No repetir setup ni ACK.
 - **OpenAI Coordinator:** construido en la rama; pruebas sintéticas 14/14. E2E live separado pendiente de identidad/credenciales propias y configuración segura.
@@ -28,12 +28,12 @@ El estado se actualiza EN ESTA MISMA PÁGINA, en su sitio. El historial vive en 
   - **WhatsApp personal 934-200-8109** → Taxes y grupos de Work Opportunities.
   - No scraping no oficial de grupos ni respuestas YES automáticas; investigar reenvío/compartido manual.
 - “CMS” aparece en chats, pero su significado exacto no está confirmado. El alcance técnico canónico registrado es CRM Copiloto V7 + Centro de Comunicaciones; no inventar una equivalencia.
-- El E2E ChatGPT↔Muse del Gateway no es el SMS/WhatsApp de clientes.
+- El E2E ChatGPT↔Muse del Gateway no es el SMS/WhatsApp de clientes. En esta sesión se confirmó que la API está documentada, pero no hay una acción directa disponible para emitir ahora un message.send autenticado; no declarar nuevas órdenes entregadas a Muse/DeepSeek/Gemini. El intento de lanzar cloud agents de Railway fue rechazado porque el dashboard de agentes no está activado.
 
 ## Qué falta (responsable)
 
-1. Corregir el JSX de How This Works y re-ejecutar build Railway Review (ChatGPT).
-2. Verificar que /copiloto-v7-crm-design responde en Railway y hacer QA visual desktop/iPhone; corregir hallazgos (ChatGPT).
+1. Validar build/CI y deployment Railway Review después del arreglo JSX (ChatGPT).
+2. Verificar que /copiloto-v7-crm-design responde 200 en Railway y hacer QA visual desktop/iPhone; corregir hallazgos (ChatGPT).
 3. Presentar el preview a Miguel para comentarios y aprobación; no integrar antes (ChatGPT/Miguel).
 4. Integrar incrementalmente el diseño aprobado en la app original, preservando navegación y flujos existentes (equipo, con autorización de Miguel).
 5. Coordinator: resolver identidad/credenciales propias y E2E live, sin confundirlo con el E2E ya cerrado ChatGPT↔Muse (Miguel/Amani).
