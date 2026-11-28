@@ -1,7 +1,7 @@
 {
   "schema_version": "0.2.0",
   "project": "copiloto-v7",
-  "updated_at": "2026-11-27T23:23:00Z",
+  "updated_at": "2026-11-28T02:38:59.930Z",
   "source_branch": "feat/copiloto-v7-phase1-foundation",
   "source_commit": "32e5a4509de088c473a1fc3124f0737f96a6d5db",
   "environment": {
@@ -16,9 +16,9 @@
     "task_queue": "task creation, atomic claim, heartbeat and completion endpoints implemented; synthetic DB test passed",
     "sms_amani": "Independent row seeded not_connected/unknown; no live dispatch; no provider delivery verified.",
     "whatsapp_zapclaw": "Independent row seeded not_connected/unknown; no live delivery; no provider delivery verified.",
-    "agent_communication": "Internal agent message and ACK operations implemented; synthetic DB ACK test passed; live ChatGPT↔Muse HTTP send/inbox/ACK remains pending.",
+    "agent_communication": "VERIFIED live bidirectional ChatGPT↔Muse via Amani API, Issue #87 Verification #22: ChatGPT status 200, two Muse messages ACKed, ChatGPT reply 201, Muse received and ACKed 200; attribution chatgpt (via amani).",
     "checkpoints": "latest checkpoints derived from agent.checkpoint.recorded events; no real agent checkpoint has been submitted yet",
-    "recovery": "Authenticated recovery endpoint and written protocol exist; automatic cold-start recovery is NOT enabled until ChatGPT and Muse each have their own secure connector/tool configured and authenticated E2E verified."
+    "recovery": "Manual continuity recovery from Issue #87 and versioned documents is demonstrated in a fresh ChatGPT conversation. Native ChatGPT runtime does not directly present x-agent-key; Amani-operated API is the verified path. Automatic native fresh-session connector invocation is not claimed."
   },
   "decisions": [
     {
@@ -39,19 +39,22 @@
       "id": "gateway-authenticated-e2e",
       "title": "Run authenticated HTTP tests with both machine credentials and verify identical continuity",
       "owner": "ChatGPT + Muse",
-      "status": "pending"
+      "status": "verified",
+      "result": "Issue #87 Verification #22: live ChatGPT↔Muse bidirectional exchange via Amani API, both directions ACKed."
     },
     {
       "id": "gateway-chatgpt-connector",
       "title": "Configure a supported custom connector/tool for fresh ChatGPT conversations",
       "owner": "Implementation",
-      "status": "pending"
+      "status": "verified_via_amani_api",
+      "result": "ChatGPT identity authenticated and exchanged messages through Amani API; native ChatGPT runtime does not directly inject x-agent-key."
     },
     {
       "id": "gateway-muse-runtime",
       "title": "Configure Muse runtime with its individual key and verify inbox/ACK",
       "owner": "Muse",
-      "status": "pending"
+      "status": "verified",
+      "result": "Muse side received and ACKed ChatGPT response in Issue #87 Verification #22."
     },
     {
       "id": "gateway-rate-limit",
@@ -64,10 +67,10 @@
       "title": "Run standalone TypeScript validation and fix errors",
       "owner": "Implementation",
       "status": "failed",
-      "result": "76 diagnostics on current checked commit 32c379124708a67278c565b37cd05c4deadf7aa5; exit 2; 69 app/test + 7 Deno-source"
+      "result": "Latest exact evidence: run 46081558172 on 32e5a4509de088c473a1fc3124f0737f96a6d5db; 76 diagnostics, exit 2 (69 app/tests + 7 Deno). Historical 65/66 discrepancy unresolved."
     }
   ],
-  "next_authorized_action": "Miguel deposits the existing Muse key into Amani Secure Vault card; provide a supported persistent ChatGPT runtime connector/secret injection path; then test authenticated continuity and message/inbox/ACK and cold-start recovery. Keep Auth-vs-key/hash decision with Miguel. No production, SMS, WhatsApp or real messages.",
+  "next_authorized_action": "Finish Phase 1 documentation reconciliation and How This Works index verification on feat/copiloto-v7-phase1-foundation; then produce a reproducible same-snapshot TypeScript comparison and a safe branch-reconciliation plan. Do not merge, rebase destructively, deploy production, execute SQL, or change secrets without Miguel's explicit approval.",
   "checkpoint_rule": "Future agent checkpoints must be derived from persisted server-stamped events; this seed snapshot is not a dynamic checkpoint.",
   "storage_mode": "supabase-persistent-event-store",
   "event_log": "Supabase public.agent_events; immutable to agents; repository JSON remains versioned seed/snapshot",
@@ -96,13 +99,16 @@
       "http_status": 401
     },
     "authenticated_http_e2e": {
-      "status": "pending_agent_runtime_secret_setup"
+      "status": "passed_via_amani_api",
+      "evidence": "Issue #87 Verification #22: status 200, two inbox ACKs, reply 201, Muse receive/ACK 200."
     },
     "fresh_chatgpt_recovery": {
-      "status": "pending_custom_action_connector_setup"
+      "status": "manual_issue_and_document_recovery_verified",
+      "limitation": "Native ChatGPT runtime does not directly present x-agent-key; Amani-operated API is the verified gateway route."
     },
     "muse_runtime_e2e": {
-      "status": "pending_muse_secret_setup"
+      "status": "passed",
+      "evidence": "Muse received and ACKed ChatGPT response in Issue #87 Verification #22."
     },
     "typescript": "tsc --noEmit attempted; failed on pre-existing Claris finance/driver model type mismatches and .ts test imports; excluded from mandatory build",
     "deployment": "SUCCESS deployment d80b2339-c9eb-4ffd-9c13-01591d46135b on 39e669992b1df9a11b258bf1cf7870eb233512bd",
@@ -162,10 +168,10 @@
         }
       ]
     },
-    "authenticated_chatgpt_runtime": "BLOCKED_RUNTIME_CREDENTIAL_INJECTION_UNAVAILABLE",
-    "authenticated_muse_runtime": "PENDING_MIGUEL_SECURE_VAULT_DEPOSIT",
-    "cross_agent_http_ack": "PENDING_BOTH_RUNTIME_CREDENTIALS",
-    "fresh_conversation_recovery": "PENDING_AUTHENTICATED_RUNTIME_CONNECTOR",
+    "authenticated_chatgpt_runtime": "VERIFIED_VIA_AMANI_API; attribution chatgpt (via amani); not native direct secret injection",
+    "authenticated_muse_runtime": "VERIFIED_IN_CROSS_CHECKED_E2E",
+    "cross_agent_http_ack": "PASS; both directions, Issue #87 Verification #22",
+    "fresh_conversation_recovery": "MANUAL_ISSUE_AND_DOC_RECOVERY_VERIFIED; native automatic connector invocation not claimed",
     "independent_typescript_check": {
       "status": "FAIL",
       "commit": "32e5a4509de088c473a1fc3124f0737f96a6d5db",
@@ -177,7 +183,19 @@
       "exit_code": 2,
       "diagnostic_count": 76,
       "comparison": "69 existing app/test diagnostics plus 7 Deno Edge Function diagnostics from the recovered source included in root tsconfig",
-      "historical_65_66_divergence": "NOT RESOLVED"
+      "historical_65_66_divergence": "NOT RESOLVED",
+      "latest_evidence": {
+        "status": "FAIL",
+        "commit": "32e5a4509de088c473a1fc3124f0737f96a6d5db",
+        "workflow_run": 46081558172,
+        "command": "pnpm exec tsc --noEmit",
+        "node": "v24.22.3",
+        "pnpm": "12.3.4",
+        "typescript": "5.7.3",
+        "exit_code": 2,
+        "diagnostic_count": 76,
+        "breakdown": "69 app/tests + 7 Deno Edge Function source diagnostics"
+      }
     },
     "public_continuity_endpoint": {
       "status": "PASS",
@@ -213,6 +231,13 @@
       "reason": "Current ChatGPT conversation runtime exposes no supported persistent secret store or custom x-agent-key header injection for future/fresh conversations.",
       "credential_reissued": false,
       "secret_value_accessed": false
+    },
+    "branch_reconciliation": {
+      "status": "BLOCKED_APPROVAL",
+      "comparison": "main...feat/copiloto-v7-phase1-foundation = diverged; feature 170 ahead / 1 behind",
+      "main_commit": "6540fc96a2e5acc1f26be8ba7e869bf3f5d6a2b5",
+      "merge_base": "51cb5217cdb9b938678428b51ea64bc8e1300408",
+      "action": "prepare preservation-first reconciliation plan; no merge/rebase/reset without Miguel approval"
     }
   },
   "architecture_decision": {
