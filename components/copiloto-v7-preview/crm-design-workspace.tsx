@@ -30,9 +30,9 @@ const seedMessages: SampleMessage[] = [
 
 const clients = [
   { id:"CL-1024", name:"Jordan Ellis", area:"Transport" as Area, status:"Active", phone:"(555) 010-0100", email:"jordan.sample@example.test", detail:"Executive SUV · Preferred client", last:"SMS · 9:42 AM" },
-  { id:"CL-1023", name:"Taylor Morgan", area:"Taxes" as Area, status:"Awaiting documents", phone:"(555) 010-0101", email:"taylor.sample@example.test", detail:"2025 individual return", last:"SMS · 9:18 AM" },
-  { id:"CL-1022", name:"Casey Rivera", area:"Taxes" as Area, status:"In review", phone:"(555) 010-0102", email:"casey.sample@example.test", detail:"2025 individual return", last:"WhatsApp · 8:56 AM" },
-  { id:"CL-1025", name:"Morgan Reed", area:"Transport" as Area, status:"Active", phone:"(555) 010-0103", email:"morgan.sample@example.test", detail:"Airport transfer · Repeat client", last:"WhatsApp Business · Yesterday" },
+  { id:"CL-1023", name:"Taylor Morgan", area:"Taxes" as Area, status:"Awaiting documents", phone:"(555) 010-0101", email:"taylor.sample@example.test", detail:"2025 individual return", last:"Tax case · sample" },
+  { id:"CL-1022", name:"Casey Rivera", area:"Taxes" as Area, status:"In review", phone:"(555) 010-0102", email:"casey.sample@example.test", detail:"2025 individual return", last:"WhatsApp Personal · 8:56 AM" },
+  { id:"CL-1025", name:"Morgan Reed", area:"Transport" as Area, status:"Active", phone:"(555) 010-0103", email:"morgan.sample@example.test", detail:"Airport transfer · Repeat client", last:"SMS + WhatsApp Business" },
   { id:"WO-001", name:"Work Opportunities Feed", area:"Work Opportunities" as Area, status:"Manual review", phone:"Not a customer contact", email:"Not applicable", detail:"Manually shared opportunities · no group scraping", last:"WhatsApp Personal · 8:21 AM" },
 ]
 
