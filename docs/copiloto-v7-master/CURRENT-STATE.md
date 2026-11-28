@@ -373,3 +373,28 @@
 - Typecheck y divergencia 65/66: BLOCKED / NOT RESOLVED.
 - Conciliación main↔feature y política de fuente canónica compartida: BLOCKED hasta revisión y aprobación; no merge autorizado.
 - Criterio de cierre: índice único verificado; documentos sin contradicciones activas; handoff exacto; comparación de ramas resuelta por plan aprobado; typecheck comparativo reproducible documentado. No declarar Fase 1 terminada antes de esos puntos.
+
+
+## 30. Decisión de alcance de Fase 1 confirmada por Miguel — 2026-11-27
+
+Miguel confirmó mantener el alcance original de Fase 1 descrito en la §24 del manual. **Fase 1 entrega la plataforma Copiloto y el Centro de Comunicaciones preparado; la operación real completa de SMS y WhatsApp (proveedores activos, entrada/salida y mensajería con clientes) queda para una fase posterior.** Esta decisión reemplaza la propuesta posterior de ampliar Fase 1 para incluir mensajería live.
+
+### Checklist de alcance original — estados que requieren evidencia
+1. **Shell y navegación responsive de Copiloto:** primera preview implementada en §25; build, visual QA y accesos protegidos siguen por verificar.
+2. **Dashboard/workspace landing:** existe baseline de preview con contenido sintético; integración con datos y validación de flujos pendientes.
+3. **Espacios Transport, Taxes y Work Opportunities:** entry points presentes en preview; workflows reales y conexión segura con módulos existentes pendientes de verificación.
+4. **Centro de Comunicaciones preparado:** shell/intake model y ruta de clasificación por workspace deben implementarse/verificarse con datos sintéticos; no requiere activar SMS/WhatsApp ni proveedores reales en Fase 1.
+5. **Preservación de CRM/Taxes existentes:** integrar por entry points seguros sin reemplazo wholesale; verificar rutas y regresiones.
+6. **Servicios compartidos:** identidad/permisos, almacenamiento privado, notificaciones, auditoría y clasificación deben quedar diseñados/implementados según la secuencia aprobada; no asumir listos sin pruebas.
+7. **Calidad y seguridad:** pruebas automatizadas, build/preview, QA responsive, control de acceso y revisión de riesgos; no datos reales ni producción.
+8. **Documentación y continuidad:** checklist, handoff y manual sincronizados con evidencia por paso.
+
+### Fuera del cierre de Fase 1 — reservar para fase posterior
+- Activación de proveedores SMS/Amani y WhatsApp/ZapClaw.
+- Mensajería real bidireccional con clientes: recepción, envío, delivery receipts, webhooks y gestión operativa de conversaciones.
+- Envío real de campañas o mensajes a clientes. No activar cuentas, números, webhooks ni enviar mensajes reales en Fase 1.
+
+### Criterio de aceptación del Centro de Comunicaciones en Fase 1
+La plataforma debe dejar preparado el centro y su modelo de intake: representación sintética de conversaciones/eventos, fuente/canal, remitente, timestamps, adjuntos como metadatos, clasificación sugerida Transport/Taxes, estado de revisión, aprobación humana y registro de auditoría. Las pruebas serán sintéticas y no tocarán proveedores externos.
+
+**Estado global:** Fase 1 sigue IN PROGRESS. Esta decisión fija el alcance, no declara funciones terminadas. La conexión Agent Gateway ChatGPT↔Muse verificada en #87 #22 es infraestructura de coordinación entre agentes y no equivale a SMS/WhatsApp del Centro de Comunicaciones.
