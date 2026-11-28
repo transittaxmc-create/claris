@@ -81,3 +81,6 @@ Cerrada la Parte 1, se continúa con las partes siguientes del CRM en orden hast
 - [ ] 5. WhatsApp personal — recepción y captura en su carril (Impuestos + grupos de trabajos)
 - [ ] 6. WhatsApp personal — respuesta desde el CRM en su carril, con aprobación
 - [ ] 7. Prueba integral con Miguel en los tres canales (ida y vuelta, sin pérdidas) → Miguel da la Fase 1 por terminada
+**PLAZO: HOY (Miguel, 2026-11-27 22:30 EST).** Esto se termina HOY, no mañana — mañana no tiene tiempo. Por eso existe Railway: verlo funcionando hoy. Orden urgente ya enviada a ChatGPT por el Gateway: reparar el error de build (how-it-works-screen.tsx, línea 2287) y redesplegar hasta que /copiloto-v7-crm-design responda 200 (verificado 404 a las 22:27 EST).
+**BARRA DE DISEÑO:** espectacular, profesional y limpio. ChatGPT enseñó un diseño temprano y Miguel aprobó ESA dirección ("vamos a hacerlo así") — se mantiene esa dirección, sin inventar otra.
+
