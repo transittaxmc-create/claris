@@ -23,7 +23,7 @@ const QUICK_PROMPTS = [
   },
   {
     icon: Zap,
-    label: "Analizar rentabilidad",
+    label: "Analyze profitability",
     prompt: "Analyze my total profitability comparing gross income, fares, commissions and expenses.",
   },
   {
@@ -169,7 +169,7 @@ export function AIScreen({
     }
     if (!dataUrl.startsWith("data:image/")) return
     const now = new Date().toLocaleTimeString("en-US")
-    const userMsg: Message = { id: `u-${Date.now()}`, role: "user", content: "📷 Foto enviada al asistente", time: now }
+    const userMsg: Message = { id: `u-${Date.now()}`, role: "user", content: "📷 Photo sent to the assistant", time: now }
     setMessages((prev) => [...prev, userMsg])
     setLoading(true)
     try {
@@ -588,7 +588,7 @@ export function AIScreen({
           }}
           className="rounded-xl border border-neutral-700 bg-neutral-900/60 px-2 py-1.5 text-[10px] font-bold text-neutral-400 hover:text-white"
         >
-          LIMPIAR
+          CLEAR
         </button>
       </div>
 
