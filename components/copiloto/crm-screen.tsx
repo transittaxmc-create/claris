@@ -1549,8 +1549,14 @@ function CRMMessages({ clients, reservations, cloudSeed, cloudSeedNonce, onCloud
         writeSyncedIds(SYNCED_MESSAGES_KEY, lastSyncedIds.current)
       })
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cloudSeed, cloudSeedNonce, ready])
+    // cloudPending y messages SÍ van en las dependencias (2026-11-28): si
+    // la semilla llegaba con la nube de mensajes marcada pendiente, la
+    // guarda la rechazaba y el efecto NO volvía a correr cuando la marca
+    // se limpiaba — la semilla quedaba sin aplicar hasta otro nonce. Y sin
+    // messages, la fusión podía correr contra la lista local vieja del
+    // cierre del efecto. La guarda del nonce impide aplicar dos veces la
+    // misma semilla, así que re-evaluar es seguro.
+  }, [cloudSeed, cloudSeedNonce, ready, cloudPending, messages])
 
   useEffect(() => {
     if (!ready || !seedMerged || !onCloudSync) return

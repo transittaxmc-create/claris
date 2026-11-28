@@ -244,7 +244,25 @@ export function CopilotoApp() {
         )
         if (estado === "older") {
           desajustes += 1
-          if (desajustes >= 2) setCopiaVieja(data.short ?? data.sha.slice(0, 7))
+          if (desajustes >= 2) {
+            // Copia vieja CONFIRMADA (dos comprobaciones seguidas): una
+            // página reanudada por iOS puede correr el paquete viejo
+            // indefinidamente sin volver a montar, y el aviso solo no la
+            // sacaba de ahí (2026-11-28: la bandeja del CRM seguía con el
+            // código anterior aunque producción ya tenía el arreglo). Se
+            // recarga UNA vez por SHA de producción para entrar sola al
+            // paquete actual; si ya se recargó por ese SHA y sigue vieja,
+            // queda el aviso con enlace manual de siempre — sin bucle.
+            const claveRecarga = `claris_auto_reload_${data.sha}`
+            let yaRecargada = false
+            try { yaRecargada = sessionStorage.getItem(claveRecarga) === "1" } catch {}
+            if (!yaRecargada) {
+              try { sessionStorage.setItem(claveRecarga, "1") } catch {}
+              window.location.reload()
+              return
+            }
+            setCopiaVieja(data.short ?? data.sha.slice(0, 7))
+          }
           setVersionPrueba(null)
         } else if (estado === "newer") {
           // Preview más nueva que producción: aviso informativo, no "copia vieja".
@@ -260,9 +278,19 @@ export function CopilotoApp() {
     }
     revisar()
     const id = window.setTimeout(revisar, 8000)
+    // La comprobación también corre al volver a primer plano: montar no
+    // basta, porque iOS reanuda la página en memoria sin remontarla y la
+    // copia vieja nunca se enteraba del despliegue nuevo.
+    const alVolver = () => {
+      if (document.visibilityState === "visible") void revisar()
+    }
+    document.addEventListener("visibilitychange", alVolver)
+    window.addEventListener("focus", alVolver)
     return () => {
       vivo = false
       window.clearTimeout(id)
+      document.removeEventListener("visibilitychange", alVolver)
+      window.removeEventListener("focus", alVolver)
     }
   }, [])
 
