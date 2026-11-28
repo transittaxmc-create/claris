@@ -5,16 +5,12 @@ export const runtime = "nodejs"
 export const dynamic = "force-dynamic"
 
 /**
- * CRM SMS outbox endpoint.
+ * Authenticated, durable SMS outbox.
  *
- * This route authenticates the CRM owner, validates the destination and text,
- * and verifies that the message exists in the owner's CRM cloud. It returns
- * queued=true so the approved draft can be stored in the CRM outbox.
- *
- * IMPORTANT: this endpoint does not contact a carrier and does not send SMS.
- * No Twilio sender or paired-phone/Amani bridge is implemented. A queued
- * message must remain visibly NOT SENT until a real sender and authenticated
- * delivery/dispatch integration are implemented and verified.
+ * A POST is the owner's explicit approval action. It records that approval
+ * and the queued state in crm_messages. It NEVER sends a message.
+ * Dispatch remains disabled until the original Amani/paired-phone contract
+ * is recovered and an authenticated adapter is implemented.
  */
 
 async function requireSession() {
@@ -26,23 +22,23 @@ async function requireSession() {
   return { supabase, userId }
 }
 
-/** Normaliza un teléfono de cliente a dígitos: 10 dígitos → prefijo 1 (EE. UU.). */
 function normalizeTo(raw: string): string | null {
-  let d = (raw || "").replace(/\D/g, "")
-  if (d.length === 10) d = "1" + d
-  if (d.length < 8 || d.length > 15) return null
-  return d
+  let digits = (raw || "").replace(/\D/g, "")
+  if (digits.length === 10) digits = "1" + digits
+  if (digits.length < 8 || digits.length > 15) return null
+  return digits
 }
 
 type QueueBody = {
   messageId?: string
   to?: string
   text?: string
+  approve?: boolean
 }
 
 export async function POST(req: Request) {
-  const s = await requireSession()
-  if ("error" in s) return s.error
+  const session = await requireSession()
+  if ("error" in session) return session.error
 
   let body: QueueBody | null = null
   try {
@@ -51,7 +47,11 @@ export async function POST(req: Request) {
   if (!body || typeof body !== "object") {
     return NextResponse.json({ ok: false, error: "invalid_body" }, { status: 400 })
   }
-  const messageId = String(body.messageId || "")
+  if (body.approve !== true) {
+    return NextResponse.json({ ok: false, error: "explicit_approval_required" }, { status: 400 })
+  }
+
+  const messageId = String(body.messageId || "").trim()
   const to = normalizeTo(String(body.to || ""))
   const text = String(body.text || "").trim()
   if (!messageId) return NextResponse.json({ ok: false, error: "missing_message" }, { status: 400 })
@@ -59,17 +59,64 @@ export async function POST(req: Request) {
   if (!text) return NextResponse.json({ ok: false, error: "empty_text" }, { status: 400 })
   if (text.length > 1600) return NextResponse.json({ ok: false, error: "text_too_long" }, { status: 400 })
 
-  // El mensaje debe existir en la nube del CRM y ser de este dueño: la
-  // cola vive en crm_messages (RLS + eq user_id), no en memoria.
-  const { data: rows, error } = await s.supabase
+  const { data: message, error: readError } = await session.supabase
     .from("crm_messages")
-    .select("id")
-    .eq("user_id", s.userId)
+    .select("id, channel, from_phone, status, send_state")
+    .eq("user_id", session.userId)
     .eq("id", messageId)
-    .limit(1)
-  if (error) return NextResponse.json({ ok: false, error: "queue_unavailable" }, { status: 502 })
-  if (!rows || !rows.length) {
+    .maybeSingle()
+
+  if (readError) {
+    return NextResponse.json({ ok: false, error: "outbox_schema_or_read_unavailable" }, { status: 503 })
+  }
+  if (!message) {
     return NextResponse.json({ ok: false, error: "message_not_in_cloud" }, { status: 409 })
   }
-  return NextResponse.json({ ok: true, queued: true, to })
+  if (String(message.channel || "").toUpperCase() !== "SMS") {
+    return NextResponse.json({ ok: false, error: "sms_channel_only" }, { status: 409 })
+  }
+  if (normalizeTo(String(message.from_phone || "")) !== to) {
+    return NextResponse.json({ ok: false, error: "recipient_mismatch" }, { status: 409 })
+  }
+  if (["sent", "discarded"].includes(String(message.status || "")) || message.send_state === "sent") {
+    return NextResponse.json({ ok: false, error: "message_not_queueable" }, { status: 409 })
+  }
+  if (message.send_state === "sending") {
+    return NextResponse.json({ ok: false, error: "dispatch_in_progress" }, { status: 409 })
+  }
+  if (message.send_state === "queued") {
+    return NextResponse.json({ ok: true, queued: true, alreadyQueued: true, sent: false, to })
+  }
+
+  // The authenticated POST itself is the explicit approval action. Persist
+  // the approved draft and outbox state together; never report a local-only
+  // queue as durable.
+  const now = new Date().toISOString()
+  const { error: writeError } = await session.supabase
+    .from("crm_messages")
+    .update({
+      status: "approved",
+      approved_at: now,
+      draft_reply: text,
+      send_state: "queued",
+      send_error: "",
+      send_via: "phone",
+      dispatched_at: null,
+      updated_at: now,
+    })
+    .eq("user_id", session.userId)
+    .eq("id", messageId)
+
+  if (writeError) {
+    return NextResponse.json({ ok: false, error: "outbox_write_failed" }, { status: 503 })
+  }
+
+  return NextResponse.json({
+    ok: true,
+    queued: true,
+    sent: false,
+    delivery: "not_sent",
+    to,
+    approvedAt: now,
+  })
 }
