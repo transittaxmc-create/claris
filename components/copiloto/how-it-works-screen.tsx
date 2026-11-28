@@ -2263,3 +2263,13 @@ function P({ children }: { children: React.ReactNode }) {
 function B({ children }: { children: React.ReactNode }) {
   return <strong className="font-bold text-yellow-400/95">{children}</strong>
 }
+
+
+      <Section title="44. ALCANCE CONFIRMADO DE FASE 1 — PLATAFORMA + CENTRO DE COMUNICACIONES PREPARADO (2026-11-27)">
+        <P><B>Decisión explícita de Miguel:</B> mantener el alcance original de Fase 1 descrito en §24. La fase entrega la plataforma Copiloto y el Centro de Comunicaciones preparado. SMS y WhatsApp completamente operativos, con proveedores reales y entrada/salida de mensajes de clientes, quedan para una fase posterior.</P>
+        <P><B>Incluido en Fase 1:</B> shell y navegación responsive; dashboard; workspaces Transport, Taxes y Work Opportunities; integración segura de las pantallas existentes; Communications Center con modelo sintético de intake/conversación, canal/origen, remitente, timestamps, metadatos de adjuntos, clasificación Transport/Taxes, revisión, aprobación humana y auditoría; servicios compartidos de identidad/permisos, almacenamiento privado, notificaciones y audit trail según alcance; tests, build/preview y QA responsive.</P>
+        <P><B>Fuera de Fase 1:</B> activar Amani/SMS o ZapClaw/WhatsApp, configurar números o webhooks reales, enviar o recibir comunicaciones reales de clientes, delivery receipts reales y campañas. Todo eso se reserva para una fase posterior y requerirá aprobación específica.</P>
+        <P><B>Pruebas permitidas:</B> datos sintéticos y fixtures; no usar clientes reales ni activar proveedores. El Centro de Comunicaciones debe quedar preparado estructuralmente, no operativo con proveedores externos.</P>
+        <P><B>Distinción:</B> el E2E ChatGPT↔Muse del Agent Gateway (#87 Verificación #22) prueba coordinación entre agentes. No es el SMS/WhatsApp del Centro de Comunicaciones de clientes.</P>
+        <P><B>Seguimiento:</B> shell responsive, dashboard, Transport, Taxes, Work Opportunities, Communications Center sintético, servicios compartidos, seguridad, pruebas/build/preview y documentación se marcan terminados solo después de evidencia verificable. Fase 1 permanece IN PROGRESS hasta cumplir sus criterios.</P>
+      </Section>
