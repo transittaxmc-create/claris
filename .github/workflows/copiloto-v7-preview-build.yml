@@ -27,10 +27,16 @@ jobs:
           node-version: 24
           cache: pnpm
       - name: Install dependencies
+        id: install
         run: pnpm install --frozen-lockfile
       - name: TypeScript check
         run: pnpm exec tsc --noEmit
+      # Keep independent validation visible even while the repository-wide
+      # typecheck has known baseline failures. These steps do not turn a
+      # failed typecheck into a passing workflow.
       - name: Run CRM push validation tests
+        if: always() && steps.install.outcome == 'success'
         run: pnpm test:crm-push
       - name: Build Next.js application
+        if: always() && steps.install.outcome == 'success'
         run: pnpm build
