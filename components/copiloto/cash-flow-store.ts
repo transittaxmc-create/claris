@@ -142,7 +142,7 @@ export function esCobroBorrado(cobroId: string): boolean {
 export type TipoDoc = "factura" | "recibo"
 
 export const ETIQUETA_ORIGEN: Record<CashFlowOrigin, string> = {
-  scan: "Escaneado",
+  scan: "Scanned",
   manual: "Manual",
   bank: "Bank",
   trip: "Receivables",

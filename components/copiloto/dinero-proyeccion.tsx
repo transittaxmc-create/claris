@@ -866,7 +866,7 @@ export function DineroProyeccion(props: {
               return (
               <div key={p.key} className="rounded-lg border border-neutral-800 bg-black/40 px-2 py-1.5 text-[11px]">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="min-w-0 truncate font-semibold text-neutral-200">{p.entry.description || "Movimiento"}</span>
+                  <span className="min-w-0 truncate font-semibold text-neutral-200">{p.entry.description || "Movement"}</span>
                   <span className="shrink-0 font-mono font-bold text-neutral-300">{money(entryAmt)}</span>
                 </div>
                 <p className="truncate text-[10px] text-neutral-500">
@@ -1154,7 +1154,7 @@ function ProjectionRegister(props: {
       <div className="rounded-2xl border border-neutral-800 bg-neutral-950/60 p-3">
         <div className="mb-1.5 flex items-center justify-between gap-2">
           <p className="text-[11px] font-bold uppercase tracking-wide text-neutral-400">
-            Movimientos · {fc.lines.length}
+            Movements · {fc.lines.length}
           </p>
           <div className="flex gap-1.5">
             {depositsBtn}

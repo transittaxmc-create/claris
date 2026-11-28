@@ -1065,7 +1065,7 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void; realBa
                   {desglose.inc.map(([c, v]) => (
                     <div key={c} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 6, marginBottom: 3 }}>
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{c}</span>
-                      <b style={{ color: GREEN, whiteSpace: "nowrap" }}>+${Math.round(v).toLocaleString()}</b>
+                      <b style={{ color: GREEN, whiteSpace: "nowrap" }}>+${Math.round(v).toLocaleString("en-US")}</b>
                     </div>
                   ))}
                 </div>
@@ -1074,7 +1074,7 @@ export function ProyeccionFoto1(props: ProyProps & { onScan?: () => void; realBa
                   {desglose.exp.map(([c, v]) => (
                     <div key={c} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 6, marginBottom: 3 }}>
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{c}</span>
-                      <b style={{ color: RED, whiteSpace: "nowrap" }}>-${Math.round(v).toLocaleString()}</b>
+                      <b style={{ color: RED, whiteSpace: "nowrap" }}>-${Math.round(v).toLocaleString("en-US")}</b>
                     </div>
                   ))}
                 </div>

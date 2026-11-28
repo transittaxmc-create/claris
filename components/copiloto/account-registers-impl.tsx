@@ -301,7 +301,7 @@ export function RegistersHome(props: {
         <>
           <div className="grid grid-cols-3 gap-1.5 rounded-xl border border-[#262633] bg-[#111119] px-2 py-1.5 text-center">
             <p className="text-[10px] text-[#9a9cb0]">
-              Disponible{" "}
+              Available{" "}
               <span
                 className={cn(
                   "font-mono font-bold tabular-nums",

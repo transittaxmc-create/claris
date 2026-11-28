@@ -130,7 +130,7 @@ function LocationColumn({
               className="flex flex-1 items-center justify-center gap-1 rounded-lg bg-amber-500 py-1.5 text-xs font-bold text-black hover:bg-amber-400 active:scale-[0.98] disabled:opacity-50"
             >
               <RotateCw className={cn("size-3", busy && "animate-spin")} />
-              Reintentar GPS
+              Retry GPS
             </button>
             <button
               type="button"
@@ -138,7 +138,7 @@ function LocationColumn({
               className="flex flex-1 items-center justify-center gap-1 rounded-lg border border-amber-500/50 bg-black/40 py-1.5 text-xs font-bold text-amber-300 hover:bg-amber-950/60 active:scale-[0.98]"
             >
               <Edit2 className="size-3" />
-              Usar Manual
+              Enter manually
             </button>
           </div>
         </div>

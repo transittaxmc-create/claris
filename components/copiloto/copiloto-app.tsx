@@ -1238,11 +1238,11 @@ export function CopilotoApp() {
             }}
             className="flex-1 rounded-2xl bg-yellow-400 px-4 py-3 text-left text-[14px] font-extrabold text-black shadow-lg active:scale-[0.98]"
           >
-            📥 Foto recibida — Escanear{inboxIds.length > 1 ? ` (${inboxIds.length})` : ""}
+            📥 Photo received — Scan{inboxIds.length > 1 ? ` (${inboxIds.length})` : ""}
           </button>
           <button
             type="button"
-            aria-label="Descartar aviso de foto recibida"
+            aria-label="Dismiss photo received notice"
             onClick={() => setInboxDismissed(true)}
             className="rounded-2xl bg-neutral-800 px-3 py-3 text-[14px] font-bold text-neutral-300 shadow-lg active:scale-[0.98]"
           >

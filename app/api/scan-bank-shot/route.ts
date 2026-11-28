@@ -105,7 +105,7 @@ Reglas:
         const date = typeof t?.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(t.date) ? t.date : hoy
         return {
           date,
-          description: String(t?.description || "Movimiento").slice(0, 120),
+          description: String(t?.description || "Movement").slice(0, 120),
           amount: Math.round(amount * 100) / 100,
           pending: Boolean(t?.pending),
         }

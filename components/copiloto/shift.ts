@@ -302,7 +302,7 @@ export function useShift() {
           acc: Number.isFinite(pos.coords.accuracy) ? pos.coords.accuracy : null,
           heading: typeof pos.coords.heading === "number" && Number.isFinite(pos.coords.heading) ? pos.coords.heading : null,
         })
-        showToast("📍 GPS listo")
+        showToast("📍 GPS ready")
       },
       () => {
         showToast("⚠️ GPS denied: enable the permission")
@@ -359,7 +359,7 @@ export function useShift() {
     setShift({ ...EMPTY_SHIFT, date: dayKey(new Date(t)) })
     releaseWake()
     stopWatch()
-    showToast(`🏁 Turno cerrado: ${activeHrs.toFixed(1)} h · ${cur.miles.toFixed(1)} mi`)
+    showToast(`🏁 Shift closed: ${activeHrs.toFixed(1)} h · ${cur.miles.toFixed(1)} mi`)
   }, [commitOpen, releaseWake, stopWatch, showToast])
 
   const setHourlyGoal = useCallback((v: number) => {

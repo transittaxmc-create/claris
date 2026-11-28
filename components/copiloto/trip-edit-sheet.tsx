@@ -305,7 +305,7 @@ export function TripEditSheet({
 
             <p className="mb-2 text-[10px] leading-tight text-neutral-500">
               Net calculated by the app: <span className="font-bold text-neutral-300">{money(computedNet)}</span>
-              {overrideActive && <span className="text-yellow-400"> · esperado fijado a mano: {money(expected)}</span>}
+              {overrideActive && <span className="text-yellow-400"> · expected set by hand: {money(expected)}</span>}
             </p>
 
             <div className="grid grid-cols-2 gap-3">

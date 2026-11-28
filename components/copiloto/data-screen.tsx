@@ -203,7 +203,7 @@ export function DataScreen({
       window.history.replaceState({}, "", window.location.pathname)
     }
     if (params.get("gdrive_error")) {
-      setBackupNote(`⚠️ Error conectando Google Drive: ${params.get("gdrive_error")}`)
+      setBackupNote(`⚠️ Error connecting Google Drive: ${params.get("gdrive_error")}`)
       window.history.replaceState({}, "", window.location.pathname)
     }
   }, [])

@@ -314,7 +314,7 @@ export function Tax2026Screen({
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[10px] font-medium text-white">{f.name}</p>
                     <p className="text-[9px] text-neutral-500">
-                      {(f.size / 1024).toFixed(0)} KB · {new Date(f.addedAt).toLocaleDateString()}
+                      {(f.size / 1024).toFixed(0)} KB · {new Date(f.addedAt).toLocaleDateString("en-US")}
                     </p>
                   </div>
                   {f.dataUrl && (

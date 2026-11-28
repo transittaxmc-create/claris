@@ -1606,6 +1606,20 @@ export function HowItWorksScreen() {
           and this manual are now 100% in English: every title, label, button, message and note.
           Text only: no logic, no calculations and no data were changed.
         </P>
+        <P>
+          <B>Done with this deploy (2026-11-28):</B> second full English sweep, ordered by
+          Miguel the same day — not one comma of Spanish left. A complete re-audit of the
+          production source found 24 visible Spanish texts the first audit missed — the TODAY
+          GPS banner (Retry GPS, Enter manually), the photo-received banner, the shift toasts,
+          the Expenses scanner states, the AI subtitle and Thinking indicator, Available and
+          Apply in the registers, the Scanned origin tag, the Projections Movement/Movements
+          labels, the Earnings Gross/net labels, the trip-edit note, the Schedule C miles
+          label, the Google Drive error note, one server fallback and the Financial Statement
+          CSV and printable report — and every one is now in English. All date, time and
+          number formats that followed the phone language are now pinned to en-US, so nothing
+          renders in Spanish on a Spanish-language phone. Text and formats only: no logic, no
+          calculations and no data were changed.
+        </P>
         <P><B>Priority 1 — The fare meter (the first project on the list):</B></P>
         <ul className="mb-3 list-disc space-y-1.5 pl-4 text-[12px] text-neutral-300">
           <li><B>The case:</B> the client is in the car and asks “how much are you going to charge me?”. Miguel types the address and the tool gives him the competitive price in seconds, with no guessing.</li>
@@ -1713,6 +1727,7 @@ export function HowItWorksScreen() {
         </ul>
 
         <P><B>English-language audit — corrections made during this pass:</B> the latest earlier commit claimed every visible string was English, but a targeted source review found remaining Spanish UI text. The audit corrected visible labels/statuses in data-screen.tsx, reconciliation-view.tsx, trip-edit-sheet.tsx, register-screen.tsx, reports-screen.tsx, schedule-c-draft.tsx, dash-screen.tsx, expenses-screen.tsx and mileage-report.tsx, and corrected the manual's CANCELADO terminology. It also translated the in-app AI prompt, photo/bank/expense/schedule response instructions, API fallback messages and logging text in app/api/ai-chat/route.ts. The AI routing tags were aligned with the English tags already sent by ai-screen.tsx, fixing the bank-reconciliation and expense-analysis mode detection mismatch. Examples of corrected interface labels include CANCELAR, CONECTANDO, CONECTAR Y SINCRONIZAR, SINCRONIZAR AHORA, DESCONECTAR, EXPORTAR/IMPORTAR JSON, BLOQUEADO, Pendiente, RECIBIDO, ESPERADO, DIFERENCIA, CANTIDAD, ENE–JUN/JUL–DIC, Aprobar todo, Todo cuadra and the CSV and on-screen reconciliation headings. User-facing strings and AI instructions now use consistent professional English while Copilot continues to understand Spanish input and reply in the user's language.</P>
+        <P><B>English-language audit — second pass (2026-11-28):</B> a full re-audit of main at a28e5f8 found the first pass incomplete: 24 visible Spanish texts remained across TODAY, Expenses, AI, the account registers, Projections, Earnings, Reports, Data, the V1 dashboard, trip edit and Schedule C, plus 4 in the generated Financial Statement documents (CSV and printable HTML, which also declared lang="es"), 1 screen-reader label and 1 server fallback (the bank-screenshot reader default description) that lands in the register. All are corrected in this pass. The same pass pinned every locale-sensitive format to en-US: the date/time/number calls that silently used the device locale (so a Spanish-language iPhone rendered Spanish dates inside an English app, including the CRM message timestamps) and two V1-dashboard calls that were hard-coded to Spanish. The internal AI prompts remain in Spanish by Miguel's standing decision — behavior, not screen text — and the CRM audited clean (zero). Standing rule from this pass: new screens ship in English only, and locale-sensitive formats are pinned to en-US at the call site.</P>
         <P><B>Language limitation to track:</B> internal developer comments across legacy source files still contain Spanish. They are not rendered as interface labels and do not change runtime behavior, but they are source-level documentation. If Miguel requires every code comment to be English as well, perform a separate source-comment translation pass, preserving all code, formulas, identifiers, and historical decision notes. Do not claim that every source comment has been translated until that pass is complete.</P>
 
         <P><B>Build and test evidence:</B> Vercel confirmed a READY production build for commit f06c125, which contains the UI and AI prompt translation code changes. The later manual-only source-file index commit f7c46 has no confirmed deployment yet, for the access reason recorded above. package.json exposes no test/lint script. The repository contains 21 scripts, including focused Node checks for backup, bank CSV, cash flow, classification, dates, decisions, expenses, finance, money, platforms, production, reconciliation, schedules and sync. This audit inventoried those scripts but did not execute them in this GitHub-only inspection. Do not infer that the 21 scripts passed; execute them in a safe linked environment and record the actual results.</P>

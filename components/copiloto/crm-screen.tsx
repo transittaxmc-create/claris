@@ -1330,7 +1330,7 @@ function CRMReservations({ clients, cloudSeed, cloudSeedNonce, onCloudSync, onRe
                       <p className="mt-1 text-xs text-neutral-300">{[flightLookup.registration, flightLookup.aircraftType].filter(Boolean).join(" · ") || "Aircraft identity not provided"}</p>
                       {flightLookup.latitude != null && flightLookup.longitude != null && <a href={`https://www.google.com/maps?q=${flightLookup.latitude},${flightLookup.longitude}`} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-sky-300"><MapPin className="size-3.5" /> View last aircraft position</a>}
                       <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-neutral-300">
-                        {flightLookup.altitudeFeet != null && <span>Altitude: {flightLookup.altitudeFeet.toLocaleString()} ft</span>}
+                        {flightLookup.altitudeFeet != null && <span>Altitude: {flightLookup.altitudeFeet.toLocaleString("en-US")} ft</span>}
                         {flightLookup.groundSpeedKnots != null && <span>Speed: {flightLookup.groundSpeedKnots} kt</span>}
                         {flightLookup.heading != null && <span>Heading: {flightLookup.heading}°</span>}
                         {flightLookup.lastPositionSeconds != null && <span>Position age: {Math.round(flightLookup.lastPositionSeconds)} sec</span>}
@@ -1339,7 +1339,7 @@ function CRMReservations({ clients, cloudSeed, cloudSeedNonce, onCloudSync, onRe
                   )}
                   {flightLookup.status === "not_found" && <p className="mt-1 text-[11px] leading-relaxed text-neutral-400">This does not mean the flight is cancelled. It may not have departed, may be outside receiver coverage, or the airline/callsign may differ.</p>}
                   {flightLookup.status === "on_ground" && <p className="mt-1 text-[11px] leading-relaxed text-neutral-400">Ground signal is not proof that the aircraft has landed or that passengers can be collected.</p>}
-                  <p className="mt-2 text-[10px] text-neutral-500">Source: <a href="https://www.adsb.lol/" target="_blank" rel="noreferrer" className="underline">ADSB.lol</a> · ODbL 1.0 · checked {flightLookup.checkedAt ? new Date(flightLookup.checkedAt).toLocaleTimeString() : "just now"}</p>
+                  <p className="mt-2 text-[10px] text-neutral-500">Source: <a href="https://www.adsb.lol/" target="_blank" rel="noreferrer" className="underline">ADSB.lol</a> · ODbL 1.0 · checked {flightLookup.checkedAt ? new Date(flightLookup.checkedAt).toLocaleTimeString("en-US") : "just now"}</p>
                 </div>
               )}
               <a href={flightAwareLink(current.flightNumber)} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-bold text-sky-300"><ExternalLink className="size-3.5" /> Open FlightAware as backup</a>
@@ -1665,7 +1665,7 @@ function CRMMessages({ clients, reservations, cloudSeed, cloudSeedNonce, onCloud
                 {current.needsFollowUp && <span className="inline-flex items-center gap-1 rounded-full border border-amber-700/60 bg-amber-950/50 px-2.5 py-1 text-[10px] font-bold text-amber-300"><Flag className="size-3" /> FOLLOW-UP</span>}
               </span>
               <h3 className="mt-2 text-xl font-extrabold text-white">{current.fromName || "Unknown sender"}</h3>
-              <p className="mt-1 text-xs text-neutral-400">{current.channel} · {current.fromPhone || "no phone"} · {new Date(current.createdAt).toLocaleString()}</p>
+              <p className="mt-1 text-xs text-neutral-400">{current.channel} · {current.fromPhone || "no phone"} · {new Date(current.createdAt).toLocaleString("en-US")}</p>
             </div>
             <button onClick={() => setSelectedId(null)} aria-label="Minimize — the pending message stays in the tray" className="rounded-lg p-2 text-neutral-400"><X className="size-4" /></button>
           </div>
@@ -1703,7 +1703,7 @@ function CRMMessages({ clients, reservations, cloudSeed, cloudSeedNonce, onCloud
           {current.status === "approved" && (
             <div className="rounded-xl border border-amber-800/60 bg-amber-950/30 p-3">
               <p className="text-xs leading-relaxed text-amber-100">
-                Approved by you{current.approvedAt ? ` · ${new Date(current.approvedAt).toLocaleString()}` : ""}.
+                Approved by you{current.approvedAt ? ` · ${new Date(current.approvedAt).toLocaleString("en-US")}` : ""}.
                 {current.sendState === "queued" && " This reply is approved and saved in the CRM outbox. It has NOT been sent. No SMS provider or phone bridge is connected yet."}
                 {current.sendState === "sending" && " A dispatch status was recorded, but actual SMS transmission is not verified."}
                 {current.sendState === "failed" && " The reply could not be saved in the outbox. Nothing was sent — try again."}
@@ -1715,7 +1715,7 @@ function CRMMessages({ clients, reservations, cloudSeed, cloudSeedNonce, onCloud
           {current.status === "sent" && (
             <div className="rounded-xl border border-emerald-800/60 bg-emerald-950/30 p-3">
               <div className="flex flex-wrap items-center gap-2">
-                <p className="min-w-0 flex-1 text-xs text-emerald-100"><>The CRM contains a sent status{current.sentAt ? ` · ${new Date(current.sentAt).toLocaleString()}` : ""}, but actual SMS transmission has NOT been verified. No sender is connected.</></p>
+                <p className="min-w-0 flex-1 text-xs text-emerald-100"><>The CRM contains a sent status{current.sentAt ? ` · ${new Date(current.sentAt).toLocaleString("en-US")}` : ""}, but actual SMS transmission has NOT been verified. No sender is connected.</></p>
                 <button onClick={() => resendMessage(current)} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-2 text-xs font-extrabold text-black"><Undo2 className="size-3.5" /> Reenviar</button>
               </div>
             </div>
@@ -1744,7 +1744,7 @@ function CRMMessages({ clients, reservations, cloudSeed, cloudSeedNonce, onCloud
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-bold text-white">{m.fromName || m.fromPhone || "Unknown sender"}</span>
                 <span className="block truncate text-xs text-neutral-400">{m.body}</span>
-                <span className="mt-0.5 block text-[10px] text-neutral-500">{m.channel} · {new Date(m.createdAt).toLocaleString()}</span>
+                <span className="mt-0.5 block text-[10px] text-neutral-500">{m.channel} · {new Date(m.createdAt).toLocaleString("en-US")}</span>
               </span>
               <span className="flex shrink-0 flex-col items-end gap-1">
                 <span className={"rounded-full border px-2 py-1 text-[9px] font-bold " + statusChip(m.status)}>{m.status.toUpperCase()}</span>

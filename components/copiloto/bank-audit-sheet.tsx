@@ -160,7 +160,7 @@ export function BankAuditSheet() {
                 onClick={apply}
                 className="flex-1 rounded-xl bg-yellow-400 py-2 text-xs font-bold text-black"
               >
-                Aplicar
+                Apply
               </button>
             </div>
           </div>

@@ -35,7 +35,7 @@ export function FinanceScreen(props: {
           if (typeof d.checkedAt === "string") {
             const dt = new Date(d.checkedAt)
             if (!isNaN(dt.getTime())) {
-              t = dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false })
+              t = dt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })
             }
           }
           setBuild(`v7 · ${d.short}${t ? ` · ${t}` : ""}`)

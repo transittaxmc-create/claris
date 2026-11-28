@@ -236,11 +236,11 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
 
   function exportCsv() {
     const lines: string[] = []
-    lines.push(`Financial Statement,${from} a ${to}`)
+    lines.push(`Financial Statement,${from} to ${to}`)
     lines.push("")
     lines.push("INCOME,VALUE")
-    lines.push(`Bruto,${data.gross}`)
-    lines.push(`Propinas,${data.tips}`)
+    lines.push(`Gross,${data.gross}`)
+    lines.push(`Tips,${data.tips}`)
     lines.push(`Extra cash,${data.extra}`)
     lines.push(`Tolls collected,${data.tolls}`)
     lines.push(`Platform fees,${data.fees > 0 ? "-" : ""}${data.fees}`)
@@ -320,7 +320,7 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
             .map((c) => `<tr><td>${esc(c.category)}</td><td class="r">-${moneyHtml(c.amount)}</td></tr>`)
             .join("")
     const html = `<!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
@@ -347,7 +347,7 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
     </button>
   </div>
   <h1>Financial Statement</h1>
-  <p class="sub">Copiloto Dual Register · ${esc(from)} → ${esc(to)} · Generated ${esc(new Date().toLocaleString())}</p>
+  <p class="sub">Copiloto Dual Register · ${esc(from)} → ${esc(to)} · Generated ${esc(new Date().toLocaleString("en-US"))}</p>
   <h2>Income</h2>
   <table>
     <tr><td>Gross</td><td class="r">${moneyHtml(data.gross)}</td></tr>
@@ -476,7 +476,7 @@ export function ReportsScreen({ trips, expenses }: { trips: Trip[]; expenses: Ex
 
           <p className="mt-2 text-[10px] font-bold uppercase tracking-wide text-emerald-400">Income</p>
           <Row label="Gross (earnings + extra + tips + tolls)" value={money(data.gross)} tone="income" />
-          <Row label="· Propinas" value={money(data.tips)} indent tone="muted" />
+          <Row label="· Tips" value={money(data.tips)} indent tone="muted" />
           <Row label="· Extra cash" value={money(data.extra)} indent tone="muted" />
           <Row label="· Tolls collected" value={money(data.tolls)} indent tone="muted" />
           <Row label="Platform fees" value={`${data.fees > 0 ? "-" : ""}${money(data.fees)}`} tone="expense" />

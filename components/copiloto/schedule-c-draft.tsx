@@ -88,7 +88,7 @@ export function computeScheduleC(
       "9",
       "Car and truck expenses (standard mileage)",
       mileage + tollsPark,
-      `${opts.milesH1.toLocaleString()} mi × $0.725 + ${opts.milesH2.toLocaleString()} mi × $0.76 + tolls/parking`,
+      `${opts.milesH1.toLocaleString("en-US")} mi × $0.725 + ${opts.milesH2.toLocaleString("en-US")} mi × $0.76 + tolls/parking`,
     )
   } else {
     const carActual = c("Fuel") + c("Vehicle maintenance") + c("Car wash") + c("Tolls") + c("Parking")
@@ -246,7 +246,7 @@ export function ScheduleCDraft({
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="text-[9px] font-bold text-neutral-500">MILLAS NEGOCIO JUL–DIC 2026 ($0.76)</span>
+            <span className="text-[9px] font-bold text-neutral-500">BUSINESS MILES JUL–DEC 2026 ($0.76)</span>
             <input
               type="number"
               min={0}

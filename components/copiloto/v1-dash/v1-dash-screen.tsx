@@ -213,7 +213,7 @@ function ZonesCard({ zones, clock, hasGps }: { zones: ReturnType<typeof recommen
             <p className="text-[8px] text-neutral-500 mt-0.5">
               {clock.getDay() === 0 || clock.getDay() === 6 ? "Weekend" : "Workday"}
               {" · "}
-              {clock.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+              {clock.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
             </p>
           </div>
         </div>
@@ -271,7 +271,7 @@ function ZonesCard({ zones, clock, hasGps }: { zones: ReturnType<typeof recommen
           <span className="text-[10px] ml-1">⚪</span>
           <span className="text-[8px] text-neutral-600">Baja</span>
         </div>
-        <span className="text-[8px] font-mono-jet text-neutral-600">{hasGps ? "± GPS activo" : "Activa GPS p/ distancia"}</span>
+        <span className="text-[8px] font-mono-jet text-neutral-600">{hasGps ? "± GPS active" : "Turn on GPS for distance"}</span>
       </div>
     </div>
   )
@@ -415,7 +415,7 @@ function EzpassSummaryCard({
   }, [trips, snap, todayKey, shiftWindow])
 
   const fridayLabel = data.bill
-    ? new Date(`${data.bill.friday}T12:00:00`).toLocaleDateString("es", { weekday: "short", day: "numeric", month: "short" })
+    ? new Date(`${data.bill.friday}T12:00:00`).toLocaleDateString("en-US", { weekday: "short", day: "numeric", month: "short" })
     : ""
 
   const commitCar = () => {
@@ -931,7 +931,7 @@ export function V1DashScreen({
   const nextOutLabel = useMemo(() => {
     if (!moneyLine.next) return null
     const d = new Date(`${moneyLine.next.date}T12:00:00`)
-    const wd = d.toLocaleDateString("es", { weekday: "short" }).replace(/\./g, "")
+    const wd = d.toLocaleDateString("en-US", { weekday: "short" }).replace(/\./g, "")
     return `${wd} ${d.getDate()}`
   }, [moneyLine.next])
 
@@ -1071,7 +1071,7 @@ export function V1DashScreen({
               {clock.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" }).toUpperCase()}
             </p>
             <p className="font-mono-jet text-[10px] text-neutral-400 mt-1">
-              {clock.toLocaleTimeString()}
+              {clock.toLocaleTimeString("en-US")}
               {gps ? ` · ${gps.lat.toFixed(4)}, ${gps.lng.toFixed(4)}` : " · Locating…"}
             </p>
           </div>
@@ -1086,7 +1086,7 @@ export function V1DashScreen({
               <p className="font-mono-jet text-[10px] text-neutral-400">
                 {clock.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
                 {" · "}
-                {clock.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                {clock.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
               </p>
               <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[9px] tracking-[0.12em] font-bold" style={badgeStyle}>
                 <span className={`w-1.5 h-1.5 rounded-full ${dotClass}`} />
@@ -1221,7 +1221,7 @@ export function V1DashScreen({
                 </div>
                 {eta && grossToday < dailyGoal && (
                   <p className="text-[9px] text-[#4ade80] font-semibold mt-1.5">
-                    ✓ Goal ~ {eta.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}
+                    ✓ Goal ~ {eta.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
                   </p>
                 )}
                 {grossToday >= dailyGoal && (

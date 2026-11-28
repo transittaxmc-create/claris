@@ -163,12 +163,12 @@ export function AIScreen({
     } catch {
       setMessages((prev) => [
         ...prev,
-        { id: `a-${Date.now()}`, role: "assistant", content: "I could not compress the photo.", time: new Date().toLocaleTimeString() },
+        { id: `a-${Date.now()}`, role: "assistant", content: "I could not compress the photo.", time: new Date().toLocaleTimeString("en-US") },
       ])
       return
     }
     if (!dataUrl.startsWith("data:image/")) return
-    const now = new Date().toLocaleTimeString()
+    const now = new Date().toLocaleTimeString("en-US")
     const userMsg: Message = { id: `u-${Date.now()}`, role: "user", content: "📷 Foto enviada al asistente", time: now }
     setMessages((prev) => [...prev, userMsg])
     setLoading(true)
@@ -211,7 +211,7 @@ export function AIScreen({
             id: `a-${Date.now()}`,
             role: "assistant",
             content: `That receipt is already saved (${dupReceipt.vendor} · ${dupReceipt.date} · $${dupReceipt.amount.toFixed(2)}). Duplicate cancelled — I did not save it again.`,
-            time: new Date().toLocaleTimeString(),
+            time: new Date().toLocaleTimeString("en-US"),
           },
         ])
         return
@@ -235,13 +235,13 @@ export function AIScreen({
         id: `a-${Date.now()}`,
         role: "assistant",
         content: `I read the photo: ${sched.description} — $${sched.amount.toFixed(2)} (${sched.category}), date ${sched.startDate}.` + appliedNote,
-        time: new Date().toLocaleTimeString(),
+        time: new Date().toLocaleTimeString("en-US"),
       }
       setMessages((prev) => [...prev, assistantMsg])
     } catch {
       setMessages((prev) => [
         ...prev,
-        { id: `a-${Date.now()}`, role: "assistant", content: "I could not read the photo. Try again.", time: new Date().toLocaleTimeString() },
+        { id: `a-${Date.now()}`, role: "assistant", content: "I could not read the photo. Try again.", time: new Date().toLocaleTimeString("en-US") },
       ])
     } finally {
       setLoading(false)
@@ -573,7 +573,7 @@ export function AIScreen({
                 ONLINE
               </span>
             </div>
-            <p className="text-[10px] font-medium text-neutral-400">Asistente Contable y Fiscal</p>
+            <p className="text-[10px] font-medium text-neutral-400">Accounting & Tax Assistant</p>
           </div>
         </div>
         <button
@@ -634,7 +634,7 @@ export function AIScreen({
             </div>
             <div className="flex items-center gap-2 rounded-2xl rounded-tl-sm border border-neutral-800 bg-neutral-900 px-3.5 py-2 text-xs text-neutral-400">
               <Loader2 className="size-3.5 animate-spin text-yellow-400" />
-              Pensando…
+              Thinking…
             </div>
           </div>
         )}

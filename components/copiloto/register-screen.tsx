@@ -216,7 +216,7 @@ function TripCard({
                   RECON_TONE[recon.state].border,
                   RECON_TONE[recon.state].text,
                 )}
-                title={`Esperado ${money(recon.expected)} · received ${money(recon.received ?? 0)}`}
+                title={`Expected ${money(recon.expected)} · received ${money(recon.received ?? 0)}`}
               >
                 {recon.state === "ok" ? "Cuadra" : signed(recon.diff)}
               </span>
@@ -273,7 +273,7 @@ function PlatformGroupBlock({
             </span>
           </div>
           <p className="text-[10px] text-neutral-500">
-            Bruto <span className="font-bold text-yellow-400/90">{money(group.gross)}</span> · neto{" "}
+            Gross <span className="font-bold text-yellow-400/90">{money(group.gross)}</span> · net{" "}
             <span className="font-bold text-green-400">{money(group.net)}</span>
           </p>
         </div>

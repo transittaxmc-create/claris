@@ -177,7 +177,7 @@ function RankList({ title, items, total, sign }: { title: string; items: FlowGro
                 {g.name}
               </span>
               <span style={{ fontVariantNumeric: "tabular-nums", fontWeight: 700, flexShrink: 0 }}>
-                {sign}${Math.round(g.value).toLocaleString()}
+                {sign}${Math.round(g.value).toLocaleString("en-US")}
                 <span style={{ color: SUB, fontWeight: 600 }}> · {pct.toFixed(0)}%</span>
               </span>
             </div>
@@ -277,7 +277,7 @@ export function ProyeccionFoto2(props: ProyProps) {
     // Nodo muy fino: una sola línea "Nombre · $X" para que las etiquetas
     // de nodos vecinos no se encimen (el detalle completo va en la lista).
     const thin = height < 17
-    const valTxt = `$${Math.round(value).toLocaleString()}`
+    const valTxt = `$${Math.round(value).toLocaleString("en-US")}`
     return (
       <g>
         <rect x={x} y={y} width={width} height={height} rx={3} fill={color} />
@@ -464,9 +464,9 @@ export function ProyeccionFoto2(props: ProyProps) {
           )}
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: SUB, marginTop: 5 }}>
-          <span>Start ${Math.round(fc.start).toLocaleString()}</span>
+          <span>Start ${Math.round(fc.start).toLocaleString("en-US")}</span>
           <span style={{ color: AMBER }}>Floor ${CASH_FLOOR}</span>
-          <span>End {endBal < 0 ? "-$" : "$"}{Math.round(Math.abs(endBal)).toLocaleString()}</span>
+          <span>End {endBal < 0 ? "-$" : "$"}{Math.round(Math.abs(endBal)).toLocaleString("en-US")}</span>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12, paddingTop: 11, borderTop: `1px solid ${BORDER}` }}>
@@ -487,7 +487,7 @@ export function ProyeccionFoto2(props: ProyProps) {
           <div style={cardTitle}>PROJECTED BALANCE</div>
           {minDay && (
             <div style={{ fontSize: 10.5, color: minDay.balance < CASH_FLOOR ? RED : SUB, fontWeight: 700 }}>
-              Low ${Math.round(minDay.balance).toLocaleString()} · {fmtFecha(minDay.date)}
+              Low ${Math.round(minDay.balance).toLocaleString("en-US")} · {fmtFecha(minDay.date)}
             </div>
           )}
         </div>
@@ -568,7 +568,7 @@ export function ProyeccionFoto2(props: ProyProps) {
         {groups.transfersCount > 0 && (
           <div style={{ marginTop: 12, paddingTop: 9, borderTop: `1px dashed ${BORDER}`, fontSize: 11, color: SUB, lineHeight: 1.5 }}>
             Internal transfers between your accounts:{" "}
-            <b style={{ color: INK }}>${Math.round(groups.transfersTotal).toLocaleString()}</b> ({groups.transfersCount}{" "}
+            <b style={{ color: INK }}>${Math.round(groups.transfersTotal).toLocaleString("en-US")}</b> ({groups.transfersCount}{" "}
             {groups.transfersCount === 1 ? "move" : "moves"} · {transfersPct}% of all movement) — money moved between your
             own accounts, not income or expenses, so it stays out of the flow above.
           </div>

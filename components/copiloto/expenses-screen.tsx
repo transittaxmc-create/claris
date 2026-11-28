@@ -747,11 +747,11 @@ export function ExpensesScreen({
         if (file.size > 15 * 1024 * 1024) {
           throw new Error("The PDF is larger than 15 MB")
         }
-        setScanStatus("Leyendo el statement...")
+        setScanStatus("Reading the statement...")
         base64 = await readFileAsDataUrl(file)
         mimeType = "application/pdf"
       } else {
-        setScanStatus("Procesando imagen...")
+        setScanStatus("Processing image...")
         const r = await resizeImage(file)
         base64 = r.base64
         mimeType = r.mimeType
@@ -845,7 +845,7 @@ export function ExpensesScreen({
       }
       setTimeout(() => setScanStatus(null), 3500)
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Error al procesar"
+      const msg = err instanceof Error ? err.message : "Processing error"
       alert(`Error scanning receipt: ${msg}`)
       setScanStatus(null)
     } finally {
@@ -1320,7 +1320,7 @@ export function ExpensesScreen({
               <div className="grid grid-cols-3 gap-1.5">
                 {(
                   [
-                    ["business", "💼 Negocio"],
+                    ["business", "💼 Business"],
                     ["personal", "🏠 Personal"],
                     ["", "Unclassified"],
                   ] as [ExpenseClassification | "", string][]

@@ -253,12 +253,12 @@ export function Sankey({ sources, uses }: { sources: [string, number][]; uses: [
             {b.name.toUpperCase().slice(0, 13)}
           </text>
           <text x={x + colW / 2} y={b.y + b.h / 2 + 13} textAnchor="middle" fill="rgba(255,255,255,.92)" fontSize="12" fontWeight="700">
-            {sign}${Math.round(b.v).toLocaleString()}
+            {sign}${Math.round(b.v).toLocaleString("en-US")}
           </text>
         </>
       ) : (
         <text x={x + colW / 2} y={b.y + b.h / 2 + 4} textAnchor="middle" fill="#fff" fontSize="11" fontWeight="800">
-          {sign}${Math.round(b.v).toLocaleString()}
+          {sign}${Math.round(b.v).toLocaleString("en-US")}
         </text>
       )}
     </g>
@@ -354,8 +354,8 @@ export function Waterfall({
             <rect x={x} y={y1} width={barW} height={h} rx="4" fill={color} opacity={0.9} />
             <text x={x + barW / 2} y={y1 - 4} textAnchor="middle" fill={INK} fontSize="11" fontWeight="700">
               {b.kind === "minus"
-                ? `-$${Math.round(Math.abs(b.h)).toLocaleString()}`
-                : `$${Math.round(Math.abs(b.kind === "end" || b.kind === "start" ? b.v : b.h)).toLocaleString()}`}
+                ? `-$${Math.round(Math.abs(b.h)).toLocaleString("en-US")}`
+                : `$${Math.round(Math.abs(b.kind === "end" || b.kind === "start" ? b.v : b.h)).toLocaleString("en-US")}`}
             </text>
             <text x={x + barW / 2} y={H - 12} textAnchor="middle" fill={SUB} fontSize="11" fontWeight="600">
               {b.label}
