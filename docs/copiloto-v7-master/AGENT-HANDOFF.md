@@ -324,3 +324,27 @@ Read first: docs/copiloto-v7-master/AGENT-GATEWAY.md, AGENT-GATEWAY-API.md, and 
 
 ### Próxima acción autorizada
 Completar la conciliación documental de Fase 1 en esta rama no productiva y registrar evidencia. Después, preparar el comparativo de typecheck y el plan de reconciliación de ramas. Fase 1 permanece IN PROGRESS hasta cerrar ambos bloqueos.
+
+
+## Decisión vigente de alcance Fase 1 — Miguel, 2026-11-27
+
+**Alcance confirmado:** mantener la Fase 1 original de la §24 del manual: plataforma Copiloto + Centro de Comunicaciones preparado, con intake/clasificación/ruteo y aprobaciones modelados usando datos sintéticos. No ampliar Fase 1 para incluir proveedores de mensajería reales.
+
+**SMS y WhatsApp completos pasan a una fase posterior.** No activar SMS/Amani ni WhatsApp/ZapClaw, no configurar números/webhooks de producción, no enviar ni recibir comunicaciones reales de clientes como parte de Fase 1. En Fase 1 se prepara el diseño/estructura del Centro de Comunicaciones y se prueba con fixtures/eventos sintéticos.
+
+### Checklist para el seguimiento de Miguel
+- [ ] Shell Copiloto responsive: build y QA móvil/escritorio comprobados.
+- [ ] Dashboard principal con navegación a los tres workspaces.
+- [ ] Transport workspace: entry point e integración segura del módulo existente.
+- [ ] Taxes workspace: entry point e integración segura del módulo existente.
+- [ ] Work Opportunities: workflow shell con datos sintéticos y aprobación humana.
+- [ ] Communications Center: inbox/intake sintético, modelo de conversación, canal/origen, timestamps, metadatos de adjuntos, clasificación Transport/Taxes, revisión/aprobación y audit trail.
+- [ ] Servicios compartidos: identidad/permisos, almacenamiento privado, notificaciones y auditoría verificados según alcance de fase.
+- [ ] Tests automatizados, typecheck/build, preview y responsive QA documentados.
+- [ ] Seguridad y aislamiento Transport/Taxes revisados antes de cualquier dato real.
+- [ ] Documentación maestra, How This Works y handoff reconciliados.
+
+### Fuera de Fase 1
+SMS y WhatsApp live bidireccionales, activación de proveedores, webhooks/números reales, envío a clientes, delivery receipts reales y campañas quedan para una fase posterior con aprobación específica.
+
+La comunicación ChatGPT↔Muse por Agent Gateway (Issue #87 Verification #22) es coordinación de agentes, no integración de mensajería de clientes.
